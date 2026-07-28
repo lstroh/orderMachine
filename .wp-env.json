@@ -1,0 +1,9 @@
+{
+  "core": "WordPress/WordPress#7.0.2",
+  "phpVersion": "8.2",
+  "plugins": [ "." ],
+  "config": {
+    "SOM_ENV": "wp-env",
+    "SOM_USE_DUMMY_CREDENTIALS": true
+  }
+}

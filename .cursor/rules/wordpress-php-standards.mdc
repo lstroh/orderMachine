@@ -1,0 +1,42 @@
+---
+description: WordPress PHP coding standards for Order Machine
+globs: "**/*.php"
+alwaysApply: false
+---
+
+# WordPress / PHP standards (Order Machine)
+
+Target **PHP 8.2+**. Follow WordPress PHP coding standards for this plugin.
+
+## Database
+
+```php
+// BAD
+$wpdb->query( "SELECT * FROM {$wpdb->prefix}som_orders WHERE id = $id" );
+
+// GOOD
+$wpdb->get_row(
+	$wpdb->prepare(
+		"SELECT * FROM {$wpdb->prefix}som_orders WHERE id = %d",
+		$id
+	)
+);
+```
+
+Use `$wpdb->prepare` for all dynamic SQL. Prefer `dbDelta` for schema changes; bump `som_db_version`.
+
+## Hooks, caps, nonces
+
+- Prefix functions/classes/hooks with `som_` / `SOM_`.
+- Admin pages: `current_user_can( 'manage_options' )` (or a dedicated cap later).
+- Forms and admin-ajax/REST mutations: nonces + capability checks.
+- External REST (n8n, order create): API-key header check, separate from cookie auth.
+
+## Classes and files
+
+- One class per file: `class-som-order-sync.php` → `SOM_Order_Sync`.
+- No arbitrary `shell_exec` / `proc_open` from user or DB input — only allowlisted local actions with fixed binaries/scripts.
+
+## REST
+
+Register under namespace `som/v1` via `register_rest_route`. Keep MCP Abilities read-only in v1; never register credential-exposing abilities.

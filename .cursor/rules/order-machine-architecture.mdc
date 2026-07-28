@@ -1,0 +1,38 @@
+---
+description: Order Machine plugin architecture, naming, and design-doc context
+alwaysApply: true
+---
+
+# Order Machine — architecture
+
+## Standing design docs
+
+Read before inventing structure (under `stikerts/wordpress/`):
+
+- `Order-Management-Requirements.md`, `01-Data-Model.md`, `02-API-Integration.md`
+- `03-Workflow-Engine.md`, `04-WordPress-Integration.md`, `07-MCP-Integration.md`
+- `05-Implementation-Roadmap.md`, `Sprint-Plan.md`
+
+Do not silently resolve Open items — ask or follow `Sprint-Plan.md` settled decisions.
+
+## Layout and naming
+
+- Plugin root folder: `orderMachine/`. Bootstrap: `orderMachine.php` (Plugin Name: Order Machine).
+- Keep SOM internals from the design: `includes/class-som-*.php`, `admin/class-som-*.php`, `admin/views/*.php`.
+- Tables: `{$wpdb->prefix}som_*` (e.g. `wp_som_orders`). Options: `som_db_version`, etc.
+- Custom tables via `$wpdb` + `dbDelta` — not CPTs for orders/products.
+
+## Security / workflow
+
+- `script_config` type `local` must dispatch only through an allowlisted PHP handler map in `class-som-local-actions.php` — never eval DB strings or arbitrary shell from config.
+- Encrypt channel OAuth credentials at rest; never expose `channels.credentials` via REST or MCP Abilities.
+
+## Workflow assignment
+
+One workflow per order: primary product = first `order_items` row with non-null `product_id`. If none, leave unassigned and flag in UI.
+
+## Build discipline
+
+- Plain PHP admin UI for v1 (no React/build step) unless the user changes that.
+- Honor roadmap order; **pause after Phase 4** (orders list/detail) before workflow engine work unless the user waives it.
+- Planning-only / tooling files are fine; do not invent product behaviour that contradicts the design docs.
