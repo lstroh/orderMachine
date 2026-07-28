@@ -4,6 +4,7 @@
   "plugins": [ "." ],
   "config": {
     "SOM_ENV": "wp-env",
-    "SOM_USE_DUMMY_CREDENTIALS": true
+    "SOM_USE_DUMMY_CREDENTIALS": true,
+    "SOM_ENCRYPTION_KEY": "0723f805bb0f3cd2619835623f06dc0ac6e6d413e0f5877b075c3984e44591cd"
   }
 }

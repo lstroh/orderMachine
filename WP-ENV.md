@@ -85,6 +85,7 @@ Current config in `.wp-env.json`:
 - Extra config:
   - `SOM_ENV=wp-env`
   - `SOM_USE_DUMMY_CREDENTIALS=true`
+  - `SOM_ENCRYPTION_KEY` — encrypts channel credentials at rest (dev key; Local uses its own in `wp-config.php`)
 
 ### When to use wp-env
 
