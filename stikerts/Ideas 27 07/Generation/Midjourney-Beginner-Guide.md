@@ -101,4 +101,20 @@ Send me that final PNG and I'll drop it into the script and generate the WC/CV c
 
 ---
 
+## 8. Full-layout mockup prompt (composition reference only — never final art)
+
+Separate from the icon-only prompts above, this generates a **whole sticker layout** with placeholder text baked in, purely to explore composition — where the number sits relative to the icon, how big the banner should be, whether the flowers feel too close or too far out. **The text in this image will be blurry/wrong and is never used as final art or copied into the script** — only the layout/proportions are useful. The real text is always added afterwards in Python, exactly as described in §1.
+
+**Prompt for a P02-style full layout:**
+
+```
+A house address sticker design for a wheelie bin, featuring a minimalist house icon flanked by two small flowers, with the house number '36' displayed prominently near the roofline, and a ribbon banner below containing the street name 'GROVE STREET' in bold caps text, clean flat vector illustration, single accent colour with black text, on a plain white card with a thin border, portrait orientation --style raw --stylize 50 --ar 5:7
+```
+
+Note the `--ar 5:7` — that matches your 100×140mm sticker's actual proportions, so the mockup shows a realistic layout rather than a square or landscape composition that wouldn't transfer.
+
+**What to do with the result:** don't try to extract the text or trace it directly. Instead, look at where things sit — icon size relative to the card, gap between icon and banner, banner width vs. card width — and describe that back to me (or just send the image) so I can translate it into exact reportlab coordinates with your real font and guaranteed-correct text.
+
+---
+
 *Once P02 is done and you're happy with the WC/CV comparison, the same process (steps 3, 5, and 6) applies to any other icon from the idea board — just swap in a new prompt each time.*
