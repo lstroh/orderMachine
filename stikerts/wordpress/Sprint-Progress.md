@@ -12,8 +12,8 @@
 | 1 | Foundation | Done | Verified on wp-env; Local activation not yet confirmed by agent |
 | 2 | Channel connection | Done | Verified on wp-env (dummy credentials + settings + cron) |
 | 3 | Order sync | Done | Verified on wp-env (fixtures + de-dup + listing match) |
-| 4 | Orders list + detail | Not started | Pause checkpoint after this sprint |
-| 5+ | Later phases | Not started | Do not start until after Phase 4 pause unless waived |
+| 4 | Orders list + detail | Done | Verified on wp-env (filters, badges, detail) |
+| 5+ | Later phases | Not started | **Pause after Phase 4** — use with real orders before Sprint 5+ unless waived |
 
 ---
 
@@ -267,6 +267,78 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-settings — Sync now /
 
 ---
 
+## Sprint 4 — Orders list + detail
+
+- **Status:** Done
+- **Roadmap phase:** 4
+- **Completed:** 2026-07-29
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+
+### Plan requirements review (`Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `admin/views/orders-list.php` | Done | Filters, search, badges, pagination |
+| `admin/views/order-detail.php` | Done | Personalisation + address front-and-centre; collapsed raw payload |
+| `admin/assets/` — minimal CSS/JS | Done | CSS only (`admin/assets/css/admin.css`); `<details>` for raw JSON (no JS) |
+| Menu wiring in `class-som-admin-menu.php` | Done | Replaces placeholder; `?order_id=` for detail |
+| **Done when:** View synced/fixture orders in wp-admin | Pass | List + detail against 6 fixture orders |
+| **Done when:** Personalisation + shipping address front-and-centre | Pass | Highlight panels on detail |
+| **Done when:** Filters by status/channel/date roughly work | Pass | Plus search (buyer / external ID) |
+| Open items first | None blocking | A1 refine during pause with real payloads |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Status filter | Open / Complete / Needs mapping / Cancelled (plus All) |
+| Cancelled detection | Best-effort from `raw_payload` (eBay fulfillment/cancelState; Etsy `status`) |
+| Unmatched | List badge (+ detail warning + line-item badge) |
+| Address | Display only (no copy button) |
+| Raw payload | Collapsed `<details>` on detail |
+| Search | Buyer name or external order ID |
+| Cancelled in list | Shown with Cancelled badge |
+| Plugin version | Bumped to `0.4.0` |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-orders.php` | List query, detail fetch, cancel detection, address format |
+| `admin/views/orders-list.php` | Filterable orders table |
+| `admin/views/order-detail.php` | Single-order view |
+| `admin/assets/css/admin.css` | List/detail layout + badges |
+| `admin/class-som-admin-menu.php` | Orders render + asset enqueue |
+| `orderMachine.php` | Bootstrap `SOM_Orders`; version `0.4.0` |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| Can view synced eBay/Etsy (or fixture) orders in wp-admin | Pass — 6 fixture orders |
+| Personalisation and shipping address front-and-centre on detail | Pass |
+| Filters by status/channel/date roughly work | Pass — cancelled=2, needs_mapping=2, search Alex=1, ebay=3 |
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin activate orderMachine
+# Sync fixtures (already present): created 0, updated 6
+# SOM_Orders::query() → 6 rows; cancelled filter 2; needs_mapping 2; search Alex 1
+# SOM_Orders::get() → buyer, items, formatted address
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-orders — `admin` / `password`
+
+### Open items / notes for later
+
+- **PAUSE:** Use with real orders before Sprint 5+. Capture real personalisation paths (A1) and address shapes.
+- Live OAuth + real order pull still needs developer apps on Local.
+- Workflow step UI / Mark done deferred to Sprint 7.
+- Copy-to-clipboard for Click & Drop deferred (display-only for now).
+
+---
+
 ## Next
 
-Sprint 4 — Orders list + detail (pause checkpoint after).
+**Phase 4 pause** — use the orders UI with real (or fixture) data before Sprint 5 (Products + materials) unless explicitly waived.

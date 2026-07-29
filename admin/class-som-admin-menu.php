@@ -19,11 +19,12 @@ class SOM_Admin_Menu {
 	 */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_settings_actions' ) );
 	}
 
 	/**
-	 * Register top-level menu, Orders stub, and Settings.
+	 * Register top-level menu, Orders, and Settings.
 	 *
 	 * @return void
 	 */
@@ -33,7 +34,7 @@ class SOM_Admin_Menu {
 			__( 'Order Machine', 'order-machine' ),
 			'manage_options',
 			'som-orders',
-			array( __CLASS__, 'render_placeholder' ),
+			array( __CLASS__, 'render_orders' ),
 			'dashicons-clipboard',
 			26
 		);
@@ -44,7 +45,7 @@ class SOM_Admin_Menu {
 			__( 'Orders', 'order-machine' ),
 			'manage_options',
 			'som-orders',
-			array( __CLASS__, 'render_placeholder' )
+			array( __CLASS__, 'render_orders' )
 		);
 
 		add_submenu_page(
@@ -58,25 +59,55 @@ class SOM_Admin_Menu {
 	}
 
 	/**
-	 * Temporary placeholder until Sprint 4 orders UI.
+	 * Admin CSS for Order Machine screens.
 	 *
+	 * @param string $hook_suffix Current admin page hook.
 	 * @return void
 	 */
-	public static function render_placeholder() {
+	public static function enqueue_assets( $hook_suffix ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		?>
-		<div class="wrap">
-			<h1><?php echo esc_html__( 'Order Machine', 'order-machine' ); ?></h1>
-			<p><?php echo esc_html__( 'Plugin foundation is active. Orders list and detail screens arrive in a later sprint.', 'order-machine' ); ?></p>
-			<p>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=som-settings' ) ); ?>">
-					<?php echo esc_html__( 'Open Settings', 'order-machine' ); ?>
-				</a>
-			</p>
-		</div>
-		<?php
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-orders' !== $page ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'som-admin',
+			SOM_PLUGIN_URL . 'admin/assets/css/admin.css',
+			array(),
+			SOM_VERSION
+		);
+	}
+
+	/**
+	 * Orders list or detail.
+	 *
+	 * @return void
+	 */
+	public static function render_orders() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$order_id = isset( $_GET['order_id'] ) ? (int) $_GET['order_id'] : 0;
+		if ( $order_id > 0 ) {
+			$order = SOM_Orders::get( $order_id );
+			if ( ! $order ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Order not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Orders::list_url() ) . '">';
+				echo esc_html__( 'Back to orders', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			require SOM_PLUGIN_DIR . 'admin/views/order-detail.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/orders-list.php';
 	}
 
 	/**

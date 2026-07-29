@@ -1,0 +1,180 @@
+<?php
+/**
+ * Order detail admin view.
+ *
+ * @package OrderMachine
+ *
+ * @var object $order Order row from SOM_Orders::get().
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( ! current_user_can( 'manage_options' ) || empty( $order ) ) {
+	return;
+}
+
+$address_text = SOM_Orders::format_address( $order->shipping_address );
+$back_url     = SOM_Orders::list_url();
+
+$raw_pretty = '';
+if ( ! empty( $order->raw_payload ) ) {
+	$decoded = json_decode( (string) $order->raw_payload, true );
+	if ( is_array( $decoded ) ) {
+		$raw_pretty = wp_json_encode( $decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+	} else {
+		$raw_pretty = (string) $order->raw_payload;
+	}
+}
+?>
+<div class="wrap som-order-detail-wrap">
+	<p>
+		<a href="<?php echo esc_url( $back_url ); ?>">&larr; <?php echo esc_html__( 'Back to orders', 'order-machine' ); ?></a>
+	</p>
+
+	<h1>
+		<?php
+		printf(
+			/* translators: 1: channel name, 2: external order id */
+			esc_html__( '%1$s order %2$s', 'order-machine' ),
+			esc_html( (string) $order->channel_name ),
+			esc_html( (string) $order->external_order_id )
+		);
+		?>
+	</h1>
+
+	<div class="som-order-meta">
+		<span class="som-badge som-badge-channel"><?php echo esc_html( (string) $order->channel_name ); ?></span>
+		<?php if ( ! empty( $order->is_complete ) ) : ?>
+			<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Complete', 'order-machine' ); ?></span>
+		<?php else : ?>
+			<span class="som-badge som-badge-open"><?php echo esc_html__( 'Open', 'order-machine' ); ?></span>
+		<?php endif; ?>
+		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
+			<span class="som-badge som-badge-cancelled"><?php echo esc_html__( 'Cancelled', 'order-machine' ); ?></span>
+		<?php endif; ?>
+		<?php if ( ! empty( $order->has_unmatched ) ) : ?>
+			<span class="som-badge som-badge-unmatched"><?php echo esc_html__( 'Unmatched', 'order-machine' ); ?></span>
+		<?php endif; ?>
+		<span class="som-order-date">
+			<?php
+			printf(
+				/* translators: %s: formatted datetime */
+				esc_html__( 'Ordered %s', 'order-machine' ),
+				esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $order->order_date ) )
+			);
+			?>
+		</span>
+	</div>
+
+	<?php if ( ! empty( $order->has_unmatched ) ) : ?>
+		<div class="notice notice-warning inline som-unmatched-notice">
+			<p><?php echo esc_html__( 'One or more line items could not be matched to a product. Map the listing under Listings (later sprint) or ignore if intentional.', 'order-machine' ); ?></p>
+		</div>
+	<?php endif; ?>
+
+	<div class="som-order-highlight">
+		<section class="som-panel som-panel-personalisation">
+			<h2><?php echo esc_html__( 'Personalisation', 'order-machine' ); ?></h2>
+			<?php
+			$person_bits = array();
+			foreach ( $order->items as $item ) {
+				$text = isset( $item->personalisation_text ) ? trim( (string) $item->personalisation_text ) : '';
+				if ( '' !== $text ) {
+					$person_bits[] = $text;
+				}
+			}
+			?>
+			<?php if ( $person_bits ) : ?>
+				<ul class="som-personalisation-list">
+					<?php foreach ( $person_bits as $text ) : ?>
+						<li><?php echo esc_html( $text ); ?></li>
+					<?php endforeach; ?>
+				</ul>
+			<?php else : ?>
+				<p class="som-muted"><?php echo esc_html__( 'No personalisation text on this order.', 'order-machine' ); ?></p>
+			<?php endif; ?>
+		</section>
+
+		<section class="som-panel som-panel-shipping">
+			<h2><?php echo esc_html__( 'Shipping address', 'order-machine' ); ?></h2>
+			<?php if ( '' !== $address_text ) : ?>
+				<address class="som-shipping-address">
+					<?php echo nl2br( esc_html( $address_text ) ); ?>
+				</address>
+			<?php else : ?>
+				<p class="som-muted"><?php echo esc_html__( 'No shipping address stored.', 'order-machine' ); ?></p>
+			<?php endif; ?>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: %s: buyer name */
+					esc_html__( 'Buyer: %s', 'order-machine' ),
+					esc_html( (string) $order->buyer_name )
+				);
+				?>
+			</p>
+		</section>
+	</div>
+
+	<section class="som-panel som-panel-items">
+		<h2><?php echo esc_html__( 'Line items', 'order-machine' ); ?></h2>
+		<table class="widefat striped">
+			<thead>
+				<tr>
+					<th><?php echo esc_html__( 'Product', 'order-machine' ); ?></th>
+					<th><?php echo esc_html__( 'Qty', 'order-machine' ); ?></th>
+					<th><?php echo esc_html__( 'Personalisation', 'order-machine' ); ?></th>
+					<th><?php echo esc_html__( 'Unit price', 'order-machine' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $order->items as $item ) : ?>
+					<?php
+					$matched = null !== $item->product_id && '' !== $item->product_id;
+					$label   = $matched
+						? (string) $item->product_name
+						: __( 'Unmatched listing', 'order-machine' );
+					?>
+					<tr>
+						<td>
+							<?php echo esc_html( $label ); ?>
+							<?php if ( $matched && ! empty( $item->product_sku ) ) : ?>
+								<br /><code><?php echo esc_html( (string) $item->product_sku ); ?></code>
+							<?php endif; ?>
+							<?php if ( ! $matched ) : ?>
+								<span class="som-badge som-badge-unmatched"><?php echo esc_html__( 'Unmatched', 'order-machine' ); ?></span>
+							<?php endif; ?>
+						</td>
+						<td><?php echo esc_html( (string) (int) $item->quantity ); ?></td>
+						<td>
+							<?php
+							$pt = isset( $item->personalisation_text ) ? trim( (string) $item->personalisation_text ) : '';
+							if ( '' !== $pt ) {
+								echo esc_html( $pt );
+							} else {
+								echo '<span class="som-muted">—</span>';
+							}
+							?>
+						</td>
+						<td>
+							<?php
+							if ( null !== $item->unit_price && '' !== $item->unit_price ) {
+								echo esc_html( number_format_i18n( (float) $item->unit_price, 2 ) );
+							} else {
+								echo '<span class="som-muted">—</span>';
+							}
+							?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+	</section>
+
+	<?php if ( '' !== $raw_pretty ) : ?>
+		<details class="som-panel som-raw-payload">
+			<summary><?php echo esc_html__( 'Raw payload (debug)', 'order-machine' ); ?></summary>
+			<pre class="som-raw-json"><?php echo esc_html( $raw_pretty ); ?></pre>
+		</details>
+	<?php endif; ?>
+</div>
