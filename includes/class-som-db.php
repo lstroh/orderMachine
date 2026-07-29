@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.0.0';
+	const DB_VERSION = '1.1.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -54,6 +54,7 @@ class SOM_DB {
 			current_stock decimal(10,2) NOT NULL DEFAULT 0.00,
 			low_stock_threshold decimal(10,2) NULL,
 			unit_cost decimal(10,4) NULL,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id)

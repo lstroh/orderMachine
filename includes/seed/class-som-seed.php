@@ -133,6 +133,108 @@ class SOM_Seed {
 		self::ensure_listing( $product_id, 'ebay', self::EBAY_LISTING_ID, 12.99 );
 		self::ensure_listing( $product_id, 'ebay', self::SAMPLE_PRODUCT_SKU, 12.99 );
 		self::ensure_listing( $product_id, 'etsy', self::ETSY_LISTING_ID, 14.99 );
+
+		self::maybe_seed_materials( $product_id );
+	}
+
+	/** Seed material name: vinyl sheet. */
+	const MATERIAL_VINYL = 'A4 Glossy White Vinyl';
+
+	/** Seed material name: laminate sheet. */
+	const MATERIAL_LAMINATE = 'A4 Glossy Laminate';
+
+	/**
+	 * Seed sample materials + recipe on the demo product.
+	 *
+	 * @param int $product_id Product PK.
+	 * @return void
+	 */
+	public static function maybe_seed_materials( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		$vinyl_id    = self::ensure_material( self::MATERIAL_VINYL, 'sheet', 25, 5, 1.25 );
+		$laminate_id = self::ensure_material( self::MATERIAL_LAMINATE, 'sheet', 25, 5, 0.85 );
+
+		if ( $vinyl_id < 1 || $laminate_id < 1 ) {
+			return;
+		}
+
+		global $wpdb;
+		$recipe_t = SOM_DB::table( 'product_materials' );
+		$count    = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$recipe_t} WHERE product_id = %d",
+				$product_id
+			)
+		);
+
+		if ( $count > 0 ) {
+			return;
+		}
+
+		$wpdb->insert(
+			$recipe_t,
+			array(
+				'product_id'         => $product_id,
+				'material_id'        => $vinyl_id,
+				'quantity_per_unit'  => 1.0,
+			),
+			array( '%d', '%d', '%f' )
+		);
+		$wpdb->insert(
+			$recipe_t,
+			array(
+				'product_id'         => $product_id,
+				'material_id'        => $laminate_id,
+				'quantity_per_unit'  => 1.0,
+			),
+			array( '%d', '%d', '%f' )
+		);
+	}
+
+	/**
+	 * @param string $name      Material name.
+	 * @param string $unit      Unit label.
+	 * @param float  $stock     Starting stock.
+	 * @param float  $threshold Low-stock threshold.
+	 * @param float  $cost      Unit cost.
+	 * @return int Material ID.
+	 */
+	private static function ensure_material( $name, $unit, $stock, $threshold, $cost ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'materials' );
+		$id    = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE name = %s ORDER BY id ASC LIMIT 1",
+				$name
+			)
+		);
+
+		if ( $id > 0 ) {
+			return $id;
+		}
+
+		$now = current_time( 'mysql', true );
+		$wpdb->insert(
+			$table,
+			array(
+				'name'                => $name,
+				'unit'                => $unit,
+				'current_stock'       => $stock,
+				'low_stock_threshold' => $threshold,
+				'unit_cost'           => $cost,
+				'is_active'           => 1,
+				'created_at'          => $now,
+				'updated_at'          => $now,
+			),
+			array( '%s', '%s', '%f', '%f', '%f', '%d', '%s', '%s' )
+		);
+
+		return (int) $wpdb->insert_id;
 	}
 
 	/**

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.4.0
+ * Version:           0.5.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.4.0' );
+define( 'SOM_VERSION', '0.5.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -27,6 +27,8 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-ebay.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-etsy.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-materials.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-products.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-cron.php';
 require_once SOM_PLUGIN_DIR . 'includes/seed/class-som-seed.php';
 require_once SOM_PLUGIN_DIR . 'admin/class-som-admin-menu.php';
@@ -94,13 +96,36 @@ function som_admin_notices() {
 	}
 
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+	if ( ! in_array( $page, array( 'som-settings', 'som-products', 'som-materials' ), true ) ) {
+		return;
+	}
+
+	$stored = get_transient( 'som_admin_errors' );
+	if ( is_array( $stored ) ) {
+		foreach ( $stored as $error ) {
+			if ( ! is_array( $error ) || empty( $error['code'] ) ) {
+				continue;
+			}
+			add_settings_error(
+				'som_admin',
+				$error['code'],
+				isset( $error['message'] ) ? $error['message'] : '',
+				isset( $error['type'] ) ? $error['type'] : 'error'
+			);
+		}
+		delete_transient( 'som_admin_errors' );
+	}
+
+	settings_errors( 'som_admin' );
+
+	// Legacy settings transient (Sprint 2–4).
 	if ( 'som-settings' !== $page ) {
 		return;
 	}
 
-	$stored = get_transient( 'som_settings_errors' );
-	if ( is_array( $stored ) ) {
-		foreach ( $stored as $error ) {
+	$legacy = get_transient( 'som_settings_errors' );
+	if ( is_array( $legacy ) ) {
+		foreach ( $legacy as $error ) {
 			if ( ! is_array( $error ) || empty( $error['code'] ) ) {
 				continue;
 			}

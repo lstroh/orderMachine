@@ -13,7 +13,8 @@
 | 2 | Channel connection | Done | Verified on wp-env (dummy credentials + settings + cron) |
 | 3 | Order sync | Done | Verified on wp-env (fixtures + de-dup + listing match) |
 | 4 | Orders list + detail | Done | Verified on wp-env (filters, badges, detail) |
-| 5+ | Later phases | Not started | **Pause after Phase 4** — use with real orders before Sprint 5+ unless waived |
+| 5 | Products + materials | Done | Verified on wp-env (CRUD, recipe, stock adjust, seed) |
+| 6+ | Later phases | Not started | Workflow templates + step editor |
 
 ---
 
@@ -339,6 +340,89 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-orders — `admin` / `p
 
 ---
 
+## Sprint 5 — Products + materials
+
+- **Status:** Done
+- **Roadmap phase:** 5
+- **Completed:** 2026-07-29
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+
+### Plan requirements review (`Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `admin/views/products.php` (list + edit) | Done | `products-list.php` + `product-edit.php` |
+| `admin/views/materials.php` (list + edit) | Done | `materials-list.php` + `material-edit.php` |
+| Material recipe editor; `product_materials` writes | Done | Repeatable rows + duplicate-material validation |
+| Manual stock adjust → `material_stock_log` | Done | Delta input; reason `manual_adjustment` |
+| **Done when:** CRUD products and materials | Pass | Deactivate-only (no hard delete) |
+| **Done when:** Attach recipes | Pass | Replace-all save per product |
+| **Done when:** Assign `workflow_template_id` | Pass | Nullable dropdown (empty until Sprint 6) |
+| Open items first | None | Phase 4 pause waived by user |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Phase 4 pause | Waived — proceed with Sprint 5 |
+| Delete behaviour | Deactivate only (`is_active` on products + materials; schema bump adds `materials.is_active`) |
+| Material fields | `low_stock_threshold` + `unit_cost` on form |
+| Stock log UI | Last 10 entries on material detail |
+| Manual adjustment | Delta (+/-); stock may go negative |
+| Recipe duplicates | Rejected server-side |
+| Linked listings | Read-only table on product edit |
+| Seed | 2 materials + recipe on sample product |
+| Plugin version | Bumped to `0.5.0` |
+| DB version | `1.1.0` (`materials.is_active`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-products.php` | Product CRUD, recipe save, listings lookup |
+| `includes/class-som-materials.php` | Material CRUD, stock adjust, stock log |
+| `admin/views/products-list.php` | Product list with filters |
+| `admin/views/product-edit.php` | Product form, recipe editor, linked listings |
+| `admin/views/materials-list.php` | Material list with low-stock badge |
+| `admin/views/material-edit.php` | Material form, delta adjust, stock log |
+| `admin/assets/js/admin.js` | Add/remove recipe rows |
+| `admin/class-som-admin-menu.php` | Products/Materials menu + POST handlers |
+| `includes/class-som-db.php` | `materials.is_active`; DB `1.1.0` |
+| `includes/seed/class-som-seed.php` | Sample vinyl + laminate + recipe |
+| `admin/assets/css/admin.css` | Catalogue + recipe + stock styles |
+| `orderMachine.php` | Bootstrap + v0.5.0 + admin notices |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| CRUD products and materials | Pass |
+| Attach recipes | Pass — 2 materials on seed product |
+| Assign `workflow_template_id` (nullable) | Pass — dropdown present |
+| Manual stock → `material_stock_log` | Pass — `manual_adjustment` verified |
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp option get som_db_version
+# 1.1.0
+npx @wordpress/env run cli wp db query "SHOW COLUMNS FROM wp_som_materials LIKE 'is_active'"
+npx @wordpress/env run cli wp eval 'SOM_Seed::maybe_seed_catalogue();'
+npx @wordpress/env run cli wp db query "SELECT m.name, pm.quantity_per_unit FROM wp_som_product_materials pm JOIN wp_som_materials m ON m.id=pm.material_id"
+npx @wordpress/env run cli wp eval 'var_dump(SOM_Materials::adjust_stock(1, -2.5));'
+npx @wordpress/env run cli wp db query "SELECT reason, change_qty FROM wp_som_material_stock_log"
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-products — `admin` / `password`
+
+### Open items / notes for later
+
+- Workflow template CRUD (Sprint 6) — assignment dropdown is ready but empty until templates exist.
+- Auto-decrement on order sync deferred to Sprint 8.
+- Listings push/edit deferred to Sprint 10 (read-only on product edit for now).
+
+---
+
 ## Next
 
-**Phase 4 pause** — use the orders UI with real (or fixture) data before Sprint 5 (Products + materials) unless explicitly waived.
+**Sprint 6** — Workflow templates + step editor.

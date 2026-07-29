@@ -189,3 +189,77 @@
 	white-space: pre-wrap;
 	word-break: break-word;
 }
+
+/* Products + materials (Sprint 5) */
+
+.som-catalog-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 16px 0 12px;
+}
+
+.som-catalog-filters input[type="search"],
+.som-catalog-filters select {
+	max-width: 220px;
+}
+
+.som-catalog-count {
+	margin: 0 0 8px;
+}
+
+.som-badge-active {
+	background: #edfaef;
+	color: #1e6e34;
+}
+
+.som-badge-inactive {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+.som-badge-low-stock {
+	background: #fcf0e3;
+	color: #9a5b1a;
+}
+
+.som-recipe-table .som-recipe-actions-col {
+	width: 48px;
+	text-align: center;
+}
+
+.som-recipe-remove {
+	color: #b32d2e;
+	font-size: 20px;
+	line-height: 1;
+	text-decoration: none;
+}
+
+.som-stock-summary {
+	max-width: 420px;
+	margin-bottom: 20px;
+}
+
+.som-stock-level {
+	font-size: 1.5em;
+	font-weight: 700;
+	margin: 0;
+}
+
+.som-stock-adjust-form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 24px;
+}
+
+.som-stock-log-table .column-change {
+	width: 12%;
+}
+
+.som-listings-table {
+	max-width: 900px;
+	margin-top: 8px;
+}
