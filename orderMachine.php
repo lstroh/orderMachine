@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.2.0
+ * Version:           0.3.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.2.0' );
+define( 'SOM_VERSION', '0.3.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -25,10 +25,10 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-settings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channels.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-ebay.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-etsy.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-cron.php';
 require_once SOM_PLUGIN_DIR . 'includes/seed/class-som-seed.php';
 require_once SOM_PLUGIN_DIR . 'admin/class-som-admin-menu.php';
-
 /**
  * Plugin activation: create schema, channel rows, schedule cron.
  *
@@ -63,7 +63,6 @@ function som_init() {
 	SOM_DB::maybe_upgrade();
 	SOM_Channels::ensure_rows();
 	SOM_Cron::init();
-	SOM_Cron::schedule_events();
 	SOM_Seed::maybe_load_dummy_credentials();
 
 	if ( is_admin() ) {
@@ -72,6 +71,16 @@ function som_init() {
 	}
 }
 add_action( 'plugins_loaded', 'som_init' );
+
+/**
+ * Schedule cron after init so translation loading is valid.
+ *
+ * @return void
+ */
+function som_schedule_cron() {
+	SOM_Cron::schedule_events();
+}
+add_action( 'init', 'som_schedule_cron' );
 
 /**
  * Surface settings_errors stored across redirect.

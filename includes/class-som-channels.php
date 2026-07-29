@@ -172,4 +172,44 @@ class SOM_Channels {
 		$creds = self::get_credentials( $slug );
 		return ! empty( $creds['access_token'] );
 	}
+
+	/**
+	 * Whether credentials are dummy (fixture) tokens.
+	 *
+	 * @param string $slug Channel slug.
+	 * @return bool
+	 */
+	public static function is_dummy( $slug ) {
+		$creds = self::get_credentials( $slug );
+		return ! empty( $creds['dummy'] );
+	}
+
+	/**
+	 * Update last successful order sync timestamp (UTC).
+	 *
+	 * @param string $slug Channel slug.
+	 * @param string $datetime MySQL UTC datetime.
+	 * @return bool
+	 */
+	public static function set_last_synced_at( $slug, $datetime ) {
+		global $wpdb;
+
+		$row = self::get_by_slug( $slug );
+		if ( ! $row ) {
+			return false;
+		}
+
+		$updated = $wpdb->update(
+			SOM_DB::table( 'channels' ),
+			array(
+				'last_synced_at' => $datetime,
+				'updated_at'     => current_time( 'mysql', true ),
+			),
+			array( 'id' => (int) $row->id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+
+		return false !== $updated;
+	}
 }

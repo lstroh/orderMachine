@@ -210,6 +210,224 @@ class SOM_Channel_Etsy {
 	}
 
 	/**
+	 * Pull shop receipts in the given UTC window (or fixtures when dummy).
+	 *
+	 * @param string $from_utc Y-m-d H:i:s UTC.
+	 * @param string $to_utc   Y-m-d H:i:s UTC.
+	 * @return array<int, array<string, mixed>>|\WP_Error Normalized orders.
+	 */
+	public static function fetch_orders( $from_utc, $to_utc ) {
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::load_fixture_orders();
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds    = SOM_Channels::get_credentials( self::SLUG );
+		$settings = SOM_Settings::get();
+
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_etsy_orders', __( 'Etsy is not connected.', 'order-machine' ) );
+		}
+		if ( empty( $creds['shop_id'] ) ) {
+			return new WP_Error( 'som_etsy_orders', __( 'Etsy shop ID is missing. Reconnect Etsy.', 'order-machine' ) );
+		}
+		if ( '' === $settings['etsy']['client_id'] ) {
+			return new WP_Error( 'som_etsy_config', __( 'Etsy API keystring is missing.', 'order-machine' ) );
+		}
+
+		$min_created = strtotime( $from_utc . ' UTC' );
+		$max_created = strtotime( $to_utc . ' UTC' );
+		if ( false === $min_created ) {
+			$min_created = time() - ( 7 * DAY_IN_SECONDS );
+		}
+		if ( false === $max_created ) {
+			$max_created = time();
+		}
+
+		$orders  = array();
+		$offset  = 0;
+		$limit   = 25;
+		$safety  = 0;
+
+		do {
+			$url = add_query_arg(
+				array(
+					'min_created' => $min_created,
+					'max_created' => $max_created,
+					'limit'       => $limit,
+					'offset'      => $offset,
+				),
+				'https://api.etsy.com/v3/application/shops/' . rawurlencode( (string) $creds['shop_id'] ) . '/receipts'
+			);
+
+			$response = wp_remote_get(
+				$url,
+				array(
+					'timeout' => 45,
+					'headers' => array(
+						'Authorization' => 'Bearer ' . $creds['access_token'],
+						'x-api-key'     => $settings['etsy']['client_id'],
+						'Accept'        => 'application/json',
+					),
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			$code = (int) wp_remote_retrieve_response_code( $response );
+			$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+			if ( $code < 200 || $code >= 300 || ! is_array( $body ) ) {
+				$message = __( 'Etsy receipt pull failed.', 'order-machine' );
+				if ( ! empty( $body['error'] ) ) {
+					$message = (string) $body['error'];
+				}
+				return new WP_Error( 'som_etsy_orders', $message );
+			}
+
+			$batch = isset( $body['results'] ) && is_array( $body['results'] ) ? $body['results'] : array();
+			foreach ( $batch as $raw ) {
+				if ( is_array( $raw ) ) {
+					$orders[] = self::normalize_order( $raw );
+				}
+			}
+
+			$count   = isset( $body['count'] ) ? (int) $body['count'] : count( $batch );
+			$offset += $limit;
+			++$safety;
+		} while ( $offset < $count && $safety < 40 );
+
+		return $orders;
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>|\WP_Error
+	 */
+	private static function load_fixture_orders() {
+		$path = SOM_PLUGIN_DIR . 'tests/fixtures/etsy-orders.json';
+		if ( ! is_readable( $path ) ) {
+			return new WP_Error( 'som_etsy_fixture', __( 'Etsy order fixture file missing.', 'order-machine' ) );
+		}
+
+		$data = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local fixture
+		if ( ! is_array( $data ) || empty( $data['results'] ) || ! is_array( $data['results'] ) ) {
+			return new WP_Error( 'som_etsy_fixture', __( 'Etsy order fixture is invalid.', 'order-machine' ) );
+		}
+
+		$orders = array();
+		foreach ( $data['results'] as $raw ) {
+			if ( is_array( $raw ) ) {
+				$orders[] = self::normalize_order( $raw );
+			}
+		}
+
+		return $orders;
+	}
+
+	/**
+	 * Map Etsy receipt → internal shape.
+	 *
+	 * @param array<string, mixed> $raw API / fixture receipt.
+	 * @return array<string, mixed>
+	 */
+	public static function normalize_order( array $raw ) {
+		$address = array(
+			'full_name' => isset( $raw['name'] ) ? (string) $raw['name'] : '',
+			'line1'     => isset( $raw['first_line'] ) ? (string) $raw['first_line'] : '',
+			'line2'     => isset( $raw['second_line'] ) ? (string) $raw['second_line'] : '',
+			'city'      => isset( $raw['city'] ) ? (string) $raw['city'] : '',
+			'state'     => isset( $raw['state'] ) ? (string) $raw['state'] : '',
+			'postcode'  => isset( $raw['zip'] ) ? (string) $raw['zip'] : '',
+			'country'   => isset( $raw['country_iso'] ) ? (string) $raw['country_iso'] : '',
+		);
+
+		$order_date = gmdate( 'Y-m-d H:i:s' );
+		if ( ! empty( $raw['created_timestamp'] ) ) {
+			$order_date = gmdate( 'Y-m-d H:i:s', (int) $raw['created_timestamp'] );
+		}
+
+		$items        = array();
+		$transactions = isset( $raw['transactions'] ) && is_array( $raw['transactions'] ) ? $raw['transactions'] : array();
+		foreach ( $transactions as $tx ) {
+			if ( ! is_array( $tx ) ) {
+				continue;
+			}
+			$unit_price = null;
+			if ( isset( $tx['price']['amount'], $tx['price']['divisor'] ) && (int) $tx['price']['divisor'] > 0 ) {
+				$unit_price = ( (float) $tx['price']['amount'] ) / ( (float) $tx['price']['divisor'] );
+			}
+
+			$items[] = array(
+				'external_listing_id'  => ! empty( $tx['listing_id'] ) ? (string) $tx['listing_id'] : '',
+				'sku'                  => '',
+				'quantity'             => isset( $tx['quantity'] ) ? (int) $tx['quantity'] : 1,
+				'unit_price'           => $unit_price,
+				'personalisation_text' => self::extract_personalisation( $tx ),
+			);
+		}
+
+		return array(
+			'external_order_id' => isset( $raw['receipt_id'] ) ? (string) $raw['receipt_id'] : '',
+			'order_date'        => $order_date,
+			'buyer_name'        => $address['full_name'],
+			'shipping_address'  => $address,
+			'raw_payload'       => $raw,
+			'items'             => $items,
+		);
+	}
+
+	/**
+	 * Best-effort personalisation from transaction variations.
+	 *
+	 * @param array<string, mixed> $tx Transaction.
+	 * @return string|null
+	 */
+	private static function extract_personalisation( array $tx ) {
+		$variations = isset( $tx['variations'] ) && is_array( $tx['variations'] ) ? $tx['variations'] : array();
+		$preferred  = array( 'personalisation', 'personalization', 'custom text', 'customisation', 'customization', 'name', 'bin' );
+		$parts      = array();
+
+		foreach ( $variations as $variation ) {
+			if ( ! is_array( $variation ) ) {
+				continue;
+			}
+			$name  = isset( $variation['formatted_name'] ) ? strtolower( (string) $variation['formatted_name'] ) : '';
+			$value = isset( $variation['formatted_value'] ) ? trim( (string) $variation['formatted_value'] ) : '';
+			if ( '' === $value ) {
+				continue;
+			}
+			foreach ( $preferred as $needle ) {
+				if ( false !== strpos( $name, $needle ) ) {
+					$parts[] = $value;
+					break;
+				}
+			}
+		}
+
+		if ( $parts ) {
+			return implode( ' / ', $parts );
+		}
+
+		$all = array();
+		foreach ( $variations as $variation ) {
+			if ( is_array( $variation ) && ! empty( $variation['formatted_value'] ) ) {
+				$all[] = trim( (string) $variation['formatted_value'] );
+			}
+		}
+		if ( $all && count( $all ) <= 3 ) {
+			return implode( ' / ', $all );
+		}
+
+		return null;
+	}
+
+	/**
 	 * Best-effort shop id lookup after connect.
 	 *
 	 * @param string $access_token User token.

@@ -125,6 +125,18 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		// Sync now (incremental).
+		if ( isset( $_GET['som_sync_now'] ) ) {
+			self::handle_sync_now();
+			return;
+		}
+
+		// Import history backfill.
+		if ( isset( $_POST['som_import_history'] ) ) {
+			self::handle_import_history();
+			return;
+		}
+
 		// Save settings form.
 		if ( isset( $_POST['som_settings_nonce'] ) ) {
 			self::handle_save_settings();
@@ -167,12 +179,58 @@ class SOM_Admin_Menu {
 		);
 
 		$next = SOM_Settings::get();
-		if ( (int) $prev['token_refresh_interval_minutes'] !== (int) $next['token_refresh_interval_minutes'] ) {
-			SOM_Cron::reschedule_refresh();
+		if (
+			(int) $prev['token_refresh_interval_minutes'] !== (int) $next['token_refresh_interval_minutes']
+			|| (int) $prev['poll_interval_minutes'] !== (int) $next['poll_interval_minutes']
+		) {
+			SOM_Cron::reschedule_events();
 		}
 
 		self::flash_notice( __( 'Settings saved.', 'order-machine' ), 'success', 'som_settings_saved' );
 		wp_safe_redirect( admin_url( 'admin.php?page=som-settings&settings-updated=1' ) );
+		exit;
+	}
+
+	/**
+	 * Manual incremental sync.
+	 *
+	 * @return void
+	 */
+	private static function handle_sync_now() {
+		check_admin_referer( 'som_sync_now' );
+
+		$result = SOM_Order_Sync::sync_incremental();
+		$type   = ! empty( $result['ok'] ) ? 'success' : 'warning';
+		self::flash_notice(
+			isset( $result['message'] ) ? (string) $result['message'] : __( 'Sync finished.', 'order-machine' ),
+			$type,
+			'som_sync_now'
+		);
+		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Explicit history backfill (30 / 90 days).
+	 *
+	 * @return void
+	 */
+	private static function handle_import_history() {
+		check_admin_referer( 'som_import_history', 'som_import_history_nonce' );
+
+		$days = isset( $_POST['som_history_days'] ) ? (int) $_POST['som_history_days'] : 30;
+		if ( ! in_array( $days, array( 30, 90 ), true ) ) {
+			$days = 30;
+		}
+
+		$result = SOM_Order_Sync::sync_history( $days );
+		$type   = ! empty( $result['ok'] ) ? 'success' : 'warning';
+		self::flash_notice(
+			isset( $result['message'] ) ? (string) $result['message'] : __( 'Import finished.', 'order-machine' ),
+			$type,
+			'som_import_history'
+		);
+		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
 		exit;
 	}
 

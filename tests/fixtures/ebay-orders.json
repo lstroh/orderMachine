@@ -1,0 +1,147 @@
+{
+  "orders": [
+    {
+      "orderId": "12-34567-89012",
+      "creationDate": "2026-07-27T14:22:00.000Z",
+      "orderFulfillmentStatus": "NOT_STARTED",
+      "cancelStatus": {
+        "cancelState": "NONE_REQUESTED"
+      },
+      "buyer": {
+        "username": "ebay_buyer_one"
+      },
+      "pricingSummary": {
+        "total": {
+          "value": "12.99",
+          "currency": "GBP"
+        }
+      },
+      "fulfillmentStartInstructions": [
+        {
+          "shippingStep": {
+            "shipTo": {
+              "fullName": "Alex Buyer",
+              "contactAddress": {
+                "addressLine1": "10 High Street",
+                "addressLine2": "Flat 2",
+                "city": "Bristol",
+                "stateOrProvince": "",
+                "postalCode": "BS1 4DJ",
+                "countryCode": "GB"
+              }
+            }
+          }
+        }
+      ],
+      "lineItems": [
+        {
+          "lineItemId": "1001",
+          "sku": "BIN-SET-4PK",
+          "legacyItemId": "110000000001",
+          "title": "Bin Sticker Set — 100x140mm 4-pack",
+          "quantity": 1,
+          "lineItemCost": {
+            "value": "12.99",
+            "currency": "GBP"
+          },
+          "variationAspects": [
+            {
+              "name": "Personalisation",
+              "value": "Bin 42 — Golden Retriever"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "orderId": "12-34567-89099",
+      "creationDate": "2026-07-26T09:10:00.000Z",
+      "orderFulfillmentStatus": "NOT_STARTED",
+      "cancelStatus": {
+        "cancelState": "NONE_REQUESTED"
+      },
+      "buyer": {
+        "username": "ebay_buyer_two"
+      },
+      "fulfillmentStartInstructions": [
+        {
+          "shippingStep": {
+            "shipTo": {
+              "fullName": "Sam Unmatched",
+              "contactAddress": {
+                "addressLine1": "5 Quay Road",
+                "city": "Cardiff",
+                "postalCode": "CF10 1AA",
+                "countryCode": "GB"
+              }
+            }
+          }
+        }
+      ],
+      "lineItems": [
+        {
+          "lineItemId": "2001",
+          "sku": "UNKNOWN-SKU",
+          "legacyItemId": "199999999999",
+          "title": "Unmapped listing (fixture)",
+          "quantity": 2,
+          "lineItemCost": {
+            "value": "8.50",
+            "currency": "GBP"
+          },
+          "variationAspects": [
+            {
+              "name": "Custom Text",
+              "value": "Nia"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "orderId": "12-99999-00001",
+      "creationDate": "2026-07-20T11:00:00.000Z",
+      "orderFulfillmentStatus": "CANCELLED",
+      "cancelStatus": {
+        "cancelState": "CANCELED",
+        "cancelRequests": [
+          {
+            "cancelReason": "BUYER_CANCEL",
+            "cancelRequestState": "COMPLETED"
+          }
+        ]
+      },
+      "buyer": {
+        "username": "ebay_cancelled"
+      },
+      "fulfillmentStartInstructions": [
+        {
+          "shippingStep": {
+            "shipTo": {
+              "fullName": "Casey Cancelled",
+              "contactAddress": {
+                "addressLine1": "1 Cancel Lane",
+                "city": "Leeds",
+                "postalCode": "LS1 1AA",
+                "countryCode": "GB"
+              }
+            }
+          }
+        }
+      ],
+      "lineItems": [
+        {
+          "lineItemId": "3001",
+          "sku": "BIN-SET-4PK",
+          "legacyItemId": "110000000001",
+          "title": "Bin Sticker Set — 100x140mm 4-pack",
+          "quantity": 1,
+          "lineItemCost": {
+            "value": "12.99",
+            "currency": "GBP"
+          }
+        }
+      ]
+    }
+  ]
+}

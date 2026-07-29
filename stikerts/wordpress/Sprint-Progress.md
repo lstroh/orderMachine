@@ -11,7 +11,7 @@
 | 0 | Env / Cursor setup | Done | Rules, wp-env, PHPCS scaffold, Sprint-Plan |
 | 1 | Foundation | Done | Verified on wp-env; Local activation not yet confirmed by agent |
 | 2 | Channel connection | Done | Verified on wp-env (dummy credentials + settings + cron) |
-| 3 | Order sync | Not started | |
+| 3 | Order sync | Done | Verified on wp-env (fixtures + de-dup + listing match) |
 | 4 | Orders list + detail | Not started | Pause checkpoint after this sprint |
 | 5+ | Later phases | Not started | Do not start until after Phase 4 pause unless waived |
 
@@ -182,10 +182,91 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-settings — `admin` / 
 
 - Real eBay/Etsy OAuth: configure developer apps on **Local**; register Auth Accepted / redirect URLs shown on Settings.
 - `SOM_ENCRYPTION_KEY` is set in Local `wp-config.php` and in `.wp-env.json` (separate keys). Changing a key invalidates existing ciphertext until reconnect/re-seed.
-- Order sync cron (`som_sync_orders`) lands in Sprint 3.
+
+---
+
+## Sprint 3 — Order sync
+
+- **Status:** Done
+- **Roadmap phase:** 3
+- **Completed:** 2026-07-29
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+
+### Plan requirements review (`Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `includes/class-som-order-sync.php` — poll, de-dup, listing match | Done | Header update on re-sync; line items immutable after create |
+| Channel clients: order-pull methods | Done | Live HTTP + fixture path when credentials are `dummy` |
+| `includes/class-som-cron.php` — `som_sync_orders` | Done | Uses `som_order_poll` schedule from Settings |
+| Seed/fixtures under `tests/fixtures/` | Done | eBay + Etsy JSON (incl. cancel examples) |
+| **Done when:** Cron or Sync now creates/updates without duplicates | Pass | Second sync: created 0, updated 6 |
+| **Done when:** Unmatched lines have `product_id` null | Pass | Fixture unmatched listings → NULL |
+| **Done when:** `raw_payload` stored | Pass | Full API/fixture JSON on each order |
+| Open item A1 personalisation | Soft | Best-effort extractors; refine after real samples |
+| Open item A2 listing match | Done | Via `wp_som_listings.external_listing_id` (+ SKU fallback key) |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Fixture-first | Dummy credentials load fixtures; no live HTTP |
+| Re-sync | Update `buyer_name`, `shipping_address`, `raw_payload`, `order_date`; **do not** change existing `order_items` |
+| Incremental window | Since `last_synced_at` (5 min overlap); if null → **7 days** |
+| Import history | Separate Settings action: 30 or 90 days backfill |
+| Cancel (A3) | Stored only inside `raw_payload` / fixtures; no stock reversal yet |
+| Sync UI | Settings: Sync now + Import history + last-sync summary |
+| Seed catalogue | Sample product + matched ebay/etsy listing rows when `SOM_USE_DUMMY_CREDENTIALS` |
+| Plugin version | Bumped to `0.3.0` |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-order-sync.php` | Orchestrates sync, de-dup, listing→product match |
+| `includes/class-som-channel-ebay.php` | `fetch_orders` + normalize + personalisation extract |
+| `includes/class-som-channel-etsy.php` | `fetch_orders` + normalize + personalisation extract |
+| `includes/class-som-channels.php` | `is_dummy`, `set_last_synced_at` |
+| `includes/class-som-cron.php` | Registers/runs `som_sync_orders` |
+| `includes/seed/class-som-seed.php` | Dummy catalogue (product + listings) |
+| `tests/fixtures/ebay-orders.json` | Sample eBay orders (matched / unmatched / cancelled) |
+| `tests/fixtures/etsy-orders.json` | Sample Etsy receipts (matched / unmatched / canceled) |
+| `admin/views/settings.php` | Sync now, Import history, last-sync status |
+| `admin/class-som-admin-menu.php` | Sync / import action handlers |
+| `orderMachine.php` | Bootstrap `SOM_Order_Sync`; cron schedule on `init` |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| Cron or manual Sync now creates/updates without duplicates | Pass — 6 fixture orders; re-run updates only |
+| Unmatched lines have `product_id` null | Pass — eBay `199999999999`, Etsy `299999999999` |
+| `raw_payload` stored | Pass |
+| `som_sync_orders` scheduled | Pass — listed in `wp cron event list` |
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin activate orderMachine
+npx @wordpress/env run cli wp eval 'SOM_Seed::maybe_seed_catalogue(); $r = SOM_Order_Sync::sync_incremental(); echo wp_json_encode($r);'
+# {"created":6,"updated":0,...,"ok":true}
+npx @wordpress/env run cli wp eval '$r = SOM_Order_Sync::sync_incremental(); echo wp_json_encode($r);'
+# {"created":0,"updated":6,...,"ok":true}
+npx @wordpress/env run cli wp db query "SELECT o.external_order_id, oi.product_id, oi.personalisation_text FROM wp_som_orders o JOIN wp_som_order_items oi ON oi.order_id=o.id"
+npx @wordpress/env run cli wp cron event list
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-settings — Sync now / Import history
+
+### Open items / notes for later
+
+- Live OAuth + real order pull still needs developer apps on Local.
+- A1: refine personalisation paths after Phase 4 pause with real payloads.
+- A3: cancel field shapes are in fixtures (`orderFulfillmentStatus` / Etsy `status=canceled`) for Sprint 8 reversal.
+- Material decrement / workflow assignment still deferred (Sprints 7–8).
 
 ---
 
 ## Next
 
-Sprint 3 — Order sync (poll, de-dup, listing match, fixtures).
+Sprint 4 — Orders list + detail (pause checkpoint after).

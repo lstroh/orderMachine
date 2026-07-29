@@ -1,6 +1,6 @@
 <?php
 /**
- * Dev/seed helpers (wp-env dummy channel credentials).
+ * Dev/seed helpers (wp-env dummy credentials + sample catalogue).
  *
  * @package OrderMachine
  */
@@ -8,9 +8,19 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Loads non-functional dummy OAuth payloads when `SOM_USE_DUMMY_CREDENTIALS` is true.
+ * Loads non-functional dummy OAuth payloads and small product/listing seed data
+ * when `SOM_USE_DUMMY_CREDENTIALS` is true.
  */
 class SOM_Seed {
+
+	/** Sample product SKU used by fixtures for matched lines. */
+	const SAMPLE_PRODUCT_SKU = 'BIN-SET-4PK';
+
+	/** eBay legacyItemId in ebay-orders.json (matched). */
+	const EBAY_LISTING_ID = '110000000001';
+
+	/** Etsy listing_id in etsy-orders.json (matched). */
+	const ETSY_LISTING_ID = '220000000001';
 
 	/**
 	 * Ensure channel rows + dummy encrypted credentials (idempotent).
@@ -53,5 +63,124 @@ class SOM_Seed {
 
 			SOM_Channels::save_credentials( $slug, $payload );
 		}
+
+		self::maybe_seed_catalogue();
+	}
+
+	/**
+	 * Seed one sample product + matched listings for fixture order sync demos.
+	 *
+	 * @return void
+	 */
+	public static function maybe_seed_catalogue() {
+		if ( ! defined( 'SOM_USE_DUMMY_CREDENTIALS' ) || ! SOM_USE_DUMMY_CREDENTIALS ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$products   = SOM_DB::table( 'products' );
+		$now        = current_time( 'mysql', true );
+		$product_id = (int) get_option( 'som_seed_product_id', 0 );
+
+		if ( $product_id > 0 ) {
+			$still_there = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$products} WHERE id = %d LIMIT 1",
+					$product_id
+				)
+			);
+			if ( ! $still_there ) {
+				$product_id = 0;
+				delete_option( 'som_seed_product_id' );
+			}
+		}
+
+		if ( $product_id < 1 ) {
+			$product_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$products} WHERE sku = %s ORDER BY id ASC LIMIT 1",
+					self::SAMPLE_PRODUCT_SKU
+				)
+			);
+		}
+
+		if ( $product_id < 1 ) {
+			$wpdb->insert(
+				$products,
+				array(
+					'name'                 => 'Bin Sticker Set — 100x140mm 4-pack (sample)',
+					'sku'                  => self::SAMPLE_PRODUCT_SKU,
+					'workflow_template_id' => null,
+					'is_active'            => 1,
+					'created_at'           => $now,
+					'updated_at'           => $now,
+				),
+				array( '%s', '%s', '%s', '%d', '%s', '%s' )
+			);
+			$product_id = (int) $wpdb->insert_id;
+			if ( $product_id > 0 ) {
+				update_option( 'som_seed_product_id', $product_id, false );
+			}
+		} else {
+			update_option( 'som_seed_product_id', $product_id, false );
+		}
+
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		self::ensure_listing( $product_id, 'ebay', self::EBAY_LISTING_ID, 12.99 );
+		self::ensure_listing( $product_id, 'ebay', self::SAMPLE_PRODUCT_SKU, 12.99 );
+		self::ensure_listing( $product_id, 'etsy', self::ETSY_LISTING_ID, 14.99 );
+	}
+
+	/**
+	 * @param int    $product_id Product PK.
+	 * @param string $channel_slug ebay|etsy.
+	 * @param string $external_id  Listing / SKU key stored in listings.
+	 * @param float  $price        Sample price.
+	 * @return void
+	 */
+	private static function ensure_listing( $product_id, $channel_slug, $external_id, $price ) {
+		global $wpdb;
+
+		$channel = SOM_Channels::get_by_slug( $channel_slug );
+		if ( ! $channel ) {
+			return;
+		}
+
+		$listings   = SOM_DB::table( 'listings' );
+		$channel_id = (int) $channel->id;
+
+		$existing = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$listings} WHERE channel_id = %d AND external_listing_id = %s LIMIT 1",
+				$channel_id,
+				$external_id
+			)
+		);
+
+		if ( $existing ) {
+			return;
+		}
+
+		$now = current_time( 'mysql', true );
+		$wpdb->suppress_errors( true );
+		$wpdb->insert(
+			$listings,
+			array(
+				'product_id'          => $product_id,
+				'channel_id'          => $channel_id,
+				'external_listing_id' => $external_id,
+				'price'               => $price,
+				'quantity_available'  => 10,
+				'last_synced_at'      => null,
+				'created_at'          => $now,
+				'updated_at'          => $now,
+			),
+			array( '%d', '%d', '%s', '%f', '%d', '%s', '%s', '%s' )
+		);
+		$wpdb->suppress_errors( false );
 	}
 }

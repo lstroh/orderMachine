@@ -8,11 +8,12 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers cron schedules and handlers (token refresh in Sprint 2; sync/engine later).
+ * Registers cron schedules and handlers (token refresh + order sync).
  */
 class SOM_Cron {
 
 	const HOOK_REFRESH_TOKENS = 'som_refresh_tokens';
+	const HOOK_SYNC_ORDERS    = 'som_sync_orders';
 
 	/**
 	 * Wire hooks (call on every request after plugins_loaded).
@@ -22,10 +23,11 @@ class SOM_Cron {
 	public static function init() {
 		add_filter( 'cron_schedules', array( __CLASS__, 'add_schedules' ) );
 		add_action( self::HOOK_REFRESH_TOKENS, array( __CLASS__, 'refresh_tokens' ) );
+		add_action( self::HOOK_SYNC_ORDERS, array( __CLASS__, 'sync_orders' ) );
 	}
 
 	/**
-	 * Custom intervals from settings (token refresh) + placeholders for later sprints.
+	 * Custom intervals from settings (token refresh + order poll).
 	 *
 	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
 	 * @return array<string, array<string, mixed>>
@@ -65,6 +67,9 @@ class SOM_Cron {
 		if ( ! wp_next_scheduled( self::HOOK_REFRESH_TOKENS ) ) {
 			wp_schedule_event( time() + MINUTE_IN_SECONDS, 'som_token_refresh', self::HOOK_REFRESH_TOKENS );
 		}
+		if ( ! wp_next_scheduled( self::HOOK_SYNC_ORDERS ) ) {
+			wp_schedule_event( time() + ( 2 * MINUTE_IN_SECONDS ), 'som_order_poll', self::HOOK_SYNC_ORDERS );
+		}
 	}
 
 	/**
@@ -73,10 +78,12 @@ class SOM_Cron {
 	 * @return void
 	 */
 	public static function clear_events() {
-		$timestamp = wp_next_scheduled( self::HOOK_REFRESH_TOKENS );
-		while ( $timestamp ) {
-			wp_unschedule_event( $timestamp, self::HOOK_REFRESH_TOKENS );
-			$timestamp = wp_next_scheduled( self::HOOK_REFRESH_TOKENS );
+		foreach ( array( self::HOOK_REFRESH_TOKENS, self::HOOK_SYNC_ORDERS ) as $hook ) {
+			$timestamp = wp_next_scheduled( $hook );
+			while ( $timestamp ) {
+				wp_unschedule_event( $timestamp, $hook );
+				$timestamp = wp_next_scheduled( $hook );
+			}
 		}
 	}
 
@@ -85,9 +92,18 @@ class SOM_Cron {
 	 *
 	 * @return void
 	 */
-	public static function reschedule_refresh() {
+	public static function reschedule_events() {
 		self::clear_events();
 		self::schedule_events();
+	}
+
+	/**
+	 * Back-compat alias used by settings save in Sprint 2.
+	 *
+	 * @return void
+	 */
+	public static function reschedule_refresh() {
+		self::reschedule_events();
 	}
 
 	/**
@@ -116,6 +132,19 @@ class SOM_Cron {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional ops signal
 				error_log( 'Order Machine token refresh (' . $slug . '): ' . $result->get_error_message() );
 			}
+		}
+	}
+
+	/**
+	 * Incremental order sync for active connected channels.
+	 *
+	 * @return void
+	 */
+	public static function sync_orders() {
+		$result = SOM_Order_Sync::sync_incremental();
+		if ( empty( $result['ok'] ) && ! empty( $result['message'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional ops signal
+			error_log( 'Order Machine sync: ' . $result['message'] );
 		}
 	}
 }

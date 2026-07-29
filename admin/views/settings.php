@@ -62,9 +62,97 @@ $disconnect_etsy_url = wp_nonce_url(
 	),
 	'som_disconnect_etsy'
 );
+
+$sync_now_url = wp_nonce_url(
+	add_query_arg(
+		array(
+			'page'         => 'som-settings',
+			'som_sync_now' => '1',
+		),
+		admin_url( 'admin.php' )
+	),
+	'som_sync_now'
+);
+
+$sync_status  = SOM_Order_Sync::get_status();
+$ebay_channel = SOM_Channels::get_by_slug( 'ebay' );
+$etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 ?>
 <div class="wrap">
 	<h1><?php echo esc_html__( 'Order Machine Settings', 'order-machine' ); ?></h1>
+
+	<h2><?php echo esc_html__( 'Order sync', 'order-machine' ); ?></h2>
+	<table class="form-table" role="presentation">
+		<tr>
+			<th scope="row"><?php echo esc_html__( 'Last sync', 'order-machine' ); ?></th>
+			<td>
+				<?php if ( ! empty( $sync_status['last_run_at'] ) ) : ?>
+					<?php
+					printf(
+						/* translators: 1: UTC datetime, 2: mode */
+						esc_html__( '%1$s UTC (%2$s)', 'order-machine' ),
+						esc_html( (string) $sync_status['last_run_at'] ),
+						esc_html( (string) $sync_status['last_mode'] )
+					);
+					?>
+					<?php if ( ! empty( $sync_status['last_summary'] ) ) : ?>
+						<p class="description"><?php echo esc_html( (string) $sync_status['last_summary'] ); ?></p>
+					<?php endif; ?>
+					<?php if ( ! empty( $sync_status['last_error'] ) ) : ?>
+						<p class="description" style="color:#b32d2e;"><?php echo esc_html( (string) $sync_status['last_error'] ); ?></p>
+					<?php endif; ?>
+				<?php else : ?>
+					<?php echo esc_html__( 'Not run yet.', 'order-machine' ); ?>
+				<?php endif; ?>
+				<?php if ( $ebay_channel && ! empty( $ebay_channel->last_synced_at ) ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s: UTC datetime */
+							esc_html__( 'eBay channel last_synced_at: %s UTC', 'order-machine' ),
+							esc_html( (string) $ebay_channel->last_synced_at )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+				<?php if ( $etsy_channel && ! empty( $etsy_channel->last_synced_at ) ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s: UTC datetime */
+							esc_html__( 'Etsy channel last_synced_at: %s UTC', 'order-machine' ),
+							esc_html( (string) $etsy_channel->last_synced_at )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php echo esc_html__( 'Sync now', 'order-machine' ); ?></th>
+			<td>
+				<a class="button button-primary" href="<?php echo esc_url( $sync_now_url ); ?>"><?php echo esc_html__( 'Sync now', 'order-machine' ); ?></a>
+				<p class="description"><?php echo esc_html__( 'Incremental poll: since last sync, or last 7 days on first run. Dummy credentials load fixtures instead of live APIs.', 'order-machine' ); ?></p>
+			</td>
+		</tr>
+	</table>
+
+	<form method="post" action="" style="margin-bottom:1.5em;">
+		<?php wp_nonce_field( 'som_import_history', 'som_import_history_nonce' ); ?>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="som_history_days"><?php echo esc_html__( 'Import history', 'order-machine' ); ?></label></th>
+				<td>
+					<select name="som_history_days" id="som_history_days">
+						<option value="30"><?php echo esc_html__( 'Last 30 days', 'order-machine' ); ?></option>
+						<option value="90"><?php echo esc_html__( 'Last 90 days', 'order-machine' ); ?></option>
+					</select>
+					<?php submit_button( __( 'Import history', 'order-machine' ), 'secondary', 'som_import_history', false ); ?>
+					<p class="description"><?php echo esc_html__( 'Explicit backfill for live channels. After import, normal Sync now / cron continues from last_synced_at.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+		</table>
+	</form>
 
 	<form method="post" action="">
 		<?php wp_nonce_field( 'som_save_settings', 'som_settings_nonce' ); ?>
@@ -82,7 +170,7 @@ $disconnect_etsy_url = wp_nonce_url(
 				<th scope="row"><label for="som_poll_interval"><?php echo esc_html__( 'Order polling interval (minutes)', 'order-machine' ); ?></label></th>
 				<td>
 					<input name="som_poll_interval" id="som_poll_interval" type="number" min="1" step="1" value="<?php echo esc_attr( (string) $settings['poll_interval_minutes'] ); ?>" class="small-text" />
-					<p class="description"><?php echo esc_html__( 'Suggested 10–15. Cron job for sync is registered in Sprint 3.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Suggested 10–15. Schedules som_sync_orders via WP-Cron.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>

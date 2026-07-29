@@ -1,0 +1,102 @@
+{
+  "count": 3,
+  "results": [
+    {
+      "receipt_id": 9001001,
+      "created_timestamp": 1722081720,
+      "updated_timestamp": 1722081720,
+      "name": "Jordan Etsy",
+      "first_line": "22 Market Street",
+      "second_line": "",
+      "city": "Manchester",
+      "state": "",
+      "zip": "M1 1AE",
+      "country_iso": "GB",
+      "status": "unshipped",
+      "grandtotal": {
+        "amount": 1499,
+        "divisor": 100,
+        "currency_code": "GBP"
+      },
+      "transactions": [
+        {
+          "transaction_id": 7001,
+          "listing_id": 220000000001,
+          "title": "Bin Sticker Set — 100x140mm 4-pack",
+          "quantity": 1,
+          "price": {
+            "amount": 1499,
+            "divisor": 100,
+            "currency_code": "GBP"
+          },
+          "variations": [
+            {
+              "property_id": 1,
+              "value_id": 1,
+              "formatted_name": "Personalization",
+              "formatted_value": "Bin 7 — Fox"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "receipt_id": 9001002,
+      "created_timestamp": 1721995200,
+      "updated_timestamp": 1721995200,
+      "name": "Riley Unmapped",
+      "first_line": "8 Pier Walk",
+      "second_line": "Apt 3",
+      "city": "Liverpool",
+      "state": "",
+      "zip": "L3 4AF",
+      "country_iso": "GB",
+      "status": "open",
+      "transactions": [
+        {
+          "transaction_id": 7002,
+          "listing_id": 299999999999,
+          "title": "Unmapped Etsy listing (fixture)",
+          "quantity": 1,
+          "price": {
+            "amount": 999,
+            "divisor": 100,
+            "currency_code": "GBP"
+          },
+          "variations": [
+            {
+              "formatted_name": "Personalization",
+              "formatted_value": "Ollie"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "receipt_id": 9001099,
+      "created_timestamp": 1721476800,
+      "updated_timestamp": 1721563200,
+      "name": "Taylor Cancelled",
+      "first_line": "3 Refund Road",
+      "second_line": "",
+      "city": "Glasgow",
+      "state": "",
+      "zip": "G1 1AA",
+      "country_iso": "GB",
+      "status": "canceled",
+      "transactions": [
+        {
+          "transaction_id": 7099,
+          "listing_id": 220000000001,
+          "title": "Bin Sticker Set — 100x140mm 4-pack",
+          "quantity": 1,
+          "price": {
+            "amount": 1499,
+            "divisor": 100,
+            "currency_code": "GBP"
+          }
+        }
+      ]
+    }
+  ]
+}
