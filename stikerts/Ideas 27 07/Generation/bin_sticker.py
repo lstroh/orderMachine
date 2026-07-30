@@ -31,6 +31,20 @@ CARD_W, CARD_H = 100 * mm, 140 * mm
 GUIDE = "#CCCCCC"
 PAD = 6 * mm  # inset of the design/border from the cut edge
 
+# All icon paths in this file (ICON_ASSETS, P02_ICON_MASTER) are written
+# as relative strings like "assets/icons/house_icon.png" for readability.
+# Resolved through this function so they work no matter what directory
+# the script is *run* from -- without it, running e.g.
+# `python3 /some/other/folder/make_order.py` that imports this file would
+# silently fail to find the assets (relative paths resolve against the
+# current working directory, not this file's location) and every style
+# would fall back to its plain vector icon with no error raised.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _asset_path(rel_path):
+    return os.path.join(_SCRIPT_DIR, rel_path)
+
 BG = "#FFFFFF"
 INK = "#111111"
 INK_MUTED = "#555555"
@@ -58,7 +72,7 @@ ICON_ASSETS = {
 # recoloured per accent on first use and cached to disk so the per-pixel
 # recolour loop only ever runs once per accent, not once per order.
 # ---------------------------------------------------------------------------
-P02_ICON_MASTER = "house_banner_master.png"
+P02_ICON_MASTER = "assets/icons/house_banner_master.png"
 
 
 def recolour_silhouette(in_path, out_path, hex_color):
@@ -79,11 +93,12 @@ def _p02_icon_path(accent_key):
     """Returns the cached, accent-coloured icon PNG, generating it from
     the master silhouette on first use. Returns None if the master art
     isn't present (caller should fall back to the vector house icon)."""
-    if not os.path.exists(P02_ICON_MASTER):
+    master = _asset_path(P02_ICON_MASTER)
+    if not os.path.exists(master):
         return None
-    path = f"assets/icons/house_banner_{accent_key}.png"
+    path = _asset_path(f"assets/icons/house_banner_{accent_key}.png")
     if not os.path.exists(path):
-        recolour_silhouette(P02_ICON_MASTER, path, ACCENTS.get(accent_key, ACCENTS["navy"]))
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
 
 
@@ -93,8 +108,8 @@ def _draw_icon(c, cx, cy, size, color, style_key, vector_fn):
     switchover point — once real artwork lands at the path above, every
     sticker using that style upgrades automatically."""
     asset_path = ICON_ASSETS.get(style_key)
-    if asset_path and os.path.exists(asset_path):
-        img = ImageReader(asset_path)
+    if asset_path and os.path.exists(_asset_path(asset_path)):
+        img = ImageReader(_asset_path(asset_path))
         c.drawImage(img, cx - size / 2, cy - size / 2, size, size,
                     mask='auto', preserveAspectRatio=True)
     else:
@@ -107,8 +122,8 @@ def _draw_icon_rotated(c, cx, cy, size, color, style_key, vector_fn, rot=0):
     both the asset path (rotates the canvas before drawImage) and the
     vector fallback (passes rot straight through)."""
     asset_path = ICON_ASSETS.get(style_key)
-    if asset_path and os.path.exists(asset_path):
-        img = ImageReader(asset_path)
+    if asset_path and os.path.exists(_asset_path(asset_path)):
+        img = ImageReader(_asset_path(asset_path))
         c.saveState()
         c.translate(cx, cy)
         c.rotate(rot)
@@ -126,6 +141,47 @@ ACCENTS = {
     "berry":      "#7A2E4D",
     "mustard":    "#B4841F",
 }
+
+# Second palette for a different production method: printing coloured ink
+# on CLEAR vinyl and applying direct to a coloured bin, no white card
+# behind it (Technique F in Idea-Board-Solutions-Reference.md). These 5
+# were chosen for visibility on dark bin plastic (green/brown deliberately
+# avoided so they don't blend into 2 of the 3 most common bin colours) --
+# they are NOT a stylistic alternative to ACCENTS, they solve a different
+# problem (opacity on clear film) and are picked for that, not for how
+# they look on a white card.
+#
+# STATUS: not yet production-validated. Bin-Sticker-Material-Test-Plan.md
+# Addendum 2 (visibility on black/green/brown) and Addendum 3 (UV/scratch
+# durability on clear film specifically) are both still pending physical
+# testing as of this palette being added to the script.
+#
+# ALSO NOTE: selecting one of these colours via `accent` only changes the
+# ink colour. It does NOT change the card itself to clear/transparent --
+# _draw_base() below still fills a solid white background, because this
+# script was built for printing on opaque white card stock. Genuine
+# clear-vinyl output (no white fill, since the film itself is the
+# "background") would need a separate render mode that isn't built yet --
+# ask if you want that added once Addendum 2/3 testing confirms these
+# colours are worth using for real.
+CLEAR_VINYL_ACCENTS = {
+    "golden_yellow": "#F2B705",
+    "cream":         "#F5E8C8",
+    "burnt_amber":   "#D9782E",
+    "powder_blue":   "#8FB8DE",
+    "dusty_rose":    "#E08A73",
+}
+
+
+def _resolve_accent(accent_key, default="navy"):
+    """Looks up an accent key in ACCENTS first, then CLEAR_VINYL_ACCENTS,
+    so any style function can accept a key from either palette. Falls
+    back to ACCENTS[default] if the key isn't found in either."""
+    if accent_key in ACCENTS:
+        return ACCENTS[accent_key]
+    if accent_key in CLEAR_VINYL_ACCENTS:
+        return CLEAR_VINYL_ACCENTS[accent_key]
+    return ACCENTS[default]
 
 # ---------------------------------------------------------------------------
 # Base layer (every sticker) and border layer (drawn LAST so colour-block
@@ -150,7 +206,7 @@ def _draw_base(c, ox, oy):
 
 
 def _draw_border(c, ox, oy, order, weight="single"):
-    accent = HexColor(ACCENTS.get(order.get("accent", "charcoal")))
+    accent = HexColor(_resolve_accent(order.get("accent", "charcoal")))
     c.setStrokeColor(accent)
     c.setLineWidth(1.1)
     c.setDash()
@@ -296,7 +352,7 @@ def draw_corner_ornament(c, cx, cy, size, color, rot=0):
 def _style_classic(c, ox, oy, order):
     """1. Classic serif + border — the dominant 'safe' seller (matches
     EDSG, 4.8*/5,046 reviews, and most top Etsy listings)."""
-    accent = ACCENTS.get(order.get("accent", "charcoal"))
+    accent = _resolve_accent(order.get("accent", "charcoal"))
     cx = ox + CARD_W / 2
     c.setFillColor(HexColor(INK))
     c.setFont("Times-Bold", 58)
@@ -314,7 +370,7 @@ def _style_classic(c, ox, oy, order):
 
 def _style_minimal(c, ox, oy, order):
     """2. Modern minimalist sans — the 'modern-font' niche shop angle."""
-    accent = ACCENTS.get(order.get("accent", "charcoal"))
+    accent = _resolve_accent(order.get("accent", "charcoal"))
     cx = ox + CARD_W / 2
     c.setFillColor(HexColor(INK))
     c.setFont("Helvetica-Bold", 62)
@@ -334,7 +390,7 @@ def _style_floral(c, ox, oy, order):
     """3. Floral corner accent — floral/foliage is a consistently
     popular category (wheeliebinnumbers.net lists it as one of their
     most popular collections)."""
-    accent = ACCENTS.get(order.get("accent", "terracotta"))
+    accent = _resolve_accent(order.get("accent", "terracotta"))
     cx = ox + CARD_W / 2
     _draw_icon(c, cx, oy + CARD_H - PAD - 11 * mm, 15 * mm, accent, "floral", draw_flower_icon)
     c.setFillColor(HexColor(INK))
@@ -349,7 +405,7 @@ def _style_recycle(c, ox, oy, order):
     """4. Recycling-icon informational — icons + friendly text reinforcing
     recycling rules; also ties to the Growth Plan's recycling/food-caddy
     bundle idea."""
-    accent = ACCENTS.get(order.get("accent", "forest"))
+    accent = _resolve_accent(order.get("accent", "forest"))
     cx = ox + CARD_W / 2
     _draw_icon(c, cx, oy + CARD_H - PAD - 11 * mm, 14 * mm, accent, "recycle", draw_recycle_icon)
     c.setFillColor(HexColor(INK))
@@ -367,7 +423,7 @@ def _style_recycle(c, ox, oy, order):
 def _style_house(c, ox, oy, order):
     """5. House silhouette — contemporary, elegant, versatile across
     house styles per current design-trend coverage."""
-    accent = ACCENTS.get(order.get("accent", "navy"))
+    accent = _resolve_accent(order.get("accent", "navy"))
     cx = ox + CARD_W / 2
     _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 14 * mm, accent, "house", draw_house_icon)
     c.setFillColor(HexColor(INK))
@@ -381,7 +437,7 @@ def _style_house(c, ox, oy, order):
 def _style_reverse_block(c, ox, oy, order):
     """6. Bold reverse-block (white-on-colour) — high-contrast styling in
     the spirit of the reflective/high-visibility category."""
-    accent = ACCENTS.get(order.get("accent", "navy"))
+    accent = _resolve_accent(order.get("accent", "navy"))
     cx = ox + CARD_W / 2
     inset = PAD + 1.3 * mm
     c.setFillColor(HexColor(accent))
@@ -398,7 +454,7 @@ def _style_split_panel(c, ox, oy, order):
     """7. Split panel — colour band with the number, white lower half
     with the street name. A layout differentiator, easy to spot from a
     car/from a distance."""
-    accent = ACCENTS.get(order.get("accent", "berry"))
+    accent = _resolve_accent(order.get("accent", "berry"))
     cx = ox + CARD_W / 2
     inset = PAD + 1.3 * mm
     band_h = (CARD_H - 2 * inset) * 0.5
@@ -416,7 +472,7 @@ def _style_split_panel(c, ox, oy, order):
 def _style_vintage(c, ox, oy, order):
     """8. Vintage dashed-border / postmark — a visual-style gap versus
     the single/double solid borders every competitor uses."""
-    accent = ACCENTS.get(order.get("accent", "mustard"))
+    accent = _resolve_accent(order.get("accent", "mustard"))
     cx = ox + CARD_W / 2
     c.setFillColor(HexColor(INK))
     c.setFont("Times-Roman", 54)
@@ -432,7 +488,7 @@ def _style_corner_flourish(c, ox, oy, order):
     """9. Four-corner flourish — vector-only take on the floral-wreath +
     traditional-font look called out in current design trend coverage,
     without using photographic floral art."""
-    accent = ACCENTS.get(order.get("accent", "berry"))
+    accent = _resolve_accent(order.get("accent", "berry"))
     cx = ox + CARD_W / 2
     inset = PAD + 7 * mm
     corner_size = 4.5 * mm
@@ -455,7 +511,7 @@ def _style_paw(c, ox, oy, order):
     """10. Paw-print accent — pet designs (dog breeds, cat silhouettes)
     are called out as surprisingly popular across households; a cat-
     silhouette listing is named directly among Etsy's bestsellers."""
-    accent = ACCENTS.get(order.get("accent", "terracotta"))
+    accent = _resolve_accent(order.get("accent", "terracotta"))
     cx = ox + CARD_W / 2
     _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 19 * mm, accent, "paw", draw_paw_icon)
     c.setFillColor(HexColor(INK))
@@ -547,7 +603,7 @@ def _style_p02_house_banner(c, ox, oy, order):
     name curved along the banner ribbon, matching the source art's own
     shape. See chat history for the full derivation."""
     accent_key = order.get("accent", "navy")
-    accent_hex = ACCENTS.get(accent_key, ACCENTS["navy"])
+    accent_hex = _resolve_accent(accent_key)
     cx = ox + CARD_W / 2
 
     icon_path = _p02_icon_path(accent_key)

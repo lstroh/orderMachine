@@ -325,6 +325,93 @@ Needs `pip install pdf2image` and the system `poppler-utils` package
 (`pdftoppm`) installed — this is how every test render earlier in this
 project was turned into a viewable image.
 
+## 8. Colour palettes: `ACCENTS` vs `CLEAR_VINYL_ACCENTS`
+
+There are two separate colour dicts in the file now, for two different
+production methods — don't treat them as interchangeable style choices.
+
+### `ACCENTS` — the original 6, for standard white-card printing
+
+```python
+ACCENTS = {
+    "charcoal":   "#2C2C2A",
+    "forest":     "#2F5233",
+    "navy":       "#1F3A5F",
+    "terracotta": "#B0532E",
+    "berry":      "#7A2E4D",
+    "mustard":    "#B4841F",
+}
+```
+These are what every style has been using all along — darker, muted
+tones chosen for contrast against the white card stock `_draw_base()`
+prints on.
+
+### `CLEAR_VINYL_ACCENTS` — the 5 from the material test plan
+
+```python
+CLEAR_VINYL_ACCENTS = {
+    "golden_yellow": "#F2B705",
+    "cream":         "#F5E8C8",
+    "burnt_amber":   "#D9782E",
+    "powder_blue":   "#8FB8DE",
+    "dusty_rose":    "#E08A73",
+}
+```
+These come from `Bin-Sticker-Material-Test-Plan.md` (Addendum 2) and
+`Idea-Board-Solutions-Reference.md` §2F — Technique F, printing coloured
+ink on **clear** vinyl and applying it straight to a coloured bin, no
+white card behind it. They were picked for a completely different reason
+than `ACCENTS`: staying visible when printed on semi-transparent film
+over dark bin plastic, not for how they look on white card. Green and
+brown were deliberately left out since they'd blend into 2 of the 3 most
+common bin colours.
+
+**Important — two things this does NOT do yet:**
+
+1. **Not production-validated.** Per the material test plan, Addendum 2
+   (visibility on black/green/brown bins) and Addendum 3 (UV/scratch
+   durability on clear film) are both still pending physical testing.
+   These are the colours *to test*, not colours confirmed to work.
+2. **Doesn't switch the card to clear vinyl.** Picking one of these as
+   your `accent` only changes the ink colour used for text/icon/border —
+   `_draw_base()` still fills a solid white background behind it, same
+   as every other style. For a genuine clear-vinyl-direct-on-bin result
+   (no white fill, letting the film itself be the "background"), the
+   script would need a separate render mode that skips that fill — not
+   built yet. Worth asking for once Addendum 2/3 testing confirms which
+   colour(s) are actually worth using for real.
+
+### How to use either palette
+
+Every style's `accent` field now checks both palettes automatically —
+you don't need to specify which dict a key comes from:
+
+```python
+order = {
+    "house_number": "36",
+    "street_name": "Grove Street",
+    "style": "minimal",
+    "accent": "golden_yellow",   # from CLEAR_VINYL_ACCENTS -- works exactly like a normal accent key
+}
+```
+
+This is handled by a small helper, `_resolve_accent()`, which checks
+`ACCENTS` first, then `CLEAR_VINYL_ACCENTS`, and falls back to a default
+if the key isn't in either:
+
+```python
+def _resolve_accent(accent_key, default="navy"):
+    if accent_key in ACCENTS:
+        return ACCENTS[accent_key]
+    if accent_key in CLEAR_VINYL_ACCENTS:
+        return CLEAR_VINYL_ACCENTS[accent_key]
+    return ACCENTS[default]
+```
+
+Every style function, `_draw_border`, and style 11's icon-recolouring
+all go through this helper now, so any of the 11 keys (6 + 5) works
+anywhere `accent` is accepted.
+
 ### `order` dict reference
 
 ```python
@@ -332,7 +419,7 @@ project was turned into a viewable image.
     "house_number": "36",
     "street_name": "Grove Street",
     "style": "house_banner",    # key in STYLES, defaults to "minimal"
-    "accent": "navy",           # key in ACCENTS, each style has its own default
+    "accent": "navy",           # key in ACCENTS or CLEAR_VINYL_ACCENTS, each style has its own default
     "bin_type": None,           # only used by the "recycle" style
 }
 ```
