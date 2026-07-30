@@ -22,6 +22,8 @@ from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor, white
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.pdfmetrics import stringWidth, getAscentDescent
+from PIL import Image
 import os
 import math
 
@@ -49,6 +51,40 @@ ICON_ASSETS = {
     "corner_flourish": "assets/icons/flourish_icon.png",
     "paw": "assets/icons/paw_icon.png",
 }
+
+# ---------------------------------------------------------------------------
+# P02 (house + flowers + banner illustrated icon) — the source art is a
+# single-colour transparent silhouette (assets/icons/house_banner_master.png),
+# recoloured per accent on first use and cached to disk so the per-pixel
+# recolour loop only ever runs once per accent, not once per order.
+# ---------------------------------------------------------------------------
+P02_ICON_MASTER = "assets/icons/house_banner_master.png"
+
+
+def recolour_silhouette(in_path, out_path, hex_color):
+    """Recolours a single-colour silhouette PNG to any hex value, using
+    its own alpha channel as the mask (so anti-aliased edges stay clean)."""
+    img = Image.open(in_path).convert("RGBA")
+    r, g, b = tuple(int(hex_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
+    pixels = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            _, _, _, a = pixels[x, y]
+            if a > 0:
+                pixels[x, y] = (r, g, b, a)
+    img.save(out_path)
+
+
+def _p02_icon_path(accent_key):
+    """Returns the cached, accent-coloured icon PNG, generating it from
+    the master silhouette on first use. Returns None if the master art
+    isn't present (caller should fall back to the vector house icon)."""
+    if not os.path.exists(P02_ICON_MASTER):
+        return None
+    path = f"assets/icons/house_banner_{accent_key}.png"
+    if not os.path.exists(path):
+        recolour_silhouette(P02_ICON_MASTER, path, ACCENTS.get(accent_key, ACCENTS["navy"]))
+    return path
 
 
 def _draw_icon(c, cx, cy, size, color, style_key, vector_fn):
@@ -430,6 +466,129 @@ def _style_paw(c, ox, oy, order):
     _draw_border(c, ox, oy, order, "single")
 
 
+def _fit_font_size(text, font, max_size, min_size, max_width, step=0.5):
+    """Shrinks from max_size until `text` fits within max_width (points),
+    or hits min_size. Used so P02's number/street text auto-fit their
+    hollows in the icon regardless of how long the actual order text is."""
+    size = max_size
+    while size > min_size and stringWidth(text, font, size) > max_width:
+        size -= step
+    return round(size, 1)
+
+
+# ---------------------------------------------------------------------------
+# P02 — house + flowers + banner illustrated icon. Geometry below was NOT
+# eyeballed: extracted from a .pptx layout via python-pptx, then corrected
+# by analysing the actual icon PNG's alpha channel (connected-component
+# labelling) to find its two hollow interior regions -- the empty house
+# body ('36' nests here) and the empty banner ribbon (street name nests
+# here) -- and solving the icon's scale/position so those hollows line up
+# with the deliberately-placed text positions from the .pptx. Full
+# derivation in chat history. Numbers below are for the 401x512px master
+# silhouette specifically; if that source PNG is ever replaced, all of
+# this needs re-deriving from the new file, not reused as-is.
+# ---------------------------------------------------------------------------
+P02_ICON = dict(x=7.995 * mm, y=16.614 * mm, w=82.772 * mm, h=105.684 * mm)
+P02_ICON_SCALE = 0.206415  # mm per source-icon px
+P02_ICON_X_LEFT = 7.995 * mm
+P02_ICON_Y_TOP = 17.702 * mm  # icon's top edge, measured from the card's top edge
+
+P02_NUMBER_CENTER_Y = 82.332 * mm  # RL y; house hollow's pixel *centroid* (not bbox mid -- roof-shaped hollow)
+P02_NUMBER_MAX_WIDTH = 21.26 * 0.90 * mm  # house hollow width, 10% safety margin
+
+P02_STREET_CENTER_Y = 66.151 * mm  # RL y; banner ribbon band's true midline (curve fit vertex)
+P02_STREET_MAX_WIDTH = 59.03 * 0.90 * mm  # banner hollow width, 10% safety margin
+
+# Quadratic fit (least-squares, residual std <1px) to the banner hollow's
+# own top/bottom midline, sampled column-by-column from the source PNG --
+# this is what the street text curves along, not an eyeballed arc.
+P02_BANNER_CURVE_COEFFS = (1.23454754e-03, -4.83493871e-01, 3.19350864e+02)
+
+
+def _p02_banner_mid_px(x_px):
+    a, b, cc = P02_BANNER_CURVE_COEFFS
+    return a * x_px * x_px + b * x_px + cc
+
+
+def _draw_curved_text(c, text, cx, baseline, font, size, color,
+                       icon_x_left, icon_scale, curve_fn):
+    """Draws `text` centred on cx, following curve_fn (an icon-local-px
+    -> icon-local-px function). `baseline` is where the centre character
+    sits; curvature is a per-character offset relative to that, so this
+    degrades gracefully to flat text if curve_fn is ~constant."""
+    total_w = stringWidth(text, font, size)
+    x_cursor = cx - total_w / 2
+    x_img_at_cx = (cx - icon_x_left) / (icon_scale * mm)
+    ref_mid_px = curve_fn(x_img_at_cx)
+    a, b, _ = P02_BANNER_CURVE_COEFFS
+
+    c.setFillColor(HexColor(color))
+    c.setFont(font, size)
+    for ch in text:
+        cw = stringWidth(ch, font, size)
+        x_char = x_cursor + cw / 2
+        x_img = (x_char - icon_x_left) / (icon_scale * mm)
+        mid_px = curve_fn(x_img)
+        delta_y = -(mid_px - ref_mid_px) * icon_scale * mm  # image y-down -> reportlab y-up
+        slope_img = 2 * a * x_img + b
+        angle_deg = -math.degrees(math.atan(slope_img))
+        c.saveState()
+        c.translate(x_char, baseline + delta_y)
+        c.rotate(angle_deg)
+        c.drawCentredString(0, 0, ch)
+        c.restoreState()
+        x_cursor += cw
+
+
+def _style_p02_house_banner(c, ox, oy, order):
+    """11. Illustrated house + flowers + banner — real Midjourney-sourced
+    artwork (not a plain-shape vector like style 5's house silhouette),
+    with the house number nested inside the house body and the street
+    name curved along the banner ribbon, matching the source art's own
+    shape. See chat history for the full derivation."""
+    accent_key = order.get("accent", "navy")
+    accent_hex = ACCENTS.get(accent_key, ACCENTS["navy"])
+    cx = ox + CARD_W / 2
+
+    icon_path = _p02_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P02_ICON["x"], oy + P02_ICON["y"], P02_ICON["w"], P02_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # house, flat (uncurved) text, same rough vertical rhythm as
+        # style 5. Not a pixel-match for the illustrated version.
+        _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 14 * mm, accent_hex, "house", draw_house_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Helvetica-Bold", 54)
+        c.drawCentredString(cx, oy + CARD_H * 0.48, order["house_number"])
+        c.setFont("Helvetica", 16)
+        c.drawCentredString(cx, oy + CARD_H * 0.30, order["street_name"])
+        _draw_border(c, ox, oy, order, "single")
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 44, 20, P02_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
+    number_baseline = P02_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Helvetica-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Helvetica-Bold", 19, 8, P02_STREET_MAX_WIDTH)
+    asc, desc = getAscentDescent("Helvetica-Bold", street_size)
+    street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    _draw_curved_text(
+        c, street_text, cx, oy + street_baseline, "Helvetica-Bold", street_size, accent_hex,
+        P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
+    )
+
+    _draw_border(c, ox, oy, order, "single")
+
+
 STYLES = {
     "classic": _style_classic,
     "minimal": _style_minimal,
@@ -441,6 +600,7 @@ STYLES = {
     "vintage": _style_vintage,
     "corner_flourish": _style_corner_flourish,
     "paw": _style_paw,
+    "house_banner": _style_p02_house_banner,
 }
 
 STYLE_LABELS = {
@@ -454,6 +614,7 @@ STYLE_LABELS = {
     "vintage": "8. Vintage dashed/postmark",
     "corner_flourish": "9. Four-corner flourish",
     "paw": "10. Paw print accent",
+    "house_banner": "11. House + banner illustrated",
 }
 
 
