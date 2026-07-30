@@ -135,6 +135,142 @@ class SOM_Seed {
 		self::ensure_listing( $product_id, 'etsy', self::ETSY_LISTING_ID, 14.99 );
 
 		self::maybe_seed_materials( $product_id );
+		self::maybe_seed_workflow( $product_id );
+	}
+
+	/** Seed workflow template name. */
+	const WORKFLOW_NAME = 'Bin Sticker Production';
+
+	/**
+	 * Seed sample workflow template + steps and assign to the demo product.
+	 *
+	 * @param int $product_id Product PK.
+	 * @return void
+	 */
+	public static function maybe_seed_workflow( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$templates_t = SOM_DB::table( 'workflow_templates' );
+		$steps_t     = SOM_DB::table( 'workflow_steps' );
+		$products_t  = SOM_DB::table( 'products' );
+
+		$template_id = (int) get_option( 'som_seed_workflow_id', 0 );
+		if ( $template_id > 0 ) {
+			$still = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE id = %d LIMIT 1",
+					$template_id
+				)
+			);
+			if ( ! $still ) {
+				$template_id = 0;
+				delete_option( 'som_seed_workflow_id' );
+			}
+		}
+
+		if ( $template_id < 1 ) {
+			$template_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE name = %s ORDER BY id ASC LIMIT 1",
+					self::WORKFLOW_NAME
+				)
+			);
+		}
+
+		$now = current_time( 'mysql', true );
+
+		if ( $template_id < 1 ) {
+			$wpdb->insert(
+				$templates_t,
+				array(
+					'name'        => self::WORKFLOW_NAME,
+					'description' => 'Sample production workflow for bin sticker sets (seed).',
+					'is_active'   => 1,
+					'created_at'  => $now,
+					'updated_at'  => $now,
+				),
+				array( '%s', '%s', '%d', '%s', '%s' )
+			);
+			$template_id = (int) $wpdb->insert_id;
+		}
+
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		update_option( 'som_seed_workflow_id', $template_id, false );
+
+		$step_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$steps_t} WHERE workflow_template_id = %d",
+				$template_id
+			)
+		);
+
+		if ( $step_count < 1 ) {
+			$thankyou = wp_json_encode(
+				array(
+					'type'   => 'local',
+					'action' => 'run_thankyou_card_script',
+					'params' => array(),
+				)
+			);
+
+			$seed_steps = array(
+				array( 'Print', 1, null, null ),
+				array( 'Dry', 0, 15 * MINUTE_IN_SECONDS, null ),
+				array( 'Laminate', 1, null, null ),
+				array( 'Cut', 1, null, null ),
+				array( 'Pack', 1, null, null ),
+				array( 'Ship', 1, null, null ),
+				array( 'Thank-you', 0, null, $thankyou ),
+				array( 'Review reminder', 1, 7 * DAY_IN_SECONDS, null ),
+			);
+
+			$order = 0;
+			foreach ( $seed_steps as $row ) {
+				++$order;
+				$wpdb->insert(
+					$steps_t,
+					array(
+						'workflow_template_id'    => $template_id,
+						'step_order'              => $order,
+						'name'                    => $row[0],
+						'requires_manual_confirm' => $row[1],
+						'timer_seconds'           => $row[2],
+						'script_config'           => $row[3],
+						'created_at'              => $now,
+						'updated_at'              => $now,
+					),
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s' )
+				);
+			}
+		}
+
+		$current = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, workflow_template_id FROM {$products_t} WHERE id = %d LIMIT 1",
+				$product_id
+			)
+		);
+
+		if ( $current && empty( $current->workflow_template_id ) ) {
+			$wpdb->update(
+				$products_t,
+				array(
+					'workflow_template_id' => $template_id,
+					'updated_at'           => $now,
+				),
+				array( 'id' => $product_id ),
+				array( '%d', '%s' ),
+				array( '%d' )
+			);
+		}
 	}
 
 	/** Seed material name: vinyl sheet. */

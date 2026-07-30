@@ -186,19 +186,13 @@ class SOM_Products {
 	}
 
 	/**
-	 * Workflow templates for assignment dropdown.
+	 * Workflow templates for assignment dropdown (active + current assignment).
 	 *
+	 * @param int $include_id Also include this template even if inactive.
 	 * @return array<int, object>
 	 */
-	public static function list_workflow_templates() {
-		global $wpdb;
-
-		$table = SOM_DB::table( 'workflow_templates' );
-		$rows  = $wpdb->get_results(
-			"SELECT id, name FROM {$table} ORDER BY name ASC, id ASC"
-		);
-
-		return is_array( $rows ) ? $rows : array();
+	public static function list_workflow_templates( $include_id = 0 ) {
+		return SOM_Workflows::list_for_dropdown( $include_id );
 	}
 
 	/**

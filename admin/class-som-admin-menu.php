@@ -23,6 +23,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_settings_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_products_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
 	}
 
 	/**
@@ -70,6 +71,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Workflows', 'order-machine' ),
+			__( 'Workflows', 'order-machine' ),
+			'manage_options',
+			'som-workflows',
+			array( __CLASS__, 'render_workflows' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Settings', 'order-machine' ),
 			__( 'Settings', 'order-machine' ),
 			'manage_options',
@@ -90,7 +100,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-workflows' ), true ) ) {
 			return;
 		}
 
@@ -101,7 +111,7 @@ class SOM_Admin_Menu {
 			SOM_VERSION
 		);
 
-		if ( 'som-products' === $page ) {
+		if ( in_array( $page, array( 'som-products', 'som-workflows' ), true ) ) {
 			wp_enqueue_script(
 				'som-admin',
 				SOM_PLUGIN_URL . 'admin/assets/js/admin.js',
@@ -215,6 +225,43 @@ class SOM_Admin_Menu {
 	}
 
 	/**
+	 * Workflow templates list or step editor.
+	 *
+	 * @return void
+	 */
+	public static function render_workflows() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$template_id = isset( $_GET['template_id'] ) ? sanitize_text_field( wp_unslash( $_GET['template_id'] ) ) : '';
+
+		if ( 'new' === $template_id ) {
+			$is_new    = true;
+			$template  = null;
+			require SOM_PLUGIN_DIR . 'admin/views/workflow-step-editor.php';
+			return;
+		}
+
+		if ( '' !== $template_id && is_numeric( $template_id ) && (int) $template_id > 0 ) {
+			$template = SOM_Workflows::get( (int) $template_id );
+			if ( ! $template ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Workflow template not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Workflows::list_url() ) . '">';
+				echo esc_html__( 'Back to workflows', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/workflow-step-editor.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/workflow-templates.php';
+	}
+
+	/**
 	 * Settings page.
 	 *
 	 * @return void
@@ -225,6 +272,66 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/settings.php';
+	}
+
+	/**
+	 * Save workflow templates and steps.
+	 *
+	 * @return void
+	 */
+	public static function handle_workflows_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-workflows' !== $page || ! isset( $_POST['som_save_workflow'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_workflow', 'som_workflow_nonce' );
+
+		$template_id = isset( $_POST['template_id'] ) ? (int) $_POST['template_id'] : 0;
+		$data        = array(
+			'name'        => isset( $_POST['som_workflow_name'] ) ? wp_unslash( $_POST['som_workflow_name'] ) : '',
+			'description' => isset( $_POST['som_workflow_description'] ) ? wp_unslash( $_POST['som_workflow_description'] ) : '',
+			'is_active'   => ! empty( $_POST['som_workflow_is_active'] ),
+		);
+
+		if ( $template_id > 0 ) {
+			$result = SOM_Workflows::update( $template_id, $data );
+		} else {
+			$result = SOM_Workflows::create( $data );
+			if ( ! is_wp_error( $result ) ) {
+				$template_id = (int) $result;
+			}
+		}
+
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_workflow_error' );
+			wp_safe_redirect( $template_id > 0 ? SOM_Workflows::editor_url( $template_id ) : SOM_Workflows::editor_url( 'new' ) );
+			exit;
+		}
+
+		$step_rows = isset( $_POST['som_step'] ) && is_array( $_POST['som_step'] ) ? wp_unslash( $_POST['som_step'] ) : array();
+		$steps     = array();
+		foreach ( $step_rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$steps[] = $row;
+		}
+
+		$steps_result = SOM_Workflows::save_steps( $template_id, $steps );
+		if ( is_wp_error( $steps_result ) ) {
+			self::flash_notice( $steps_result->get_error_message(), 'error', 'som_steps_error' );
+			wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
+			exit;
+		}
+
+		self::flash_notice( __( 'Workflow template saved.', 'order-machine' ), 'success', 'som_workflow_saved' );
+		wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
+		exit;
 	}
 
 	/**

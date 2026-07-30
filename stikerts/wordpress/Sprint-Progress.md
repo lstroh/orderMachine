@@ -14,7 +14,8 @@
 | 3 | Order sync | Done | Verified on wp-env (fixtures + de-dup + listing match) |
 | 4 | Orders list + detail | Done | Verified on wp-env (filters, badges, detail) |
 | 5 | Products + materials | Done | Verified on wp-env (CRUD, recipe, stock adjust, seed) |
-| 6+ | Later phases | Not started | Workflow templates + step editor |
+| 6 | Workflow templates + step editor | Done | Verified on wp-env (CRUD, timers, script_config, seed) |
+| 7+ | Later phases | Not started | Workflow engine |
 
 ---
 
@@ -417,12 +418,94 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-products — `admin` / 
 
 ### Open items / notes for later
 
-- Workflow template CRUD (Sprint 6) — assignment dropdown is ready but empty until templates exist.
+- Workflow templates shipped in Sprint 6 — product assignment dropdown is populated.
 - Auto-decrement on order sync deferred to Sprint 8.
 - Listings push/edit deferred to Sprint 10 (read-only on product edit for now).
 
 ---
 
+## Sprint 6 — Workflow templates + step editor
+
+- **Status:** Done
+- **Roadmap phase:** 6
+- **Completed:** 2026-07-30
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+
+### Plan requirements review (`Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `admin/views/workflow-templates.php` | Done | List + filters + in-use badge |
+| `admin/views/workflow-step-editor.php` | Done | Meta + ordered steps with gates |
+| **Done when:** Create templates | Pass | Deactivate-only (`is_active`) |
+| **Done when:** Add/remove/reorder steps | Pass | Up/down buttons; replace-all save |
+| **Done when:** Toggle manual confirm | Pass | |
+| **Done when:** Set `timer_seconds` | Pass | Friendlier value + unit (min/hr/day) |
+| **Done when:** Configure `script_config` via form + raw JSON | Pass | local / api / n8n + raw fallback |
+| Open item W3 | Soft / applied | Review reminder modelled as timer + manual confirm (seed: 7 days); still revisitable after editor exists |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Template lifecycle | `is_active` deactivate-only; block deactivate while products assigned |
+| Template in use | Warning banner + product links; full edit still allowed |
+| Timer UI | Value + unit → store seconds |
+| Local allowlist (provisional) | `run_thankyou_card_script`, `send_print_job` (+ None) |
+| Zero-gate steps | Allowed |
+| Reorder | Up/down buttons (minimal JS) |
+| Seed | Print → Dry (15m) → Laminate → Cut → Pack → Ship → Thank-you → Review reminder (7d) |
+| Plugin version | Bumped to `0.6.0` |
+| DB version | `1.2.0` (`workflow_templates.is_active`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-workflows.php` | Template/step CRUD, timer + script_config sanitizers |
+| `admin/views/workflow-templates.php` | Template list |
+| `admin/views/workflow-step-editor.php` | Template + step editor |
+| `admin/class-som-admin-menu.php` | Workflows menu + POST handlers |
+| `admin/assets/js/admin.js` | Step add/remove/reorder + script panels |
+| `admin/assets/css/admin.css` | Step editor styles |
+| `includes/class-som-db.php` | `workflow_templates.is_active`; DB `1.2.0` |
+| `includes/seed/class-som-seed.php` | Sample workflow + assign to seed product |
+| `includes/class-som-products.php` | Dropdown via active templates (+ current) |
+| `admin/views/product-edit.php` | Link to Workflows; inactive label |
+| `orderMachine.php` | Bootstrap + v0.6.0 |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| Create templates | Pass |
+| Add/remove/reorder steps | Pass — reorder verified (B then A; C removed) |
+| Manual confirm / timer / script_config | Pass — form + raw JSON path |
+| Deactivate blocked when in use | Pass — `som_workflow_in_use` |
+| Seed assigned to sample product | Pass — 8 steps; product `workflow_template_id=1` |
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp option get som_db_version
+# 1.2.0
+npx @wordpress/env run cli wp db query "SHOW COLUMNS FROM wp_som_workflow_templates LIKE 'is_active'"
+npx @wordpress/env run cli wp eval 'SOM_Seed::maybe_seed_catalogue();'
+npx @wordpress/env run cli wp db query "SELECT step_order, name, requires_manual_confirm, timer_seconds FROM wp_som_workflow_steps ORDER BY step_order"
+# Deactivate in-use template → WP_Error som_workflow_in_use
+# Create template + save_steps + reorder/remove verified via service class
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-workflows — `admin` / `password`
+
+### Open items / notes for later
+
+- Script execution / allowlist handlers deferred to Sprint 9 (config only here).
+- Workflow engine (assign progress, Mark done, timers) is Sprint 7.
+- Provisional local actions can grow when real handlers exist.
+
+---
+
 ## Next
 
-**Sprint 6** — Workflow templates + step editor.
+**Sprint 7** — Workflow engine (manual + timer).

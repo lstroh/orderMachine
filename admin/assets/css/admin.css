@@ -263,3 +263,106 @@
 	max-width: 900px;
 	margin-top: 8px;
 }
+
+/* Workflows (Sprint 6) */
+
+.som-badge-in-use {
+	background: #e7f0fa;
+	color: #135e96;
+}
+
+.som-step-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-width: 960px;
+	margin: 12px 0 16px;
+}
+
+.som-step-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 12px 16px 16px;
+}
+
+.som-step-card-header {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.som-step-order-label {
+	font-weight: 600;
+	min-width: 40px;
+}
+
+.som-step-name {
+	flex: 1 1 220px;
+}
+
+.som-step-reorder {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+	margin-left: auto;
+}
+
+.som-step-remove {
+	color: #b32d2e;
+	font-size: 20px;
+	line-height: 1;
+	margin-left: 4px;
+}
+
+.som-step-gates {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding-left: 4px;
+}
+
+.som-step-gate {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.som-step-timer .description {
+	margin: 0;
+}
+
+.som-step-script {
+	align-items: flex-start;
+	flex-direction: column;
+}
+
+.som-script-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+	margin-top: 8px;
+	padding: 10px 12px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	box-sizing: border-box;
+}
+
+.som-script-fields label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.som-script-raw-toggle {
+	margin-top: 8px;
+}
+
+.som-script-raw {
+	width: 100%;
+	margin-top: 8px;
+}
+

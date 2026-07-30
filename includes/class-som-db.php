@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.1.0';
+	const DB_VERSION = '1.2.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -64,6 +64,7 @@ class SOM_DB {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			description text NULL,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id)

@@ -16,7 +16,7 @@ if ( ! current_user_can( 'manage_options' ) ) {
 
 $is_new             = ! empty( $is_new );
 $product            = isset( $product ) ? $product : null;
-$workflow_templates = SOM_Products::list_workflow_templates();
+$workflow_templates = SOM_Products::list_workflow_templates( $product ? (int) $product->workflow_template_id : 0 );
 $material_options   = SOM_Materials::list_active();
 $recipe_rows        = ( $product && ! empty( $product->recipe ) ) ? $product->recipe : array();
 $listings           = ( $product && ! empty( $product->listings ) ) ? $product->listings : array();
@@ -64,12 +64,27 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 						<option value=""><?php echo esc_html__( '— Not assigned —', 'order-machine' ); ?></option>
 						<?php foreach ( $workflow_templates as $template ) : ?>
 							<option value="<?php echo esc_attr( (string) (int) $template->id ); ?>" <?php selected( $product ? (int) $product->workflow_template_id : 0, (int) $template->id ); ?>>
-								<?php echo esc_html( (string) $template->name ); ?>
+								<?php
+								echo esc_html( (string) $template->name );
+								if ( empty( $template->is_active ) ) {
+									echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+								}
+								?>
 							</option>
 						<?php endforeach; ?>
 					</select>
 					<?php if ( empty( $workflow_templates ) ) : ?>
-						<p class="description"><?php echo esc_html__( 'Workflow templates can be created in a later sprint. Assignment is optional for now.', 'order-machine' ); ?></p>
+						<p class="description">
+							<?php
+							echo wp_kses_post(
+								sprintf(
+									/* translators: %s: workflows admin link */
+									__( 'Create a template under %s, then assign it here.', 'order-machine' ),
+									'<a href="' . esc_url( SOM_Workflows::list_url() ) . '">' . esc_html__( 'Workflows', 'order-machine' ) . '</a>'
+								)
+							);
+							?>
+						</p>
 					<?php endif; ?>
 				</td>
 			</tr>
