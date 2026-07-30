@@ -16,7 +16,8 @@
 | 5 | Products + materials | Done | Verified on wp-env (CRUD, recipe, stock adjust, seed) |
 | 6 | Workflow templates + step editor | Done | Verified on wp-env (CRUD, timers, script_config, seed) |
 | 7 | Workflow engine (manual + timer) | Done | Verified on wp-env (assign, Mark done, timer unlock, script pass-through) |
-| 8+ | Later phases | Not started | Material auto-decrement |
+| 8 | Material auto-decrement | Done (scoped) | Decrement + UI shipped; cancel reversal deferred (D3/A3) |
+| 9+ | Later phases | Not started | Script / API / n8n steps |
 
 ---
 
@@ -587,11 +588,90 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-orders — `admin` / `p
 ### Open items / notes for later
 
 - Script/API/n8n execution + retries remain Sprint 9.
-- Material auto-decrement is Sprint 8.
 - Prefer real system cron for reliable timer unlocks (WP-Cron is request-triggered by default).
+
+---
+
+## Sprint 8 — Material auto-decrement
+
+- **Status:** Done (scoped) — decrement path + order UI complete; cancel reversal explicitly deferred
+- **Roadmap phase:** 8
+- **Completed:** 2026-07-30
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+
+### Plan requirements review (`Sprint-Plan.md`)
+
+Plan text:
+
+> **Files:** `includes/class-som-material-stock.php` — decrement on new order; reversal on cancel; hook from order sync / create path  
+> **Done when:** New order writes negative `material_stock_log` rows and updates `current_stock` (can go negative); cancel detection writes positive reversal with reason `order_cancelled` when channel status says cancelled.  
+> **Open items first:** D3 / A3 — pin cancel fields from real/sandbox payloads.
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `includes/class-som-material-stock.php` — decrement on new order | Done | `decrement_on_create()` |
+| Reversal on cancel | Deferred | Stub `maybe_reverse_on_cancel()` only — not hooked from sync |
+| Hook from order sync / create path | Done | Incremental creates only (`apply_stock`); Import history skipped |
+| **Done when:** New order → negative log + `current_stock` update | Pass | Can go negative (same rule as manual adjust) |
+| **Done when:** Cancel → positive `order_cancelled` reversal | Deferred | Matches plan D3: “Can ship decrement-on-create first, then wire reversal once cancel detection is confirmed.” User chose hold until live/sandbox payload. |
+| Open items D3 / A3 | Open for reversal | Fixture cancel fields already used for UI/`is_cancelled`; live payload still needed before wiring reversal |
+
+### Decisions applied during build (user answers)
+
+| Topic | Decision |
+|---|---|
+| Already-cancelled on first import | Skip decrement entirely |
+| Import history / backfill | No stock reservation |
+| Reversal idempotency (when built) | Only if `new_order` logs exist and no `order_cancelled` yet |
+| Which line items | Every matched item’s recipe × quantity |
+| Partial refunds | Full-order cancel only (when reversal lands) |
+| A3 / reversal timing | Ship decrement first; hold reversal |
+| Order detail UI | Material stock panel (reserved / none / reversed-ready) |
+| Plugin version | `0.8.0` |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-material-stock.php` | Decrement on create; order stock summary; reversal stub |
+| `includes/class-som-materials.php` | `adjust_stock( $id, $delta, $args )` — optional `order_id` + `reason` |
+| `includes/class-som-order-sync.php` | Call `decrement_on_create` after assign on incremental create |
+| `includes/class-som-orders.php` | Attach `stock_summary` on detail |
+| `admin/views/order-detail.php` | Material stock panel |
+| `admin/assets/css/admin.css` | Stock panel + reserved/reversed badges |
+| `orderMachine.php` | Require material-stock; version `0.8.0` |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| New order writes negative `material_stock_log` + updates `current_stock` | **Pass** — matched open fixtures: 4 `new_order` rows; vinyl/laminate 25→23 |
+| Cancel detection writes positive `order_cancelled` reversal | **Deferred** — intentional; not a silent miss |
+| Already-cancelled create does not reserve | Pass |
+| Unmatched lines do not reserve | Pass |
+| Re-sync does not double-decrement | Pass (idempotent via existing `new_order` logs) |
+| Import history does not reserve | Pass |
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active v0.8.0
+# Wipe orders + stock logs; reset materials to 25; sync_incremental
+# created 6; stock 23/23; 4 new_order logs (matched open only)
+# cancelled + unmatched: 0 logs; resync: still 4 logs
+# sync_history after wipe: created 6, 0 stock logs, stock still 25
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-orders — matched order shows “Stock reserved”
+
+### Open items / notes for later
+
+- **D3 / A3:** Wire `maybe_reverse_on_cancel` from sync update path once a live/sandbox cancel payload confirms fields; reverse from logged quantities (not current recipe); only when `new_order` exists and no `order_cancelled` yet.
+- Script/API/n8n execution remains Sprint 9.
 
 ---
 
 ## Next
 
-**Sprint 8** — Material auto-decrement.
+**Sprint 9** — Script / API / n8n steps.

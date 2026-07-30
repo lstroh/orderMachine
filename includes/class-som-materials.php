@@ -287,15 +287,23 @@ class SOM_Materials {
 	/**
 	 * Apply a delta stock adjustment and write the audit log row.
 	 *
-	 * @param int   $material_id Material PK.
-	 * @param float $delta       Positive or negative change.
+	 * @param int                  $material_id Material PK.
+	 * @param float                $delta       Positive or negative change.
+	 * @param array<string, mixed> $args        Optional: order_id (int|null), reason (string).
 	 * @return true|WP_Error
 	 */
-	public static function adjust_stock( $material_id, $delta ) {
+	public static function adjust_stock( $material_id, $delta, array $args = array() ) {
 		global $wpdb;
 
 		$material_id = (int) $material_id;
 		$delta       = (float) $delta;
+		$order_id    = array_key_exists( 'order_id', $args ) && null !== $args['order_id'] && '' !== $args['order_id']
+			? (int) $args['order_id']
+			: null;
+		$reason      = isset( $args['reason'] ) ? sanitize_key( (string) $args['reason'] ) : 'manual_adjustment';
+		if ( '' === $reason ) {
+			$reason = 'manual_adjustment';
+		}
 
 		if ( 0.0 === $delta ) {
 			return new WP_Error( 'som_stock_zero', __( 'Adjustment amount cannot be zero.', 'order-machine' ) );
@@ -321,12 +329,12 @@ class SOM_Materials {
 			SOM_DB::table( 'material_stock_log' ),
 			array(
 				'material_id' => $material_id,
-				'order_id'    => null,
+				'order_id'    => $order_id,
 				'change_qty'  => $delta,
-				'reason'      => 'manual_adjustment',
+				'reason'      => $reason,
 				'created_at'  => $now,
 			),
-			array( '%d', '%s', '%f', '%s', '%s' )
+			array( '%d', null === $order_id ? '%s' : '%d', '%f', '%s', '%s' )
 		);
 
 		if ( ! $log_ok ) {

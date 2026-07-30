@@ -11,7 +11,8 @@ defined( 'ABSPATH' ) || exit;
  * Syncs eBay/Etsy orders into `wp_som_orders` / `wp_som_order_items`.
  *
  * Re-sync updates order header + raw_payload only; line items are immutable after create.
- * Workflow assignment runs on create only (Sprint 7). Material decrement is Sprint 8.
+ * Workflow assignment and material decrement run on create only (incremental sync;
+ * Import history does not reserve stock).
  */
 class SOM_Order_Sync {
 
@@ -78,6 +79,9 @@ class SOM_Order_Sync {
 			'errors'  => array(),
 		);
 
+		// Material reservation only on incremental creates — not Import history backfill.
+		$apply_stock = ( 'incremental' === $mode );
+
 		foreach ( array( 'ebay', 'etsy' ) as $slug ) {
 			$channel = SOM_Channels::get_by_slug( $slug );
 			if ( ! $channel || ! (int) $channel->is_active ) {
@@ -89,7 +93,7 @@ class SOM_Order_Sync {
 			}
 
 			$window = self::resolve_window( $channel, $mode, $lookback_days );
-			$result = self::sync_channel( $slug, (int) $channel->id, $window['from'], $window['to'] );
+			$result = self::sync_channel( $slug, (int) $channel->id, $window['from'], $window['to'], $apply_stock );
 
 			if ( is_wp_error( $result ) ) {
 				$summary['errors'][] = $slug . ': ' . $result->get_error_message();
@@ -171,13 +175,14 @@ class SOM_Order_Sync {
 	}
 
 	/**
-	 * @param string $slug       ebay|etsy.
-	 * @param int    $channel_id Channel PK.
-	 * @param string $from       UTC datetime.
-	 * @param string $to         UTC datetime.
+	 * @param string $slug        ebay|etsy.
+	 * @param int    $channel_id  Channel PK.
+	 * @param string $from        UTC datetime.
+	 * @param string $to          UTC datetime.
+	 * @param bool   $apply_stock Whether to reserve materials on create.
 	 * @return array{created:int,updated:int,skipped:int}|\WP_Error
 	 */
-	private static function sync_channel( $slug, $channel_id, $from, $to ) {
+	private static function sync_channel( $slug, $channel_id, $from, $to, $apply_stock = true ) {
 		if ( 'ebay' === $slug ) {
 			$orders = SOM_Channel_Ebay::fetch_orders( $from, $to );
 		} else {
@@ -193,7 +198,7 @@ class SOM_Order_Sync {
 		$skipped = 0;
 
 		foreach ( $orders as $order ) {
-			$result = self::upsert_order( $channel_id, $order );
+			$result = self::upsert_order( $channel_id, $order, $apply_stock );
 			if ( 'created' === $result ) {
 				++$created;
 			} elseif ( 'updated' === $result ) {
@@ -213,11 +218,12 @@ class SOM_Order_Sync {
 	/**
 	 * Insert or update one normalized order.
 	 *
-	 * @param int                  $channel_id Channel PK.
-	 * @param array<string, mixed> $order      Normalized order.
+	 * @param int                  $channel_id  Channel PK.
+	 * @param array<string, mixed> $order       Normalized order.
+	 * @param bool                 $apply_stock Whether to reserve materials on create.
 	 * @return string created|updated|skipped
 	 */
-	private static function upsert_order( $channel_id, array $order ) {
+	private static function upsert_order( $channel_id, array $order, $apply_stock = true ) {
 		global $wpdb;
 
 		$external_id = isset( $order['external_order_id'] ) ? (string) $order['external_order_id'] : '';
@@ -288,6 +294,10 @@ class SOM_Order_Sync {
 		}
 
 		SOM_Workflow_Engine::assign_on_create( $order_id );
+
+		if ( $apply_stock ) {
+			SOM_Material_Stock::decrement_on_create( $order_id );
+		}
 
 		return 'created';
 	}

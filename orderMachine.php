@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.7.0
+ * Version:           0.8.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.7.0' );
+define( 'SOM_VERSION', '0.8.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -25,12 +25,13 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-settings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channels.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-ebay.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-etsy.php';
-require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
-require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-materials.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-products.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-material-stock.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflows.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-engine.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-cron.php';
 require_once SOM_PLUGIN_DIR . 'includes/seed/class-som-seed.php';
 require_once SOM_PLUGIN_DIR . 'admin/class-som-admin-menu.php';

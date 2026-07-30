@@ -207,6 +207,104 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 	</section>
 
+	<section class="som-panel som-panel-stock">
+		<h2><?php echo esc_html__( 'Material stock', 'order-machine' ); ?></h2>
+		<?php
+		$stock = isset( $order->stock_summary ) && is_array( $order->stock_summary )
+			? $order->stock_summary
+			: array(
+				'status'                 => 'none',
+				'lines'                  => array(),
+				'has_new_order'          => false,
+				'has_cancelled_reversal' => false,
+			);
+		$stock_status = isset( $stock['status'] ) ? (string) $stock['status'] : 'none';
+		$stock_lines  = isset( $stock['lines'] ) && is_array( $stock['lines'] ) ? $stock['lines'] : array();
+		?>
+		<?php if ( 'reserved' === $stock_status ) : ?>
+			<p>
+				<span class="som-badge som-badge-stock-reserved"><?php echo esc_html__( 'Stock reserved', 'order-machine' ); ?></span>
+			</p>
+			<table class="widefat striped som-stock-table">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Change', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Reason', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $stock_lines as $line ) : ?>
+						<tr>
+							<td>
+								<?php echo esc_html( (string) $line->material_name ); ?>
+								<?php if ( ! empty( $line->material_unit ) ) : ?>
+									<span class="som-muted">(<?php echo esc_html( (string) $line->material_unit ); ?>)</span>
+								<?php endif; ?>
+							</td>
+							<td>
+								<?php
+								$change = (float) $line->change_qty;
+								echo esc_html( ( $change > 0 ? '+' : '' ) . number_format_i18n( $change, 2 ) );
+								?>
+							</td>
+							<td><?php echo esc_html( SOM_Materials::reason_label( (string) $line->reason ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+			<?php if ( ! empty( $order->is_cancelled ) ) : ?>
+				<p class="description">
+					<?php echo esc_html__( 'Order is cancelled — stock reversal is not applied yet (waiting on confirmed live/sandbox cancel payloads).', 'order-machine' ); ?>
+				</p>
+			<?php endif; ?>
+		<?php elseif ( 'reversed' === $stock_status ) : ?>
+			<p>
+				<span class="som-badge som-badge-stock-reversed"><?php echo esc_html__( 'Stock reversed', 'order-machine' ); ?></span>
+			</p>
+			<table class="widefat striped som-stock-table">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Change', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Reason', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $stock_lines as $line ) : ?>
+						<tr>
+							<td>
+								<?php echo esc_html( (string) $line->material_name ); ?>
+								<?php if ( ! empty( $line->material_unit ) ) : ?>
+									<span class="som-muted">(<?php echo esc_html( (string) $line->material_unit ); ?>)</span>
+								<?php endif; ?>
+							</td>
+							<td>
+								<?php
+								$change = (float) $line->change_qty;
+								echo esc_html( ( $change > 0 ? '+' : '' ) . number_format_i18n( $change, 2 ) );
+								?>
+							</td>
+							<td><?php echo esc_html( SOM_Materials::reason_label( (string) $line->reason ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php else : ?>
+			<p class="som-muted">
+				<?php
+				if ( ! empty( $order->is_cancelled ) ) {
+					echo esc_html__( 'No materials reserved (order was cancelled when imported).', 'order-machine' );
+				} elseif ( ! empty( $order->has_unmatched ) ) {
+					echo esc_html__( 'No materials reserved — unmatched line items have no product recipe.', 'order-machine' );
+				} else {
+					echo esc_html__( 'No materials reserved for this order.', 'order-machine' );
+				}
+				?>
+			</p>
+		<?php endif; ?>
+	</section>
+
 	<section class="som-panel som-panel-items">
 		<h2><?php echo esc_html__( 'Line items', 'order-machine' ); ?></h2>
 		<table class="widefat striped">

@@ -445,4 +445,23 @@
 	margin: 6px 0 0;
 }
 
+.som-panel-stock {
+	margin: 16px 0 24px;
+}
+
+.som-stock-table {
+	max-width: 720px;
+	margin-top: 8px;
+}
+
+.som-badge-stock-reserved {
+	background: #edfaef;
+	color: #00a32a;
+}
+
+.som-badge-stock-reversed {
+	background: #f0f6fc;
+	color: #2271b1;
+}
+
 

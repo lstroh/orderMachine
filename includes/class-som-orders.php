@@ -300,6 +300,8 @@ class SOM_Orders {
 			}
 		}
 
+		$order->stock_summary = SOM_Material_Stock::get_order_summary( $order_id );
+
 		return $order;
 	}
 
