@@ -391,15 +391,27 @@ class SOM_Seed {
 		$listings   = SOM_DB::table( 'listings' );
 		$channel_id = (int) $channel->id;
 
-		$existing = $wpdb->get_var(
+		$existing = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id FROM {$listings} WHERE channel_id = %d AND external_listing_id = %s LIMIT 1",
+				"SELECT id, product_id FROM {$listings} WHERE channel_id = %d AND external_listing_id = %s LIMIT 1",
 				$channel_id,
 				$external_id
 			)
 		);
 
 		if ( $existing ) {
+			if ( (int) $existing->product_id !== (int) $product_id ) {
+				$wpdb->update(
+					$listings,
+					array(
+						'product_id' => (int) $product_id,
+						'updated_at' => current_time( 'mysql', true ),
+					),
+					array( 'id' => (int) $existing->id ),
+					array( '%d', '%s' ),
+					array( '%d' )
+				);
+			}
 			return;
 		}
 

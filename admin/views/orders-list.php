@@ -39,6 +39,7 @@ $status_options = array(
 	'open'           => __( 'Open', 'order-machine' ),
 	'complete'       => __( 'Complete', 'order-machine' ),
 	'needs_mapping'  => __( 'Needs mapping', 'order-machine' ),
+	'needs_workflow' => __( 'Needs workflow', 'order-machine' ),
 	'cancelled'      => __( 'Cancelled', 'order-machine' ),
 );
 ?>
@@ -123,10 +124,11 @@ $status_options = array(
 				<?php foreach ( $orders as $order ) : ?>
 					<?php
 					$detail_url = SOM_Orders::detail_url( (int) $order->id );
-					$has_unmatched = (int) $order->unmatched_count > 0;
-					$is_cancelled  = ! empty( $order->is_cancelled );
-					$is_complete   = ! empty( $order->is_complete );
-					$person        = trim( (string) $order->personalisation_summary );
+					$has_unmatched   = (int) $order->unmatched_count > 0;
+					$is_cancelled    = ! empty( $order->is_cancelled );
+					$is_complete     = ! empty( $order->is_complete );
+					$needs_workflow  = ! $is_complete && ! $is_cancelled && empty( $order->current_step_id ) && (int) $order->progress_count < 1;
+					$person          = trim( (string) $order->personalisation_summary );
 					?>
 					<tr>
 						<td class="column-date">
@@ -152,16 +154,21 @@ $status_options = array(
 							<?php if ( $has_unmatched ) : ?>
 								<span class="som-badge som-badge-unmatched"><?php echo esc_html__( 'Unmatched', 'order-machine' ); ?></span>
 							<?php endif; ?>
+							<?php if ( $needs_workflow ) : ?>
+								<span class="som-badge som-badge-needs-workflow"><?php echo esc_html__( 'No workflow', 'order-machine' ); ?></span>
+							<?php endif; ?>
 							<?php if ( $is_cancelled ) : ?>
 								<span class="som-badge som-badge-cancelled"><?php echo esc_html__( 'Cancelled', 'order-machine' ); ?></span>
 							<?php endif; ?>
-							<?php if ( ! $has_unmatched && ! $is_cancelled ) : ?>
+							<?php if ( ! $has_unmatched && ! $needs_workflow && ! $is_cancelled ) : ?>
 								<span class="som-muted">—</span>
 							<?php endif; ?>
 						</td>
 						<td class="column-status">
 							<?php if ( $is_complete ) : ?>
 								<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Complete', 'order-machine' ); ?></span>
+							<?php elseif ( ! empty( $order->current_step_name ) ) : ?>
+								<span class="som-badge som-badge-open"><?php echo esc_html( (string) $order->current_step_name ); ?></span>
 							<?php else : ?>
 								<span class="som-badge som-badge-open"><?php echo esc_html__( 'Open', 'order-machine' ); ?></span>
 							<?php endif; ?>

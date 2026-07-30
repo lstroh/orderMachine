@@ -21,6 +21,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_settings_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_products_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
@@ -111,7 +112,7 @@ class SOM_Admin_Menu {
 			SOM_VERSION
 		);
 
-		if ( in_array( $page, array( 'som-products', 'som-workflows' ), true ) ) {
+		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-workflows' ), true ) ) {
 			wp_enqueue_script(
 				'som-admin',
 				SOM_PLUGIN_URL . 'admin/assets/js/admin.js',
@@ -148,6 +149,36 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/orders-list.php';
+	}
+
+	/**
+	 * Mark done on order detail.
+	 *
+	 * @return void
+	 */
+	public static function handle_orders_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-orders' !== $page || ! isset( $_POST['som_mark_step_done'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_mark_step_done', 'som_order_nonce' );
+
+		$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+		$result   = SOM_Workflow_Engine::mark_done( $order_id );
+
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+		} else {
+			self::flash_notice( __( 'Step marked done.', 'order-machine' ), 'success', 'som_order_saved' );
+		}
+
+		wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+		exit;
 	}
 
 	/**
@@ -536,6 +567,7 @@ class SOM_Admin_Menu {
 			array(
 				'n8n_base_url'                   => isset( $_POST['som_n8n_base_url'] ) ? wp_unslash( $_POST['som_n8n_base_url'] ) : '',
 				'poll_interval_minutes'          => isset( $_POST['som_poll_interval'] ) ? (int) $_POST['som_poll_interval'] : 15,
+				'engine_tick_interval_minutes'   => isset( $_POST['som_engine_tick_interval'] ) ? (int) $_POST['som_engine_tick_interval'] : 60,
 				'token_refresh_interval_minutes' => isset( $_POST['som_token_refresh_interval'] ) ? (int) $_POST['som_token_refresh_interval'] : 30,
 				'ebay'                           => array(
 					'client_id'     => isset( $_POST['som_ebay_client_id'] ) ? wp_unslash( $_POST['som_ebay_client_id'] ) : '',
@@ -554,6 +586,7 @@ class SOM_Admin_Menu {
 		if (
 			(int) $prev['token_refresh_interval_minutes'] !== (int) $next['token_refresh_interval_minutes']
 			|| (int) $prev['poll_interval_minutes'] !== (int) $next['poll_interval_minutes']
+			|| (int) $prev['engine_tick_interval_minutes'] !== (int) $next['engine_tick_interval_minutes']
 		) {
 			SOM_Cron::reschedule_events();
 		}

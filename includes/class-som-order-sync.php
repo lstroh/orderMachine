@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  * Syncs eBay/Etsy orders into `wp_som_orders` / `wp_som_order_items`.
  *
  * Re-sync updates order header + raw_payload only; line items are immutable after create.
- * Material decrement and workflow assignment are deferred to later sprints.
+ * Workflow assignment runs on create only (Sprint 7). Material decrement is Sprint 8.
  */
 class SOM_Order_Sync {
 
@@ -286,6 +286,8 @@ class SOM_Order_Sync {
 		foreach ( $items as $item ) {
 			self::insert_item( $order_id, $channel_id, $item );
 		}
+
+		SOM_Workflow_Engine::assign_on_create( $order_id );
 
 		return 'created';
 	}

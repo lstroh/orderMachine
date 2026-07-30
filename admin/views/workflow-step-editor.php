@@ -160,8 +160,8 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions ) {
 				printf(
 					/* translators: %d: product count */
 					esc_html( _n(
-						'%d product is assigned this workflow. You can still edit steps; changes apply to new order assignments once the engine is live.',
-						'%d products are assigned this workflow. You can still edit steps; changes apply to new order assignments once the engine is live.',
+						'%d product is assigned this workflow. You can still edit steps; changes apply to new order assignments.',
+						'%d products are assigned this workflow. You can still edit steps; changes apply to new order assignments.',
 						count( $products ),
 						'order-machine'
 					) ),

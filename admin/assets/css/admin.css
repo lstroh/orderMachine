@@ -366,3 +366,83 @@
 	margin-top: 8px;
 }
 
+/* Workflow progress on order detail (Sprint 7) */
+
+.som-badge-needs-workflow {
+	background: #fcf0e3;
+	color: #9a6700;
+}
+
+.som-badge-step-pending {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.som-badge-step-in_progress {
+	background: #e7f0fa;
+	color: #135e96;
+}
+
+.som-badge-step-waiting_timer {
+	background: #fcf0e3;
+	color: #9a6700;
+}
+
+.som-badge-step-waiting_script {
+	background: #f5e8ff;
+	color: #6e3a8c;
+}
+
+.som-badge-step-done {
+	background: #edfaef;
+	color: #007017;
+}
+
+.som-badge-step-error {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.som-panel-workflow {
+	margin: 16px 0 24px;
+}
+
+.som-workflow-progress {
+	margin: 0;
+	padding-left: 1.25em;
+	max-width: 720px;
+}
+
+.som-workflow-step {
+	margin-bottom: 12px;
+	padding: 10px 12px;
+	border: 1px solid #dcdcde;
+	background: #fff;
+	list-style-position: outside;
+}
+
+.som-workflow-step.is-current {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.som-workflow-step.status-done {
+	opacity: 0.75;
+}
+
+.som-workflow-step-main {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.som-mark-done-form {
+	margin-top: 10px;
+}
+
+.som-timer-countdown {
+	margin: 6px 0 0;
+}
+
+

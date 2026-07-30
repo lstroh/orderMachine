@@ -174,6 +174,13 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 				</td>
 			</tr>
 			<tr>
+				<th scope="row"><label for="som_engine_tick_interval"><?php echo esc_html__( 'Workflow engine tick (minutes)', 'order-machine' ); ?></label></th>
+				<td>
+					<input name="som_engine_tick_interval" id="som_engine_tick_interval" type="number" min="1" step="1" value="<?php echo esc_attr( (string) $settings['engine_tick_interval_minutes'] ); ?>" class="small-text" />
+					<p class="description"><?php echo esc_html__( 'How often to unlock elapsed timers (som_engine_tick). Default 60.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><label for="som_token_refresh_interval"><?php echo esc_html__( 'Token refresh interval (minutes)', 'order-machine' ); ?></label></th>
 				<td>
 					<input name="som_token_refresh_interval" id="som_token_refresh_interval" type="number" min="5" step="1" value="<?php echo esc_attr( (string) $settings['token_refresh_interval_minutes'] ); ?>" class="small-text" />

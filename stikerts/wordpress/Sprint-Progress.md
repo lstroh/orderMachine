@@ -15,7 +15,8 @@
 | 4 | Orders list + detail | Done | Verified on wp-env (filters, badges, detail) |
 | 5 | Products + materials | Done | Verified on wp-env (CRUD, recipe, stock adjust, seed) |
 | 6 | Workflow templates + step editor | Done | Verified on wp-env (CRUD, timers, script_config, seed) |
-| 7+ | Later phases | Not started | Workflow engine |
+| 7 | Workflow engine (manual + timer) | Done | Verified on wp-env (assign, Mark done, timer unlock, script pass-through) |
+| 8+ | Later phases | Not started | Material auto-decrement |
 
 ---
 
@@ -500,12 +501,97 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-workflows — `admin` /
 
 ### Open items / notes for later
 
-- Script execution / allowlist handlers deferred to Sprint 9 (config only here).
-- Workflow engine (assign progress, Mark done, timers) is Sprint 7.
+- Script execution / allowlist handlers deferred to Sprint 9 (config only here; Sprint 7 treats script gates as pass-through).
 - Provisional local actions can grow when real handlers exist.
+
+---
+
+## Sprint 7 — Workflow engine (manual + timer)
+
+- **Status:** Done
+- **Roadmap phase:** 7
+- **Completed:** 2026-07-30
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+
+### Plan requirements review (`Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `includes/class-som-workflow-engine.php` — assign (primary product), advance, timer hard-gate, status transitions | Done | `assign_on_create`, `mark_done`, `enter_step`, `tick` |
+| `includes/class-som-cron.php` — `som_engine_tick` | Done | Scheduled; interval from Settings |
+| Order detail UI: Mark done / countdown (disabled until timer elapsed) | Done | Workflow panel + live countdown JS |
+| **Done when:** New matched orders get `order_step_progress` rows | Pass | On create only; primary product + template |
+| **Done when:** Manual confirm advances | Pass | |
+| **Done when:** Timer steps block until `timer_ends_at` | Pass | Unlock Mark done — no auto-advance |
+| **Done when:** Engine cron unlocks elapsed timers | Pass | Plus lazy unlock on detail / Mark done |
+| Open items D1/W1 | Resolved (plan) | One workflow per order via primary product |
+| Script/API execution | Deferred Sprint 9 | Rows created; script gate pass-through (option B) — no execute |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Script steps until Sprint 9 | Pass-through (auto-complete script-only / zero-gate on entry) |
+| Timer elapsed | Unlock Mark done — do **not** auto-advance |
+| Existing fixture orders | Assign on **new creates only** (no backfill) |
+| Unassigned / no template | Flag on detail + list badge + `needs_workflow` filter |
+| Cancelled orders | No assignment; Mark done / tick blocked |
+| Engine tick interval | Settings field next to order polling; **default 60 min** |
+| Plugin version | Bumped to `0.7.0` |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-workflow-engine.php` | State machine: assign, mark done, tick, progress helpers |
+| `includes/class-som-cron.php` | `som_engine_tick` schedule + handler |
+| `includes/class-som-settings.php` | `engine_tick_interval_minutes` (default 60) |
+| `includes/class-som-order-sync.php` | Call `assign_on_create` after new order insert |
+| `includes/class-som-orders.php` | Progress on detail; `needs_workflow` filter; list step name |
+| `admin/views/order-detail.php` | Workflow panel, Mark done, countdown |
+| `admin/views/orders-list.php` | No-workflow badge; current step in status |
+| `admin/views/settings.php` | Engine tick interval field |
+| `admin/class-som-admin-menu.php` | Mark done handler; enqueue JS on orders |
+| `admin/assets/js/admin.js` | Countdown ticker |
+| `admin/assets/css/admin.css` | Workflow progress styles |
+| `includes/seed/class-som-seed.php` | Re-point existing listings to seed product if drifted |
+| `orderMachine.php` | Bootstrap engine; v0.7.0 |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| New matched orders get `order_step_progress` rows | Pass — 8 steps; current = Print |
+| Manual confirm advances | Pass — Print → Dry → … → Ship |
+| Timer steps block until elapsed | Pass — Dry locked until unlock |
+| Engine cron unlocks elapsed timers | Pass — `tick()` + lazy unlock on detail |
+| Script-only Thank-you does not block (Sprint 7) | Pass — auto-done; lands on Review reminder |
+| Cancelled blocked | Pass — no progress; `som_order_cancelled` |
+
+**Plan scope:** All Sprint 7 file and done-when items are complete. Script/API execution remains intentionally out of scope (Sprint 9).
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp cron event list
+# som_engine_tick scheduled (1 hour default)
+# Delete orders + re-sync fixtures → matched orders assigned
+# mark_done Print → Dry waiting_timer (Mark done disabled)
+# Force timer_ends_at past + tick → in_progress, Mark done enabled
+# Advance through Ship → Thank-you auto-done → Review reminder waiting_timer
+# Cancelled mark_done → som_order_cancelled
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-orders — `admin` / `password`
+
+### Open items / notes for later
+
+- Script/API/n8n execution + retries remain Sprint 9.
+- Material auto-decrement is Sprint 8.
+- Prefer real system cron for reliable timer unlocks (WP-Cron is request-triggered by default).
 
 ---
 
 ## Next
 
-**Sprint 7** — Workflow engine (manual + timer).
+**Sprint 8** — Material auto-decrement.

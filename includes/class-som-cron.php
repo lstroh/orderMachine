@@ -8,12 +8,13 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers cron schedules and handlers (token refresh + order sync).
+ * Registers cron schedules and handlers (token refresh, order sync, engine tick).
  */
 class SOM_Cron {
 
 	const HOOK_REFRESH_TOKENS = 'som_refresh_tokens';
 	const HOOK_SYNC_ORDERS    = 'som_sync_orders';
+	const HOOK_ENGINE_TICK    = 'som_engine_tick';
 
 	/**
 	 * Wire hooks (call on every request after plugins_loaded).
@@ -24,10 +25,11 @@ class SOM_Cron {
 		add_filter( 'cron_schedules', array( __CLASS__, 'add_schedules' ) );
 		add_action( self::HOOK_REFRESH_TOKENS, array( __CLASS__, 'refresh_tokens' ) );
 		add_action( self::HOOK_SYNC_ORDERS, array( __CLASS__, 'sync_orders' ) );
+		add_action( self::HOOK_ENGINE_TICK, array( __CLASS__, 'engine_tick' ) );
 	}
 
 	/**
-	 * Custom intervals from settings (token refresh + order poll).
+	 * Custom intervals from settings (token refresh + order poll + engine tick).
 	 *
 	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
 	 * @return array<string, array<string, mixed>>
@@ -55,6 +57,16 @@ class SOM_Cron {
 			),
 		);
 
+		$tick = max( 1, (int) $settings['engine_tick_interval_minutes'] );
+		$schedules['som_engine_tick'] = array(
+			'interval' => $tick * MINUTE_IN_SECONDS,
+			'display'  => sprintf(
+				/* translators: %d: minutes */
+				__( 'Order Machine workflow engine (%d min)', 'order-machine' ),
+				$tick
+			),
+		);
+
 		return $schedules;
 	}
 
@@ -70,6 +82,9 @@ class SOM_Cron {
 		if ( ! wp_next_scheduled( self::HOOK_SYNC_ORDERS ) ) {
 			wp_schedule_event( time() + ( 2 * MINUTE_IN_SECONDS ), 'som_order_poll', self::HOOK_SYNC_ORDERS );
 		}
+		if ( ! wp_next_scheduled( self::HOOK_ENGINE_TICK ) ) {
+			wp_schedule_event( time() + ( 3 * MINUTE_IN_SECONDS ), 'som_engine_tick', self::HOOK_ENGINE_TICK );
+		}
 	}
 
 	/**
@@ -78,7 +93,7 @@ class SOM_Cron {
 	 * @return void
 	 */
 	public static function clear_events() {
-		foreach ( array( self::HOOK_REFRESH_TOKENS, self::HOOK_SYNC_ORDERS ) as $hook ) {
+		foreach ( array( self::HOOK_REFRESH_TOKENS, self::HOOK_SYNC_ORDERS, self::HOOK_ENGINE_TICK ) as $hook ) {
 			$timestamp = wp_next_scheduled( $hook );
 			while ( $timestamp ) {
 				wp_unschedule_event( $timestamp, $hook );
@@ -146,5 +161,14 @@ class SOM_Cron {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional ops signal
 			error_log( 'Order Machine sync: ' . $result['message'] );
 		}
+	}
+
+	/**
+	 * Unlock elapsed workflow timers.
+	 *
+	 * @return void
+	 */
+	public static function engine_tick() {
+		SOM_Workflow_Engine::tick();
 	}
 }

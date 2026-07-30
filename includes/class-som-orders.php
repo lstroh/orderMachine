@@ -137,6 +137,12 @@ class SOM_Orders {
 			$where[] = 'o.is_complete = 1';
 		} elseif ( 'needs_mapping' === $status ) {
 			$where[] = "EXISTS ( SELECT 1 FROM {$items_t} oi_um WHERE oi_um.order_id = o.id AND oi_um.product_id IS NULL )";
+		} elseif ( 'needs_workflow' === $status ) {
+			$cancelled = self::cancelled_sql( 'o', 'c' );
+			$progress_t = SOM_DB::table( 'order_step_progress' );
+			$where[]    = "o.is_complete = 0 AND o.current_step_id IS NULL
+				AND NOT EXISTS ( SELECT 1 FROM {$progress_t} osp WHERE osp.order_id = o.id )
+				AND NOT {$cancelled}";
 		} elseif ( 'cancelled' === $status ) {
 			$where[] = self::cancelled_sql( 'o', 'c' );
 		}
@@ -196,9 +202,12 @@ class SOM_Orders {
 				o.order_date,
 				o.buyer_name,
 				o.is_complete,
+				o.current_step_id,
 				c.slug AS channel_slug,
 				c.display_name AS channel_name,
 				( SELECT COUNT(*) FROM {$items_t} oi_c WHERE oi_c.order_id = o.id AND oi_c.product_id IS NULL ) AS unmatched_count,
+				( SELECT COUNT(*) FROM " . SOM_DB::table( 'order_step_progress' ) . " osp_c WHERE osp_c.order_id = o.id ) AS progress_count,
+				( SELECT s.name FROM " . SOM_DB::table( 'workflow_steps' ) . " s WHERE s.id = o.current_step_id LIMIT 1 ) AS current_step_name,
 				( SELECT GROUP_CONCAT( COALESCE( p.name, %s ) ORDER BY oi_p.id SEPARATOR ', ' )
 					FROM {$items_t} oi_p
 					LEFT JOIN {$products_t} p ON p.id = oi_p.product_id
@@ -269,13 +278,25 @@ class SOM_Orders {
 			)
 		);
 
-		$order->items        = is_array( $items ) ? $items : array();
-		$order->is_cancelled = self::is_cancelled( $order->raw_payload, $order->channel_slug );
+		$order->items         = is_array( $items ) ? $items : array();
+		$order->is_cancelled  = self::is_cancelled( $order->raw_payload, $order->channel_slug );
 		$order->has_unmatched = false;
 		foreach ( $order->items as $item ) {
 			if ( null === $item->product_id || '' === $item->product_id ) {
 				$order->has_unmatched = true;
 				break;
+			}
+		}
+
+		$order->workflow_progress   = SOM_Workflow_Engine::get_progress( $order_id );
+		$order->workflow_unassigned = SOM_Workflow_Engine::unassigned_reason( $order );
+		$order->current_step_name   = '';
+		if ( ! empty( $order->current_step_id ) ) {
+			foreach ( $order->workflow_progress as $row ) {
+				if ( (int) $row->workflow_step_id === (int) $order->current_step_id ) {
+					$order->current_step_name = (string) $row->step_name;
+					break;
+				}
 			}
 		}
 

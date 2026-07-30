@@ -191,4 +191,40 @@
 
 	initRecipeEditor();
 	initWorkflowEditor();
+	initCountdowns();
+
+	function initCountdowns() {
+		var nodes = document.querySelectorAll( '[data-som-countdown]' );
+		if ( ! nodes.length ) {
+			return;
+		}
+
+		function tick() {
+			var now = Math.floor( Date.now() / 1000 );
+			nodes.forEach( function ( el ) {
+				var ends = parseInt( el.getAttribute( 'data-ends-at' ), 10 );
+				if ( ! ends ) {
+					return;
+				}
+				var remaining = ends - now;
+				if ( remaining <= 0 ) {
+					el.textContent = el.getAttribute( 'data-unlocked-label' ) || 'Timer elapsed — refresh or wait for the next engine tick to unlock Mark done.';
+					return;
+				}
+				var h = Math.floor( remaining / 3600 );
+				var m = Math.floor( ( remaining % 3600 ) / 60 );
+				var s = remaining % 60;
+				var parts = [];
+				if ( h > 0 ) {
+					parts.push( h + 'h' );
+				}
+				parts.push( m + 'm' );
+				parts.push( s + 's' );
+				el.textContent = 'Unlocks in ' + parts.join( ' ' );
+			} );
+		}
+
+		tick();
+		setInterval( tick, 1000 );
+	}
 }() );
