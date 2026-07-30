@@ -58,7 +58,7 @@ ICON_ASSETS = {
 # recoloured per accent on first use and cached to disk so the per-pixel
 # recolour loop only ever runs once per accent, not once per order.
 # ---------------------------------------------------------------------------
-P02_ICON_MASTER = "assets/icons/house_banner_master.png"
+P02_ICON_MASTER = "house_banner_master.png"
 
 
 def recolour_silhouette(in_path, out_path, hex_color):
