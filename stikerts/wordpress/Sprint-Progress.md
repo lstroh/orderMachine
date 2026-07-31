@@ -19,7 +19,7 @@
 | 8 | Material auto-decrement | Done (scoped) | Decrement + UI shipped; cancel reversal deferred (D3/A3) |
 | 9 | Script / API / n8n steps | Done | Verified on wp-env (dispatch, retries, callback REST, thank-you fails soft without Python) |
 | 10 | Listings view + price/qty push | Done | Verified on wp-env (refresh/push dummy, variations, description) |
-| 11+ | Later phases | Not started | External REST orders / MCP |
+| 11 | External order REST + MCP | Done | Covers **roadmap Phases 11 + 12** (plan has no separate Sprint 12). Verified on wp-env. |
 
 ---
 
@@ -874,10 +874,124 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-listings — `admin` / 
 - Live OAuth + real listing GET/PUT once developer apps exist on Local.
 - eBay live push requires SKUs on inventory items / published offers.
 - D3/A3 cancel stock reversal still deferred (Sprint 8 scoped).
-- Sprint 11 — external `POST /orders`, `advance-step`, MCP.
+- Sprint 11 shipped — see section below.
+
+---
+
+## Sprint 11 — External order REST + MCP
+
+- **Status:** Done — all Sprint-Plan § Sprint 11 file and done-when items complete
+- **Roadmap phases:** **11** (external order REST) + **12** (MCP read-only). *Note: `Sprint-Plan.md` has no separate Sprint 12; both phases ship in this sprint.*
+- **Completed:** 2026-07-31
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.11.0`
+
+### Plan text (`Sprint-Plan.md`)
+
+> **Phases:** 11 + 12  
+> **Files:** `includes/class-som-rest-api.php` — `POST /wp-json/som/v1/orders`, `advance-step`; MCP/Abilities registration (read-only per `07-MCP-Integration.md`); Settings MCP on/off; document WordPress MCP Adapter + Claude connector (M3)  
+> **Done when:** External API key can create an order (Amazon-email-workaround groundwork); Cursor can query via local MCP; live Claude path documented (HTTPS + OAuth 2.1). Credentials never exposed via Abilities.  
+> **Open items first:** M1/M2 defaults (full media; toggle off until enabled).
+
+### Phase 11 — External order-creation endpoint
+
+| Criterion | Result | Notes |
+|---|---|---|
+| `POST /wp-json/som/v1/orders` | **Pass** | API key (`X-SOM-API-Key` / Bearer); default channel `external` |
+| `POST /wp-json/som/v1/orders/{id}/advance-step` | **Pass** | Same as Mark done; API key **or** logged-in admin |
+| Amazon-email / n8n groundwork | **Pass** | Generic create path; Amazon-specific automation not built (by design) |
+| De-dup | **Pass** | `UNIQUE (channel_id, external_order_id)` → HTTP **409** (no silent update) |
+| Side effects on create | **Pass** | Workflow assign + material decrement (same as incremental sync create) |
+
+### Phase 12 — MCP read-only integration (`07-MCP-Integration.md`)
+
+| Criterion | Result | Notes |
+|---|---|---|
+| `order-machine/get-orders` (was `som_get_orders`) | **Pass** | List/filter |
+| `order-machine/get-order-detail` | **Pass** | Items, personalisation, address, workflow progress |
+| `order-machine/get-products` | **Pass** | Incl. recipes |
+| `order-machine/get-materials` | **Pass** | Stock levels |
+| `order-machine/get-listings` | **Pass** | Cached listing data |
+| `order-machine/get-media` | **Pass** | Full media library (M1 default) |
+| Credentials never exposed | **Pass** | Hard exclusion; no channel credentials in ability payloads |
+| Read-only only (no write Abilities) | **Pass** | |
+| Settings MCP on/off (M2) | **Pass** | Off → Abilities **not registered** |
+| WordPress MCP Adapter installed (wp-env) | **Pass** | `.wp-env.json` + active `mcp-adapter` 0.5.0 |
+| Cursor local path documented / ready | **Pass** | `MCP.md` (HTTP proxy + STDIO); Abilities + Adapter verified in smoke |
+| Claude live path documented (M3) | **Pass** | `MCP.md` — HTTPS + Application Password / OAuth 2.1; **manual** connector add is post-build |
+
+### Extra (agreed at Sprint 11 kickoff, beyond plan file list)
+
+| Item | Notes |
+|---|---|
+| Admin Mark done → REST | Order detail JS `POST …/advance-step` with `X-WP-Nonce` |
+| Generic `external` channel | Seeded/ensured active; not Amazon-specific |
+| `product_id` on create items | Optional override when no listing map |
+
+### Decisions applied during build (user answers)
+
+| Topic | Decision |
+|---|---|
+| Scope | Both Phase 11 and 12 in this sprint |
+| Channel for external create | Generic `external` |
+| Create payload | As reviewed; duplicate → 409 |
+| advance-step | Mirror Mark done; UI calls REST |
+| MCP Adapter | Wire into wp-env; Local optional (documented) |
+| Ability names | WP-style `order-machine/get-*` |
+| Toggle off | Do not register Abilities at all |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-rest-api.php` | `POST /orders`, `advance-step`, existing `workflow-callback` |
+| `includes/class-som-order-sync.php` | `create_from_external()`; item `product_id` override |
+| `includes/class-som-channels.php` | `external` channel row (active by default) |
+| `includes/class-som-abilities.php` | Read-only Abilities when MCP enabled |
+| `includes/class-som-settings.php` | `mcp_enabled` (default false) |
+| `admin/views/settings.php` | MCP checkbox; API key route blurb |
+| `admin/views/order-detail.php` | Mark done → REST via JS |
+| `admin/assets/js/admin.js` | `initAdvanceStepRest` |
+| `admin/class-som-admin-menu.php` | Localize REST nonce; save MCP |
+| `.wp-env.json` | MCP Adapter release zip |
+| `MCP.md` | Cursor / Local / Claude setup (M3) |
+| `WP-ENV.md` | Adapter note |
+| `tests/sprint11-smoke.php` | Create / 409 / advance / abilities / adapter |
+| `orderMachine.php` | Bootstrap `SOM_Abilities`; v0.11.0 |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| External API key can create an order | **Pass** — smoke create 200; workflow + stock |
+| Cursor can query via local MCP | **Pass** (infra) — Adapter in wp-env; Abilities when toggle on; connect steps in `MCP.md`. Interactive Cursor client config still a one-time manual step (Application Password). |
+| Live Claude path documented | **Pass** — `MCP.md` (HTTPS + auth); adding the connector in Claude is M3 manual |
+| Credentials never via Abilities | **Pass** |
+
+**Plan scope:** All Sprint 11 (Phases 11 + 12) file and done-when items are complete. Out-of-scope leftovers (live OAuth, Amazon email automation, D3/A3 cancel reversal, interactive Cursor/Claude connector clicks) are intentional follow-ups, not misses.
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env start
+npx @wordpress/env run cli wp plugin list
+# orderMachine 0.11.0 + mcp-adapter 0.5.0 active
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint11-smoke.php
+# PASS — create 200, duplicate 409, advance Print→Dry, abilities + adapter
+```
+
+Admin: Settings → MCP checkbox + REST API key; Orders detail → Mark done uses REST.
+
+### Open items / notes for later
+
+- **Manual:** Create Application Password + paste Cursor MCP config from `MCP.md` for interactive querying.
+- **Manual (M3):** Add Claude connector against live HTTPS site when that site exists.
+- Local: install MCP Adapter zip optionally (same URL as wp-env).
+- D3/A3 cancel stock reversal still deferred.
+- Amazon-specific channel / email→n8n automation remains future (REST create groundwork done).
 
 ---
 
 ## Next
 
-**Sprint 11** — External order REST + MCP.
+Planned sprints **0–11** (roadmap Phases **1–12**) are complete in code. Remaining follow-ups are operational/manual or earlier deferrals: live OAuth, cancel stock reversal (D3/A3), thank-you field mapping / batching, Cursor Application Password + Claude live connector.

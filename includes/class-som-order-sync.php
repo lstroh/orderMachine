@@ -42,6 +42,132 @@ class SOM_Order_Sync {
 	}
 
 	/**
+	 * Create an order from an external REST payload (Amazon-email / n8n groundwork).
+	 *
+	 * Default channel slug is `external`. Duplicate (channel + external_order_id) → WP_Error 409.
+	 * On success: inserts items, assigns workflow, reserves materials (same as incremental sync create).
+	 *
+	 * @param array<string, mixed> $payload Request body.
+	 * @return int|WP_Error New order ID.
+	 */
+	public static function create_from_external( array $payload ) {
+		$channel_slug = isset( $payload['channel'] ) ? sanitize_key( (string) $payload['channel'] ) : 'external';
+		if ( '' === $channel_slug ) {
+			$channel_slug = 'external';
+		}
+
+		SOM_Channels::ensure_rows();
+		$channel = SOM_Channels::get_by_slug( $channel_slug );
+		if ( ! $channel ) {
+			return new WP_Error(
+				'som_unknown_channel',
+				sprintf(
+					/* translators: %s: channel slug */
+					__( 'Unknown channel: %s', 'order-machine' ),
+					$channel_slug
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		$external_id = isset( $payload['external_order_id'] ) ? sanitize_text_field( (string) $payload['external_order_id'] ) : '';
+		if ( '' === $external_id ) {
+			return new WP_Error(
+				'som_missing_external_order_id',
+				__( 'external_order_id is required.', 'order-machine' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$items = isset( $payload['items'] ) && is_array( $payload['items'] ) ? $payload['items'] : array();
+		if ( ! $items ) {
+			return new WP_Error(
+				'som_missing_items',
+				__( 'At least one order item is required.', 'order-machine' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$normalized = array(
+			'external_order_id' => $external_id,
+			'buyer_name'        => isset( $payload['buyer_name'] ) ? (string) $payload['buyer_name'] : '',
+			'shipping_address'  => isset( $payload['shipping_address'] ) && is_array( $payload['shipping_address'] )
+				? $payload['shipping_address']
+				: array(),
+			'order_date'        => isset( $payload['order_date'] ) ? (string) $payload['order_date'] : current_time( 'mysql', true ),
+			'raw_payload'       => isset( $payload['raw_payload'] ) ? $payload['raw_payload'] : $payload,
+			'items'             => array(),
+		);
+
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$line = array(
+				'external_listing_id'  => isset( $item['external_listing_id'] ) ? (string) $item['external_listing_id'] : '',
+				'sku'                  => isset( $item['sku'] ) ? (string) $item['sku'] : '',
+				'quantity'             => isset( $item['quantity'] ) ? (int) $item['quantity'] : 1,
+				'personalisation_text' => isset( $item['personalisation_text'] ) ? $item['personalisation_text'] : null,
+				'unit_price'           => array_key_exists( 'unit_price', $item ) ? $item['unit_price'] : null,
+			);
+			if ( isset( $item['product_id'] ) && (int) $item['product_id'] > 0 ) {
+				$line['product_id'] = (int) $item['product_id'];
+			}
+			$normalized['items'][] = $line;
+		}
+
+		if ( ! $normalized['items'] ) {
+			return new WP_Error(
+				'som_missing_items',
+				__( 'At least one valid order item is required.', 'order-machine' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		global $wpdb;
+		$existing_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT id FROM ' . SOM_DB::table( 'orders' ) . ' WHERE channel_id = %d AND external_order_id = %s LIMIT 1',
+				(int) $channel->id,
+				$external_id
+			)
+		);
+		if ( $existing_id > 0 ) {
+			return new WP_Error(
+				'som_order_exists',
+				__( 'An order with this external_order_id already exists for the channel.', 'order-machine' ),
+				array( 'status' => 409 )
+			);
+		}
+
+		$result = self::upsert_order( (int) $channel->id, $normalized, true );
+		if ( 'created' !== $result ) {
+			return new WP_Error(
+				'som_order_create_failed',
+				__( 'Could not create order.', 'order-machine' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$order_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT id FROM ' . SOM_DB::table( 'orders' ) . ' WHERE channel_id = %d AND external_order_id = %s LIMIT 1',
+				(int) $channel->id,
+				$external_id
+			)
+		);
+		if ( $order_id < 1 ) {
+			return new WP_Error(
+				'som_order_create_failed',
+				__( 'Order was created but could not be loaded.', 'order-machine' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return $order_id;
+	}
+
+	/**
 	 * Last sync status for Settings UI.
 	 *
 	 * @return array<string, mixed>
@@ -311,15 +437,19 @@ class SOM_Order_Sync {
 	private static function insert_item( $order_id, $channel_id, array $item ) {
 		global $wpdb;
 
-		$listing_keys = array();
-		if ( ! empty( $item['external_listing_id'] ) ) {
-			$listing_keys[] = (string) $item['external_listing_id'];
+		$product_id = null;
+		if ( isset( $item['product_id'] ) && (int) $item['product_id'] > 0 ) {
+			$product_id = (int) $item['product_id'];
+		} else {
+			$listing_keys = array();
+			if ( ! empty( $item['external_listing_id'] ) ) {
+				$listing_keys[] = (string) $item['external_listing_id'];
+			}
+			if ( ! empty( $item['sku'] ) ) {
+				$listing_keys[] = (string) $item['sku'];
+			}
+			$product_id = self::match_product_id( $channel_id, $listing_keys );
 		}
-		if ( ! empty( $item['sku'] ) ) {
-			$listing_keys[] = (string) $item['sku'];
-		}
-
-		$product_id = self::match_product_id( $channel_id, $listing_keys );
 
 		$wpdb->insert(
 			SOM_DB::table( 'order_items' ),

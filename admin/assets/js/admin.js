@@ -256,6 +256,59 @@
 	initWorkflowEditor();
 	initListingEditor();
 	initCountdowns();
+	initAdvanceStepRest();
+
+	function initAdvanceStepRest() {
+		if ( typeof somAdmin === 'undefined' || ! somAdmin.restUrl ) {
+			return;
+		}
+
+		document.querySelectorAll( '[data-som-advance-step]' ).forEach( function ( form ) {
+			form.addEventListener( 'submit', function ( e ) {
+				e.preventDefault();
+				var orderId = form.getAttribute( 'data-order-id' );
+				var btn = form.querySelector( '[type="submit"]' );
+				if ( btn && btn.disabled ) {
+					return;
+				}
+				if ( btn ) {
+					btn.disabled = true;
+				}
+
+				fetch( somAdmin.restUrl + 'orders/' + encodeURIComponent( orderId ) + '/advance-step', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-WP-Nonce': somAdmin.restNonce || ''
+					},
+					body: '{}'
+				} )
+					.then( function ( res ) {
+						return res.json().then( function ( data ) {
+							return { ok: res.ok, status: res.status, data: data };
+						} );
+					} )
+					.then( function ( result ) {
+						if ( ! result.ok ) {
+							var msg = ( result.data && result.data.message ) ? result.data.message : 'Could not advance step.';
+							window.alert( msg );
+							if ( btn ) {
+								btn.disabled = false;
+							}
+							return;
+						}
+						window.location.reload();
+					} )
+					.catch( function () {
+						window.alert( 'Could not advance step (network error).' );
+						if ( btn ) {
+							btn.disabled = false;
+						}
+					} );
+			} );
+		} );
+	}
 
 	function initCountdowns() {
 		var nodes = document.querySelectorAll( '[data-som-countdown]' );

@@ -1,7 +1,10 @@
 {
   "core": "WordPress/WordPress#7.0.2",
   "phpVersion": "8.2",
-  "plugins": [ "." ],
+  "plugins": [
+    ".",
+    "https://github.com/WordPress/mcp-adapter/releases/latest/download/mcp-adapter.zip"
+  ],
   "config": {
     "SOM_ENV": "wp-env",
     "SOM_USE_DUMMY_CREDENTIALS": true,

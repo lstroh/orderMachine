@@ -19,13 +19,16 @@ class SOM_Channels {
 	 */
 	public static function known() {
 		return array(
-			'ebay' => 'eBay',
-			'etsy' => 'Etsy',
+			'ebay'     => 'eBay',
+			'etsy'     => 'Etsy',
+			'external' => 'External',
 		);
 	}
 
 	/**
-	 * Ensure ebay + etsy rows exist (idempotent).
+	 * Ensure ebay / etsy / external rows exist (idempotent).
+	 *
+	 * External is active by default (REST create path; no OAuth).
 	 *
 	 * @return void
 	 */
@@ -44,6 +47,18 @@ class SOM_Channels {
 			);
 
 			if ( $existing ) {
+				if ( 'external' === $slug ) {
+					$wpdb->update(
+						$table,
+						array(
+							'is_active'  => 1,
+							'updated_at' => $now,
+						),
+						array( 'id' => (int) $existing ),
+						array( '%d', '%s' ),
+						array( '%d' )
+					);
+				}
 				continue;
 			}
 
@@ -52,7 +67,7 @@ class SOM_Channels {
 				array(
 					'slug'          => $slug,
 					'display_name'  => $display_name,
-					'is_active'     => 0,
+					'is_active'     => ( 'external' === $slug ) ? 1 : 0,
 					'credentials'   => null,
 					'last_synced_at'=> null,
 					'created_at'    => $now,

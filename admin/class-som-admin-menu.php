@@ -130,6 +130,17 @@ class SOM_Admin_Menu {
 				SOM_VERSION,
 				true
 			);
+
+			if ( 'som-orders' === $page ) {
+				wp_localize_script(
+					'som-admin',
+					'somAdmin',
+					array(
+						'restUrl'   => esc_url_raw( rest_url( 'som/v1/' ) ),
+						'restNonce' => wp_create_nonce( 'wp_rest' ),
+					)
+				);
+			}
 		}
 	}
 
@@ -734,6 +745,7 @@ class SOM_Admin_Menu {
 				'token_refresh_interval_minutes' => isset( $_POST['som_token_refresh_interval'] ) ? (int) $_POST['som_token_refresh_interval'] : 30,
 				'api_key'                        => $api_key,
 				'python_binary'                  => isset( $_POST['som_python_binary'] ) ? wp_unslash( $_POST['som_python_binary'] ) : '',
+				'mcp_enabled'                    => ! empty( $_POST['som_mcp_enabled'] ),
 				'ebay'                           => array(
 					'client_id'     => isset( $_POST['som_ebay_client_id'] ) ? wp_unslash( $_POST['som_ebay_client_id'] ) : '',
 					'client_secret' => $ebay_secret,

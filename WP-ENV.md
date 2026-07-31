@@ -82,10 +82,13 @@ Current config in `.wp-env.json`:
 - WordPress core: `7.0.2`
 - PHP: `8.2`
 - Plugin mount: current repo root as a WordPress plugin
+- Also installs [MCP Adapter](https://github.com/WordPress/mcp-adapter) from the latest release zip
 - Extra config:
   - `SOM_ENV=wp-env`
   - `SOM_USE_DUMMY_CREDENTIALS=true`
   - `SOM_ENCRYPTION_KEY` — encrypts channel credentials at rest (dev key; Local uses its own in `wp-config.php`)
+
+MCP / Cursor connection steps: see [`MCP.md`](MCP.md).
 
 ### When to use wp-env
 

@@ -20,7 +20,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Workflow engine (manual confirm + timers) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Not yet (config UI only) |
-| Listings push, REST API, MCP | Listings done (Sprint 10); REST/MCP not yet |
+| Listings push, REST API, MCP | Listings done (Sprint 10); REST + MCP done (Sprint 11) |
 
 **Recommended review path:** use **wp-env** for a clean, repeatable fixture walkthrough, then spot-check the same screens on your **Local** `ordermachine` site if you use that day-to-day.
 
@@ -250,7 +250,7 @@ Use this so review time isn’t spent hunting missing screens:
 |---|---|
 | Execute local scripts / n8n / API steps + retries + REST callback | 9 (done) |
 | Listings admin + push price/qty/description to channels (incl. variations) | 10 (done) |
-| External `POST /som/v1/orders`, advance-step, MCP/Abilities | 11–12 |
+| External `POST /som/v1/orders`, advance-step, MCP/Abilities | 11 (done) |
 | Cancel → material stock reversal | After D3/A3 (tied to Phase 8 remainder) |
 
 ---

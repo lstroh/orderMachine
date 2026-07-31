@@ -27,6 +27,7 @@ class SOM_Settings {
 			'token_refresh_interval_minutes' => 30,
 			'api_key'                        => '',
 			'python_binary'                  => '',
+			'mcp_enabled'                    => false,
 			'ebay'                           => array(
 				'client_id'     => '',
 				'client_secret' => '',
@@ -83,6 +84,7 @@ class SOM_Settings {
 		$next['token_refresh_interval_minutes'] = max( 5, (int) ( $next['token_refresh_interval_minutes'] ?? 30 ) );
 		$next['api_key']                        = sanitize_text_field( (string) ( $next['api_key'] ?? '' ) );
 		$next['python_binary']                  = sanitize_text_field( (string) ( $next['python_binary'] ?? '' ) );
+		$next['mcp_enabled']                    = ! empty( $next['mcp_enabled'] );
 
 		$next['ebay']['client_id']     = sanitize_text_field( (string) ( $next['ebay']['client_id'] ?? '' ) );
 		$next['ebay']['runame']        = sanitize_text_field( (string) ( $next['ebay']['runame'] ?? '' ) );

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.10.0
+ * Version:           0.11.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.10.0' );
+define( 'SOM_VERSION', '0.11.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -36,6 +36,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-listings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-rest-api.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-abilities.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-cron.php';
 require_once SOM_PLUGIN_DIR . 'includes/seed/class-som-seed.php';
 require_once SOM_PLUGIN_DIR . 'admin/class-som-admin-menu.php';
@@ -75,6 +76,7 @@ function som_init() {
 	SOM_Channels::ensure_rows();
 	SOM_Cron::init();
 	SOM_REST_API::init();
+	SOM_Abilities::init();
 	SOM_Seed::maybe_load_dummy_credentials();
 
 	if ( is_admin() ) {

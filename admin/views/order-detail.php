@@ -224,7 +224,7 @@ if ( ! empty( $order->raw_payload ) ) {
 								</form>
 							<?php endif; ?>
 							<?php if ( 'error' !== $status && 'waiting_script' !== $status ) : ?>
-								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form" data-som-advance-step data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>">
 									<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
 									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
 									<input type="hidden" name="som_mark_step_done" value="1" />

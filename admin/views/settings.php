@@ -177,9 +177,26 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 					<p class="description">
 						<?php
 						printf(
-							/* translators: %s: REST route example */
+							/* translators: %s: REST route examples */
 							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s', 'order-machine' ),
-							'<code>POST /wp-json/som/v1/workflow-callback/{token}</code>'
+							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/workflow-callback/{token}</code>'
+						);
+						?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'MCP (AI query)', 'order-machine' ); ?></th>
+				<td>
+					<label for="som_mcp_enabled">
+						<input name="som_mcp_enabled" id="som_mcp_enabled" type="checkbox" value="1" <?php checked( ! empty( $settings['mcp_enabled'] ) ); ?> />
+						<?php echo esc_html__( 'Enable read-only Abilities for MCP Adapter', 'order-machine' ); ?>
+					</label>
+					<p class="description">
+						<?php
+						echo esc_html__(
+							'When off, Order Machine Abilities are not registered. Requires the WordPress MCP Adapter plugin. See MCP.md for Cursor / Claude setup.',
+							'order-machine'
 						);
 						?>
 					</p>
