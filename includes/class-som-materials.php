@@ -225,6 +225,9 @@ class SOM_Materials {
 	/**
 	 * Update material metadata (not stock level).
 	 *
+	 * Manual `unit_cost` override revalues `total_value_on_hand = current_stock × unit_cost`
+	 * and writes a stock-log row with `value_change` (correcting adjustment path).
+	 *
 	 * @param int                  $material_id Material PK.
 	 * @param array<string, mixed> $data        Fields to update.
 	 * @return true|WP_Error
@@ -233,7 +236,8 @@ class SOM_Materials {
 		global $wpdb;
 
 		$material_id = (int) $material_id;
-		if ( $material_id < 1 || ! self::get( $material_id ) ) {
+		$before      = self::get( $material_id );
+		if ( $material_id < 1 || ! $before ) {
 			return new WP_Error( 'som_material_missing', __( 'Material not found.', 'order-machine' ) );
 		}
 
@@ -265,8 +269,10 @@ class SOM_Materials {
 			$formats[]                     = '%s';
 		}
 
+		$revalue_unit_cost = null;
 		if ( array_key_exists( 'unit_cost', $data ) ) {
-			$fields['unit_cost'] = self::nullable_decimal( $data, 'unit_cost', 4 );
+			$revalue_unit_cost = self::nullable_decimal( $data, 'unit_cost', 4 );
+			$fields['unit_cost'] = $revalue_unit_cost;
 			$formats[]           = '%s';
 		}
 
@@ -296,15 +302,104 @@ class SOM_Materials {
 			return new WP_Error( 'som_material_update', __( 'Could not update material.', 'order-machine' ) );
 		}
 
+		if ( array_key_exists( 'unit_cost', $data ) ) {
+			$revalued = self::revalue_from_unit_cost( $material_id, $revalue_unit_cost );
+			if ( is_wp_error( $revalued ) ) {
+				return $revalued;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Revalue total_value_on_hand from current_stock × unit_cost (correcting adjustment).
+	 *
+	 * Writes a stock-log row with change_qty 0 and value_change = new − old value.
+	 *
+	 * @param int         $material_id Material PK.
+	 * @param string|null $unit_cost   New unit cost (null clears cost and zeroes value).
+	 * @return true|WP_Error
+	 */
+	public static function revalue_from_unit_cost( $material_id, $unit_cost ) {
+		global $wpdb;
+
+		$material_id = (int) $material_id;
+		$table       = SOM_DB::table( 'materials' );
+		$current     = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, current_stock, total_value_on_hand, unit_cost FROM {$table} WHERE id = %d LIMIT 1",
+				$material_id
+			)
+		);
+		if ( ! $current ) {
+			return new WP_Error( 'som_material_missing', __( 'Material not found.', 'order-machine' ) );
+		}
+
+		$stock      = (float) $current->current_stock;
+		$old_value  = (float) $current->total_value_on_hand;
+		$unit       = null === $unit_cost || '' === $unit_cost ? null : (float) $unit_cost;
+		$new_value  = null === $unit ? 0.0 : SOM_Material_Costing::round4( $stock * $unit );
+		$value_chg  = SOM_Material_Costing::round4( $new_value - $old_value );
+		$unit_at    = null === $unit ? 0.0 : $unit;
+
+		if ( abs( $value_chg ) < 0.0000001
+			&& ( ( null === $unit && ( null === $current->unit_cost || '' === $current->unit_cost ) )
+				|| ( null !== $unit && null !== $current->unit_cost && abs( (float) $current->unit_cost - $unit ) < 0.0000001 ) )
+		) {
+			return true;
+		}
+
+		$now = current_time( 'mysql', true );
+
+		$log_ok = $wpdb->insert(
+			SOM_DB::table( 'material_stock_log' ),
+			array(
+				'material_id'            => $material_id,
+				'order_id'               => null,
+				'change_qty'             => 0,
+				'reason'                 => 'manual_adjustment',
+				'purchase_order_item_id' => null,
+				'unit_cost_at_time'      => $unit_at,
+				'value_change'           => $value_chg,
+				'created_at'             => $now,
+			),
+			array( '%d', '%s', '%f', '%s', '%s', '%f', '%f', '%s' )
+		);
+
+		if ( ! $log_ok ) {
+			return new WP_Error( 'som_stock_log', __( 'Could not write stock log entry.', 'order-machine' ) );
+		}
+
+		$updated = $wpdb->update(
+			$table,
+			array(
+				'unit_cost'           => null === $unit ? null : number_format( $unit, 4, '.', '' ),
+				'total_value_on_hand' => $new_value,
+				'updated_at'          => $now,
+			),
+			array( 'id' => $material_id ),
+			array( '%s', '%f', '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			return new WP_Error( 'som_stock_update', __( 'Could not update stock value.', 'order-machine' ) );
+		}
+
 		return true;
 	}
 
 	/**
 	 * Apply a delta stock adjustment and write the audit log row.
 	 *
+	 * Maintains `total_value_on_hand` and logs `unit_cost_at_time` / `value_change`.
+	 * Optional args: order_id, reason, purchase_order_item_id, unit_cost_at_time,
+	 * value_change, sync_unit_cost (bool — write new WA into materials.unit_cost).
+	 *
 	 * @param int                  $material_id Material PK.
 	 * @param float                $delta       Positive or negative change.
-	 * @param array<string, mixed> $args Optional: order_id, reason, purchase_order_item_id.
+	 * @param array<string, mixed> $args        Optional context.
 	 * @return true|WP_Error
 	 */
 	public static function adjust_stock( $material_id, $delta, array $args = array() ) {
@@ -331,7 +426,7 @@ class SOM_Materials {
 
 		$current = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id, current_stock FROM {$table} WHERE id = %d LIMIT 1",
+				"SELECT id, current_stock, total_value_on_hand, unit_cost FROM {$table} WHERE id = %d LIMIT 1",
 				$material_id
 			)
 		);
@@ -340,8 +435,38 @@ class SOM_Materials {
 			return new WP_Error( 'som_material_missing', __( 'Material not found.', 'order-machine' ) );
 		}
 
-		$new_stock = (float) $current->current_stock + $delta;
-		$now       = current_time( 'mysql', true );
+		if ( array_key_exists( 'unit_cost_at_time', $args ) && null !== $args['unit_cost_at_time'] && '' !== $args['unit_cost_at_time'] ) {
+			$unit_at = (float) $args['unit_cost_at_time'];
+		} else {
+			$unit_at = SOM_Material_Costing::unit_cost_for_consumption( $current );
+		}
+
+		if ( array_key_exists( 'value_change', $args ) && null !== $args['value_change'] && '' !== $args['value_change'] ) {
+			$value_change = (float) $args['value_change'];
+		} else {
+			$value_change = $delta * $unit_at;
+		}
+
+		$unit_at      = SOM_Material_Costing::round4( $unit_at );
+		$value_change = SOM_Material_Costing::round4( $value_change );
+		$new_stock    = (float) $current->current_stock + $delta;
+		$new_value    = SOM_Material_Costing::round4( (float) $current->total_value_on_hand + $value_change );
+		$now          = current_time( 'mysql', true );
+
+		$sync_unit = ! empty( $args['sync_unit_cost'] );
+		$new_wa    = SOM_Material_Costing::weighted_average( $new_stock, $new_value, $unit_at );
+
+		$material_fields = array(
+			'current_stock'       => $new_stock,
+			'total_value_on_hand' => $new_value,
+			'updated_at'          => $now,
+		);
+		$material_formats = array( '%f', '%f', '%s' );
+
+		if ( $sync_unit && null !== $new_wa ) {
+			$material_fields['unit_cost'] = number_format( SOM_Material_Costing::round4( $new_wa ), 4, '.', '' );
+			$material_formats[]           = '%s';
+		}
 
 		$log_ok = $wpdb->insert(
 			SOM_DB::table( 'material_stock_log' ),
@@ -351,9 +476,11 @@ class SOM_Materials {
 				'change_qty'             => $delta,
 				'reason'                 => $reason,
 				'purchase_order_item_id' => $poi_id,
+				'unit_cost_at_time'      => $unit_at,
+				'value_change'           => $value_change,
 				'created_at'             => $now,
 			),
-			array( '%d', null === $order_id ? '%s' : '%d', '%f', '%s', null === $poi_id ? '%s' : '%d', '%s' )
+			array( '%d', null === $order_id ? '%s' : '%d', '%f', '%s', null === $poi_id ? '%s' : '%d', '%f', '%f', '%s' )
 		);
 
 		if ( ! $log_ok ) {
@@ -362,12 +489,9 @@ class SOM_Materials {
 
 		$updated = $wpdb->update(
 			$table,
-			array(
-				'current_stock' => $new_stock,
-				'updated_at'    => $now,
-			),
+			$material_fields,
 			array( 'id' => $material_id ),
-			array( '%f', '%s' ),
+			$material_formats,
 			array( '%d' )
 		);
 

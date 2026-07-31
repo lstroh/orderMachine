@@ -35,6 +35,13 @@ Spec sources: `01-Update-Overview.md`, `02-Update-Data-Model.md`, `03-Update-Raw
 | Schema upgrades (Q12) | **Recommendation locked:** keep existing **dbDelta + `DB_VERSION` bump**; no new migration framework. After `dbDelta`, run an explicit `ALTER TABLE` for `order_step_progress.status` ENUM (`waiting_batch`) because dbDelta is unreliable for ENUM changes. New tables/columns go in the declarative `CREATE TABLE` strings in `includes/class-som-db.php` |
 | REST / MCP (Q13) | Expose suppliers, POs, batches on **`som/v1`** (CRUD where needed) and **Abilities (read-only)** per standing architecture |
 | Build order (Q14) | Shared schema sprint first, then feature UIs |
+| Partial receive costing (U3) | Allocate full PO `shipping_cost` / `other_cost` across lines by `item_cost` (same totals rewritten on later receives). Stable inbound unit for WA: `(item_cost + allocated_*) / quantity_ordered`. Each shipment: `value_change = delta ×` that unit. Stored `landed_unit_cost` = that same stable unit (not cumulative `/ quantity_received`) |
+| `unit_cost_at_time` (U3) | Purchase rows = inbound landed; consumption / manual = current WA |
+| Sync `unit_cost` on WA (U3) | After receive WA update, also write new WA into `materials.unit_cost` |
+| Zero line-cost allocation (U3) | If total `item_cost` is 0, do **not** allocate shipping/other; surface a warning |
+| Consumption at zero stock (U3) | If WA undefined (`current_stock` 0 and value 0), use `unit_cost` if set, else `0` |
+| U3 vs U4 boundary | U3 domain only: goals CRUD + alert checks; preview-in-memory service; recipe/margin helpers; correcting adjustment path. Preview button, goals UI, Product Costing, alert badges → **U4** |
+| U3 smoke (U3) | Yes — worked examples from 03 §2 + consumption value check + preview parity |
 
 ---
 
@@ -103,6 +110,16 @@ These were asked against the specs + codebase before settling the plan. Answers 
 13. **REST / MCP:** Admin UI only, or also expose suppliers/POs/batches on `som/v1` / Abilities? → **Also expose** (REST CRUD; Abilities read-only).
 14. **Sprint order:** Purchasing first, Batching first, or interleaved? → **Schema for both early, then feature UIs.**
 
+U3 clarifications (answered before build):
+
+15. **Partial receive costing:** Use cumulative `/ quantity_received` for WA, or allocate once and use stable `/ quantity_ordered`? → **Allocate full shipping/other by `item_cost` once; stable landed = `/ quantity_ordered`; each shipment WA uses that unit.**
+16. **`unit_cost_at_time` on purchases:** Landed vs WA? → **Purchase = landed; consumption/manual = WA.**
+17. **Sync `unit_cost` after WA?** → **Yes.**
+18. **Zero total line cost + shipping?** → **Do not allocate; warn.**
+19. **Consumption at zero stock / undefined WA?** → **Fall back to `unit_cost`, else 0.**
+20. **U3 vs U4?** → **Domain only in U3; UI surfaces in U4.**
+21. **U3 smoke test?** → **Yes.**
+
 No further blockers.
 
 ---
@@ -146,11 +163,12 @@ flowchart LR
 
 ### Sprint U3 — Landed cost, weighted average, goals, preview
 
-- **Covers:** Costing math + consumption value consistency + goals/alerts data layer + shared preview service
-- **Create:** e.g. `includes/class-som-material-costing.php` (landed allocation, WA update, preview-in-memory, goal checks); `includes/class-som-workflow-material-goals.php`
-- **Modify:** `includes/class-som-materials.php` (`adjust_stock` writes `unit_cost_at_time` / `value_change` / updates `total_value_on_hand`; manual `unit_cost` override revalues); `includes/class-som-material-stock.php` (consumption uses same path); PO receive in U2 class calls costing service; product helpers for recipe cost / margin
-- **Done when:** Receive runs worked examples from 03 §2; preview matches receive without DB writes; consumption keeps `total_value_on_hand` consistent; goals fire approaching/over; correcting adjustment path exists (no edit-received-PO rewrite)
-- **Open items first:** P2, X2, X6 settled
+- **Covers:** Costing math + consumption value consistency + goals/alerts data layer + shared preview service (domain only; UI in U4)
+- **Create:** e.g. `includes/class-som-material-costing.php` (landed allocation, WA update, preview-in-memory, goal checks); `includes/class-som-workflow-material-goals.php`; `tests/sprint-u3-smoke.php`
+- **Modify:** `includes/class-som-materials.php` (`adjust_stock` writes `unit_cost_at_time` / `value_change` / updates `total_value_on_hand`; manual `unit_cost` override revalues; sync `unit_cost` from WA on receive); `includes/class-som-material-stock.php` (consumption uses same path); PO receive in U2 class calls costing service; product helpers for recipe cost / margin
+- **Costing rules (settled):** Full PO shipping/other allocated by `item_cost`; stable landed = `(item_cost + allocated_*) / quantity_ordered`; WA delta uses that unit; purchase log `unit_cost_at_time` = landed, consumption = WA; zero total line cost → no allocation + warning; zero-stock consumption falls back to `unit_cost` or 0
+- **Done when:** Receive runs worked examples from 03 §2; preview matches receive without DB writes; consumption keeps `total_value_on_hand` consistent; goals fire approaching/over; correcting adjustment path exists (no edit-received-PO rewrite); U3 smoke PASS
+- **Open items first:** P2, X2, X6 + U3 clarifying answers settled
 
 ### Sprint U4 — Purchasing admin UI (costing surfaces)
 

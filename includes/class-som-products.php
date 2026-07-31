@@ -290,6 +290,11 @@ class SOM_Products {
 			$formats[]           = '%d';
 		}
 
+		if ( array_key_exists( 'target_selling_price', $data ) ) {
+			$fields['target_selling_price'] = self::nullable_price( $data, 'target_selling_price' );
+			$formats[]                      = '%s';
+		}
+
 		$updated = $wpdb->update(
 			SOM_DB::table( 'products' ),
 			$fields,
@@ -303,6 +308,102 @@ class SOM_Products {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Live recipe material cost and margin against target_selling_price.
+	 *
+	 * @param int                  $product_id   Product PK.
+	 * @param array<int, float>    $wa_overrides Optional material_id => unit cost overrides (preview).
+	 * @return array<string, mixed>|null
+	 */
+	public static function recipe_costing( $product_id, array $wa_overrides = array() ) {
+		$product = self::get( (int) $product_id );
+		if ( ! $product ) {
+			return null;
+		}
+
+		$material_cost = 0.0;
+		$lines         = array();
+		foreach ( $product->recipe as $row ) {
+			$mid = (int) $row->material_id;
+			$qty = (float) $row->quantity_per_unit;
+			if ( isset( $wa_overrides[ $mid ] ) ) {
+				$unit = (float) $wa_overrides[ $mid ];
+			} else {
+				$material = SOM_Materials::get( $mid );
+				$unit     = $material ? SOM_Material_Costing::unit_cost_for_consumption( $material ) : 0.0;
+			}
+			$line_cost      = SOM_Material_Costing::round4( $qty * $unit );
+			$material_cost += $line_cost;
+			$lines[]        = array(
+				'material_id'        => $mid,
+				'material_name'      => isset( $row->material_name ) ? (string) $row->material_name : '',
+				'quantity_per_unit'  => $qty,
+				'unit_cost'          => SOM_Material_Costing::round4( $unit ),
+				'line_cost'          => $line_cost,
+			);
+		}
+
+		$material_cost = SOM_Material_Costing::round4( $material_cost );
+		$target        = null !== $product->target_selling_price && '' !== $product->target_selling_price
+			? (float) $product->target_selling_price
+			: null;
+		$profit        = null;
+		$margin_pct    = null;
+		if ( null !== $target ) {
+			$profit = SOM_Material_Costing::round4( $target - $material_cost );
+			if ( $target > 0 ) {
+				$margin_pct = round( ( $profit / $target ) * 100, 2 );
+			}
+		}
+
+		$goal_alerts = array();
+		if ( ! empty( $product->workflow_template_id ) ) {
+			foreach ( $product->recipe as $row ) {
+				$mid = (int) $row->material_id;
+				$wa  = isset( $wa_overrides[ $mid ] )
+					? (float) $wa_overrides[ $mid ]
+					: null;
+				foreach ( SOM_Material_Costing::goal_alerts_for_material( $mid, $wa ) as $alert ) {
+					if ( (int) $alert['workflow_template_id'] !== (int) $product->workflow_template_id ) {
+						continue;
+					}
+					$goal_alerts[] = $alert;
+				}
+			}
+		}
+
+		return array(
+			'product_id'            => (int) $product->id,
+			'product_name'          => (string) $product->name,
+			'workflow_template_id'  => $product->workflow_template_id ? (int) $product->workflow_template_id : null,
+			'target_selling_price'  => $target,
+			'material_cost'         => $material_cost,
+			'profit'                => $profit,
+			'margin_percent'        => $margin_pct,
+			'lines'                 => $lines,
+			'goal_alerts'           => $goal_alerts,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $data Source.
+	 * @param string               $key  Field.
+	 * @return string|null
+	 */
+	private static function nullable_price( array $data, $key ) {
+		if ( ! array_key_exists( $key, $data ) ) {
+			return null;
+		}
+		$raw = trim( (string) $data[ $key ] );
+		if ( '' === $raw ) {
+			return null;
+		}
+		if ( ! is_numeric( $raw ) || (float) $raw < 0 ) {
+			return null;
+		}
+		return number_format( (float) $raw, 2, '.', '' );
 	}
 
 	/**

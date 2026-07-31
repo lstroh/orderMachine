@@ -1,8 +1,6 @@
 <?php
 /**
- * Purchase order CRUD and receive status machine (Sprint U2).
- *
- * Cost allocation / weighted-average updates are deferred to U3.
+ * Purchase order CRUD and receive status machine (Sprint U2 + U3 costing).
  *
  * @package OrderMachine
  */
@@ -368,6 +366,16 @@ class SOM_Purchase_Orders {
 			return new WP_Error( 'som_po_empty_receive', __( 'Enter at least one quantity to receive.', 'order-machine' ) );
 		}
 
+		$alloc = SOM_Material_Costing::write_allocations_for_order( $order );
+		if ( is_wp_error( $alloc ) ) {
+			return $alloc;
+		}
+
+		$landed_by_item = array();
+		foreach ( $order->items as $index => $item ) {
+			$landed_by_item[ (int) $item->id ] = $alloc['allocations'][ $index ]['landed_unit_cost'];
+		}
+
 		$now      = current_time( 'mysql', true );
 		$recv_day = current_time( 'Y-m-d' );
 
@@ -377,6 +385,7 @@ class SOM_Purchase_Orders {
 				? 0.0
 				: (float) $item->quantity_received;
 			$new_qty = $previous + $delta;
+			$landed  = isset( $landed_by_item[ $item_id ] ) ? (float) $landed_by_item[ $item_id ] : 0.0;
 
 			$updated = $wpdb->update(
 				SOM_DB::table( 'purchase_order_items' ),
@@ -392,12 +401,16 @@ class SOM_Purchase_Orders {
 				return new WP_Error( 'som_po_item_update', __( 'Could not update received quantity.', 'order-machine' ) );
 			}
 
-			$stock = SOM_Materials::adjust_stock(
+			$value_change = SOM_Material_Costing::round4( $delta * $landed );
+			$stock        = SOM_Materials::adjust_stock(
 				(int) $item->material_id,
 				$delta,
 				array(
 					'reason'                 => 'purchase_received',
 					'purchase_order_item_id' => $item_id,
+					'unit_cost_at_time'      => $landed,
+					'value_change'           => $value_change,
+					'sync_unit_cost'         => true,
 				)
 			);
 			if ( is_wp_error( $stock ) ) {

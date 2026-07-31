@@ -30,7 +30,7 @@ global $wpdb;
 SOM_DB::maybe_upgrade();
 
 $out( 'plugin', SOM_VERSION );
-$assert( SOM_VERSION === '0.13.0', 'SOM_VERSION_0.13.0' );
+$assert( version_compare( SOM_VERSION, '0.13.0', '>=' ), 'SOM_VERSION_gte_0.13.0' );
 
 $supplier_id = SOM_Suppliers::create(
 	array(
@@ -125,7 +125,7 @@ $log = $wpdb->get_row(
 	)
 );
 $assert( $log && (int) $log->purchase_order_item_id === (int) $item_a->id, 'stock_log_poi_link' );
-$assert( $log && null === $log->value_change, 'value_change_still_null_u2' );
+$assert( $log && null !== $log->value_change, 'value_change_populated' );
 
 $recv2 = SOM_Purchase_Orders::receive(
 	$po_id,

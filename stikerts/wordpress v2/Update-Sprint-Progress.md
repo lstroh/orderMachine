@@ -12,7 +12,7 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 |---|---|---|---|
 | U1 | Shared schema upgrade | **Done** | Verified on wp-env 2026-07-31 |
 | U2 | Suppliers + purchase orders | **Done** | Verified on wp-env 2026-07-31 |
-| U3 | Landed cost / WA / goals | Pending | |
+| U3 | Landed cost / WA / goals | **Done** | Verified on wp-env 2026-07-31 |
 | U4 | Purchasing admin UI | Pending | Preferred supplier already on material edit (U2) |
 | U5 | Batch engine | Pending | |
 | U6 | Batches UI | Pending | Thank-you convert already done in U1 |
@@ -245,6 +245,100 @@ Re-confirmed 2026-07-31 after plan review: plugin `0.13.0`, full U2 smoke **PASS
 
 ---
 
+## Sprint U3 — Landed cost, weighted average, goals, preview
+
+- **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U3)
+- **Completed:** 2026-07-31
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.14.0`
+- **DB version:** `1.4.0` (unchanged; no new DDL in U3)
+
+### Plan requirements review (`Update-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Costing math + consumption value + goals data + preview service | **Done** | Domain only; UI deferred to U4 |
+| Create `includes/class-som-material-costing.php` | **Done** | Allocate, WA project, preview, goal alerts |
+| Create `includes/class-som-workflow-material-goals.php` | **Done** | Upsert/update/delete/list + `alert_level` |
+| Create `tests/sprint-u3-smoke.php` | **Done** | |
+| Modify `adjust_stock` for value fields | **Done** | `unit_cost_at_time`, `value_change`, `total_value_on_hand`; optional sync WA → `unit_cost` |
+| Manual `unit_cost` override revalues | **Done** | `revalue_from_unit_cost` + log row |
+| `class-som-material-stock.php` consumption path | **Done** | No file edit required — already calls `adjust_stock`, which now writes value fields |
+| PO receive calls costing service | **Done** | `write_allocations_for_order` + landed on stock adjust |
+| Product helpers for recipe cost / margin | **Done** | `SOM_Products::recipe_costing` + `target_selling_price` on update |
+| Costing rules (settled U3 answers) | **Done** | See decisions table below |
+| **Done when:** Receive runs 03 §2 worked examples | **Pass** | Vinyl landed £0.6923; WA £0.6577 / stock 80 / value £52.615 |
+| **Done when:** Preview matches receive without DB writes | **Pass** | |
+| **Done when:** Consumption keeps `total_value_on_hand` consistent | **Pass** | |
+| **Done when:** Goals approaching/over | **Pass** | |
+| **Done when:** Correcting adjustment path (no edit-received-PO rewrite) | **Pass** | Manual `unit_cost` revalue |
+| **Done when:** U3 smoke PASS | **Pass** | |
+| Open items first | Settled | P2, X2, X6 + U3 clarifying answers in plan |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Partial receive costing | Full PO shipping/other by `item_cost`; stable landed = `(item_cost + allocated_*) / quantity_ordered`; each shipment WA uses that unit |
+| Stored `landed_unit_cost` | Same stable unit (not cumulative `/ quantity_received`) |
+| `unit_cost_at_time` | Purchase = inbound landed; consumption/manual = current WA |
+| Sync `unit_cost` on receive | Yes — write new WA into `materials.unit_cost` |
+| Zero total line cost | No allocation + warning from allocate/preview |
+| Zero-stock consumption | Fall back to `unit_cost`, else `0` |
+| U3 vs U4 | Domain only in U3 (Preview button, goals UI, Product Costing, badges → U4) |
+| Versions | `SOM_VERSION` → `0.14.0` (DB stays `1.4.0`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-material-costing.php` | Landed allocation, WA, preview, goal alerts, product impacts |
+| `includes/class-som-workflow-material-goals.php` | Goals CRUD + `alert_level` |
+| `includes/class-som-materials.php` | Value-aware `adjust_stock`; `revalue_from_unit_cost` |
+| `includes/class-som-purchase-orders.php` | Receive writes allocations + costing stock adjust |
+| `includes/class-som-products.php` | `recipe_costing`; `target_selling_price` on update |
+| `includes/class-som-material-stock.php` | Unchanged — inherits value path via `adjust_stock` |
+| `orderMachine.php` | Require new classes; `0.14.0` |
+| `tests/sprint-u3-smoke.php` | Worked examples + consumption + goals + preview + revalue |
+| `tests/sprint-u2-smoke.php` | Version assert relaxed; expect `value_change` populated |
+| `stikerts/wordpress v2/Update-Sprint-Plan.md` | U3 settled decisions recorded before/during build |
+| `stikerts/wordpress v2/Update-Sprint-Progress.md` | This section |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| Receive runs worked examples from 03 §2 | **Pass** |
+| Preview matches receive without DB writes | **Pass** |
+| Consumption keeps `total_value_on_hand` consistent | **Pass** |
+| Goals fire approaching/over | **Pass** |
+| Correcting adjustment path exists | **Pass** |
+| U3 smoke PASS | **Pass** |
+
+**Plan scope:** All Sprint U3 create/modify/done-when items are complete (including agreed U3 costing rules). No U3 open items remain.
+
+### Explicitly out of U3 (deferred to U4)
+
+- Preview Impact button on PO screens
+- Workflow material goals UI
+- Product Costing page / alert badges on Materials
+- Dashboard widget (still out of update entirely per P4)
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active 0.14.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u3-smoke.php
+# PASS — Sprint U3 smoke
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u2-smoke.php
+# PASS — Sprint U2 smoke (regression)
+```
+
+Re-confirmed 2026-07-31 after plan review: plugin `0.14.0`, full U3 smoke **PASS**.
+
+---
+
 ## Next
 
-Execute **Sprint U3** (landed cost allocation, weighted average on receive, consumption value consistency, goals, preview-in-memory).
+Execute **Sprint U4** (purchasing admin UI: costing surfaces, Preview Impact, goals UI, Product Costing, alert badges).
