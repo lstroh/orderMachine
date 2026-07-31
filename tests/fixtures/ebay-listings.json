@@ -1,0 +1,59 @@
+{
+  "listings": [
+    {
+      "external_listing_id": "110000000001",
+      "title": "Bin Sticker Set — 100x140mm 4-pack",
+      "description": "Waterproof vinyl bin stickers with laminate. Set of 4.",
+      "price": 12.99,
+      "quantity_available": 10,
+      "inventory": {
+        "mode": "flat",
+        "sku": "BIN-SET-4PK",
+        "variations": []
+      }
+    },
+    {
+      "external_listing_id": "BIN-SET-4PK",
+      "title": "Bin Sticker Set — 100x140mm 4-pack (SKU key)",
+      "description": "Same listing keyed by SKU for order matching.",
+      "price": 12.99,
+      "quantity_available": 10,
+      "inventory": {
+        "mode": "flat",
+        "sku": "BIN-SET-4PK",
+        "variations": []
+      }
+    },
+    {
+      "external_listing_id": "110000000002",
+      "title": "Bin Stickers — Colour variations",
+      "description": "Multi-SKU eBay inventory item group sample.",
+      "price": 13.50,
+      "quantity_available": 18,
+      "inventory": {
+        "mode": "variations",
+        "sku": "BIN-VAR-NAVY",
+        "variations": [
+          {
+            "sku": "BIN-VAR-NAVY",
+            "quantity": 8,
+            "options": { "Colour": "Navy" },
+            "price": 13.50
+          },
+          {
+            "sku": "BIN-VAR-SAGE",
+            "quantity": 6,
+            "options": { "Colour": "Sage" },
+            "price": 13.50
+          },
+          {
+            "sku": "BIN-VAR-TERRACOTTA",
+            "quantity": 4,
+            "options": { "Colour": "Terracotta" },
+            "price": 13.50
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -191,7 +191,9 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 
 	<?php if ( ! $is_new && ! empty( $listings ) ) : ?>
 		<h2><?php echo esc_html__( 'Linked listings', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Read-only — listing management arrives in a later sprint.', 'order-machine' ); ?></p>
+		<p class="description">
+			<a href="<?php echo esc_url( SOM_Listings::list_url() ); ?>"><?php echo esc_html__( 'Manage listings', 'order-machine' ); ?></a>
+		</p>
 		<table class="widefat striped som-listings-table">
 			<thead>
 				<tr>
@@ -207,7 +209,11 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 						<td>
 							<span class="som-badge som-badge-channel"><?php echo esc_html( (string) $listing->channel_name ); ?></span>
 						</td>
-						<td><code><?php echo esc_html( (string) $listing->external_listing_id ); ?></code></td>
+						<td>
+							<a href="<?php echo esc_url( SOM_Listings::detail_url( (int) $listing->id ) ); ?>">
+								<code><?php echo esc_html( (string) $listing->external_listing_id ); ?></code>
+							</a>
+						</td>
 						<td><?php echo esc_html( number_format_i18n( (float) $listing->price, 2 ) ); ?></td>
 						<td><?php echo esc_html( (string) (int) $listing->quantity_available ); ?></td>
 					</tr>
@@ -216,7 +222,10 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 		</table>
 	<?php elseif ( ! $is_new ) : ?>
 		<h2><?php echo esc_html__( 'Linked listings', 'order-machine' ); ?></h2>
-		<p class="som-muted"><?php echo esc_html__( 'No listings linked to this product yet.', 'order-machine' ); ?></p>
+		<p class="som-muted">
+			<?php echo esc_html__( 'No listings linked to this product yet.', 'order-machine' ); ?>
+			<a href="<?php echo esc_url( SOM_Listings::detail_url( 'new' ) ); ?>"><?php echo esc_html__( 'Add listing map', 'order-machine' ); ?></a>
+		</p>
 	<?php endif; ?>
 </div>
 

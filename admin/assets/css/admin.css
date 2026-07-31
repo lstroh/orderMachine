@@ -478,4 +478,26 @@
 	color: #2271b1;
 }
 
+.som-badge-variations {
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+.som-listing-actions {
+	margin: 12px 0 24px;
+}
+
+.som-listing-actions .button {
+	margin-right: 8px;
+}
+
+.som-variations-table {
+	max-width: 900px;
+	margin-top: 8px;
+}
+
+.som-variations-panel {
+	margin: 16px 0 24px;
+}
+
 

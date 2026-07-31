@@ -467,6 +467,408 @@ class SOM_Channel_Etsy {
 	}
 
 	/**
+	 * Fetch listing + inventory (or fixture when dummy).
+	 *
+	 * @param array<string, mixed> $hint external_listing_id, inventory.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	public static function fetch_listing( array $hint ) {
+		$external_id = isset( $hint['external_listing_id'] ) ? (string) $hint['external_listing_id'] : '';
+
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::load_fixture_listing( $external_id );
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_etsy_listing', __( 'Etsy is not connected.', 'order-machine' ) );
+		}
+
+		$settings = SOM_Settings::get();
+		$api_key  = $settings['etsy']['client_id'];
+		$token    = (string) $creds['access_token'];
+		$shop_id  = ! empty( $creds['shop_id'] ) ? (string) $creds['shop_id'] : '';
+
+		if ( '' === $shop_id ) {
+			$shop_id = self::fetch_shop_id( $token, $api_key );
+			if ( is_wp_error( $shop_id ) ) {
+				return $shop_id;
+			}
+			if ( '' === $shop_id ) {
+				return new WP_Error( 'som_etsy_shop', __( 'Could not resolve Etsy shop ID.', 'order-machine' ) );
+			}
+		}
+
+		$listing = self::etsy_get_json(
+			'https://openapi.etsy.com/v3/application/listings/' . rawurlencode( $external_id ),
+			$token,
+			$api_key
+		);
+		if ( is_wp_error( $listing ) ) {
+			return $listing;
+		}
+
+		$inv = self::etsy_get_json(
+			'https://openapi.etsy.com/v3/application/listings/' . rawurlencode( $external_id ) . '/inventory',
+			$token,
+			$api_key
+		);
+		if ( is_wp_error( $inv ) ) {
+			return $inv;
+		}
+
+		$normalized = self::normalize_etsy_inventory( $external_id, $listing, $inv );
+		unset( $shop_id ); // used for auth path; listing endpoints above are listing-scoped.
+		return $normalized;
+	}
+
+	/**
+	 * Push price / description / inventory to Etsy.
+	 *
+	 * @param array<string, mixed> $payload Normalized listing payload.
+	 * @return true|WP_Error
+	 */
+	public static function push_listing( array $payload ) {
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::store_dummy_push( $payload );
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_etsy_listing', __( 'Etsy is not connected.', 'order-machine' ) );
+		}
+
+		$settings    = SOM_Settings::get();
+		$api_key     = $settings['etsy']['client_id'];
+		$token       = (string) $creds['access_token'];
+		$external_id = isset( $payload['external_listing_id'] ) ? (string) $payload['external_listing_id'] : '';
+		$shop_id     = ! empty( $creds['shop_id'] ) ? (string) $creds['shop_id'] : '';
+
+		if ( '' === $shop_id ) {
+			$shop_id = self::fetch_shop_id( $token, $api_key );
+			if ( is_wp_error( $shop_id ) || '' === $shop_id ) {
+				return is_wp_error( $shop_id ) ? $shop_id : new WP_Error( 'som_etsy_shop', __( 'Could not resolve Etsy shop ID.', 'order-machine' ) );
+			}
+		}
+
+		$patch_body = array();
+		if ( isset( $payload['title'] ) && '' !== (string) $payload['title'] ) {
+			$patch_body['title'] = (string) $payload['title'];
+		}
+		if ( array_key_exists( 'description', $payload ) ) {
+			$patch_body['description'] = (string) $payload['description'];
+		}
+		if ( isset( $payload['price'] ) ) {
+			// Etsy expects price as a string amount in some versions; send float in listing PATCH.
+			$patch_body['price'] = (float) $payload['price'];
+		}
+
+		if ( $patch_body ) {
+			$response = wp_remote_request(
+				'https://openapi.etsy.com/v3/application/shops/' . rawurlencode( $shop_id ) . '/listings/' . rawurlencode( $external_id ),
+				array(
+					'method'  => 'PATCH',
+					'timeout' => 45,
+					'headers' => array(
+						'Authorization' => 'Bearer ' . $token,
+						'x-api-key'     => $api_key,
+						'Content-Type'  => 'application/json',
+						'Accept'        => 'application/json',
+					),
+					'body'    => wp_json_encode( $patch_body ),
+				)
+			);
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+			$code = (int) wp_remote_retrieve_response_code( $response );
+			if ( $code < 200 || $code >= 300 ) {
+				$err     = json_decode( wp_remote_retrieve_body( $response ), true );
+				$message = __( 'Etsy listing update failed.', 'order-machine' );
+				if ( ! empty( $err['error'] ) ) {
+					$message = (string) $err['error'];
+				}
+				return new WP_Error( 'som_etsy_listing', $message );
+			}
+		}
+
+		$current = self::etsy_get_json(
+			'https://openapi.etsy.com/v3/application/listings/' . rawurlencode( $external_id ) . '/inventory',
+			$token,
+			$api_key
+		);
+		if ( is_wp_error( $current ) ) {
+			return $current;
+		}
+
+		$updated = self::apply_qty_to_etsy_inventory( $current, $payload );
+		$response = wp_remote_request(
+			'https://openapi.etsy.com/v3/application/listings/' . rawurlencode( $external_id ) . '/inventory',
+			array(
+				'method'  => 'PUT',
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $token,
+					'x-api-key'     => $api_key,
+					'Content-Type'  => 'application/json',
+					'Accept'        => 'application/json',
+				),
+				'body'    => wp_json_encode( $updated ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			$err     = json_decode( wp_remote_retrieve_body( $response ), true );
+			$message = __( 'Etsy inventory update failed.', 'order-machine' );
+			if ( ! empty( $err['error'] ) ) {
+				$message = (string) $err['error'];
+			}
+			return new WP_Error( 'som_etsy_listing', $message );
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param string               $external_id Listing ID.
+	 * @param array<string, mixed> $listing     Listing GET body.
+	 * @param array<string, mixed> $inv         Inventory GET body.
+	 * @return array<string, mixed>
+	 */
+	private static function normalize_etsy_inventory( $external_id, array $listing, array $inv ) {
+		$products   = isset( $inv['products'] ) && is_array( $inv['products'] ) ? $inv['products'] : array();
+		$variations = array();
+		$total_qty  = 0;
+
+		foreach ( $products as $product ) {
+			if ( ! is_array( $product ) ) {
+				continue;
+			}
+			$options = array();
+			if ( ! empty( $product['property_values'] ) && is_array( $product['property_values'] ) ) {
+				foreach ( $product['property_values'] as $pv ) {
+					if ( ! is_array( $pv ) ) {
+						continue;
+					}
+					$name = isset( $pv['property_name'] ) ? (string) $pv['property_name'] : '';
+					$vals = isset( $pv['values'] ) && is_array( $pv['values'] ) ? $pv['values'] : array();
+					if ( '' !== $name && isset( $vals[0] ) ) {
+						$options[ $name ] = (string) $vals[0];
+					}
+				}
+			}
+
+			$qty = 0;
+			if ( ! empty( $product['offerings'][0]['quantity'] ) ) {
+				$qty = (int) $product['offerings'][0]['quantity'];
+			}
+			$total_qty += $qty;
+
+			$sku = isset( $product['sku'] ) ? (string) $product['sku'] : '';
+			$row = array(
+				'sku'      => $sku,
+				'quantity' => $qty,
+				'options'  => $options,
+			);
+			if ( ! empty( $product['product_id'] ) ) {
+				$row['external_id'] = (string) $product['product_id'];
+			}
+			if ( ! empty( $product['offerings'][0]['price']['amount'] ) && ! empty( $product['offerings'][0]['price']['divisor'] ) ) {
+				$row['price'] = (float) $product['offerings'][0]['price']['amount'] / (float) $product['offerings'][0]['price']['divisor'];
+			}
+			$variations[] = $row;
+		}
+
+		$mode = count( $variations ) > 1 ? 'variations' : 'flat';
+		$price = isset( $listing['price']['amount'], $listing['price']['divisor'] )
+			? ( (float) $listing['price']['amount'] / (float) $listing['price']['divisor'] )
+			: 0.0;
+
+		if ( empty( $variations ) && isset( $listing['quantity'] ) ) {
+			$total_qty = (int) $listing['quantity'];
+		}
+
+		return array(
+			'external_listing_id' => (string) $external_id,
+			'title'               => isset( $listing['title'] ) ? (string) $listing['title'] : '',
+			'description'         => isset( $listing['description'] ) ? (string) $listing['description'] : '',
+			'price'               => $price,
+			'quantity_available'  => $total_qty,
+			'inventory'           => array(
+				'mode'       => $mode,
+				'sku'        => ! empty( $variations[0]['sku'] ) ? $variations[0]['sku'] : '',
+				'variations' => 'variations' === $mode ? $variations : array(),
+			),
+		);
+	}
+
+	/**
+	 * Merge local quantities into an Etsy inventory payload for PUT.
+	 *
+	 * @param array<string, mixed> $current Current inventory JSON.
+	 * @param array<string, mixed> $payload Local listing payload.
+	 * @return array<string, mixed>
+	 */
+	private static function apply_qty_to_etsy_inventory( array $current, array $payload ) {
+		$inventory = isset( $payload['inventory'] ) && is_array( $payload['inventory'] ) ? $payload['inventory'] : array();
+		$mode      = isset( $inventory['mode'] ) ? (string) $inventory['mode'] : 'flat';
+		$products  = isset( $current['products'] ) && is_array( $current['products'] ) ? $current['products'] : array();
+
+		if ( 'variations' === $mode && ! empty( $inventory['variations'] ) && is_array( $inventory['variations'] ) ) {
+			$by_sku = array();
+			$by_id  = array();
+			foreach ( $inventory['variations'] as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				if ( ! empty( $row['sku'] ) ) {
+					$by_sku[ (string) $row['sku'] ] = (int) $row['quantity'];
+				}
+				if ( ! empty( $row['external_id'] ) ) {
+					$by_id[ (string) $row['external_id'] ] = (int) $row['quantity'];
+				}
+			}
+
+			foreach ( $products as $i => $product ) {
+				if ( ! is_array( $product ) ) {
+					continue;
+				}
+				$qty = null;
+				$pid = isset( $product['product_id'] ) ? (string) $product['product_id'] : '';
+				$sku = isset( $product['sku'] ) ? (string) $product['sku'] : '';
+				if ( '' !== $pid && array_key_exists( $pid, $by_id ) ) {
+					$qty = $by_id[ $pid ];
+				} elseif ( '' !== $sku && array_key_exists( $sku, $by_sku ) ) {
+					$qty = $by_sku[ $sku ];
+				}
+				if ( null === $qty ) {
+					continue;
+				}
+				if ( empty( $products[ $i ]['offerings'][0] ) || ! is_array( $products[ $i ]['offerings'][0] ) ) {
+					$products[ $i ]['offerings'][0] = array();
+				}
+				$products[ $i ]['offerings'][0]['quantity'] = max( 0, (int) $qty );
+			}
+		} else {
+			$qty = isset( $payload['quantity_available'] ) ? (int) $payload['quantity_available'] : 0;
+			foreach ( $products as $i => $product ) {
+				if ( empty( $products[ $i ]['offerings'][0] ) || ! is_array( $products[ $i ]['offerings'][0] ) ) {
+					$products[ $i ]['offerings'][0] = array();
+				}
+				$products[ $i ]['offerings'][0]['quantity'] = max( 0, $qty );
+			}
+		}
+
+		$current['products'] = $products;
+		return $current;
+	}
+
+	/**
+	 * @param string $url     Absolute URL.
+	 * @param string $token   Access token.
+	 * @param string $api_key x-api-key.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	private static function etsy_get_json( $url, $token, $api_key ) {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $token,
+					'x-api-key'     => $api_key,
+					'Accept'        => 'application/json',
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $code < 200 || $code >= 300 || ! is_array( $body ) ) {
+			$message = __( 'Etsy listing request failed.', 'order-machine' );
+			if ( ! empty( $body['error'] ) ) {
+				$message = (string) $body['error'];
+			}
+			return new WP_Error( 'som_etsy_listing', $message );
+		}
+
+		return $body;
+	}
+
+	/**
+	 * @param string $external_id Listing ID.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	private static function load_fixture_listing( $external_id ) {
+		$pushed = get_option( 'som_dummy_etsy_listings', array() );
+		if ( is_array( $pushed ) && isset( $pushed[ $external_id ] ) && is_array( $pushed[ $external_id ] ) ) {
+			return $pushed[ $external_id ];
+		}
+
+		$path = SOM_PLUGIN_DIR . 'tests/fixtures/etsy-listings.json';
+		if ( ! is_readable( $path ) ) {
+			return new WP_Error( 'som_etsy_fixture', __( 'Etsy listing fixture file missing.', 'order-machine' ) );
+		}
+
+		$data = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local fixture
+		if ( ! is_array( $data ) || empty( $data['listings'] ) || ! is_array( $data['listings'] ) ) {
+			return new WP_Error( 'som_etsy_fixture', __( 'Etsy listing fixture is invalid.', 'order-machine' ) );
+		}
+
+		foreach ( $data['listings'] as $row ) {
+			if ( is_array( $row ) && isset( $row['external_listing_id'] ) && (string) $row['external_listing_id'] === (string) $external_id ) {
+				return $row;
+			}
+		}
+
+		return new WP_Error(
+			'som_etsy_fixture',
+			sprintf(
+				/* translators: %s: external listing id */
+				__( 'No Etsy fixture for listing %s.', 'order-machine' ),
+				$external_id
+			)
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $payload Listing payload.
+	 * @return true
+	 */
+	private static function store_dummy_push( array $payload ) {
+		$key    = isset( $payload['external_listing_id'] ) ? (string) $payload['external_listing_id'] : '';
+		$stored = get_option( 'som_dummy_etsy_listings', array() );
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+		if ( '' !== $key ) {
+			$stored[ $key ] = $payload;
+			update_option( 'som_dummy_etsy_listings', $stored, false );
+		}
+		return true;
+	}
+
+	/**
 	 * @param array<string, mixed> $body Token JSON.
 	 * @return array<string, mixed>
 	 */

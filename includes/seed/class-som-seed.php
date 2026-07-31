@@ -22,6 +22,9 @@ class SOM_Seed {
 	/** Etsy listing_id in etsy-orders.json (matched). */
 	const ETSY_LISTING_ID = '220000000001';
 
+	/** eBay multi-variation sample listing (Sprint 10 fixtures). */
+	const EBAY_VARIATION_LISTING_ID = '110000000002';
+
 	/**
 	 * Ensure channel rows + dummy encrypted credentials (idempotent).
 	 *
@@ -130,9 +133,109 @@ class SOM_Seed {
 			return;
 		}
 
-		self::ensure_listing( $product_id, 'ebay', self::EBAY_LISTING_ID, 12.99 );
-		self::ensure_listing( $product_id, 'ebay', self::SAMPLE_PRODUCT_SKU, 12.99 );
-		self::ensure_listing( $product_id, 'etsy', self::ETSY_LISTING_ID, 14.99 );
+		self::ensure_listing(
+			$product_id,
+			'ebay',
+			self::EBAY_LISTING_ID,
+			12.99,
+			array(
+				'title'       => 'Bin Sticker Set — 100x140mm 4-pack',
+				'description' => 'Waterproof vinyl bin stickers with laminate. Set of 4.',
+				'inventory'   => array(
+					'mode'       => 'flat',
+					'sku'        => self::SAMPLE_PRODUCT_SKU,
+					'variations' => array(),
+				),
+			)
+		);
+		self::ensure_listing(
+			$product_id,
+			'ebay',
+			self::SAMPLE_PRODUCT_SKU,
+			12.99,
+			array(
+				'title'       => 'Bin Sticker Set — 100x140mm 4-pack (SKU key)',
+				'description' => 'Same listing keyed by SKU for order matching.',
+				'inventory'   => array(
+					'mode'       => 'flat',
+					'sku'        => self::SAMPLE_PRODUCT_SKU,
+					'variations' => array(),
+				),
+			)
+		);
+		self::ensure_listing(
+			$product_id,
+			'ebay',
+			self::EBAY_VARIATION_LISTING_ID,
+			13.50,
+			array(
+				'title'               => 'Bin Stickers — Colour variations',
+				'description'         => 'Multi-SKU eBay inventory sample.',
+				'quantity_available'  => 18,
+				'inventory'           => array(
+					'mode'       => 'variations',
+					'sku'        => 'BIN-VAR-NAVY',
+					'variations' => array(
+						array(
+							'sku'      => 'BIN-VAR-NAVY',
+							'quantity' => 8,
+							'options'  => array( 'Colour' => 'Navy' ),
+							'price'    => 13.50,
+						),
+						array(
+							'sku'      => 'BIN-VAR-SAGE',
+							'quantity' => 6,
+							'options'  => array( 'Colour' => 'Sage' ),
+							'price'    => 13.50,
+						),
+						array(
+							'sku'      => 'BIN-VAR-TERRACOTTA',
+							'quantity' => 4,
+							'options'  => array( 'Colour' => 'Terracotta' ),
+							'price'    => 13.50,
+						),
+					),
+				),
+			)
+		);
+		self::ensure_listing(
+			$product_id,
+			'etsy',
+			self::ETSY_LISTING_ID,
+			14.99,
+			array(
+				'title'              => 'Personalised Bin Sticker Set',
+				'description'        => 'Etsy listing with size variations.',
+				'quantity_available' => 15,
+				'inventory'          => array(
+					'mode'       => 'variations',
+					'sku'        => '',
+					'variations' => array(
+						array(
+							'sku'         => 'ETSY-BIN-S',
+							'quantity'    => 5,
+							'options'     => array( 'Size' => 'Small' ),
+							'external_id' => '9001',
+							'price'       => 14.99,
+						),
+						array(
+							'sku'         => 'ETSY-BIN-M',
+							'quantity'    => 7,
+							'options'     => array( 'Size' => 'Medium' ),
+							'external_id' => '9002',
+							'price'       => 14.99,
+						),
+						array(
+							'sku'         => 'ETSY-BIN-L',
+							'quantity'    => 3,
+							'options'     => array( 'Size' => 'Large' ),
+							'external_id' => '9003',
+							'price'       => 16.99,
+						),
+					),
+				),
+			)
+		);
 
 		self::maybe_seed_materials( $product_id );
 		self::maybe_seed_workflow( $product_id );
@@ -374,13 +477,14 @@ class SOM_Seed {
 	}
 
 	/**
-	 * @param int    $product_id Product PK.
-	 * @param string $channel_slug ebay|etsy.
-	 * @param string $external_id  Listing / SKU key stored in listings.
-	 * @param float  $price        Sample price.
+	 * @param int                  $product_id   Product PK.
+	 * @param string               $channel_slug ebay|etsy.
+	 * @param string               $external_id  Listing / SKU key stored in listings.
+	 * @param float                $price        Sample price.
+	 * @param array<string, mixed> $extra        Optional title, description, quantity_available, inventory.
 	 * @return void
 	 */
-	private static function ensure_listing( $product_id, $channel_slug, $external_id, $price ) {
+	private static function ensure_listing( $product_id, $channel_slug, $external_id, $price, array $extra = array() ) {
 		global $wpdb;
 
 		$channel = SOM_Channels::get_by_slug( $channel_slug );
@@ -390,28 +494,53 @@ class SOM_Seed {
 
 		$listings   = SOM_DB::table( 'listings' );
 		$channel_id = (int) $channel->id;
+		$inventory  = isset( $extra['inventory'] ) && is_array( $extra['inventory'] )
+			? SOM_Listings::sanitize_inventory( $extra['inventory'] )
+			: array(
+				'mode'       => 'flat',
+				'sku'        => '',
+				'variations' => array(),
+			);
+		$qty = isset( $extra['quantity_available'] )
+			? (int) $extra['quantity_available']
+			: SOM_Listings::quantity_from_inventory( $inventory, 10 );
+		$title       = isset( $extra['title'] ) ? sanitize_text_field( (string) $extra['title'] ) : null;
+		$description = isset( $extra['description'] ) ? (string) $extra['description'] : null;
 
 		$existing = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id, product_id FROM {$listings} WHERE channel_id = %d AND external_listing_id = %s LIMIT 1",
+				"SELECT id, product_id, inventory_json FROM {$listings} WHERE channel_id = %d AND external_listing_id = %s LIMIT 1",
 				$channel_id,
 				$external_id
 			)
 		);
 
 		if ( $existing ) {
+			$fields  = array( 'updated_at' => current_time( 'mysql', true ) );
+			$formats = array( '%s' );
+
 			if ( (int) $existing->product_id !== (int) $product_id ) {
-				$wpdb->update(
-					$listings,
-					array(
-						'product_id' => (int) $product_id,
-						'updated_at' => current_time( 'mysql', true ),
-					),
-					array( 'id' => (int) $existing->id ),
-					array( '%d', '%s' ),
-					array( '%d' )
-				);
+				$fields['product_id'] = (int) $product_id;
+				$formats[]            = '%d';
 			}
+
+			// Backfill Sprint 10 columns when still empty (idempotent enrich).
+			if ( empty( $existing->inventory_json ) && ! empty( $extra ) ) {
+				$fields['title']              = $title;
+				$fields['description']        = $description;
+				$fields['price']              = $price;
+				$fields['quantity_available'] = $qty;
+				$fields['inventory_json']     = wp_json_encode( $inventory );
+				$formats                      = array_merge( $formats, array( '%s', '%s', '%f', '%d', '%s' ) );
+			}
+
+			$wpdb->update(
+				$listings,
+				$fields,
+				array( 'id' => (int) $existing->id ),
+				$formats,
+				array( '%d' )
+			);
 			return;
 		}
 
@@ -423,13 +552,16 @@ class SOM_Seed {
 				'product_id'          => $product_id,
 				'channel_id'          => $channel_id,
 				'external_listing_id' => $external_id,
+				'title'               => $title,
+				'description'         => $description,
 				'price'               => $price,
-				'quantity_available'  => 10,
+				'quantity_available'  => $qty,
+				'inventory_json'      => wp_json_encode( $inventory ),
 				'last_synced_at'      => null,
 				'created_at'          => $now,
 				'updated_at'          => $now,
 			),
-			array( '%d', '%d', '%s', '%f', '%d', '%s', '%s', '%s' )
+			array( '%d', '%d', '%s', '%s', '%s', '%f', '%d', '%s', '%s', '%s', '%s' )
 		);
 		$wpdb->suppress_errors( false );
 	}

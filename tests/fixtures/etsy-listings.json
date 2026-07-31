@@ -1,0 +1,38 @@
+{
+  "listings": [
+    {
+      "external_listing_id": "220000000001",
+      "title": "Personalised Bin Sticker Set",
+      "description": "Etsy listing with size variations (fixture).",
+      "price": 14.99,
+      "quantity_available": 15,
+      "inventory": {
+        "mode": "variations",
+        "sku": "",
+        "variations": [
+          {
+            "sku": "ETSY-BIN-S",
+            "quantity": 5,
+            "options": { "Size": "Small" },
+            "external_id": "9001",
+            "price": 14.99
+          },
+          {
+            "sku": "ETSY-BIN-M",
+            "quantity": 7,
+            "options": { "Size": "Medium" },
+            "external_id": "9002",
+            "price": 14.99
+          },
+          {
+            "sku": "ETSY-BIN-L",
+            "quantity": 3,
+            "options": { "Size": "Large" },
+            "external_id": "9003",
+            "price": 16.99
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.2.0';
+	const DB_VERSION = '1.3.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -98,8 +98,11 @@ class SOM_DB {
 			product_id bigint(20) unsigned NOT NULL,
 			channel_id bigint(20) unsigned NOT NULL,
 			external_listing_id varchar(100) NOT NULL,
+			title varchar(255) NULL,
+			description text NULL,
 			price decimal(10,2) NOT NULL DEFAULT 0.00,
 			quantity_available int(11) NOT NULL DEFAULT 0,
+			inventory_json longtext NULL,
 			last_synced_at datetime NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,

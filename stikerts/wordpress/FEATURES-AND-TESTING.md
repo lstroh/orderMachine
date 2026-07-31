@@ -20,7 +20,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Workflow engine (manual confirm + timers) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Not yet (config UI only) |
-| Listings push, REST API, MCP | Not yet |
+| Listings push, REST API, MCP | Listings done (Sprint 10); REST/MCP not yet |
 
 **Recommended review path:** use **wp-env** for a clean, repeatable fixture walkthrough, then spot-check the same screens on your **Local** `ordermachine` site if you use that day-to-day.
 
@@ -77,6 +77,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, material recipe |
 | **Materials** | `som-materials` | Stock levels, low-stock, manual adjustments |
 | **Workflows** | `som-workflows` | Templates + step editor |
+| **Listings** | `som-listings` | Cached marketplace listings; refresh + push price/qty/description |
 | **Settings** | `som-settings` | Channels, intervals, Sync now, Import history |
 
 ---
@@ -164,7 +165,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Create / edit name, SKU, active flag
 - Assign a **workflow template**
 - Edit the **material recipe** (material + quantity per unit)
-- See linked listings (read-only; listing rows come from seed or DB — no full listings admin yet)
+- See linked listings (links through to **Listings** admin)
 
 Deactivate rather than hard-delete (soft inactive).
 
@@ -247,8 +248,8 @@ Use this so review time isn’t spent hunting missing screens:
 
 | Planned later | Sprint |
 |---|---|
-| Execute local scripts / n8n / API steps + retries + REST callback | 9 |
-| Listings admin + push price/qty to channels | 10 |
+| Execute local scripts / n8n / API steps + retries + REST callback | 9 (done) |
+| Listings admin + push price/qty/description to channels (incl. variations) | 10 (done) |
 | External `POST /som/v1/orders`, advance-step, MCP/Abilities | 11–12 |
 | Cancel → material stock reversal | After D3/A3 (tied to Phase 8 remainder) |
 

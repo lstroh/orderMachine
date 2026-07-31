@@ -18,7 +18,8 @@
 | 7 | Workflow engine (manual + timer) | Done | Verified on wp-env (assign, Mark done, timer unlock, script pass-through) |
 | 8 | Material auto-decrement | Done (scoped) | Decrement + UI shipped; cancel reversal deferred (D3/A3) |
 | 9 | Script / API / n8n steps | Done | Verified on wp-env (dispatch, retries, callback REST, thank-you fails soft without Python) |
-| 10+ | Later phases | Not started | Listings / REST orders / MCP |
+| 10 | Listings view + price/qty push | Done | Verified on wp-env (refresh/push dummy, variations, description) |
+| 11+ | Later phases | Not started | External REST orders / MCP |
 
 ---
 
@@ -780,6 +781,103 @@ Orders detail: script error + Retry now on failed Thank-you step
 
 ---
 
+## Sprint 10 — Listings view + price/qty push
+
+- **Status:** Done — all Sprint-Plan § Sprint 10 file and done-when items complete (plus agreed extras: description, Refresh, eBay+Etsy variations)
+- **Roadmap phase:** 10
+- **Completed:** 2026-07-31
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.10.0`
+- **DB version:** `1.3.0`
+
+### Plan text (`Sprint-Plan.md`)
+
+> **Files:** `admin/views/listings.php`; Channel clients: inventory GET/PUT / Etsy PATCH  
+> **Done when:** Can view cached listings and push price/quantity updates to connected channels.  
+> **Open items first:** A4 (eBay SKUs), A5 (Etsy variations).
+
+### Plan requirements review
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `admin/views/listings.php` | **Done** | List view; edit/create in `listing-edit.php` |
+| Channel clients: eBay inventory GET/PUT | **Done** | `SOM_Channel_Ebay::fetch_listing` / `push_listing` (Inventory item + Offer price) |
+| Channel clients: Etsy inventory GET/PUT + listing PATCH | **Done** | `SOM_Channel_Etsy::fetch_listing` / `push_listing` |
+| **Done when:** View cached listings | **Pass** | Admin → Listings; channel filter + search |
+| **Done when:** Push price/quantity to connected channels | **Pass** | Dummy path verified; live path coded, apps not ready |
+| Open item **A4** (eBay SKUs) | **Resolved for build** | No live listings yet; fixtures + primary/variation SKUs on inventory; live eBay push still needs SKUs when listings exist |
+| Open item **A5** (Etsy variations) | **Resolved for build** | Per-variation qty via `inventory_json`; eBay multi-SKU variations also in scope (user choice) |
+
+### Extra (agreed during Sprint 10 kickoff, beyond plan file list)
+
+| Item | Notes |
+|---|---|
+| Description (+ title) | Schema columns + edit UI + push |
+| Refresh from channel | GET → update local cache on listing edit |
+| Variations UI | Flat vs variations mode; options as `Colour=Navy; Size=Large` |
+| Manual listing map create | Product + channel + external ID |
+| Dummy simulate | Fixtures + option store so Refresh returns last Push |
+| `includes/class-som-listings.php` | Shared service (query/CRUD/refresh/push) |
+
+### Decisions applied during build (user answers)
+
+| Topic | Decision |
+|---|---|
+| A4 | No live listings — fixture-first; SKUs required before real eBay Inventory push |
+| A5 | Both eBay multi-variation and Etsy variations |
+| Description | Option **b** — add to schema and push |
+| Refresh | Include Refresh from channel |
+| Dummy path | Same as order sync (no live HTTP) |
+| Material ↔ listing qty | No auto-link for now |
+| Developer apps | Not ready — ship dummy path |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-db.php` | `title`, `description`, `inventory_json` on listings; DB `1.3.0` |
+| `includes/class-som-listings.php` | Query/CRUD, refresh, push, inventory helpers |
+| `includes/class-som-channel-ebay.php` | Inventory GET/PUT + offer price; dummy fixtures |
+| `includes/class-som-channel-etsy.php` | Listing GET + inventory GET/PUT + PATCH; dummy fixtures |
+| `admin/views/listings.php` | Listings table (plan file) |
+| `admin/views/listing-edit.php` | Map create/edit, variations, Refresh/Push |
+| `admin/class-som-admin-menu.php` | Listings submenu + save/refresh/push handlers |
+| `includes/seed/class-som-seed.php` | Flat + eBay/Etsy variation seed rows |
+| `tests/fixtures/ebay-listings.json` | Flat + multi-SKU fixtures |
+| `tests/fixtures/etsy-listings.json` | Variation fixture |
+| `tests/sprint10-smoke.php` | Refresh/push/variation smoke |
+| `admin/views/product-edit.php` | Links through to Listings admin |
+| `orderMachine.php` | Bootstrap `SOM_Listings`; v0.10.0 |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| Can view cached listings | **Pass** — 4 seed rows (3 eBay + 1 Etsy) |
+| Can push price/quantity updates to connected channels | **Pass** — dummy simulate; live HTTP untested (apps deferred) |
+
+**Plan scope:** All Sprint 10 file and done-when items are complete. Description, Refresh, and dual-channel variations were explicit user expansions, not silent scope creep. Live OAuth push remains a follow-up when developer apps exist.
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp option get som_db_version
+# 1.3.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint10-smoke.php
+# PASS — refresh/push; etsy qty 19 after variation edit
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-listings — `admin` / `password`
+
+### Open items / notes for later
+
+- Live OAuth + real listing GET/PUT once developer apps exist on Local.
+- eBay live push requires SKUs on inventory items / published offers.
+- D3/A3 cancel stock reversal still deferred (Sprint 8 scoped).
+- Sprint 11 — external `POST /orders`, `advance-step`, MCP.
+
+---
+
 ## Next
 
-**Sprint 10** — Listings view + price/qty push.
+**Sprint 11** — External order REST + MCP.

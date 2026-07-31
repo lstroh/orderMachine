@@ -25,6 +25,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_products_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
 	}
 
 	/**
@@ -81,6 +82,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Listings', 'order-machine' ),
+			__( 'Listings', 'order-machine' ),
+			'manage_options',
+			'som-listings',
+			array( __CLASS__, 'render_listings' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Settings', 'order-machine' ),
 			__( 'Settings', 'order-machine' ),
 			'manage_options',
@@ -101,7 +111,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-workflows' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-workflows', 'som-listings' ), true ) ) {
 			return;
 		}
 
@@ -112,7 +122,7 @@ class SOM_Admin_Menu {
 			SOM_VERSION
 		);
 
-		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-workflows' ), true ) ) {
+		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-workflows', 'som-listings' ), true ) ) {
 			wp_enqueue_script(
 				'som-admin',
 				SOM_PLUGIN_URL . 'admin/assets/js/admin.js',
@@ -307,6 +317,135 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/workflow-templates.php';
+	}
+
+	/**
+	 * Listings list or edit.
+	 *
+	 * @return void
+	 */
+	public static function render_listings() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$listing_id = isset( $_GET['listing_id'] ) ? sanitize_text_field( wp_unslash( $_GET['listing_id'] ) ) : '';
+
+		if ( 'new' === $listing_id ) {
+			$is_new  = true;
+			$listing = null;
+			require SOM_PLUGIN_DIR . 'admin/views/listing-edit.php';
+			return;
+		}
+
+		if ( '' !== $listing_id && is_numeric( $listing_id ) && (int) $listing_id > 0 ) {
+			$listing = SOM_Listings::get( (int) $listing_id );
+			if ( ! $listing ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Listing not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Listings::list_url() ) . '">';
+				echo esc_html__( 'Back to listings', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/listing-edit.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/listings.php';
+	}
+
+	/**
+	 * Save / refresh / push listings.
+	 *
+	 * @return void
+	 */
+	public static function handle_listings_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-listings' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_refresh_listing'] ) || isset( $_POST['som_push_listing'] ) ) {
+			check_admin_referer( 'som_listing_channel', 'som_listing_nonce' );
+			$listing_id = isset( $_POST['listing_id'] ) ? (int) $_POST['listing_id'] : 0;
+
+			if ( isset( $_POST['som_refresh_listing'] ) ) {
+				$result = SOM_Listings::refresh( $listing_id );
+				if ( is_wp_error( $result ) ) {
+					self::flash_notice( $result->get_error_message(), 'error', 'som_listing_error' );
+				} else {
+					self::flash_notice( __( 'Listing refreshed from channel.', 'order-machine' ), 'success', 'som_listing_refreshed' );
+				}
+			} else {
+				$result = SOM_Listings::push( $listing_id );
+				if ( is_wp_error( $result ) ) {
+					self::flash_notice( $result->get_error_message(), 'error', 'som_listing_error' );
+				} else {
+					self::flash_notice( __( 'Listing pushed to channel.', 'order-machine' ), 'success', 'som_listing_pushed' );
+				}
+			}
+
+			wp_safe_redirect( SOM_Listings::detail_url( $listing_id ) );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_listing'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_listing', 'som_listing_nonce' );
+
+		$listing_id = isset( $_POST['listing_id'] ) ? (int) $_POST['listing_id'] : 0;
+		$mode       = isset( $_POST['inventory_mode'] ) ? sanitize_key( wp_unslash( $_POST['inventory_mode'] ) ) : 'flat';
+		$sku        = isset( $_POST['primary_sku'] ) ? sanitize_text_field( wp_unslash( $_POST['primary_sku'] ) ) : '';
+		$inventory  = SOM_Listings::inventory_from_post(
+			$mode,
+			$sku,
+			array(
+				'som_var_sku'     => isset( $_POST['som_var_sku'] ) ? wp_unslash( $_POST['som_var_sku'] ) : array(), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized in inventory_from_post
+				'som_var_qty'     => isset( $_POST['som_var_qty'] ) ? wp_unslash( $_POST['som_var_qty'] ) : array(), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+				'som_var_options' => isset( $_POST['som_var_options'] ) ? wp_unslash( $_POST['som_var_options'] ) : array(), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			)
+		);
+
+		$data = array(
+			'product_id'         => isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0,
+			'title'              => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+			'description'        => isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( $_POST['description'] ) ) : '',
+			'price'              => isset( $_POST['price'] ) ? (float) wp_unslash( $_POST['price'] ) : 0.0,
+			'quantity_available' => isset( $_POST['quantity_available'] ) ? (int) $_POST['quantity_available'] : 0,
+			'inventory'          => $inventory,
+		);
+
+		if ( $listing_id < 1 ) {
+			$data['channel_slug']         = isset( $_POST['channel_slug'] ) ? sanitize_key( wp_unslash( $_POST['channel_slug'] ) ) : '';
+			$data['external_listing_id']  = isset( $_POST['external_listing_id'] ) ? sanitize_text_field( wp_unslash( $_POST['external_listing_id'] ) ) : '';
+			$result                       = SOM_Listings::create( $data );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_listing_error' );
+				wp_safe_redirect( SOM_Listings::detail_url( 'new' ) );
+				exit;
+			}
+			self::flash_notice( __( 'Listing map created.', 'order-machine' ), 'success', 'som_listing_saved' );
+			wp_safe_redirect( SOM_Listings::detail_url( (int) $result ) );
+			exit;
+		}
+
+		$result = SOM_Listings::update_local( $listing_id, $data );
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_listing_error' );
+		} else {
+			self::flash_notice( __( 'Listing saved locally.', 'order-machine' ), 'success', 'som_listing_saved' );
+		}
+
+		wp_safe_redirect( SOM_Listings::detail_url( $listing_id ) );
+		exit;
 	}
 
 	/**

@@ -189,8 +189,72 @@
 		}
 	}
 
+	function initListingEditor() {
+		var modeSelect = document.getElementById( 'som_inventory_mode' );
+		var panel = document.querySelector( '.som-variations-panel' );
+		var flatRow = document.querySelector( '.som-flat-qty-row' );
+		var tbody = document.getElementById( 'som-variations-body' );
+		var template = document.getElementById( 'som-variation-row-template' );
+		var addButton = document.getElementById( 'som-variation-add' );
+
+		function syncMode() {
+			if ( ! modeSelect ) {
+				return;
+			}
+			var isVariations = modeSelect.value === 'variations';
+			if ( panel ) {
+				panel.hidden = ! isVariations;
+			}
+			if ( flatRow ) {
+				flatRow.hidden = isVariations;
+			}
+		}
+
+		function bindRemove( scope ) {
+			( scope || document ).querySelectorAll( '.som-variation-remove' ).forEach( function ( button ) {
+				if ( button.dataset.bound ) {
+					return;
+				}
+				button.dataset.bound = '1';
+				button.addEventListener( 'click', function () {
+					var row = button.closest( 'tr' );
+					if ( ! row || ! tbody ) {
+						return;
+					}
+					if ( tbody.querySelectorAll( '.som-variation-row' ).length > 1 ) {
+						row.remove();
+					} else {
+						row.querySelectorAll( 'input' ).forEach( function ( field ) {
+							field.value = field.type === 'number' ? '0' : '';
+						} );
+					}
+				} );
+			} );
+		}
+
+		if ( modeSelect ) {
+			modeSelect.addEventListener( 'change', syncMode );
+			syncMode();
+		}
+
+		if ( addButton && template && tbody ) {
+			addButton.addEventListener( 'click', function () {
+				var wrapper = document.createElement( 'tbody' );
+				wrapper.innerHTML = template.innerHTML.trim();
+				var row = wrapper.firstElementChild;
+				if ( row ) {
+					tbody.appendChild( row );
+					bindRemove( row );
+				}
+			} );
+		}
+
+		bindRemove( tbody );
+	}
+
 	initRecipeEditor();
 	initWorkflowEditor();
+	initListingEditor();
 	initCountdowns();
 
 	function initCountdowns() {

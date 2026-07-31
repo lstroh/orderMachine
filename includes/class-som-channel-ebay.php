@@ -447,6 +447,459 @@ class SOM_Channel_Ebay {
 	}
 
 	/**
+	 * Fetch listing inventory / offer data (or fixture when dummy).
+	 *
+	 * @param array<string, mixed> $hint external_listing_id, inventory, product_sku.
+	 * @return array<string, mixed>|WP_Error Normalized listing payload.
+	 */
+	public static function fetch_listing( array $hint ) {
+		$external_id = isset( $hint['external_listing_id'] ) ? (string) $hint['external_listing_id'] : '';
+
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::load_fixture_listing( $external_id );
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_ebay_listing', __( 'eBay is not connected.', 'order-machine' ) );
+		}
+
+		$inventory = isset( $hint['inventory'] ) && is_array( $hint['inventory'] ) ? $hint['inventory'] : array();
+		$skus      = self::skus_from_hint( $hint );
+
+		if ( empty( $skus ) ) {
+			return new WP_Error(
+				'som_ebay_sku',
+				__( 'eBay Inventory API needs a SKU. Set a primary SKU or variation SKUs on this listing.', 'order-machine' )
+			);
+		}
+
+		$base    = self::api_base( $creds );
+		$token   = (string) $creds['access_token'];
+		$variations = array();
+		$title      = '';
+		$description = '';
+		$price       = 0.0;
+		$total_qty   = 0;
+
+		foreach ( $skus as $sku ) {
+			$item = self::api_get_json( $base . '/sell/inventory/v1/inventory_item/' . rawurlencode( $sku ), $token );
+			if ( is_wp_error( $item ) ) {
+				return $item;
+			}
+
+			$qty = 0;
+			if ( isset( $item['availability']['shipToLocationAvailability']['quantity'] ) ) {
+				$qty = (int) $item['availability']['shipToLocationAvailability']['quantity'];
+			}
+			$total_qty += $qty;
+
+			$options = array();
+			if ( ! empty( $item['product']['aspects'] ) && is_array( $item['product']['aspects'] ) ) {
+				foreach ( $item['product']['aspects'] as $aspect_name => $values ) {
+					if ( is_array( $values ) && isset( $values[0] ) ) {
+						$options[ (string) $aspect_name ] = (string) $values[0];
+					} elseif ( is_string( $values ) ) {
+						$options[ (string) $aspect_name ] = $values;
+					}
+				}
+			}
+
+			if ( '' === $title && ! empty( $item['product']['title'] ) ) {
+				$title = (string) $item['product']['title'];
+			}
+			if ( '' === $description && ! empty( $item['product']['description'] ) ) {
+				$description = (string) $item['product']['description'];
+			}
+
+			$variations[] = array(
+				'sku'      => $sku,
+				'quantity' => $qty,
+				'options'  => $options,
+			);
+
+			$offer_price = self::fetch_offer_price( $base, $token, $sku );
+			if ( null !== $offer_price ) {
+				$price = $offer_price;
+				$variations[ count( $variations ) - 1 ]['price'] = $offer_price;
+			}
+		}
+
+		$mode = ( count( $variations ) > 1 || ( ! empty( $inventory['mode'] ) && 'variations' === $inventory['mode'] ) )
+			? 'variations'
+			: 'flat';
+
+		return array(
+			'external_listing_id' => $external_id,
+			'title'               => $title,
+			'description'         => $description,
+			'price'               => $price,
+			'quantity_available'  => $total_qty,
+			'inventory'           => array(
+				'mode'       => $mode,
+				'sku'        => $skus[0],
+				'variations' => 'variations' === $mode ? $variations : array(),
+			),
+		);
+	}
+
+	/**
+	 * Push price / quantity / description to eBay Inventory + Offer APIs.
+	 *
+	 * @param array<string, mixed> $payload Normalized listing payload.
+	 * @return true|WP_Error
+	 */
+	public static function push_listing( array $payload ) {
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::store_dummy_push( $payload );
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_ebay_listing', __( 'eBay is not connected.', 'order-machine' ) );
+		}
+
+		$inventory = isset( $payload['inventory'] ) && is_array( $payload['inventory'] ) ? $payload['inventory'] : array();
+		$mode      = isset( $inventory['mode'] ) ? (string) $inventory['mode'] : 'flat';
+		$base      = self::api_base( $creds );
+		$token     = (string) $creds['access_token'];
+
+		if ( 'variations' === $mode && ! empty( $inventory['variations'] ) && is_array( $inventory['variations'] ) ) {
+			foreach ( $inventory['variations'] as $row ) {
+				if ( ! is_array( $row ) || empty( $row['sku'] ) ) {
+					continue;
+				}
+				$sku  = (string) $row['sku'];
+				$qty  = isset( $row['quantity'] ) ? (int) $row['quantity'] : 0;
+				$put  = self::put_inventory_quantity( $base, $token, $sku, $qty, $payload );
+				if ( is_wp_error( $put ) ) {
+					return $put;
+				}
+				$var_price = isset( $row['price'] ) ? (float) $row['price'] : (float) $payload['price'];
+				$offer     = self::update_offer_price( $base, $token, $sku, $var_price );
+				if ( is_wp_error( $offer ) ) {
+					return $offer;
+				}
+			}
+			return true;
+		}
+
+		$sku = ! empty( $inventory['sku'] ) ? (string) $inventory['sku'] : '';
+		if ( '' === $sku && ! empty( $payload['product_sku'] ) ) {
+			$sku = (string) $payload['product_sku'];
+		}
+		if ( '' === $sku ) {
+			$sku = (string) $payload['external_listing_id'];
+		}
+		if ( '' === $sku ) {
+			return new WP_Error( 'som_ebay_sku', __( 'eBay push needs a SKU on this listing.', 'order-machine' ) );
+		}
+
+		$qty = isset( $payload['quantity_available'] ) ? (int) $payload['quantity_available'] : 0;
+		$put = self::put_inventory_quantity( $base, $token, $sku, $qty, $payload );
+		if ( is_wp_error( $put ) ) {
+			return $put;
+		}
+
+		return self::update_offer_price( $base, $token, $sku, (float) $payload['price'] );
+	}
+
+	/**
+	 * @param array<string, mixed> $hint Hint with inventory / product_sku.
+	 * @return string[]
+	 */
+	private static function skus_from_hint( array $hint ) {
+		$skus      = array();
+		$inventory = isset( $hint['inventory'] ) && is_array( $hint['inventory'] ) ? $hint['inventory'] : array();
+
+		if ( ! empty( $inventory['variations'] ) && is_array( $inventory['variations'] ) ) {
+			foreach ( $inventory['variations'] as $row ) {
+				if ( is_array( $row ) && ! empty( $row['sku'] ) ) {
+					$skus[] = (string) $row['sku'];
+				}
+			}
+		}
+		if ( empty( $skus ) && ! empty( $inventory['sku'] ) ) {
+			$skus[] = (string) $inventory['sku'];
+		}
+		if ( empty( $skus ) && ! empty( $hint['product_sku'] ) ) {
+			$skus[] = (string) $hint['product_sku'];
+		}
+		if ( empty( $skus ) && ! empty( $hint['external_listing_id'] ) ) {
+			// Seed maps SKU as external_listing_id for order matching.
+			$skus[] = (string) $hint['external_listing_id'];
+		}
+
+		return array_values( array_unique( array_filter( $skus ) ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $creds Credentials.
+	 * @return string
+	 */
+	private static function api_base( array $creds ) {
+		$settings = SOM_Settings::get();
+		$env      = $creds['environment'] ?? $settings['ebay']['environment'];
+		return ( 'production' === $env ) ? 'https://api.ebay.com' : 'https://api.sandbox.ebay.com';
+	}
+
+	/**
+	 * @param string $url   Absolute URL.
+	 * @param string $token Access token.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	private static function api_get_json( $url, $token ) {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization'     => 'Bearer ' . $token,
+					'Content-Type'      => 'application/json',
+					'Accept'            => 'application/json',
+					'Content-Language'  => 'en-GB',
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $code < 200 || $code >= 300 || ! is_array( $body ) ) {
+			$message = __( 'eBay inventory request failed.', 'order-machine' );
+			if ( ! empty( $body['errors'][0]['message'] ) ) {
+				$message = (string) $body['errors'][0]['message'];
+			}
+			return new WP_Error( 'som_ebay_listing', $message );
+		}
+
+		return $body;
+	}
+
+	/**
+	 * @param string               $base    API host.
+	 * @param string               $token   Access token.
+	 * @param string               $sku     Inventory SKU.
+	 * @param int                  $qty     Quantity.
+	 * @param array<string, mixed> $payload Full payload for title/description merge.
+	 * @return true|WP_Error
+	 */
+	private static function put_inventory_quantity( $base, $token, $sku, $qty, array $payload ) {
+		$existing = self::api_get_json( $base . '/sell/inventory/v1/inventory_item/' . rawurlencode( $sku ), $token );
+		if ( is_wp_error( $existing ) ) {
+			// Create a minimal inventory item if missing.
+			$existing = array(
+				'product' => array(
+					'title' => ! empty( $payload['title'] ) ? (string) $payload['title'] : $sku,
+				),
+				'condition' => 'NEW',
+			);
+		}
+
+		if ( ! isset( $existing['availability'] ) || ! is_array( $existing['availability'] ) ) {
+			$existing['availability'] = array();
+		}
+		if ( ! isset( $existing['availability']['shipToLocationAvailability'] ) || ! is_array( $existing['availability']['shipToLocationAvailability'] ) ) {
+			$existing['availability']['shipToLocationAvailability'] = array();
+		}
+		$existing['availability']['shipToLocationAvailability']['quantity'] = max( 0, (int) $qty );
+
+		if ( ! empty( $payload['title'] ) ) {
+			if ( ! isset( $existing['product'] ) || ! is_array( $existing['product'] ) ) {
+				$existing['product'] = array();
+			}
+			$existing['product']['title'] = (string) $payload['title'];
+		}
+		if ( array_key_exists( 'description', $payload ) && '' !== (string) $payload['description'] ) {
+			if ( ! isset( $existing['product'] ) || ! is_array( $existing['product'] ) ) {
+				$existing['product'] = array();
+			}
+			$existing['product']['description'] = (string) $payload['description'];
+		}
+
+		$response = wp_remote_request(
+			$base . '/sell/inventory/v1/inventory_item/' . rawurlencode( $sku ),
+			array(
+				'method'  => 'PUT',
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization'    => 'Bearer ' . $token,
+					'Content-Type'     => 'application/json',
+					'Accept'           => 'application/json',
+					'Content-Language' => 'en-GB',
+				),
+				'body'    => wp_json_encode( $existing ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			$body    = json_decode( wp_remote_retrieve_body( $response ), true );
+			$message = __( 'eBay inventory update failed.', 'order-machine' );
+			if ( ! empty( $body['errors'][0]['message'] ) ) {
+				$message = (string) $body['errors'][0]['message'];
+			}
+			return new WP_Error( 'som_ebay_listing', $message );
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param string $base  API host.
+	 * @param string $token Access token.
+	 * @param string $sku   SKU.
+	 * @return float|null
+	 */
+	private static function fetch_offer_price( $base, $token, $sku ) {
+		$url  = add_query_arg( array( 'sku' => $sku ), $base . '/sell/inventory/v1/offer' );
+		$body = self::api_get_json( $url, $token );
+		if ( is_wp_error( $body ) ) {
+			return null;
+		}
+		if ( empty( $body['offers'][0]['pricingSummary']['price']['value'] ) ) {
+			return null;
+		}
+		return (float) $body['offers'][0]['pricingSummary']['price']['value'];
+	}
+
+	/**
+	 * @param string $base  API host.
+	 * @param string $token Access token.
+	 * @param string $sku   SKU.
+	 * @param float  $price New price.
+	 * @return true|WP_Error
+	 */
+	private static function update_offer_price( $base, $token, $sku, $price ) {
+		$url  = add_query_arg( array( 'sku' => $sku ), $base . '/sell/inventory/v1/offer' );
+		$body = self::api_get_json( $url, $token );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+		if ( empty( $body['offers'][0]['offerId'] ) ) {
+			return new WP_Error( 'som_ebay_offer', __( 'No eBay offer found for this SKU — create/publish the offer on eBay first.', 'order-machine' ) );
+		}
+
+		$offer    = $body['offers'][0];
+		$offer_id = (string) $offer['offerId'];
+		$currency = isset( $offer['pricingSummary']['price']['currency'] )
+			? (string) $offer['pricingSummary']['price']['currency']
+			: 'GBP';
+
+		if ( ! isset( $offer['pricingSummary'] ) || ! is_array( $offer['pricingSummary'] ) ) {
+			$offer['pricingSummary'] = array();
+		}
+		$offer['pricingSummary']['price'] = array(
+			'value'    => number_format( (float) $price, 2, '.', '' ),
+			'currency' => $currency,
+		);
+
+		$response = wp_remote_request(
+			$base . '/sell/inventory/v1/offer/' . rawurlencode( $offer_id ),
+			array(
+				'method'  => 'PUT',
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization'    => 'Bearer ' . $token,
+					'Content-Type'     => 'application/json',
+					'Accept'           => 'application/json',
+					'Content-Language' => 'en-GB',
+				),
+				'body'    => wp_json_encode( $offer ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			$err     = json_decode( wp_remote_retrieve_body( $response ), true );
+			$message = __( 'eBay offer price update failed.', 'order-machine' );
+			if ( ! empty( $err['errors'][0]['message'] ) ) {
+				$message = (string) $err['errors'][0]['message'];
+			}
+			return new WP_Error( 'som_ebay_offer', $message );
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param string $external_id Listing / SKU key.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	private static function load_fixture_listing( $external_id ) {
+		$pushed = get_option( 'som_dummy_ebay_listings', array() );
+		if ( is_array( $pushed ) && isset( $pushed[ $external_id ] ) && is_array( $pushed[ $external_id ] ) ) {
+			return $pushed[ $external_id ];
+		}
+
+		$path = SOM_PLUGIN_DIR . 'tests/fixtures/ebay-listings.json';
+		if ( ! is_readable( $path ) ) {
+			return new WP_Error( 'som_ebay_fixture', __( 'eBay listing fixture file missing.', 'order-machine' ) );
+		}
+
+		$data = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local fixture
+		if ( ! is_array( $data ) || empty( $data['listings'] ) || ! is_array( $data['listings'] ) ) {
+			return new WP_Error( 'som_ebay_fixture', __( 'eBay listing fixture is invalid.', 'order-machine' ) );
+		}
+
+		foreach ( $data['listings'] as $row ) {
+			if ( is_array( $row ) && isset( $row['external_listing_id'] ) && (string) $row['external_listing_id'] === (string) $external_id ) {
+				return $row;
+			}
+		}
+
+		return new WP_Error(
+			'som_ebay_fixture',
+			sprintf(
+				/* translators: %s: external listing id */
+				__( 'No eBay fixture for listing %s.', 'order-machine' ),
+				$external_id
+			)
+		);
+	}
+
+	/**
+	 * Persist dummy push so a subsequent Refresh returns the pushed state.
+	 *
+	 * @param array<string, mixed> $payload Listing payload.
+	 * @return true
+	 */
+	private static function store_dummy_push( array $payload ) {
+		$key    = isset( $payload['external_listing_id'] ) ? (string) $payload['external_listing_id'] : '';
+		$stored = get_option( 'som_dummy_ebay_listings', array() );
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+		if ( '' !== $key ) {
+			$stored[ $key ] = $payload;
+			update_option( 'som_dummy_ebay_listings', $stored, false );
+		}
+		return true;
+	}
+
+	/**
 	 * @param array<string, mixed> $body Token endpoint JSON.
 	 * @return array<string, mixed>
 	 */
