@@ -72,7 +72,7 @@ ICON_ASSETS = {
 # recoloured per accent on first use and cached to disk so the per-pixel
 # recolour loop only ever runs once per accent, not once per order.
 # ---------------------------------------------------------------------------
-P02_ICON_MASTER = "assets/icons/house_banner_master.png"
+P02_ICON_MASTER = "house_banner_master.png"
 
 
 def recolour_silhouette(in_path, out_path, hex_color):
@@ -616,7 +616,17 @@ def _style_p02_house_banner(c, ox, oy, order):
     else:
         # Graceful fallback if the master art is missing -- plain vector
         # house, flat (uncurved) text, same rough vertical rhythm as
-        # style 5. Not a pixel-match for the illustrated version.
+        # style 5. NOT a lesser version of the same design -- there's no
+        # vector equivalent of "number nested in a hollow illustrated
+        # house with a curved banner," so this is really a substitution,
+        # not a degradation. Warn loudly so it's never discovered only
+        # after looking at the printed output (see chat history).
+        print(
+            f"\u26a0 house_banner: master icon not found at "
+            f"{_asset_path(P02_ICON_MASTER)!r} -- rendering plain house "
+            f"fallback instead of the illustrated P02 design for "
+            f"house_number={order.get('house_number')!r}."
+        )
         _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 14 * mm, accent_hex, "house", draw_house_icon)
         c.setFillColor(HexColor(INK))
         c.setFont("Helvetica-Bold", 54)
@@ -639,7 +649,7 @@ def _style_p02_house_banner(c, ox, oy, order):
     street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
     _draw_curved_text(
         c, street_text, cx, oy + street_baseline, "Helvetica-Bold", street_size, accent_hex,
-        P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
+        ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
     )
 
     _draw_border(c, ox, oy, order, "single")

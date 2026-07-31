@@ -165,27 +165,102 @@ also moving the icon (or vice versa) will make them drift apart — the
 number sliding out from inside the house, or the street text sliding off
 the banner.
 
-**If you just want to nudge text position without touching the icon:**
-edit `P02_NUMBER_CENTER_Y` or `P02_STREET_CENTER_Y` directly — these are
+#### Moving the number or street text (location)
+
+Edit `P02_NUMBER_CENTER_Y` or `P02_STREET_CENTER_Y` directly — these are
 plain mm values (bottom-left origin, same as everywhere else in the
-file). Increase to move up, decrease to move down. This is exactly what
-we did earlier in this project ("move the number lower", "move the
-street text up") — small hand-tuned nudges on top of the computed
-starting point are completely normal and expected here.
+file):
 
-**If you want to resize or reposition the icon itself:** edit `P02_ICON`
-(`x`, `y`, `w`, `h`) — but note `P02_ICON_SCALE`, `P02_ICON_X_LEFT`, and
-`P02_ICON_Y_TOP` all need to change together with it (they describe the
-same icon placement in a form the curve-fitting code uses), or the text
-will stop lining up with the hollows. This isn't a single-number edit —
-if you want to do this, it's easier to ask for help regenerating the
-whole geometry block than to hand-adjust it.
+```python
+P02_NUMBER_CENTER_Y = 82.332 * mm   # vertical centre of "36"
+P02_STREET_CENTER_Y = 66.151 * mm   # vertical centre of "GROVE STREET"
+```
 
-**Font sizes are automatic, not fixed** — `_fit_font_size()` shrinks the
-number (44pt → down to 20pt) and street name (19pt → down to 8pt) to fit
-the hollow widths, so unlike styles 1–10 there's no single font-size
-number to edit for a specific order; it's already responsive to
-whatever text is in that order.
+Increase to move up, decrease to move down. No side effects on anything
+else. This is exactly what we did earlier in this project ("move the
+number lower", "move the street text up") — small hand-tuned nudges on
+top of the computed starting point are completely normal and expected
+here.
+
+There's no `_CENTER_X` for either — both are hardcoded to `cx` (card
+horizontal centre) inside `_style_p02_house_banner`. Off-centre text
+means editing that line directly (e.g. `cx + 3 * mm` instead of `cx`),
+not adjusting a constant.
+
+#### Changing the street text's curve
+
+```python
+P02_BANNER_CURVE_COEFFS = (a, b, c)   # mid_y(x) = a·x² + b·x + c
+```
+
+This is a parabola fitted to the real banner ribbon's shape, in the
+source icon's own pixel space. Two things worth knowing before touching
+it:
+
+1. **`c` does nothing visually.** The curve is always measured *relative*
+   to the text's own centre point, so the constant offset cancels out —
+   only `a` and `b` actually affect the render.
+2. **`a` controls how strong the curve is, `b` controls how skewed/
+   off-centre the dip is:**
+   - `a = 0` → flat text, no curve at all
+   - Bigger `|a|` → more pronounced dip at the ends of the text
+   - Negative `a` → flips direction, the ends arch *up* instead of down
+   - `b` shifts where the highest/lowest point of the curve sits
+     left-to-right — leave at 0 (or scale it alongside `a`) to keep the
+     peak centred
+
+We rendered a side-by-side comparison to make this concrete — original,
+flat (`a=0`), 2× the curve strength, and flipped (`-a, -b`):
+
+```python
+import bin_sticker as bs
+from reportlab.pdfgen import canvas
+
+orig_coeffs = bs.P02_BANNER_CURVE_COEFFS
+a, b, cc = orig_coeffs
+
+variants = [
+    ("original",          orig_coeffs),
+    ("flat (a=0)",        (0, 0, cc)),
+    ("2x stronger curve", (a * 2, b * 2, cc)),
+    ("flipped (arch up)", (-a, -b, cc)),
+]
+
+c = canvas.Canvas("curve_variants.pdf", pagesize=(bs.CARD_W, bs.CARD_H))
+for label, coeffs in variants:
+    bs.P02_BANNER_CURVE_COEFFS = coeffs
+    bs.draw_sticker(c, 0, 0, {"house_number": "36", "street_name": "Grove Street", "style": "house_banner"})
+    c.showPage()
+bs.P02_BANNER_CURVE_COEFFS = orig_coeffs  # restore before rendering anything else!
+c.save()
+```
+
+Since `P02_BANNER_CURVE_COEFFS` is a module-level constant, reassigning
+it like this affects every card rendered afterwards in the same
+process — reset it back (as above) once you're done comparing, or you'll
+get the wrong curve on unrelated orders rendered later in the same run.
+
+Because this value came from measuring the actual banner artwork,
+changing it means the text will stop matching the ribbon's real printed
+shape — fine if that's the look you want, but worth knowing it's a
+deliberate departure from "matches the icon exactly," not just a style
+knob with no tradeoff.
+
+#### Resizing or repositioning the icon itself
+
+Edit `P02_ICON` (`x`, `y`, `w`, `h`) — but note `P02_ICON_SCALE`,
+`P02_ICON_X_LEFT`, and `P02_ICON_Y_TOP` all need to change together with
+it (they describe the same icon placement in a form the curve-fitting
+code uses), or the text will stop lining up with the hollows. This isn't
+a single-number edit — if you want to do this, it's easier to ask for
+help regenerating the whole geometry block than to hand-adjust it.
+
+#### Font sizes are automatic, not fixed
+
+`_fit_font_size()` shrinks the number (44pt → down to 20pt) and street
+name (19pt → down to 8pt) to fit the hollow widths, so unlike styles
+1–10 there's no single font-size number to edit for a specific order;
+it's already responsive to whatever text is in that order.
 
 ---
 
