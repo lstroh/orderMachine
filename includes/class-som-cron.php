@@ -26,6 +26,7 @@ class SOM_Cron {
 		add_action( self::HOOK_REFRESH_TOKENS, array( __CLASS__, 'refresh_tokens' ) );
 		add_action( self::HOOK_SYNC_ORDERS, array( __CLASS__, 'sync_orders' ) );
 		add_action( self::HOOK_ENGINE_TICK, array( __CLASS__, 'engine_tick' ) );
+		add_action( SOM_Workflow_Engine::HOOK_SCRIPT_ATTEMPT, array( 'SOM_Workflow_Engine', 'attempt_script_by_progress_id' ) );
 	}
 
 	/**
@@ -164,7 +165,7 @@ class SOM_Cron {
 	}
 
 	/**
-	 * Unlock elapsed workflow timers.
+	 * Unlock elapsed workflow timers and retry due script steps.
 	 *
 	 * @return void
 	 */

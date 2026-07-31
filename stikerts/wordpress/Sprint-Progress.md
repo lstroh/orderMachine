@@ -17,7 +17,8 @@
 | 6 | Workflow templates + step editor | Done | Verified on wp-env (CRUD, timers, script_config, seed) |
 | 7 | Workflow engine (manual + timer) | Done | Verified on wp-env (assign, Mark done, timer unlock, script pass-through) |
 | 8 | Material auto-decrement | Done (scoped) | Decrement + UI shipped; cancel reversal deferred (D3/A3) |
-| 9+ | Later phases | Not started | Script / API / n8n steps |
+| 9 | Script / API / n8n steps | Done | Verified on wp-env (dispatch, retries, callback REST, thank-you fails soft without Python) |
+| 10+ | Later phases | Not started | Listings / REST orders / MCP |
 
 ---
 
@@ -668,10 +669,117 @@ Admin: http://localhost:8888/wp-admin/admin.php?page=som-orders — matched orde
 ### Open items / notes for later
 
 - **D3 / A3:** Wire `maybe_reverse_on_cancel` from sync update path once a live/sandbox cancel payload confirms fields; reverse from logged quantities (not current recipe); only when `new_order` exists and no `order_cancelled` yet.
-- Script/API/n8n execution remains Sprint 9.
+- Script/API/n8n execution shipped in Sprint 9.
+
+---
+
+## Sprint 9 — Script / API / n8n steps
+
+- **Status:** Done — all Sprint-Plan § Sprint 9 file and done-when items complete
+- **Roadmap phase:** 9
+- **Completed:** 2026-07-31
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.9.0`
+
+### Plan text (`Sprint-Plan.md`)
+
+> **Files:** `includes/class-som-local-actions.php` — allowlist only (`run_thankyou_card_script`, etc.); Workflow engine: script dispatch, retries, `error` + manual retry; `includes/class-som-rest-api.php` — `workflow-callback/{token}`; Optional: small Python CLI wrapper beside `stikerts/Thank you/thankyou_card.py`  
+> **Done when:** n8n webhook and/or local allowlisted action can run from a step; failures retry then surface error; callback can complete a step.  
+> **Open items first:** **W2** thank-you card contract must be decided (CLI args vs stdin JSON).
+
+### Plan requirements review
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `includes/class-som-local-actions.php` — allowlist only | **Done** | `run_thankyou_card_script` (CLI via `proc_open`); `send_print_job` stub → `som_print_not_configured`. No arbitrary shell from DB. |
+| Workflow engine: script dispatch | **Done** | `enter_step` → `waiting_script`; `SOM_Script_Dispatch` for local / api / n8n |
+| Workflow engine: retries | **Done** | 3 attempts total: immediate / +1 min / +5 min (`som_script_attempt` single-event + tick backup) |
+| Workflow engine: `error` + manual retry | **Done** | Status `error` + `last_error`; order detail **Retry now** (`retry_script`) |
+| `includes/class-som-rest-api.php` — `workflow-callback/{token}` | **Done** | `POST /wp-json/som/v1/workflow-callback/{token}`; `X-SOM-API-Key` / Bearer |
+| Optional Python CLI wrapper | **Done** | `stikerts/Thank you/thankyou_card_cli.py` (`--json` / `--out`) |
+| **Done when:** n8n webhook and/or local action from a step | **Pass** | Both; plus basic `type: "api"` HTTP (beyond plan minimum) |
+| **Done when:** failures retry then surface error | **Pass** | Auto-retry then `error` + UI |
+| **Done when:** callback can complete a step | **Pass** | REST callback completes `waiting_script` |
+| Open item **W2** | **Decided** | User chose CLI args (`--json` + `--out`), not stdin |
+
+### Extra (supporting, not in plan file list)
+
+| Item | Notes |
+|---|---|
+| `includes/class-som-script-dispatch.php` | Shared runner + placeholders + callback tokens |
+| Settings: `api_key`, `python_binary` | Required for REST auth / thank-you binary path |
+| Order detail UI | Script error text, waiting-callback note, Retry now |
+| n8n modes | Sync on HTTP 2xx **or** `wait_for_callback: true` (raw JSON) |
+| Thank-you without Python | Fails soft / retryable until Python + reportlab installed (intentional) |
+
+### Decisions applied during build (user answers)
+
+| Topic | Decision |
+|---|---|
+| W2 contract | CLI `--json <file> --out <path>` |
+| Generic “run scripts” polish | Defer until script is final; plumbing + CLI shipped now |
+| n8n completion | Both: sync on 2xx; async via callback when `wait_for_callback` |
+| `type: "api"` | Basic HTTP + `{{placeholders}}` |
+| `send_print_job` | Stub “not configured” |
+| Python / reportlab | Ship plumbing; thank-you fails until installed |
+| PDF / batching | Default `uploads/som-thankyou/order-{id}.pdf`; one card/order; batching deferred |
+| REST scope | Callback only (`POST /orders` / `advance-step` → Sprint 11) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-local-actions.php` | Allowlisted local handlers |
+| `includes/class-som-script-dispatch.php` | local / api / n8n + placeholders + callback tokens |
+| `includes/class-som-workflow-engine.php` | Script gates, retries, callback complete, Retry now (replaces Sprint 7 pass-through) |
+| `includes/class-som-rest-api.php` | `workflow-callback/{token}` |
+| `includes/class-som-settings.php` | `api_key`, `python_binary` |
+| `includes/class-som-cron.php` | Hooks `som_script_attempt` |
+| `stikerts/Thank you/thankyou_card_cli.py` | CLI wrapper for `render_sheet` |
+| `admin/views/order-detail.php` | Script error + Retry now |
+| `admin/views/settings.php` | API key + Python binary |
+| `admin/class-som-admin-menu.php` | Retry handler; settings save |
+| `admin/assets/css/admin.css` | Error / retry styles |
+| `orderMachine.php` | Bootstrap wiring; v0.9.0 |
+| `tests/sprint9-smoke.php` | Advance to Thank-you → soft fail / retry |
+| `tests/sprint9-callback.php` | REST callback + API GET smoke |
+
+### Done-when checklist (from Sprint-Plan)
+
+| Criterion | Result |
+|---|---|
+| Local allowlisted action can run from a step | **Pass** — seed Thank-you → `waiting_script`; runs CLI when Python available |
+| n8n webhook can run from a step | **Pass** — `type: "n8n"` POST + callback URL/token in payload |
+| Failures retry then surface error | **Pass** — 3 attempts then `error` + **Retry now** |
+| Callback can complete a step | **Pass** — REST 200 on wp-env |
+
+**Plan scope:** All Sprint 9 file and done-when items are complete. Out-of-scope leftovers (thank-you field mapping, multi-card batching, print job, Sprint 11 REST routes) are intentional deferrals, not misses.
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env start
+npx @wordpress/env run cli wp plugin activate orderMachine
+# active v0.9.0; SOM_Local_Actions / SOM_Script_Dispatch / SOM_REST_API; workflow-callback route
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint9-smoke.php
+# Print…Ship → Thank-you waiting_script; soft fail without Python; Retry increments retry_count
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint9-callback.php
+# POST workflow-callback → 200; type api GET example.com → ok
+```
+
+Admin: http://localhost:8888/wp-admin/admin.php?page=som-settings — REST API key / Python binary  
+Orders detail: script error + Retry now on failed Thank-you step
+
+### Open items / notes for later
+
+- Install Python + `reportlab` on Local; set **Python binary** in Settings if not on PATH.
+- Thank-you field mapping / multi-card batching when the card script is finalised.
+- Form UI for `wait_for_callback` (raw JSON works today).
+- `POST /orders` + `advance-step` → Sprint 11.
+- D3/A3 cancel stock reversal still deferred (Sprint 8 scoped).
 
 ---
 
 ## Next
 
-**Sprint 9** — Script / API / n8n steps.
+**Sprint 10** — Listings view + price/qty push.

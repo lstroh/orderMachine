@@ -163,7 +163,33 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 				<th scope="row"><label for="som_n8n_base_url"><?php echo esc_html__( 'n8n base URL', 'order-machine' ); ?></label></th>
 				<td>
 					<input name="som_n8n_base_url" id="som_n8n_base_url" type="url" class="regular-text" value="<?php echo esc_attr( $settings['n8n_base_url'] ); ?>" placeholder="https://n8n.example.com" />
-					<p class="description"><?php echo esc_html__( 'Used later for workflow script steps that call n8n webhooks.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Reference only — workflow steps use the full webhook URL in script_config.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="som_api_key"><?php echo esc_html__( 'REST API key', 'order-machine' ); ?></label></th>
+				<td>
+					<input name="som_api_key" id="som_api_key" type="text" class="regular-text code" value="<?php echo esc_attr( $settings['api_key'] ); ?>" autocomplete="off" />
+					<label style="margin-left:8px;">
+						<input type="checkbox" name="som_regenerate_api_key" value="1" />
+						<?php echo esc_html__( 'Generate new key on save', 'order-machine' ); ?>
+					</label>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s: REST route example */
+							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s', 'order-machine' ),
+							'<code>POST /wp-json/som/v1/workflow-callback/{token}</code>'
+						);
+						?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="som_python_binary"><?php echo esc_html__( 'Python binary', 'order-machine' ); ?></label></th>
+				<td>
+					<input name="som_python_binary" id="som_python_binary" type="text" class="regular-text code" value="<?php echo esc_attr( $settings['python_binary'] ); ?>" placeholder="python" />
+					<p class="description"><?php echo esc_html__( 'Optional. Leave blank to use “python” on PATH. Needed for the thank-you card local action.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -177,7 +203,7 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 				<th scope="row"><label for="som_engine_tick_interval"><?php echo esc_html__( 'Workflow engine tick (minutes)', 'order-machine' ); ?></label></th>
 				<td>
 					<input name="som_engine_tick_interval" id="som_engine_tick_interval" type="number" min="1" step="1" value="<?php echo esc_attr( (string) $settings['engine_tick_interval_minutes'] ); ?>" class="small-text" />
-					<p class="description"><?php echo esc_html__( 'How often to unlock elapsed timers (som_engine_tick). Default 60.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Unlocks elapsed timers and backs up script retries (som_engine_tick). Default 60; script retries also use single-event cron.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>

@@ -147,13 +147,18 @@ if ( ! empty( $order->raw_payload ) ) {
 					$step_obj   = (object) array(
 						'timer_seconds'           => $row->timer_seconds,
 						'requires_manual_confirm' => $row->requires_manual_confirm,
+						'script_config'           => $row->script_config,
 					);
 					$can_done   = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
+					$can_retry  = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_retry_script( $row, $step_obj );
 					$timer_ends = ! empty( $row->timer_ends_at ) ? (string) $row->timer_ends_at : '';
 					$ends_ts    = $timer_ends ? strtotime( $timer_ends . ' UTC' ) : 0;
 					if ( ! $ends_ts && $timer_ends ) {
 						$ends_ts = strtotime( $timer_ends );
 					}
+					$last_error = isset( $row->last_error ) ? (string) $row->last_error : '';
+					$waiting_cb = ( 0 === strpos( $last_error, 'waiting_callback:' ) );
+					$display_err = ( $last_error && ! $waiting_cb ) ? $last_error : '';
 					?>
 					<li class="som-workflow-step<?php echo $is_current ? ' is-current' : ''; ?> status-<?php echo esc_attr( $status ); ?>">
 						<div class="som-workflow-step-main">
@@ -185,21 +190,55 @@ if ( ! empty( $order->raw_payload ) ) {
 								?>
 							</p>
 						<?php endif; ?>
+						<?php if ( $is_current && $waiting_cb ) : ?>
+							<p class="description"><?php echo esc_html__( 'Waiting for external callback (n8n / API).', 'order-machine' ); ?></p>
+						<?php endif; ?>
+						<?php if ( $is_current && $display_err ) : ?>
+							<p class="som-script-error"><?php echo esc_html( $display_err ); ?></p>
+							<?php if ( (int) $row->retry_count > 0 ) : ?>
+								<p class="description">
+									<?php
+									printf(
+										/* translators: %d: retry count */
+										esc_html__( 'Attempts so far: %d', 'order-machine' ),
+										(int) $row->retry_count
+									);
+									?>
+								</p>
+							<?php endif; ?>
+						<?php endif; ?>
 						<?php if ( $is_current && empty( $order->is_cancelled ) ) : ?>
-							<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
-								<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
-								<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
-								<input type="hidden" name="som_mark_step_done" value="1" />
-								<?php
-								submit_button(
-									__( 'Mark done', 'order-machine' ),
-									'primary',
-									'submit',
-									false,
-									$can_done ? array() : array( 'disabled' => 'disabled' )
-								);
-								?>
-							</form>
+							<?php if ( $can_retry ) : ?>
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-retry-script-form">
+									<?php wp_nonce_field( 'som_retry_script', 'som_order_nonce' ); ?>
+									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+									<input type="hidden" name="som_retry_script" value="1" />
+									<?php
+									submit_button(
+										__( 'Retry now', 'order-machine' ),
+										'secondary',
+										'submit',
+										false
+									);
+									?>
+								</form>
+							<?php endif; ?>
+							<?php if ( 'error' !== $status && 'waiting_script' !== $status ) : ?>
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
+									<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
+									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+									<input type="hidden" name="som_mark_step_done" value="1" />
+									<?php
+									submit_button(
+										__( 'Mark done', 'order-machine' ),
+										'primary',
+										'submit',
+										false,
+										$can_done ? array() : array( 'disabled' => 'disabled' )
+									);
+									?>
+								</form>
+							<?php endif; ?>
 						<?php endif; ?>
 					</li>
 				<?php endforeach; ?>

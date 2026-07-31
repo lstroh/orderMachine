@@ -152,7 +152,7 @@ class SOM_Admin_Menu {
 	}
 
 	/**
-	 * Mark done on order detail.
+	 * Mark done / retry script on order detail.
 	 *
 	 * @return void
 	 */
@@ -162,7 +162,24 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( 'som-orders' !== $page || ! isset( $_POST['som_mark_step_done'] ) ) {
+		if ( 'som-orders' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_retry_script'] ) ) {
+			check_admin_referer( 'som_retry_script', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$result   = SOM_Workflow_Engine::retry_script( $order_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Script retry started.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_mark_step_done'] ) ) {
 			return;
 		}
 
@@ -563,12 +580,21 @@ class SOM_Admin_Menu {
 			$etsy_secret = $prev['etsy']['client_secret'];
 		}
 
+		$api_key = isset( $_POST['som_api_key'] ) ? (string) wp_unslash( $_POST['som_api_key'] ) : '';
+		if ( ! empty( $_POST['som_regenerate_api_key'] ) ) {
+			$api_key = wp_generate_password( 32, false, false );
+		} elseif ( '' === trim( $api_key ) ) {
+			$api_key = $prev['api_key'];
+		}
+
 		SOM_Settings::update(
 			array(
 				'n8n_base_url'                   => isset( $_POST['som_n8n_base_url'] ) ? wp_unslash( $_POST['som_n8n_base_url'] ) : '',
 				'poll_interval_minutes'          => isset( $_POST['som_poll_interval'] ) ? (int) $_POST['som_poll_interval'] : 15,
 				'engine_tick_interval_minutes'   => isset( $_POST['som_engine_tick_interval'] ) ? (int) $_POST['som_engine_tick_interval'] : 60,
 				'token_refresh_interval_minutes' => isset( $_POST['som_token_refresh_interval'] ) ? (int) $_POST['som_token_refresh_interval'] : 30,
+				'api_key'                        => $api_key,
+				'python_binary'                  => isset( $_POST['som_python_binary'] ) ? wp_unslash( $_POST['som_python_binary'] ) : '',
 				'ebay'                           => array(
 					'client_id'     => isset( $_POST['som_ebay_client_id'] ) ? wp_unslash( $_POST['som_ebay_client_id'] ) : '',
 					'client_secret' => $ebay_secret,

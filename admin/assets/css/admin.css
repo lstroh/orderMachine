@@ -437,12 +437,26 @@
 	align-items: center;
 }
 
-.som-mark-done-form {
+.som-mark-done-form,
+.som-retry-script-form {
 	margin-top: 10px;
+	display: inline-block;
+	margin-right: 8px;
 }
 
 .som-timer-countdown {
 	margin: 6px 0 0;
+}
+
+.som-script-error {
+	margin: 8px 0 0;
+	color: #b32d2e;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.som-workflow-step.status-error {
+	border-color: #b32d2e;
 }
 
 .som-panel-stock {
