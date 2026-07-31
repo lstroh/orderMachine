@@ -188,11 +188,11 @@ class SOM_Suppliers {
 	}
 
 	/**
-	 * @param int $id Supplier PK.
+	 * @param int|string $id Supplier PK or "new".
 	 * @return string
 	 */
 	public static function detail_url( $id ) {
-		return self::list_url( array( 'supplier_id' => (int) $id ) );
+		return self::list_url( array( 'supplier_id' => $id ) );
 	}
 
 	/**

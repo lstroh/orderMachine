@@ -224,6 +224,38 @@
 	color: #9a5b1a;
 }
 
+.som-badge-po-ordered {
+	background: #e7f0fa;
+	color: #135e96;
+}
+
+.som-badge-po-partially_received {
+	background: #fcf0e3;
+	color: #9a5b1a;
+}
+
+.som-badge-po-received {
+	background: #edfaef;
+	color: #1e6e34;
+}
+
+.som-badge-po-cancelled {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+.som-po-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.som-inline-form {
+	display: inline;
+	margin: 0;
+}
+
 .som-recipe-table .som-recipe-actions-col {
 	width: 48px;
 	text-align: center;

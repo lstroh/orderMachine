@@ -176,7 +176,7 @@ class SOM_Materials {
 	/**
 	 * Create a material row.
 	 *
-	 * @param array<string, mixed> $data Fields: name, unit, low_stock_threshold, unit_cost, is_active.
+	 * @param array<string, mixed> $data Fields: name, unit, low_stock_threshold, unit_cost, preferred_supplier_id, is_active.
 	 * @return int|WP_Error New material ID or error.
 	 */
 	public static function create( array $data ) {
@@ -192,21 +192,27 @@ class SOM_Materials {
 			return new WP_Error( 'som_material_unit', __( 'Unit is required (e.g. sheet, pack).', 'order-machine' ) );
 		}
 
+		$preferred = self::nullable_supplier_id( $data );
+		if ( is_wp_error( $preferred ) ) {
+			return $preferred;
+		}
+
 		$now = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
 			SOM_DB::table( 'materials' ),
 			array(
-				'name'                => $name,
-				'unit'                => $unit,
-				'current_stock'       => 0,
-				'low_stock_threshold' => self::nullable_decimal( $data, 'low_stock_threshold' ),
-				'unit_cost'           => self::nullable_decimal( $data, 'unit_cost', 4 ),
-				'is_active'           => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
-				'created_at'          => $now,
-				'updated_at'          => $now,
+				'name'                  => $name,
+				'unit'                  => $unit,
+				'current_stock'         => 0,
+				'low_stock_threshold'   => self::nullable_decimal( $data, 'low_stock_threshold' ),
+				'unit_cost'             => self::nullable_decimal( $data, 'unit_cost', 4 ),
+				'preferred_supplier_id' => $preferred,
+				'is_active'             => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
+				'created_at'            => $now,
+				'updated_at'            => $now,
 			),
-			array( '%s', '%s', '%f', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -264,6 +270,15 @@ class SOM_Materials {
 			$formats[]           = '%s';
 		}
 
+		if ( array_key_exists( 'preferred_supplier_id', $data ) ) {
+			$preferred = self::nullable_supplier_id( $data );
+			if ( is_wp_error( $preferred ) ) {
+				return $preferred;
+			}
+			$fields['preferred_supplier_id'] = $preferred;
+			$formats[]                       = '%d';
+		}
+
 		if ( array_key_exists( 'is_active', $data ) ) {
 			$fields['is_active'] = (int) (bool) $data['is_active'];
 			$formats[]           = '%d';
@@ -289,7 +304,7 @@ class SOM_Materials {
 	 *
 	 * @param int                  $material_id Material PK.
 	 * @param float                $delta       Positive or negative change.
-	 * @param array<string, mixed> $args        Optional: order_id (int|null), reason (string).
+	 * @param array<string, mixed> $args Optional: order_id, reason, purchase_order_item_id.
 	 * @return true|WP_Error
 	 */
 	public static function adjust_stock( $material_id, $delta, array $args = array() ) {
@@ -299,6 +314,9 @@ class SOM_Materials {
 		$delta       = (float) $delta;
 		$order_id    = array_key_exists( 'order_id', $args ) && null !== $args['order_id'] && '' !== $args['order_id']
 			? (int) $args['order_id']
+			: null;
+		$poi_id      = array_key_exists( 'purchase_order_item_id', $args ) && null !== $args['purchase_order_item_id'] && '' !== $args['purchase_order_item_id']
+			? (int) $args['purchase_order_item_id']
 			: null;
 		$reason      = isset( $args['reason'] ) ? sanitize_key( (string) $args['reason'] ) : 'manual_adjustment';
 		if ( '' === $reason ) {
@@ -328,13 +346,14 @@ class SOM_Materials {
 		$log_ok = $wpdb->insert(
 			SOM_DB::table( 'material_stock_log' ),
 			array(
-				'material_id' => $material_id,
-				'order_id'    => $order_id,
-				'change_qty'  => $delta,
-				'reason'      => $reason,
-				'created_at'  => $now,
+				'material_id'            => $material_id,
+				'order_id'               => $order_id,
+				'change_qty'             => $delta,
+				'reason'                 => $reason,
+				'purchase_order_item_id' => $poi_id,
+				'created_at'             => $now,
 			),
-			array( '%d', null === $order_id ? '%s' : '%d', '%f', '%s', '%s' )
+			array( '%d', null === $order_id ? '%s' : '%d', '%f', '%s', null === $poi_id ? '%s' : '%d', '%s' )
 		);
 
 		if ( ! $log_ok ) {
@@ -371,6 +390,7 @@ class SOM_Materials {
 			'new_order'         => __( 'New order', 'order-machine' ),
 			'order_cancelled'   => __( 'Order cancelled', 'order-machine' ),
 			'restock'           => __( 'Restock', 'order-machine' ),
+			'purchase_received' => __( 'Purchase received', 'order-machine' ),
 		);
 
 		$reason = sanitize_key( (string) $reason );
@@ -427,5 +447,24 @@ class SOM_Materials {
 			return null;
 		}
 		return number_format( (float) $raw, (int) $places, '.', '' );
+	}
+
+	/**
+	 * @param array<string, mixed> $data Source with preferred_supplier_id.
+	 * @return int|null|WP_Error
+	 */
+	private static function nullable_supplier_id( array $data ) {
+		if ( ! array_key_exists( 'preferred_supplier_id', $data ) ) {
+			return null;
+		}
+		$raw = $data['preferred_supplier_id'];
+		if ( null === $raw || '' === $raw || 0 === $raw || '0' === $raw ) {
+			return null;
+		}
+		$id = (int) $raw;
+		if ( $id < 1 || ! SOM_Suppliers::get( $id ) ) {
+			return new WP_Error( 'som_material_supplier', __( 'Preferred supplier is invalid.', 'order-machine' ) );
+		}
+		return $id;
 	}
 }

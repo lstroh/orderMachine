@@ -13,6 +13,15 @@ Spec sources: `01-Update-Overview.md`, `02-Update-Data-Model.md`, `03-Update-Raw
 | Topic | Decision |
 |---|---|
 | Partial receipts (P1) | Keep PO `partially_received` until remaining qty received or manually closed |
+| Manual close (U2) | Offer **Mark received** (accept shortfall) **or Cancel**; no stock reverse on cancel |
+| Later receives (U2) | Allowed while `ordered` / `partially_received`; input = **delta this shipment** |
+| Fully received (U2) | Every line `quantity_received >= quantity_ordered` (over-receive OK) |
+| `received_date` (U2) | Overwrite on every successful receive |
+| PO edit lock (U2) | Full edit while `ordered` with no receipts; lock lines/costs after first receive (notes still editable) |
+| Receive edges (U2) | Over-receive, 0 delta (skip line), duplicate materials on one PO OK |
+| `item_cost` (U2) | Total line cost (not unit price), GBP |
+| Preferred supplier (U2) | Editable on material create/edit |
+| Supplier delete (U2) | No delete |
 | Post-receive edits (P2) | No retroactive WA rewrite — corrections via separate stock/value adjustment + new log row |
 | Currency (P3) | GBP only |
 | Alert surfaces (P4) | Materials badges + Product Costing only; dashboard widget later |
@@ -130,10 +139,10 @@ flowchart LR
 ### Sprint U2 — Suppliers + purchase orders (domain, no full costing UI)
 
 - **Covers:** Purchasing CRUD + receive status machine (partial receive)
-- **Create:** `includes/class-som-suppliers.php`, `includes/class-som-purchase-orders.php`
-- **Modify:** `orderMachine.php` requires; `admin/class-som-admin-menu.php` + new views under `admin/views/` (suppliers list/edit, PO list/edit/receive) — target **create/edit/list + receive with stock qty** here, full WA/preview in U3
-- **Done when:** Can CRUD suppliers; create PO `ordered`; receive lines (short → `partially_received`, full → `received`); manual close; stock qty rises with `purchase_received` log rows (cost fields may still be stubbed until U3)
-- **Open items first:** P1 settled
+- **Create:** `includes/class-som-purchase-orders.php` (`SOM_Suppliers` already shipped in U1)
+- **Modify:** `orderMachine.php` requires; `admin/class-som-admin-menu.php` + views under `admin/views/` (suppliers list/edit, PO list/edit/receive); material edit for `preferred_supplier_id`; `SOM_Materials::adjust_stock` accepts `purchase_order_item_id`
+- **Done when:** Can CRUD suppliers (no delete); create PO `ordered`; receive lines (delta; short → `partially_received`, all lines met → `received`); later receives; mark-received / cancel close; stock qty rises with `purchase_received` log rows (cost fields stubbed until U3); preferred supplier on materials
+- **Open items first:** P1 settled; U2 clarifying answers recorded in Settled decisions
 
 ### Sprint U3 — Landed cost, weighted average, goals, preview
 

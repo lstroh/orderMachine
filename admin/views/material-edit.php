@@ -80,6 +80,24 @@ $stock_log = ( $material && ! empty( $material->stock_log ) ) ? $material->stock
 				</td>
 			</tr>
 			<tr>
+				<th scope="row"><label for="som_preferred_supplier"><?php echo esc_html__( 'Preferred supplier', 'order-machine' ); ?></label></th>
+				<td>
+					<?php
+					$suppliers           = SOM_Suppliers::list_all();
+					$preferred_supplier  = $material && ! empty( $material->preferred_supplier_id ) ? (int) $material->preferred_supplier_id : 0;
+					?>
+					<select id="som_preferred_supplier" name="som_preferred_supplier">
+						<option value=""><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
+						<?php foreach ( $suppliers as $supplier ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $supplier->id ); ?>" <?php selected( $preferred_supplier, (int) $supplier->id ); ?>>
+								<?php echo esc_html( (string) $supplier->name ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php echo esc_html__( 'Optional shortcut for reordering — not a hard constraint on purchase orders.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><?php echo esc_html__( 'Status', 'order-machine' ); ?></th>
 				<td>
 					<label>

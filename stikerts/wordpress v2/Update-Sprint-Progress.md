@@ -11,9 +11,9 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
 | U1 | Shared schema upgrade | **Done** | Verified on wp-env 2026-07-31 |
-| U2 | Suppliers + purchase orders | Pending | `SOM_Suppliers` CRUD shipped in U1; PO domain + admin UI remain |
+| U2 | Suppliers + purchase orders | **Done** | Verified on wp-env 2026-07-31 |
 | U3 | Landed cost / WA / goals | Pending | |
-| U4 | Purchasing admin UI | Pending | |
+| U4 | Purchasing admin UI | Pending | Preferred supplier already on material edit (U2) |
 | U5 | Batch engine | Pending | |
 | U6 | Batches UI | Pending | Thank-you convert already done in U1 |
 | U7 | REST + Abilities + smoke | Pending | |
@@ -25,7 +25,7 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 - **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U1)
 - **Completed:** 2026-07-31
 - **Verified on:** wp-env (dev site `http://localhost:8888`)
-- **Plugin version:** `0.12.0`
+- **Plugin version:** `0.12.0` (later bumped to `0.13.0` in U2)
 - **DB version:** `1.4.0`
 
 ### Plan requirements review (`Update-Sprint-Plan.md`)
@@ -134,14 +134,117 @@ Re-confirmed 2026-07-31 after progress review: plugin `0.12.0`, DB `1.4.0`, full
 
 ### Open items / notes for later
 
-- **U2:** PO domain (`class-som-purchase-orders.php`) + suppliers/PO admin UI (`SOM_Suppliers` already present).
-- **U3:** Consumption must maintain `total_value_on_hand` / log value fields (qty-only path still current).
+- **U3:** Consumption must maintain `total_value_on_hand` / log value fields (qty-only path still current); landed cost + WA on receive.
 - **U5:** Engine must honour `batch_group_id` / `waiting_batch` (schema only in U1).
 - **U6:** Batches UI + step editor; convert already idempotent from U1.
 - In-flight orders stuck on thank-you as `waiting_script` are not rewritten to `waiting_batch` here — engine work in U5.
 
 ---
 
+## Sprint U2 — Suppliers + purchase orders
+
+- **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U2)
+- **Completed:** 2026-07-31
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.13.0`
+- **DB version:** `1.4.0` (unchanged; no new DDL in U2)
+
+### Plan requirements review (`Update-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Purchasing CRUD + receive status machine | **Done** | Partial receive, later receives, mark-received, cancel |
+| Create `includes/class-som-purchase-orders.php` | **Done** | Domain class; suppliers class already from U1 |
+| Modify `orderMachine.php` requires | **Done** | Requires PO class; `SOM_VERSION` → `0.13.0` |
+| Modify `admin/class-som-admin-menu.php` | **Done** | Suppliers + Purchase Orders menus, render, POST handlers |
+| Views: suppliers list/edit | **Done** | `suppliers-list.php`, `supplier-edit.php` |
+| Views: PO list/edit/receive | **Done** | `purchase-orders-list.php`, `purchase-order-edit.php`, `purchase-order-receive.php` |
+| Material edit `preferred_supplier_id` | **Done** | Agreed U2 scope add (was optional vs original U4) |
+| `SOM_Materials::adjust_stock` + `purchase_order_item_id` | **Done** | Also `purchase_received` reason label |
+| **Done when:** CRUD suppliers (no delete) | **Pass** | Create/update/list/get; no delete method |
+| **Done when:** Create PO `ordered` | **Pass** | |
+| **Done when:** Receive delta; short → `partially_received` | **Pass** | |
+| **Done when:** All lines met → `received` | **Pass** | Incl. over-receive |
+| **Done when:** Later receives | **Pass** | |
+| **Done when:** Mark-received / cancel close | **Pass** | No stock reverse on cancel |
+| **Done when:** Stock + `purchase_received` log; cost stubbed | **Pass** | `allocated_*` / `landed_unit_cost` / `value_change` left null for U3 |
+| **Done when:** Preferred supplier on materials | **Pass** | |
+| Open items first | Settled | P1 + U2 clarifying answers in plan Settled decisions |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Manual close | **Mark received** (accept shortfall) **or Cancel** |
+| Later receives | Allowed; form enters **additional qty this shipment** |
+| Fully `received` | Every line `quantity_received >= quantity_ordered` |
+| `received_date` | Overwrite on every successful receive |
+| Edit lock | Full edit while `ordered` with no receipts; lock lines/costs after first receive (notes still editable) |
+| Cancel | No reverse of already-received stock |
+| Edges | Over-receive, 0 delta (skip line), duplicate materials on one PO OK |
+| `item_cost` | Total line cost (GBP) |
+| Menu | **Suppliers** + **Purchase Orders** submenus under Order Machine |
+| Preferred supplier | On material create/edit in **U2** |
+| Supplier delete | None |
+| Costing | Persist `item_cost` / shipping / other; leave WA/allocation/value for **U3** |
+| Versions | Bump `SOM_VERSION` → `0.13.0` only (DB stays `1.4.0`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-purchase-orders.php` | PO CRUD + receive status machine |
+| `includes/class-som-materials.php` | Preferred supplier; `adjust_stock` writes `purchase_order_item_id`; `purchase_received` label |
+| `includes/class-som-suppliers.php` | `detail_url` accepts `new` |
+| `admin/class-som-admin-menu.php` | Menus, renderers, save/receive/close handlers |
+| `admin/views/suppliers-list.php` | Suppliers list + search |
+| `admin/views/supplier-edit.php` | Supplier create/edit |
+| `admin/views/purchase-orders-list.php` | PO list + status/supplier filters |
+| `admin/views/purchase-order-edit.php` | PO create/edit + close actions |
+| `admin/views/purchase-order-receive.php` | Delta receive form |
+| `admin/views/material-edit.php` | Preferred supplier field |
+| `admin/assets/js/admin.js` | PO line add/remove |
+| `admin/assets/css/admin.css` | PO status badges / action layout |
+| `orderMachine.php` | Require PO class; notices for new pages; `0.13.0` |
+| `tests/sprint-u2-smoke.php` | Domain smoke (create → partial → later/over → close paths) |
+| `tests/sprint-u1-smoke.php` | Version assert relaxed to `>= 0.12.0` |
+| `stikerts/wordpress v2/Update-Sprint-Plan.md` | U2 settled decisions + scope notes |
+| `stikerts/wordpress v2/Update-Sprint-Progress.md` | This section |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| CRUD suppliers (no delete) | **Pass** |
+| Create PO `ordered` | **Pass** |
+| Receive lines (delta); short → `partially_received` | **Pass** |
+| All lines met → `received`; later receives | **Pass** |
+| Mark-received / cancel close | **Pass** |
+| Stock qty rises with `purchase_received` log rows | **Pass** — includes `purchase_order_item_id` |
+| Cost fields stubbed until U3 | **Pass** — `value_change` / allocations / landed still null |
+| Preferred supplier on materials | **Pass** |
+
+**Plan scope:** All Sprint U2 file and done-when items are complete (including agreed expansions: preferred supplier on material edit; settled receive/close rules).
+
+### Explicitly out of U2 (deferred)
+
+- Landed-cost allocation, weighted average, `total_value_on_hand` on receive → **U3**
+- Preview Impact, goals/alerts UI, Product Costing surfaces → **U3/U4**
+- REST / Abilities for suppliers & POs → **U7**
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active 0.13.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u2-smoke.php
+# PASS — Sprint U2 smoke
+```
+
+Re-confirmed 2026-07-31 after plan review: plugin `0.13.0`, full U2 smoke **PASS**.
+
+---
+
 ## Next
 
-Execute **Sprint U2** (purchase orders domain + suppliers/PO admin UI, receive with stock qty; full costing in U3).
+Execute **Sprint U3** (landed cost allocation, weighted average on receive, consumption value consistency, goals, preview-in-memory).

@@ -24,6 +24,8 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_products_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_suppliers_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_purchase_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
 	}
@@ -73,6 +75,24 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Suppliers', 'order-machine' ),
+			__( 'Suppliers', 'order-machine' ),
+			'manage_options',
+			'som-suppliers',
+			array( __CLASS__, 'render_suppliers' )
+		);
+
+		add_submenu_page(
+			'som-orders',
+			__( 'Purchase Orders', 'order-machine' ),
+			__( 'Purchase Orders', 'order-machine' ),
+			'manage_options',
+			'som-purchase-orders',
+			array( __CLASS__, 'render_purchase_orders' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Workflows', 'order-machine' ),
 			__( 'Workflows', 'order-machine' ),
 			'manage_options',
@@ -111,7 +131,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-workflows', 'som-listings' ), true ) ) {
 			return;
 		}
 
@@ -122,7 +142,7 @@ class SOM_Admin_Menu {
 			SOM_VERSION
 		);
 
-		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-purchase-orders', 'som-workflows', 'som-listings' ), true ) ) {
 			wp_enqueue_script(
 				'som-admin',
 				SOM_PLUGIN_URL . 'admin/assets/js/admin.js',
@@ -291,6 +311,95 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/materials-list.php';
+	}
+
+	/**
+	 * Suppliers list or edit.
+	 *
+	 * @return void
+	 */
+	public static function render_suppliers() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$supplier_id = isset( $_GET['supplier_id'] ) ? sanitize_text_field( wp_unslash( $_GET['supplier_id'] ) ) : '';
+
+		if ( 'new' === $supplier_id ) {
+			$is_new   = true;
+			$supplier = null;
+			require SOM_PLUGIN_DIR . 'admin/views/supplier-edit.php';
+			return;
+		}
+
+		if ( '' !== $supplier_id && is_numeric( $supplier_id ) && (int) $supplier_id > 0 ) {
+			$supplier = SOM_Suppliers::get( (int) $supplier_id );
+			if ( ! $supplier ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Supplier not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Suppliers::list_url() ) . '">';
+				echo esc_html__( 'Back to suppliers', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/supplier-edit.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/suppliers-list.php';
+	}
+
+	/**
+	 * Purchase orders list, edit, or receive.
+	 *
+	 * @return void
+	 */
+	public static function render_purchase_orders() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$po_id = isset( $_GET['po_id'] ) ? sanitize_text_field( wp_unslash( $_GET['po_id'] ) ) : '';
+		$view  = isset( $_GET['som_view'] ) ? sanitize_key( wp_unslash( $_GET['som_view'] ) ) : '';
+
+		if ( 'new' === $po_id ) {
+			$is_new = true;
+			$order  = null;
+			require SOM_PLUGIN_DIR . 'admin/views/purchase-order-edit.php';
+			return;
+		}
+
+		if ( '' !== $po_id && is_numeric( $po_id ) && (int) $po_id > 0 ) {
+			$order = SOM_Purchase_Orders::get( (int) $po_id );
+			if ( ! $order ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Purchase order not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Purchase_Orders::list_url() ) . '">';
+				echo esc_html__( 'Back to purchase orders', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+
+			if ( 'receive' === $view ) {
+				if ( empty( $order->can_receive ) ) {
+					echo '<div class="wrap"><div class="notice notice-error"><p>';
+					echo esc_html__( 'This purchase order cannot be received.', 'order-machine' );
+					echo '</p></div><p><a href="' . esc_url( SOM_Purchase_Orders::detail_url( (int) $order->id ) ) . '">';
+					echo esc_html__( 'Back to purchase order', 'order-machine' );
+					echo '</a></p></div>';
+					return;
+				}
+				require SOM_PLUGIN_DIR . 'admin/views/purchase-order-receive.php';
+				return;
+			}
+
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/purchase-order-edit.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/purchase-orders-list.php';
 	}
 
 	/**
@@ -635,11 +744,12 @@ class SOM_Admin_Menu {
 
 		$material_id = isset( $_POST['material_id'] ) ? (int) $_POST['material_id'] : 0;
 		$data        = array(
-			'name'                => isset( $_POST['som_material_name'] ) ? wp_unslash( $_POST['som_material_name'] ) : '',
-			'unit'                => isset( $_POST['som_material_unit'] ) ? wp_unslash( $_POST['som_material_unit'] ) : '',
-			'low_stock_threshold' => isset( $_POST['som_low_stock_threshold'] ) ? wp_unslash( $_POST['som_low_stock_threshold'] ) : '',
-			'unit_cost'           => isset( $_POST['som_unit_cost'] ) ? wp_unslash( $_POST['som_unit_cost'] ) : '',
-			'is_active'           => ! empty( $_POST['som_material_is_active'] ),
+			'name'                  => isset( $_POST['som_material_name'] ) ? wp_unslash( $_POST['som_material_name'] ) : '',
+			'unit'                  => isset( $_POST['som_material_unit'] ) ? wp_unslash( $_POST['som_material_unit'] ) : '',
+			'low_stock_threshold'   => isset( $_POST['som_low_stock_threshold'] ) ? wp_unslash( $_POST['som_low_stock_threshold'] ) : '',
+			'unit_cost'             => isset( $_POST['som_unit_cost'] ) ? wp_unslash( $_POST['som_unit_cost'] ) : '',
+			'preferred_supplier_id' => isset( $_POST['som_preferred_supplier'] ) ? wp_unslash( $_POST['som_preferred_supplier'] ) : '',
+			'is_active'             => ! empty( $_POST['som_material_is_active'] ),
 		);
 
 		if ( $material_id > 0 ) {
@@ -659,6 +769,163 @@ class SOM_Admin_Menu {
 
 		self::flash_notice( __( 'Material saved.', 'order-machine' ), 'success', 'som_material_saved' );
 		wp_safe_redirect( SOM_Materials::detail_url( $material_id ) );
+		exit;
+	}
+
+	/**
+	 * Save suppliers.
+	 *
+	 * @return void
+	 */
+	public static function handle_suppliers_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-suppliers' !== $page || ! isset( $_POST['som_save_supplier'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_supplier', 'som_supplier_nonce' );
+
+		$supplier_id = isset( $_POST['supplier_id'] ) ? (int) $_POST['supplier_id'] : 0;
+		$data        = array(
+			'name'         => isset( $_POST['som_supplier_name'] ) ? wp_unslash( $_POST['som_supplier_name'] ) : '',
+			'website'      => isset( $_POST['som_supplier_website'] ) ? wp_unslash( $_POST['som_supplier_website'] ) : '',
+			'contact_info' => isset( $_POST['som_supplier_contact'] ) ? wp_unslash( $_POST['som_supplier_contact'] ) : '',
+			'notes'        => isset( $_POST['som_supplier_notes'] ) ? wp_unslash( $_POST['som_supplier_notes'] ) : '',
+		);
+
+		if ( $supplier_id > 0 ) {
+			$result = SOM_Suppliers::update( $supplier_id, $data );
+		} else {
+			$result = SOM_Suppliers::create( $data );
+			if ( ! is_wp_error( $result ) ) {
+				$supplier_id = (int) $result;
+			}
+		}
+
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_supplier_error' );
+			wp_safe_redirect( $supplier_id > 0 ? SOM_Suppliers::detail_url( $supplier_id ) : SOM_Suppliers::detail_url( 'new' ) );
+			exit;
+		}
+
+		self::flash_notice( __( 'Supplier saved.', 'order-machine' ), 'success', 'som_supplier_saved' );
+		wp_safe_redirect( SOM_Suppliers::detail_url( $supplier_id ) );
+		exit;
+	}
+
+	/**
+	 * Save / receive / close purchase orders.
+	 *
+	 * @return void
+	 */
+	public static function handle_purchase_orders_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-purchase-orders' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_receive_po'] ) ) {
+			check_admin_referer( 'som_receive_po', 'som_receive_po_nonce' );
+			$po_id  = isset( $_POST['po_id'] ) ? (int) $_POST['po_id'] : 0;
+			$deltas = isset( $_POST['som_receive_qty'] ) && is_array( $_POST['som_receive_qty'] )
+				? wp_unslash( $_POST['som_receive_qty'] )
+				: array();
+			$result = SOM_Purchase_Orders::receive( $po_id, $deltas );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_po_receive_error' );
+				wp_safe_redirect( SOM_Purchase_Orders::receive_url( $po_id ) );
+				exit;
+			}
+			self::flash_notice( __( 'Stock received.', 'order-machine' ), 'success', 'som_po_received' );
+			wp_safe_redirect( SOM_Purchase_Orders::detail_url( $po_id ) );
+			exit;
+		}
+
+		if ( isset( $_POST['som_po_mark_received'] ) ) {
+			check_admin_referer( 'som_po_mark_received', 'som_po_mark_received_nonce' );
+			$po_id  = isset( $_POST['po_id'] ) ? (int) $_POST['po_id'] : 0;
+			$result = SOM_Purchase_Orders::mark_received( $po_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_po_close_error' );
+			} else {
+				self::flash_notice( __( 'Purchase order marked as received.', 'order-machine' ), 'success', 'som_po_closed' );
+			}
+			wp_safe_redirect( SOM_Purchase_Orders::detail_url( $po_id ) );
+			exit;
+		}
+
+		if ( isset( $_POST['som_po_cancel'] ) ) {
+			check_admin_referer( 'som_po_cancel', 'som_po_cancel_nonce' );
+			$po_id  = isset( $_POST['po_id'] ) ? (int) $_POST['po_id'] : 0;
+			$result = SOM_Purchase_Orders::cancel( $po_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_po_cancel_error' );
+			} else {
+				self::flash_notice( __( 'Purchase order cancelled.', 'order-machine' ), 'success', 'som_po_cancelled' );
+			}
+			wp_safe_redirect( SOM_Purchase_Orders::detail_url( $po_id ) );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_po'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_po', 'som_po_nonce' );
+
+		$po_id = isset( $_POST['po_id'] ) ? (int) $_POST['po_id'] : 0;
+		$existing = $po_id > 0 ? SOM_Purchase_Orders::get( $po_id ) : null;
+
+		$data = array(
+			'notes' => isset( $_POST['som_po_notes'] ) ? wp_unslash( $_POST['som_po_notes'] ) : '',
+		);
+
+		$can_edit_lines = ! $existing || ! empty( $existing->can_edit_lines );
+		if ( $can_edit_lines ) {
+			$data['supplier_id']   = isset( $_POST['som_po_supplier'] ) ? wp_unslash( $_POST['som_po_supplier'] ) : '';
+			$data['order_date']    = isset( $_POST['som_po_order_date'] ) ? wp_unslash( $_POST['som_po_order_date'] ) : '';
+			$data['shipping_cost'] = isset( $_POST['som_po_shipping'] ) ? wp_unslash( $_POST['som_po_shipping'] ) : '0';
+			$data['other_cost']    = isset( $_POST['som_po_other'] ) ? wp_unslash( $_POST['som_po_other'] ) : '0';
+
+			$materials = isset( $_POST['som_po_material'] ) && is_array( $_POST['som_po_material'] ) ? wp_unslash( $_POST['som_po_material'] ) : array();
+			$qtys      = isset( $_POST['som_po_qty'] ) && is_array( $_POST['som_po_qty'] ) ? wp_unslash( $_POST['som_po_qty'] ) : array();
+			$costs     = isset( $_POST['som_po_item_cost'] ) && is_array( $_POST['som_po_item_cost'] ) ? wp_unslash( $_POST['som_po_item_cost'] ) : array();
+			$items     = array();
+			foreach ( $materials as $key => $material_id ) {
+				$items[] = array(
+					'material_id'      => $material_id,
+					'quantity_ordered' => isset( $qtys[ $key ] ) ? $qtys[ $key ] : '',
+					'item_cost'        => isset( $costs[ $key ] ) ? $costs[ $key ] : '',
+				);
+			}
+			$data['items'] = $items;
+		}
+
+		if ( $po_id > 0 ) {
+			$result = SOM_Purchase_Orders::update( $po_id, $data );
+		} else {
+			$result = SOM_Purchase_Orders::create( $data );
+			if ( ! is_wp_error( $result ) ) {
+				$po_id = (int) $result;
+			}
+		}
+
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_po_error' );
+			wp_safe_redirect( $po_id > 0 ? SOM_Purchase_Orders::detail_url( $po_id ) : SOM_Purchase_Orders::detail_url( 'new' ) );
+			exit;
+		}
+
+		self::flash_notice( __( 'Purchase order saved.', 'order-machine' ), 'success', 'som_po_saved' );
+		wp_safe_redirect( SOM_Purchase_Orders::detail_url( $po_id ) );
 		exit;
 	}
 

@@ -253,10 +253,63 @@
 	}
 
 	initRecipeEditor();
+	initPoLineEditor();
 	initWorkflowEditor();
 	initListingEditor();
 	initCountdowns();
 	initAdvanceStepRest();
+
+	function initPoLineEditor() {
+		var lineIndex = 0;
+		var tbody = document.getElementById( 'som-po-line-rows' );
+		var template = document.getElementById( 'som-po-line-template' );
+		var addButton = document.getElementById( 'som-po-add-line' );
+
+		if ( ! tbody || ! template ) {
+			return;
+		}
+
+		function nextIndex() {
+			lineIndex += 1;
+			return 'p' + lineIndex + '_' + Date.now();
+		}
+
+		function bindRemoveButtons( scope ) {
+			var buttons = ( scope || document ).querySelectorAll( '.som-po-line-remove' );
+			buttons.forEach( function ( button ) {
+				if ( button.dataset.bound ) {
+					return;
+				}
+				button.dataset.bound = '1';
+				button.addEventListener( 'click', function () {
+					var row = button.closest( 'tr' );
+					if ( row && tbody.querySelectorAll( '.som-po-line-row' ).length > 1 ) {
+						row.remove();
+					} else if ( row ) {
+						row.querySelectorAll( 'select, input' ).forEach( function ( field ) {
+							field.value = '';
+						} );
+					}
+				} );
+			} );
+		}
+
+		if ( addButton ) {
+			addButton.addEventListener( 'click', function () {
+				var index = nextIndex();
+				var html = template.innerHTML.replace( /__INDEX__/g, index );
+				var wrapper = document.createElement( 'tbody' );
+				wrapper.innerHTML = html.trim();
+				var row = wrapper.firstElementChild;
+				if ( row ) {
+					tbody.appendChild( row );
+					bindRemoveButtons( row );
+				}
+			} );
+		}
+
+		bindRemoveButtons( tbody );
+	}
 
 	function initAdvanceStepRest() {
 		if ( typeof somAdmin === 'undefined' || ! somAdmin.restUrl ) {
