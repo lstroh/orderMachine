@@ -72,7 +72,7 @@ ICON_ASSETS = {
 # recoloured per accent on first use and cached to disk so the per-pixel
 # recolour loop only ever runs once per accent, not once per order.
 # ---------------------------------------------------------------------------
-P02_ICON_MASTER = "house_banner_master.png"
+P02_ICON_MASTER = "assets/icons/house_banner_master.png"
 
 
 def recolour_silhouette(in_path, out_path, hex_color):
@@ -533,32 +533,40 @@ def _fit_font_size(text, font, max_size, min_size, max_width, step=0.5):
 
 
 # ---------------------------------------------------------------------------
-# P02 — house + flowers + banner illustrated icon. Geometry below was NOT
-# eyeballed: extracted from a .pptx layout via python-pptx, then corrected
-# by analysing the actual icon PNG's alpha channel (connected-component
-# labelling) to find its two hollow interior regions -- the empty house
-# body ('36' nests here) and the empty banner ribbon (street name nests
-# here) -- and solving the icon's scale/position so those hollows line up
-# with the deliberately-placed text positions from the .pptx. Full
-# derivation in chat history. Numbers below are for the 401x512px master
-# silhouette specifically; if that source PNG is ever replaced, all of
-# this needs re-deriving from the new file, not reused as-is.
+# P02 — house + flowers + banner illustrated icon. REGENERATED (v2, bolder
+# linework) from a new source image that already had example text ("36" /
+# "GROVE STREET") baked into the artwork. Rather than eyeballing, the
+# original text was found via connected-component analysis of the ink
+# (house/flowers/banner outline vs. the individual digit/letter shapes),
+# the text glyphs were erased back to transparent (recreating a hollow
+# silhouette from what was originally a finished mockup), and the number/
+# street placement below is the *actual measured position* the artist
+# used — not a re-derived hollow centroid like v1. The banner curve is
+# still a fitted quadratic (residual std <1px) to the ribbon's own
+# top/bottom edge, same method as before. Full derivation in chat
+# history. These numbers are specific to the current
+# house_banner_master.png (1359x935px); replacing that file again means
+# re-deriving all of this again, not reusing it.
 # ---------------------------------------------------------------------------
-P02_ICON = dict(x=7.995 * mm, y=16.614 * mm, w=82.772 * mm, h=105.684 * mm)
-P02_ICON_SCALE = 0.206415  # mm per source-icon px
-P02_ICON_X_LEFT = 7.995 * mm
-P02_ICON_Y_TOP = 17.702 * mm  # icon's top edge, measured from the card's top edge
+P02_ICON = dict(x=8.6 * mm, y=41.515 * mm, w=82.8 * mm, h=56.97 * mm)
+P02_ICON_SCALE = 0.06093  # mm per source-icon px
+P02_ICON_X_LEFT = 8.6 * mm
+P02_ICON_Y_TOP = 41.515 * mm  # icon's top edge, measured from the card's top edge
 
-P02_NUMBER_CENTER_Y = 82.332 * mm  # RL y; house hollow's pixel *centroid* (not bbox mid -- roof-shaped hollow)
-P02_NUMBER_MAX_WIDTH = 21.26 * 0.90 * mm  # house hollow width, 10% safety margin
+P02_NUMBER_CENTER_Y = 76.615 * mm  # RL y; the artist's actual "36" placement, measured directly
+P02_NUMBER_MAX_WIDTH = 24.95 * 0.90 * mm  # house interior gap width, 10% safety margin
 
-P02_STREET_CENTER_Y = 66.151 * mm  # RL y; banner ribbon band's true midline (curve fit vertex)
-P02_STREET_MAX_WIDTH = 59.03 * 0.90 * mm  # banner hollow width, 10% safety margin
+P02_STREET_CENTER_Y = 60.045 * mm  # RL y; the artist's actual "GROVE STREET" placement, measured directly
+P02_STREET_MAX_WIDTH = 58.49 * 0.90 * mm  # banner usable-band width, 10% safety margin
 
-# Quadratic fit (least-squares, residual std <1px) to the banner hollow's
-# own top/bottom midline, sampled column-by-column from the source PNG --
-# this is what the street text curves along, not an eyeballed arc.
-P02_BANNER_CURVE_COEFFS = (1.23454754e-03, -4.83493871e-01, 3.19350864e+02)
+# Quadratic fit (least-squares, residual std <1px) to the banner's own
+# top/bottom midline, sampled column-by-column from the source PNG, over
+# just the clean central band (excludes the folded tail ends, which
+# aren't a smooth parabola) -- this is what the street text curves
+# along, not an eyeballed arc.
+P02_BANNER_CURVE_COEFFS = (3.36374116e-04, -4.56481049e-01, 7.64104309e+02)
+
+
 
 
 def _p02_banner_mid_px(x_px):
