@@ -29,7 +29,7 @@ import math
 
 CARD_W, CARD_H = 100 * mm, 140 * mm
 GUIDE = "#CCCCCC"
-PAD = 6 * mm  # inset of the design/border from the cut edge
+PAD = 2 * mm  # inset of the design/border from the cut edge
 
 # All icon paths in this file (ICON_ASSETS, P02_ICON_MASTER) are written
 # as relative strings like "assets/icons/house_icon.png" for readability.
@@ -547,17 +547,25 @@ def _fit_font_size(text, font, max_size, min_size, max_width, step=0.5):
 # history. These numbers are specific to the current
 # house_banner_master.png (1359x935px); replacing that file again means
 # re-deriving all of this again, not reusing it.
+#
+# PAD-DEPENDENT: unlike styles 1-10 (whose icon/border positions are
+# written directly in terms of PAD, so they move automatically), these
+# constants were rescaled by hand to match PAD=2mm -- if PAD changes
+# again, these need rescaling again too, not just the border. See
+# bin_sticker_README.md's "Changing PAD for hollow-icon styles" section
+# for the general recipe (rescale from the ORIGINAL pixel measurements,
+# don't nudge these mm values directly).
 # ---------------------------------------------------------------------------
-P02_ICON = dict(x=8.6 * mm, y=41.515 * mm, w=82.8 * mm, h=56.97 * mm)
-P02_ICON_SCALE = 0.06093  # mm per source-icon px
-P02_ICON_X_LEFT = 8.6 * mm
-P02_ICON_Y_TOP = 41.515 * mm  # icon's top edge, measured from the card's top edge
+P02_ICON = dict(x=4.834 * mm, y=38.926 * mm, w=90.331 * mm, h=62.149 * mm)
+P02_ICON_SCALE = 0.066469  # mm per source-icon px -- rescaled for PAD=2mm, see chat history
+P02_ICON_X_LEFT = 4.834 * mm
+P02_ICON_Y_TOP = 38.926 * mm  # icon's top edge, measured from the card's top edge
 
-P02_NUMBER_CENTER_Y = 76.615 * mm  # RL y; the artist's actual "36" placement, measured directly
-P02_NUMBER_MAX_WIDTH = 24.95 * 0.90 * mm  # house interior gap width, 10% safety margin
+P02_NUMBER_CENTER_Y = 77.215 * mm  # RL y; rescaled -- see references note below
+P02_NUMBER_MAX_WIDTH = 27.219 * 0.90 * mm  # house interior gap width, 10% safety margin
 
-P02_STREET_CENTER_Y = 60.045 * mm  # RL y; the artist's actual "GROVE STREET" placement, measured directly
-P02_STREET_MAX_WIDTH = 58.49 * 0.90 * mm  # banner usable-band width, 10% safety margin
+P02_STREET_CENTER_Y = 59.142 * mm  # RL y; rescaled -- see references note below
+P02_STREET_MAX_WIDTH = 63.81 * 0.90 * mm  # banner usable-band width, 10% safety margin
 
 # Quadratic fit (least-squares, residual std <1px) to the banner's own
 # top/bottom midline, sampled column-by-column from the source PNG, over

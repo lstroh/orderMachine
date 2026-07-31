@@ -264,22 +264,93 @@ it's already responsive to whatever text is in that order.
 
 ---
 
-## 6. Adding a new illustrated icon to styles 3/4/5/8/9/10
+## 6. Changing `PAD` (the card margin)
+
+`PAD` controls the gap between the true cut edge and the visible design
+border — it exists as **cutting tolerance**, not just white space. If the
+design border sat exactly on the cut line, any real-world guillotine
+imprecision (a laminated vinyl stack is thicker/tougher than plain paper,
+and this hasn't been formally tested against your actual material yet —
+see `Bin-Sticker-Material-Test-Plan.md`'s open corner-punch/peel-nick
+checks) would slice unevenly through the border on whichever side the cut
+drifted. Smaller `PAD` = less margin for that drift = more visual risk if
+your actual cutting turns out less precise than hoped. Current value:
+**2mm** (changed from an original 6mm — see chat history for the
+full tradeoff discussion).
+
+### Styles 1–10: just change `PAD`
+
+These styles write both the border and every icon position directly in
+terms of `PAD` (e.g. `oy + CARD_H - PAD - 12*mm`), so both move together
+automatically. House number/street text isn't tied to `PAD` at all (it
+uses fixed `CARD_H` fractions), so it won't move — that's fine, it just
+changes how much white space sits between the text and the now-closer
+border.
+
+### Style 11 (and any future hollow-icon style built the same way): NOT just `PAD`
+
+P02's icon and nested text positions are fixed absolute constants,
+independent of `PAD` — they were derived once from the source image's
+pixel geometry (see §4) assuming a specific border position. Changing
+`PAD` alone moves the border but leaves the icon exactly where it was,
+which desyncs the two: either an inconsistently large gap (if `PAD`
+shrunk) or an overlap risk (if `PAD` grew).
+
+**The fix is not to nudge the mm constants directly** — rescale from the
+original pixel measurements, the same way they were derived in the first
+place. The recipe:
+
+```python
+# 1. Original, fixed, NEVER changes regardless of PAD:
+IMG_W_PX, IMG_H_PX = 1359, 935          # source master image size
+NUMBER_CENTROID_PX = (697.76, 358.95)   # from component_centroid() on the erased digit pixels
+STREET_CENTROID_PX = (663.58, 630.85)   # same, for the erased letter pixels
+HOUSE_GAP_PX = 409.5                     # from measure_gap() on the house wall ink
+BANNER_USABLE_WIDTH_PX = 960             # from trace_band()'s clean x-range
+
+# 2. Decide the new scale by keeping the icon's margin-to-border
+#    proportionally the same as before (this is a design choice, not a
+#    law — but it's the one used for the 6mm->2mm change and it keeps
+#    the icon visually consistent with how the other 10 styles respond
+#    to PAD):
+OLD_PAD, NEW_PAD, OLD_SCALE = 6.0, 2.0, 0.06093
+k = (CARD_W - 2*NEW_PAD) / (CARD_W - 2*OLD_PAD)
+new_scale = OLD_SCALE * k
+
+# 3. Everything else follows mechanically — icon size, position, text
+#    centres, and max-widths are all `pixel_measurement * new_scale`,
+#    converted through the same top-down-to-bottom-up flip used in §4
+#    of this doc. BANNER_CURVE_COEFFS does NOT change — it's defined
+#    in the source image's own pixel space, independent of card scale.
+```
+
+This is exactly what `icon-silhouette-extraction`'s
+`references/deriving-placement-constants.md` walks through in more
+detail (§1–3) — the same skill/process used to build P02 in the first
+place applies here too, just re-run with a new target scale instead of a
+new source image. **Always re-run the full test suite after (single card,
+4-up sheet — this is what previously caught the sheet-position `ox` bug
+— full gallery, and edge-case long text) rather than trusting the
+arithmetic alone.**
+
+---
+
+## 7. Adding a new illustrated icon to styles 3/4/5/8/9/10
 
 Drop a transparent PNG at the path listed in `ICON_ASSETS` for that
 style (e.g. `assets/icons/house_icon.png` for style 5) and it's used
-automatically — `_draw_icon()` checks `os.path.exists()` and falls back
+automatically—`_draw_icon()` checks `os.path.exists()` and falls back
 to the vector shape if nothing's there. ~2000px on the long edge is
 plenty (well over 300dpi at this print size).
 
 This is simpler than style 11 because these icons are drawn as a
 centred square (`cx - size/2, cy - size/2, size, size` with
-`preserveAspectRatio=True`) — no hollow-nesting, no curve-fitting, just
+`preserveAspectRatio=True`)—no hollow-nesting, no curve-fitting, just
 a normal centred image.
 
 ---
 
-## 7. Running the script
+## 8. Running the script
 
 ### Quickest option: just run the file
 
@@ -400,7 +471,7 @@ Needs `pip install pdf2image` and the system `poppler-utils` package
 (`pdftoppm`) installed — this is how every test render earlier in this
 project was turned into a viewable image.
 
-## 8. Colour palettes: `ACCENTS` vs `CLEAR_VINYL_ACCENTS`
+## 9. Colour palettes: `ACCENTS` vs `CLEAR_VINYL_ACCENTS`
 
 There are two separate colour dicts in the file now, for two different
 production methods — don't treat them as interchangeable style choices.
@@ -466,7 +537,7 @@ order = {
     "house_number": "36",
     "street_name": "Grove Street",
     "style": "minimal",
-    "accent": "golden_yellow",   # from CLEAR_VINYL_ACCENTS -- works exactly like a normal accent key
+    "accent": "golden_yellow",   # from CLEAR_VINYL_ACCENTS — works exactly like a normal accent key
 }
 ```
 
