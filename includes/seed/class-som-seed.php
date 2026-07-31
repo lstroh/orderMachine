@@ -457,20 +457,22 @@ class SOM_Seed {
 			return $id;
 		}
 
-		$now = current_time( 'mysql', true );
+		$now   = current_time( 'mysql', true );
+		$value = round( (float) $stock * (float) $cost, 4 );
 		$wpdb->insert(
 			$table,
 			array(
-				'name'                => $name,
-				'unit'                => $unit,
-				'current_stock'       => $stock,
-				'low_stock_threshold' => $threshold,
-				'unit_cost'           => $cost,
-				'is_active'           => 1,
-				'created_at'          => $now,
-				'updated_at'          => $now,
+				'name'                 => $name,
+				'unit'                 => $unit,
+				'current_stock'        => $stock,
+				'low_stock_threshold'  => $threshold,
+				'unit_cost'            => $cost,
+				'total_value_on_hand'  => $value,
+				'is_active'            => 1,
+				'created_at'           => $now,
+				'updated_at'           => $now,
 			),
-			array( '%s', '%s', '%f', '%f', '%f', '%d', '%s', '%s' )
+			array( '%s', '%s', '%f', '%f', '%f', '%f', '%d', '%s', '%s' )
 		);
 
 		return (int) $wpdb->insert_id;

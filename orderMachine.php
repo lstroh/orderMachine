@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.11.0
+ * Version:           0.12.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.11.0' );
+define( 'SOM_VERSION', '0.12.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -25,6 +25,8 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-settings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channels.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-ebay.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-channel-etsy.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-suppliers.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-batch-groups.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-materials.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-products.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-stock.php';
@@ -49,9 +51,11 @@ require_once SOM_PLUGIN_DIR . 'admin/class-som-admin-menu.php';
 function som_activate() {
 	SOM_DB::create_tables();
 	SOM_Channels::ensure_rows();
+	SOM_Batch_Groups::ensure_rows();
 	SOM_Cron::init();
 	SOM_Cron::schedule_events();
 	SOM_Seed::maybe_load_dummy_credentials();
+	SOM_Batch_Groups::convert_thankyou_steps();
 }
 
 /**
@@ -74,10 +78,12 @@ register_deactivation_hook( __FILE__, 'som_deactivate' );
 function som_init() {
 	SOM_DB::maybe_upgrade();
 	SOM_Channels::ensure_rows();
+	SOM_Batch_Groups::ensure_rows();
 	SOM_Cron::init();
 	SOM_REST_API::init();
 	SOM_Abilities::init();
 	SOM_Seed::maybe_load_dummy_credentials();
+	SOM_Batch_Groups::convert_thankyou_steps();
 
 	if ( is_admin() ) {
 		SOM_Admin_Menu::init();
