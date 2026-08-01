@@ -37,7 +37,7 @@ $out( 'plugin', SOM_VERSION );
 $out( 'db_version', (string) get_option( 'som_db_version', '' ) );
 
 $assert( version_compare( SOM_VERSION, '0.12.0', '>=' ), 'SOM_VERSION_gte_0.12.0' );
-$assert( get_option( 'som_db_version' ) === '1.4.0', 'som_db_version_1.4.0' );
+$assert( version_compare( (string) get_option( 'som_db_version', '' ), '1.4.0', '>=' ), 'som_db_version_gte_1.4.0' );
 
 $expected_tables = array(
 	'suppliers',

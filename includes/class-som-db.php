@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.4.0';
+	const DB_VERSION = '1.5.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -256,11 +256,14 @@ class SOM_DB {
 			released_at datetime NULL,
 			completed_at datetime NULL,
 			last_error text NULL,
+			retry_count int(11) NOT NULL DEFAULT 0,
+			retry_after datetime NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY batch_group_id (batch_group_id),
-			KEY status (status)
+			KEY status (status),
+			KEY retry_after (retry_after)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_step_batch_items (

@@ -382,10 +382,61 @@ class SOM_Workflow_Engine {
 			}
 		}
 
+		$batches = SOM_Batches::process_due_retries();
+
 		return array(
 			'unlocked' => $unlocked,
 			'scripts'  => $scripts,
+			'batches'  => $batches,
 		);
+	}
+
+	/**
+	 * Complete a waiting_batch (or error) member step and advance that order.
+	 *
+	 * Used when a batch finishes successfully (script or mark-done).
+	 *
+	 * @param int $order_id Order PK.
+	 * @param int $step_id  Workflow step PK for this member.
+	 * @return true|WP_Error
+	 */
+	public static function complete_batch_member( $order_id, $step_id ) {
+		$order_id = (int) $order_id;
+		$step_id  = (int) $step_id;
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order ) {
+			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
+		}
+
+		// Cancelled orders stay in the batch but do not advance.
+		if ( ! empty( $order->is_cancelled ) ) {
+			return true;
+		}
+
+		if ( ! empty( $order->is_complete ) ) {
+			return true;
+		}
+
+		$progress = self::get_progress_for_step( $order_id, $step_id );
+		$step     = self::get_step( $step_id );
+		if ( ! $progress || ! $step ) {
+			return new WP_Error( 'som_step_missing', __( 'Workflow step not found.', 'order-machine' ) );
+		}
+
+		$status = (string) $progress->status;
+		if ( ! in_array( $status, array( 'waiting_batch', 'error' ), true ) ) {
+			if ( 'done' === $status ) {
+				return true;
+			}
+			return new WP_Error( 'som_not_batch', __( 'Order is not waiting on this batch step.', 'order-machine' ) );
+		}
+
+		if ( (int) $order->current_step_id !== $step_id ) {
+			return new WP_Error( 'som_not_current', __( 'Batch step is not the order current step.', 'order-machine' ) );
+		}
+
+		return self::complete_current_and_advance( $order_id, $progress, $step );
 	}
 
 	/**
@@ -452,7 +503,7 @@ class SOM_Workflow_Engine {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
-					s.timer_seconds, s.script_config, s.workflow_template_id
+					s.timer_seconds, s.script_config, s.workflow_template_id, s.batch_group_id
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
 				WHERE p.order_id = %d
@@ -627,6 +678,11 @@ class SOM_Workflow_Engine {
 		$timer  = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
 		$manual = ! empty( $step->requires_manual_confirm );
 		$script = SOM_Script_Dispatch::has_script( $step );
+
+		// Batch gate (batch-only in v1 — ignore other gates on the same step).
+		if ( ! empty( $step->batch_group_id ) ) {
+			return SOM_Batches::enqueue( $order_id, $step );
+		}
 
 		// Zero-gate (no timer, no manual, no script) → auto-advance.
 		if ( $timer < 1 && ! $manual && ! $script ) {

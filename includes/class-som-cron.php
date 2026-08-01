@@ -27,6 +27,7 @@ class SOM_Cron {
 		add_action( self::HOOK_SYNC_ORDERS, array( __CLASS__, 'sync_orders' ) );
 		add_action( self::HOOK_ENGINE_TICK, array( __CLASS__, 'engine_tick' ) );
 		add_action( SOM_Workflow_Engine::HOOK_SCRIPT_ATTEMPT, array( 'SOM_Workflow_Engine', 'attempt_script_by_progress_id' ) );
+		add_action( SOM_Batches::HOOK_BATCH_ATTEMPT, array( 'SOM_Batches', 'attempt_by_id' ) );
 	}
 
 	/**

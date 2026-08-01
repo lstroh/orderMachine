@@ -358,13 +358,35 @@ class SOM_Workflows {
 				return $script;
 			}
 
+			$step_id        = isset( $row['id'] ) ? (int) $row['id'] : 0;
+			$batch_group_id = self::resolve_batch_group_id( $row, $step_id, $template_id );
+			if ( is_wp_error( $batch_group_id ) ) {
+				return $batch_group_id;
+			}
+
+			$manual = ! empty( $row['requires_manual_confirm'] ) ? 1 : 0;
+
+			if ( $batch_group_id ) {
+				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script );
+				if ( $has_other ) {
+					return new WP_Error(
+						'som_batch_only_step',
+						__( 'A batch step cannot also have manual, timer, or script gates.', 'order-machine' )
+					);
+				}
+				$manual = 0;
+				$timer  = null;
+				$script = null;
+			}
+
 			$normalized[] = array(
-				'id'                      => isset( $row['id'] ) ? (int) $row['id'] : 0,
+				'id'                      => $step_id,
 				'step_order'              => $order,
 				'name'                    => $name,
-				'requires_manual_confirm' => ! empty( $row['requires_manual_confirm'] ) ? 1 : 0,
+				'requires_manual_confirm' => $manual,
 				'timer_seconds'           => $timer,
 				'script_config'           => $script,
+				'batch_group_id'          => $batch_group_id,
 			);
 		}
 
@@ -387,6 +409,7 @@ class SOM_Workflows {
 				'requires_manual_confirm' => $row['requires_manual_confirm'],
 				'timer_seconds'           => $row['timer_seconds'],
 				'script_config'           => $row['script_config'],
+				'batch_group_id'          => $row['batch_group_id'],
 				'updated_at'              => $now,
 			);
 
@@ -398,7 +421,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -412,7 +435,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -443,6 +466,52 @@ class SOM_Workflows {
 		);
 
 		return true;
+	}
+
+	/**
+	 * Resolve batch_group_id for a step row.
+	 *
+	 * When the form omits batch_group_id, preserve the existing DB value so
+	 * U1 thank-you converts are not wiped before the U6 editor ships.
+	 *
+	 * @param array<string, mixed> $row         Form row.
+	 * @param int                  $step_id     Existing step PK or 0.
+	 * @param int                  $template_id Template PK.
+	 * @return int|null|WP_Error
+	 */
+	public static function resolve_batch_group_id( array $row, $step_id, $template_id ) {
+		global $wpdb;
+
+		if ( array_key_exists( 'batch_group_id', $row ) ) {
+			$id = (int) $row['batch_group_id'];
+			if ( $id < 1 ) {
+				return null;
+			}
+			$group = SOM_Batch_Groups::get( $id );
+			if ( ! $group ) {
+				return new WP_Error( 'som_batch_group_missing', __( 'Batch group not found.', 'order-machine' ) );
+			}
+			return $id;
+		}
+
+		$step_id = (int) $step_id;
+		if ( $step_id < 1 ) {
+			return null;
+		}
+
+		$table    = SOM_DB::table( 'workflow_steps' );
+		$existing = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT batch_group_id FROM {$table} WHERE id = %d AND workflow_template_id = %d LIMIT 1",
+				$step_id,
+				(int) $template_id
+			)
+		);
+		if ( null === $existing || '' === $existing ) {
+			return null;
+		}
+		$id = (int) $existing;
+		return $id > 0 ? $id : null;
 	}
 
 	/**
@@ -708,6 +777,17 @@ class SOM_Workflows {
 	 */
 	public static function step_gates_label( $step ) {
 		$parts = array();
+		if ( ! empty( $step->batch_group_id ) ) {
+			$group = SOM_Batch_Groups::get( (int) $step->batch_group_id );
+			$parts[] = $group
+				? sprintf(
+					/* translators: %s: batch group display name */
+					__( 'batch:%s', 'order-machine' ),
+					$group->display_name
+				)
+				: __( 'batch', 'order-machine' );
+			return $parts[0];
+		}
 		if ( ! empty( $step->requires_manual_confirm ) ) {
 			$parts[] = __( 'manual', 'order-machine' );
 		}

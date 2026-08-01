@@ -21,11 +21,28 @@ class SOM_Local_Actions {
 	 * @return true|WP_Error
 	 */
 	public static function run( $action, array $params, $order ) {
+		return self::run_for_orders( $action, $params, array( $order ) );
+	}
+
+	/**
+	 * Dispatch a named allowlisted action for one or more orders (batch).
+	 *
+	 * @param string                 $action Action key from script_config.
+	 * @param array<string, mixed>   $params Params from script_config.
+	 * @param array<int, object>     $orders Order rows from SOM_Orders::get().
+	 * @return true|WP_Error
+	 */
+	public static function run_for_orders( $action, array $params, array $orders ) {
 		$action = sanitize_key( (string) $action );
+		$orders = array_values( array_filter( $orders ) );
+
+		if ( empty( $orders ) ) {
+			return new WP_Error( 'som_no_orders', __( 'No orders for local action.', 'order-machine' ) );
+		}
 
 		switch ( $action ) {
 			case 'run_thankyou_card_script':
-				return self::run_thankyou_card_script( $params, $order );
+				return self::run_thankyou_card_script( $params, $orders );
 			case 'send_print_job':
 				return new WP_Error(
 					'som_print_not_configured',
@@ -44,15 +61,15 @@ class SOM_Local_Actions {
 	}
 
 	/**
-	 * Run thankyou_card_cli.py with --json / --out.
+	 * Run thankyou_card_cli.py with --json / --out for 1–4 orders.
 	 *
 	 * Fails clearly when Python/reportlab are missing — retryable from the UI.
 	 *
 	 * @param array<string, mixed> $params Optional overrides (paper, flower_color, …).
-	 * @param object               $order  Order row.
+	 * @param array<int, object>   $orders Order rows.
 	 * @return true|WP_Error
 	 */
-	private static function run_thankyou_card_script( array $params, $order ) {
+	private static function run_thankyou_card_script( array $params, array $orders ) {
 		$python = self::resolve_python_binary();
 		$cli    = SOM_PLUGIN_DIR . 'stikerts/Thank you/thankyou_card_cli.py';
 
@@ -60,6 +77,13 @@ class SOM_Local_Actions {
 			return new WP_Error(
 				'som_thankyou_cli_missing',
 				__( 'Thank-you card CLI wrapper was not found.', 'order-machine' )
+			);
+		}
+
+		if ( count( $orders ) > 4 ) {
+			return new WP_Error(
+				'som_thankyou_too_many',
+				__( 'Thank-you card sheets support at most 4 orders.', 'order-machine' )
 			);
 		}
 
@@ -76,11 +100,24 @@ class SOM_Local_Actions {
 			);
 		}
 
-		$order_id  = (int) $order->id;
-		$json_path = $dir . '/order-' . $order_id . '-input.json';
-		$out_path  = $dir . '/order-' . $order_id . '.pdf';
+		$batch_id = isset( $params['_batch_id'] ) ? (int) $params['_batch_id'] : 0;
+		if ( $batch_id > 0 ) {
+			$stem = 'batch-' . $batch_id;
+		} elseif ( 1 === count( $orders ) ) {
+			$stem = 'order-' . (int) $orders[0]->id;
+		} else {
+			$stem = 'sheet-' . gmdate( 'YmdHis' );
+		}
 
-		$payload = array( 'orders' => array( self::build_thankyou_order_dict( $params, $order ) ) );
+		$json_path = $dir . '/' . $stem . '-input.json';
+		$out_path  = $dir . '/' . $stem . '.pdf';
+
+		$payload_orders = array();
+		foreach ( $orders as $order ) {
+			$payload_orders[] = self::build_thankyou_order_dict( $params, $order );
+		}
+
+		$payload = array( 'orders' => $payload_orders );
 		$written = file_put_contents( $json_path, wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		if ( false === $written ) {
 			return new WP_Error(

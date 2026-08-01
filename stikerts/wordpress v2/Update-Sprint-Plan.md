@@ -51,19 +51,29 @@ Spec sources: `01-Update-Overview.md`, `02-Update-Data-Model.md`, `03-Update-Raw
 | Material unit cost UI (U4) | Read-only WA + value on hand; keep `unit_cost` as explicit override/revalue control with clearer copy |
 | Post-receive alerts (U4) | Success notice with alert summary on the **receive** screen |
 | U4 smoke (U4) | Yes — `tests/sprint-u4-smoke.php` (preview handler + goals save round-trip + costing UI data helpers) |
+| In-flight thank-you (U5) | **No migration** — assume no in-flight `waiting_script` thank-you orders |
+| Batch retry columns (U5) | Add `retry_count` + `retry_after` (datetime NULL) on `step_batches`; bump `DB_VERSION` → `1.5.0` |
+| Batch error → members (U5) | When batch → `error`, flip each member’s `order_step_progress` to `error` (copy `last_error`) |
+| Script auto-run (U5) | Same request: size/manual release → `ready` → `processing` → run script immediately |
+| Cancelled in batch (U5) | Leave cancelled orders in the collecting/ready batch (do not remove or shrink) |
+| Duplicate membership (U5) | No uniqueness enforcement |
+| Batch domain retry (U5) | Expose `SOM_Batches::retry` (reset retry budget, re-enter processing) for U6/U7 |
+| U5 smoke / version (U5) | Yes — `tests/sprint-u5-smoke.php`; `SOM_VERSION` → `0.16.0`; DB → `1.5.0` |
+| Seed thank-you (U5) | Leave seed with per-order `script_config`; `convert_thankyou_steps` on activate remains the fix |
+| Shipping-label convert (U5) | Engine only — no auto-assign of existing Ship steps; shipping_label opt-in stays **U6** |
 
 ---
 
 ## Spec vs codebase discrepancies (ground truth = code)
 
-1. **Thank-you 4-up already implemented** — `stikerts/Thank you/thankyou_card.py` `render_sheet` + `thankyou_card_cli.py` accept 1–4 orders. Gap is PHP batch release calling CLI with the full list (`SOM_Local_Actions::run_thankyou_card_script` currently builds one-order JSON).
+1. **Thank-you 4-up already implemented** — `stikerts/Thank you/thankyou_card.py` `render_sheet` + `thankyou_card_cli.py` accept 1–4 orders. **Closed in U5:** `SOM_Local_Actions::run_for_orders` builds multi-order JSON for batch release.
 2. **No incremental ALTER migrator** — only `SOM_DB::create_tables()` + `maybe_upgrade()` version string check. Spec’s “migration step” language maps to bumping `DB_VERSION` and extending CREATE strings (+ explicit ENUM ALTER).
 3. **`02-Update-Data-Model.md` has no Open items section** — only Migration notes. Open items are from 03–04 (+ codebase items below).
 4. **Consumption must update value** — qty path in `SOM_Material_Stock` / `SOM_Materials::adjust_stock` must also maintain `total_value_on_hand` and log `unit_cost_at_time` / `value_change` once costing columns exist (additive extension, not a rewrite of decrement-on-create).
 5. **`material_stock_log.reason` is `varchar(50)`** — adding `purchase_received` is app-level only.
-6. **Base tables match** — materials, material_stock_log, products, workflow_steps, order_step_progress, workflow_templates, product_materials, orders all exist with expected columns. Workflow gates today: manual / timer / script flags; no batch gate yet.
+6. **Base tables match** — materials, material_stock_log, products, workflow_steps, order_step_progress, workflow_templates, product_materials, orders all exist with expected columns. **U5 shipped** the batch gate (`batch_group_id` → `waiting_batch` via `SOM_Batches`).
 
-Schema delta vs `02-Update-Data-Model.md`: add column `allocated_other_cost` on `purchase_order_items` (not in original Part A table — settled here). `batch_groups.key` is stored as DB column `group_key` (dbDelta cannot UNIQUE a reserved `key` column); PHP still exposes `->key`.
+Schema delta vs `02-Update-Data-Model.md`: add column `allocated_other_cost` on `purchase_order_items` (not in original Part A table — settled here). `batch_groups.key` is stored as DB column `group_key` (dbDelta cannot UNIQUE a reserved `key` column); PHP still exposes `->key`. U5 adds `retry_count` / `retry_after` on `step_batches` (not in original Part B — settled for batch-unit backoff).
 
 ---
 
@@ -141,6 +151,19 @@ U4 clarifications (answered before build):
 29. **Post-receive alerts:** Receive-screen notice vs badges only? → **Receive-screen success notice.**
 30. **U4 smoke?** → **Yes.**
 
+U5 clarifications (answered before build):
+
+31. **In-flight thank-you orders:** Auto-migrate into batches, leave stuck, or none expected? → **None expected — no migration.**
+32. **Batch retry storage:** New columns on `step_batches`, encode in `last_error`, or other? → **Add `retry_count` + `retry_after` on `step_batches` (DB bump).**
+33. **Member status on batch error:** Stay `waiting_batch` or flip to `error`? → **Flip members to `error`.**
+34. **Script auto-run timing:** Same request vs park at `ready` for cron? → **Same request** (`ready` → `processing` → run).
+35. **Cancelled orders in collecting batch:** Remove, leave, or block cancel? → **Leave in batch.**
+36. **Duplicate membership uniqueness?** → **No.**
+37. **Domain batch retry after error?** → **Yes — expose retry.**
+38. **U5 smoke + version bump?** → **Yes** (`sprint-u5-smoke.php`; plugin `0.16.0`; DB `1.5.0`).
+39. **Seed thank-you steps:** Set `batch_group_id` in seed, or keep convert-on-activate? → **Keep convert-on-activate.**
+40. **Auto-convert shipping_label onto Ship steps in U5?** → **No — engine only; U6 editor opt-in.**
+
 No further blockers.
 
 ---
@@ -201,11 +224,12 @@ flowchart LR
 
 ### Sprint U5 — Batch gate in workflow engine
 
-- **Covers:** Batch Processing state machine (04 §2); batch-only step rule
-- **Create:** `includes/class-som-batches.php` (collecting batch, add item, release, mark done, script run for group)
-- **Modify:** `includes/class-som-workflow-engine.php` `enter_step` — if `batch_group_id` set → `waiting_batch` + enqueue (reject/ignore other gates for that step in v1); advance all members on batch done via each item’s `workflow_step_id`; `includes/class-som-local-actions.php` — batch thank-you path: build multi-order JSON, call existing CLI; `includes/class-som-workflows.php` step save validation (batch-only); script retry/backoff at batch unit
-- **Done when:** Orders pool cross-workflow; auto-ready at size 4; manual release; script group runs once for all members and advances all; manual_confirm group waits for mark-done; failure leaves whole batch in `error`
-- **Open items first:** B1–B3, X3 settled
+- **Covers:** Batch Processing state machine (04 §2); batch-only step rule; batch-unit retry
+- **Create:** `includes/class-som-batches.php` (collecting batch, add item, release, mark done, script run for group, domain retry); `tests/sprint-u5-smoke.php`
+- **Modify:** `includes/class-som-db.php` (`step_batches.retry_count` / `retry_after`; `DB_VERSION` → `1.5.0`); `includes/class-som-workflow-engine.php` `enter_step` — if `batch_group_id` set → `waiting_batch` + enqueue (batch-only: ignore other gates for that step in v1); advance all members on batch done via each item’s `workflow_step_id`; on batch `error` flip members to `error`; `includes/class-som-local-actions.php` — batch thank-you path: build multi-order JSON, call existing CLI; `includes/class-som-workflows.php` step save validation (batch-only); `orderMachine.php` (`SOM_VERSION` → `0.16.0`)
+- **Behaviour (settled):** Same-request script path on size/manual release; cancelled members left in batch; no duplicate-membership uniqueness; no in-flight thank-you migration; seed still relies on convert-on-activate; shipping_label assignment stays U6
+- **Done when:** Orders pool cross-workflow; auto-ready at size 4; manual release; script group runs once for all members and advances all; manual_confirm group waits for mark-done; failure leaves whole batch + members in `error`; domain retry works; U5 smoke PASS
+- **Open items first:** B1–B3, X3 + U5 clarifying answers settled
 
 ### Sprint U6 — Batches admin UI + thank-you step conversion
 

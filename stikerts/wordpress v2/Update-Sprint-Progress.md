@@ -14,7 +14,7 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 | U2 | Suppliers + purchase orders | **Done** | Verified on wp-env 2026-07-31 |
 | U3 | Landed cost / WA / goals | **Done** | Verified on wp-env 2026-07-31 |
 | U4 | Purchasing admin UI | **Done** | Verified on wp-env 2026-08-01 |
-| U5 | Batch engine | Pending | |
+| U5 | Batch engine | **Done** | Verified on wp-env 2026-08-01 |
 | U6 | Batches UI | Pending | Thank-you convert already done in U1 |
 | U7 | REST + Abilities + smoke | Pending | |
 
@@ -463,6 +463,112 @@ Re-confirmed 2026-08-01 after plan review: plugin `0.15.0`, full U4 smoke **PASS
 
 ---
 
+## Sprint U5 — Batch gate in workflow engine
+
+- **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U5 + settled U5 Q31–40)
+- **Completed:** 2026-08-01
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.16.0`
+- **DB version:** `1.5.0` (`retry_count` / `retry_after` on `step_batches`)
+
+### Plan requirements review (`Update-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Batch Processing state machine (04 §2) | **Done** | `collecting` → `ready` → (`processing`) → `done` / `error` |
+| Batch-only step rule | **Done** | `save_steps` rejects batch + manual/timer/script; `enter_step` takes batch first |
+| Create `includes/class-som-batches.php` | **Done** | enqueue, release, mark_done, run script, domain retry, cron attempt |
+| Create `tests/sprint-u5-smoke.php` | **Done** | |
+| Modify `class-som-db.php` (`retry_*`, `DB_VERSION` → `1.5.0`) | **Done** | |
+| Modify `enter_step` → `waiting_batch` + enqueue | **Done** | |
+| Advance all members via each item’s `workflow_step_id` | **Done** | `SOM_Workflow_Engine::complete_batch_member` |
+| On batch `error`, flip members to `error` | **Done** | |
+| Batch thank-you path (multi-order JSON → existing CLI) | **Done** | `SOM_Local_Actions::run_for_orders` |
+| Step save validation (batch-only) | **Done** | Also preserves `batch_group_id` when form omits it |
+| Script retry/backoff at batch unit | **Done** | `retry_count` / `retry_after` + `som_batch_attempt` cron |
+| `SOM_VERSION` → `0.16.0` | **Done** | |
+| **Done when:** Orders pool cross-workflow; auto-ready at size 4 | **Pass** | Pooling by `batch_group_id` (not template) |
+| **Done when:** Manual release | **Pass** | |
+| **Done when:** Script group runs once for all members and advances all | **Pass** | Same-request on size/manual release |
+| **Done when:** manual_confirm waits for mark-done | **Pass** | |
+| **Done when:** Failure → whole batch + members `error`; domain retry | **Pass** | |
+| **Done when:** U5 smoke PASS | **Pass** | |
+| Open items first | Settled | B1–B3, X3 + U5 clarifying answers in plan |
+
+### Settled U5 clarifications applied
+
+| Topic | Decision | Implemented |
+|---|---|---|
+| In-flight thank-you | No migration | Yes |
+| Retry storage | `retry_count` + `retry_after` on `step_batches`; DB `1.5.0` | Yes |
+| Members on batch error | Flip to `error` (copy `last_error`) | Yes |
+| Script auto-run | Same request (`ready` → `processing` → run) | Yes |
+| Cancelled in batch | Leave in batch; skip advance on complete | Yes |
+| Duplicate membership | No uniqueness | Yes |
+| Domain retry | `SOM_Batches::retry` | Yes |
+| Smoke / versions | `sprint-u5-smoke.php`; plugin `0.16.0`; DB `1.5.0` | Yes |
+| Seed thank-you | Convert-on-activate (unchanged) | Yes |
+| Shipping-label convert | Engine only; opt-in stays U6 | Yes |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Batch script types | `local` only for batch groups in v1 (api/n8n → failure message) |
+| Empty group `script_config` | Treat as success (noop) then advance members |
+| Cancelled members on complete | Stay in batch items; `complete_batch_member` no-ops advance |
+| Preserve `batch_group_id` on step save | If form omits field, keep existing DB value (protects U1 thank-you convert until U6 editor) |
+| Versions | `SOM_VERSION` → `0.16.0`; `DB_VERSION` → `1.5.0` |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-db.php` | `step_batches.retry_count` / `retry_after`; `DB_VERSION` `1.5.0` |
+| `includes/class-som-batches.php` | Batch domain state machine |
+| `includes/class-som-workflow-engine.php` | Batch `enter_step`; `complete_batch_member`; tick due retries |
+| `includes/class-som-local-actions.php` | Multi-order thank-you CLI (`run_for_orders`) |
+| `includes/class-som-workflows.php` | Batch-only validation; preserve `batch_group_id`; gates label |
+| `includes/class-som-cron.php` | Wire `som_batch_attempt` |
+| `orderMachine.php` | Require `class-som-batches.php`; `0.16.0` |
+| `tests/sprint-u5-smoke.php` | Manual/auto/script/retry/validation smoke |
+| `tests/sprint-u1-smoke.php` | DB version assert relaxed to `>= 1.4.0` |
+| `stikerts/wordpress v2/Update-Sprint-Plan.md` | U5 settled decisions (before build) |
+| `stikerts/wordpress v2/Update-Sprint-Progress.md` | This section |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| Orders pool cross-workflow; auto-ready at size 4 | **Pass** |
+| Manual release; script group runs once and advances all | **Pass** |
+| manual_confirm waits for mark-done | **Pass** |
+| Failure leaves whole batch + members in `error`; domain retry works | **Pass** |
+| U5 smoke PASS | **Pass** |
+
+**Plan scope:** All Sprint U5 create/modify/done-when items and settled U5 rules are complete. Batches admin UI / step-editor assignment remain **U6**.
+
+### Explicitly out of U5
+
+- Batches page / order-detail batch link / step editor `batch_group_id` UI → **U6**
+- shipping_label opt-in on existing Ship steps → **U6**
+- REST / Abilities for batches → **U7**
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active 0.16.0
+npx @wordpress/env run cli wp option get som_db_version
+# 1.5.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u5-smoke.php
+# PASS — Sprint U5 smoke
+```
+
+Re-confirmed 2026-08-01 after plan review: plugin `0.16.0`, DB `1.5.0`, full U5 smoke **PASS**, all plan done-when items covered.
+
+---
+
 ## Next
 
-Execute **Sprint U5** (batch gate in workflow engine).
+Execute **Sprint U6** (Batches admin UI + step editor `batch_group_id` / shipping_label opt-in).
