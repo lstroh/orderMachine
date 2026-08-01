@@ -71,6 +71,12 @@ Spec sources: `01-Update-Overview.md`, `02-Update-Data-Model.md`, `03-Update-Raw
 | Order → batch link (U6) | `admin.php?page=som-batches&batch_id=N` |
 | U6 smoke / version (U6) | Yes — `tests/sprint-u6-smoke.php`; `SOM_VERSION` → `0.17.0` (no DB bump unless groups edit needs none) |
 | Order detail Mark done (U6) | While `waiting_batch`, **hide/disable** per-order Mark done (advance is batch-level only) |
+| REST auth (U7) | **API key or admin** (`check_api_key_or_admin`) for all new U7 routes |
+| REST surface (U7) | Suppliers CRUD (no delete); POs CRUD + receive/preview/mark-received/cancel; goals individual CRUD; batches list/get + release/mark-done/**retry**; batch groups **read-only** list/get |
+| Goals REST (U7) | Individual upsert/update/delete (+ list by workflow/material) — **no** `sync_for_workflow` bulk endpoint |
+| Abilities enrich (U7) | New list/get for suppliers, POs, goals, batches, batch groups; **enrich** existing `get-materials` (WA, value, preferred supplier, alert) and `get-products` (target price / recipe cost / margin) |
+| U7 smoke / version (U7) | Yes — `tests/sprint-u7-smoke.php` via `rest_do_request`; `SOM_VERSION` → `0.18.0` (no DB bump) |
+| Admin UI vs REST (U7) | Leave admin on form POST / admin-ajax; REST is parallel (automation / MCP / future UI) |
 
 ---
 
@@ -187,6 +193,14 @@ U6 clarifications (answered before build):
 49. **U6 smoke + version?** → **Yes** (`sprint-u6-smoke.php`; plugin `0.17.0`).
 50. **Hide per-order Mark done while `waiting_batch`?** → **Yes.**
 
+U7 clarifications (answered before build):
+
+51. **REST auth for new routes:** Admin only, API key or admin, or mix? → **API key or admin** (same as `advance-step`).
+52. **REST surface:** Confirm suppliers CRUD (no delete); POs CRUD + receive/preview/mark-received/cancel; goals CRUD; batches list/get/release/mark-done? → **Confirmed.** Also include **batch retry**; batch groups **read-only**; goals = **individual CRUD** (no bulk sync endpoint).
+53. **Enrich existing Abilities** (`get-materials` costing fields; `get-products` target/cost/margin)? → **Yes.**
+54. **Version + smoke:** `0.18.0` + `rest_do_request` smoke? → **Yes.**
+55. **Migrate admin UI to REST in U7?** → **No** — leave form POST / admin-ajax.
+
 No further blockers.
 
 ---
@@ -266,10 +280,19 @@ flowchart LR
 
 ### Sprint U7 — REST + Abilities + smoke tests
 
-- **Covers:** `som/v1` suppliers, purchase orders (+ receive/preview), workflow material goals, batches (list/get/release/mark-done); read-only Abilities mirroring safe reads
-- **Modify:** `includes/class-som-rest-api.php`, `includes/class-som-abilities.php`; smoke test under `tests/` (pattern like existing sprint smokes)
-- **Done when:** Authenticated REST covers CRUD/actions needed by admin flows; Abilities list/get only (no credential leakage); smoke script covers schema presence, one PO receive WA path, one batch collect→release→advance
-- **Open items first:** X5 settled
+- **Covers:** `som/v1` suppliers, purchase orders (+ receive/preview/mark-received/cancel), workflow material goals, batches (list/get/release/mark-done/retry), batch groups (read-only); read-only Abilities mirroring safe reads + enrich materials/products costing fields
+- **Modify:** `includes/class-som-rest-api.php`, `includes/class-som-abilities.php`; `orderMachine.php` (`SOM_VERSION` → `0.18.0`); create `tests/sprint-u7-smoke.php`
+- **Auth (settled):** `check_api_key_or_admin` on all new routes
+- **REST routes (settled):**
+  - Suppliers: `GET` list/one, `POST` create, `PUT` update (no delete)
+  - Purchase orders: `GET` list/one, `POST` create, `PUT` update; `POST …/receive`, `…/preview`, `…/mark-received`, `…/cancel`
+  - Workflow material goals: `GET` by workflow and/or material, `POST` upsert, `PUT` update, `DELETE` (no bulk sync)
+  - Batches: `GET` list/one, `POST …/release`, `…/mark-done`, `…/retry`
+  - Batch groups: `GET` list/one only
+- **Abilities (settled):** New list/get for suppliers, POs, goals, batches, batch groups; enrich `get-materials` (WA, `total_value_on_hand`, preferred supplier, alert level) and `get-products` (target price, recipe cost, margin); still MCP-toggle gated; no credentials
+- **Admin:** Unchanged — form POST / admin-ajax stay; REST is parallel
+- **Done when:** Authenticated REST covers the settled route set; Abilities list/get only (no credential leakage); U7 smoke PASS via `rest_do_request` (schema presence, one PO receive WA path, one batch collect→release→advance); plugin `0.18.0`
+- **Open items first:** X5 + U7 clarifying answers settled
 
 ---
 
@@ -287,4 +310,4 @@ flowchart LR
 
 ## 5. Next step
 
-This file is the planning deliverable only. **Do not** implement plugin code until asked to execute sprints U1–U7.
+**U1–U7 complete** (see `Update-Sprint-Progress.md`). Plugin `0.18.0` / DB `1.5.0`.

@@ -16,7 +16,7 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 | U4 | Purchasing admin UI | **Done** | Verified on wp-env 2026-08-01 |
 | U5 | Batch engine | **Done** | Verified on wp-env 2026-08-01 |
 | U6 | Batches UI | **Done** | Verified on wp-env 2026-08-01 |
-| U7 | REST + Abilities + smoke | Pending | |
+| U7 | REST + Abilities + smoke | **Done** | Verified on wp-env 2026-08-01 |
 
 ---
 
@@ -673,6 +673,146 @@ Re-confirmed 2026-08-01 after plan review: plugin `0.17.0`, DB `1.5.0`, full U6 
 
 ---
 
+## Sprint U7 — REST + Abilities + smoke
+
+- **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U7 + settled U7 Q51–55)
+- **Completed:** 2026-08-01
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.18.0`
+- **DB version:** `1.5.0` (unchanged; no new DDL in U7)
+
+### Plan requirements review (`Update-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| `som/v1` suppliers CRUD (no delete) | **Done** | `GET` list/one, `POST` create, `PUT` update |
+| PO CRUD + receive/preview/mark-received/cancel | **Done** | Preview = `POST /purchase-orders/preview` (unsaved body) |
+| Workflow material goals individual CRUD | **Done** | List by workflow **or** material; `POST` upsert; `PUT`; `DELETE` — no bulk sync |
+| Batches list/get/release/mark-done/retry | **Done** | Retry wired to `SOM_Batches::retry` |
+| Batch groups read-only | **Done** | `GET` list/one only |
+| Auth: API key or admin on all new routes | **Done** | `check_api_key_or_admin` |
+| Read-only Abilities mirroring safe reads | **Done** | New abilities below; MCP toggle still gates registration |
+| Enrich `get-materials` / `get-products` | **Done** | WA/value/supplier/alert; target/cost/profit/margin |
+| Admin UI unchanged (form POST / ajax) | **Done** | No admin migrate to REST |
+| Modify `class-som-rest-api.php` / `class-som-abilities.php` | **Done** | |
+| `SOM_VERSION` → `0.18.0` | **Done** | |
+| Create `tests/sprint-u7-smoke.php` via `rest_do_request` | **Done** | |
+| **Done when:** Authenticated REST covers settled routes | **Pass** | |
+| **Done when:** Abilities list/get only; no credentials | **Pass** | |
+| **Done when:** Smoke PASS (schema + PO WA + batch advance) | **Pass** | |
+| Open items first | Settled | X5 + U7 Q51–55 |
+
+### REST routes shipped (`som/v1`)
+
+| Route | Methods | Domain |
+|---|---|---|
+| `/suppliers` | GET, POST | `SOM_Suppliers::query` / `create` |
+| `/suppliers/{id}` | GET, PUT | `get` / `update` (no DELETE) |
+| `/purchase-orders` | GET, POST | `SOM_Purchase_Orders::query` / `create` |
+| `/purchase-orders/preview` | POST | `SOM_Material_Costing::preview_impact` |
+| `/purchase-orders/{id}` | GET, PUT | `get` / `update` |
+| `/purchase-orders/{id}/receive` | POST | `receive` (body: `deltas` map or `items[]`) |
+| `/purchase-orders/{id}/mark-received` | POST | `mark_received` |
+| `/purchase-orders/{id}/cancel` | POST | `cancel` |
+| `/workflow-material-goals` | GET, POST | list by `workflow_template_id` or `material_id`; `upsert` |
+| `/workflow-material-goals/{id}` | GET, PUT, DELETE | `get` / `update` / `delete` |
+| `/batches` | GET | `SOM_Batches::query` (open-only default; `include_done` / `status` filters) |
+| `/batches/{id}` | GET | detail + members |
+| `/batches/{id}/release` | POST | `release` |
+| `/batches/{id}/mark-done` | POST | `mark_done` |
+| `/batches/{id}/retry` | POST | `retry` |
+| `/batch-groups` | GET | `SOM_Batch_Groups::list_all` |
+| `/batch-groups/{id}` | GET | `get` |
+
+Pre-existing routes unchanged: `POST /orders`, `POST /orders/{id}/advance-step`, `POST /workflow-callback/{token}`.
+
+### Abilities shipped (read-only, MCP toggle)
+
+**New:**
+
+| Ability | Returns |
+|---|---|
+| `order-machine/get-suppliers` | Supplier list |
+| `order-machine/get-purchase-orders` | PO list (headers) |
+| `order-machine/get-purchase-order` | One PO + lines |
+| `order-machine/get-workflow-material-goals` | Goals by workflow or material |
+| `order-machine/get-batches` | Batch list |
+| `order-machine/get-batch` | One batch + members |
+| `order-machine/get-batch-groups` | Batch group catalogue |
+
+**Enriched existing:**
+
+| Ability | Added fields |
+|---|---|
+| `order-machine/get-materials` | `unit_cost`, `weighted_average`, `total_value_on_hand`, `preferred_supplier_id`, `goal_alert_level` |
+| `order-machine/get-products` | `target_selling_price`, `material_cost`, `profit`, `margin_percent` |
+
+Still excluded: channel credentials (unchanged hard rule).
+
+### Settled U7 clarifications applied
+
+| Topic | Decision | Implemented |
+|---|---|---|
+| Auth (Q51) | API key or admin | Yes — all new routes |
+| REST surface (Q52) | Confirmed table + retry + batch groups read + goals individual CRUD | Yes |
+| Enrich Abilities (Q53) | Materials costing + products target/cost/margin | Yes |
+| Version / smoke (Q54) | `0.18.0` + `rest_do_request` smoke | Yes |
+| Admin migrate (Q55) | Leave form POST / admin-ajax | Yes |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Preview path | Standalone `POST /purchase-orders/preview` (no PO id; matches unsaved admin-ajax) |
+| Receive body | Accept `deltas` map **or** `items[]` with `id` + `quantity` |
+| Goals list filter | Require `workflow_template_id` **or** `material_id` (400 if neither) |
+| Batch detail members | Order id, external ref, buyer name, `is_complete` (no credential fields) |
+| Versions | `SOM_VERSION` → `0.18.0` only (DB stays `1.5.0`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-rest-api.php` | Full U7 route set + serializers (existing order routes kept) |
+| `includes/class-som-abilities.php` | New read abilities + materials/products costing enrich |
+| `orderMachine.php` | Plugin header + `SOM_VERSION` `0.18.0` |
+| `tests/sprint-u7-smoke.php` | Schema + REST (`rest_do_request`) + abilities smoke |
+| `stikerts/wordpress v2/Update-Sprint-Plan.md` | U7 settled decisions (Q51–55) recorded before/during build |
+| `stikerts/wordpress v2/Update-Sprint-Progress.md` | This section |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| Authenticated REST covers settled route set | **Pass** |
+| Abilities list/get only (no credential leakage) | **Pass** |
+| Smoke: schema presence | **Pass** — 7 update tables |
+| Smoke: one PO receive WA path | **Pass** — create → preview → receive; vinyl stock/WA |
+| Smoke: one batch collect → release → advance | **Pass** — shipping_label manual_confirm via REST release + mark-done |
+| Plugin `0.18.0` | **Pass** |
+
+**Plan scope:** All Sprint U7 modify/done-when items and settled U7 rules are complete. Purchasing + batching update package (**U1–U7**) is complete.
+
+### Explicitly out of U7
+
+- Admin UI migration to REST (still form POST / `som_preview_po_impact` ajax)
+- Write Abilities
+- Bulk `sync_for_workflow` REST endpoint (editor continues to use domain sync)
+- Dashboard cost-alerts widget (P4 — still out of update)
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active 0.18.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u7-smoke.php
+# PASS — Sprint U7 smoke
+```
+
+Re-confirmed 2026-08-01 after plan review: plugin `0.18.0`, DB `1.5.0`, full U7 smoke **PASS**, all plan done-when items covered.
+
+---
+
 ## Next
 
-Execute **Sprint U7** (REST + Abilities + smoke for suppliers, POs, goals, batches).
+Update package **U1–U7 complete**. No further update sprints in this plan.

@@ -1,6 +1,6 @@
 <?php
 /**
- * Read-only WordPress Abilities for MCP (Sprint 11 / Phase 12).
+ * Read-only WordPress Abilities for MCP (Sprint 11 / Phase 12 + U7).
  *
  * Registers only when Settings → MCP is enabled. Never exposes channel credentials.
  *
@@ -46,7 +46,7 @@ class SOM_Abilities {
 			self::CATEGORY,
 			array(
 				'label'       => __( 'Order Machine', 'order-machine' ),
-				'description' => __( 'Read-only Order Machine orders, catalogue, listings, and media.', 'order-machine' ),
+				'description' => __( 'Read-only Order Machine orders, catalogue, purchasing, batches, listings, and media.', 'order-machine' ),
 			)
 		);
 	}
@@ -197,6 +197,143 @@ class SOM_Abilities {
 				'meta'                => $meta,
 			)
 		);
+
+		wp_register_ability(
+			'order-machine/get-suppliers',
+			array(
+				'label'               => __( 'Get suppliers', 'order-machine' ),
+				'description'         => __( 'List/filter material suppliers.', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						's'        => array( 'type' => 'string' ),
+						'paged'    => array( 'type' => 'integer', 'default' => 1 ),
+						'per_page' => array( 'type' => 'integer', 'default' => 20 ),
+					),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_suppliers' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
+
+		wp_register_ability(
+			'order-machine/get-purchase-orders',
+			array(
+				'label'               => __( 'Get purchase orders', 'order-machine' ),
+				'description'         => __( 'List/filter purchase orders (header fields; use get-purchase-order for lines).', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'status'      => array( 'type' => 'string', 'description' => 'ordered, partially_received, received, cancelled.' ),
+						'supplier_id' => array( 'type' => 'integer' ),
+						's'           => array( 'type' => 'string' ),
+						'paged'       => array( 'type' => 'integer', 'default' => 1 ),
+						'per_page'    => array( 'type' => 'integer', 'default' => 20 ),
+					),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_purchase_orders' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
+
+		wp_register_ability(
+			'order-machine/get-purchase-order',
+			array(
+				'label'               => __( 'Get purchase order detail', 'order-machine' ),
+				'description'         => __( 'One purchase order including line items and landed-cost fields.', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'purchase_order_id' => array( 'type' => 'integer', 'description' => 'Purchase order ID.' ),
+					),
+					'required'   => array( 'purchase_order_id' ),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_purchase_order' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
+
+		wp_register_ability(
+			'order-machine/get-workflow-material-goals',
+			array(
+				'label'               => __( 'Get workflow material goals', 'order-machine' ),
+				'description'         => __( 'Cost-ceiling goals for a workflow template or material.', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'workflow_template_id' => array( 'type' => 'integer' ),
+						'material_id'          => array( 'type' => 'integer' ),
+					),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_workflow_material_goals' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
+
+		wp_register_ability(
+			'order-machine/get-batches',
+			array(
+				'label'               => __( 'Get batches', 'order-machine' ),
+				'description'         => __( 'List step batches (open only by default).', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'status'         => array( 'type' => 'string' ),
+						'batch_group_id' => array( 'type' => 'integer' ),
+						'include_done'   => array( 'type' => 'boolean', 'default' => false ),
+						'paged'          => array( 'type' => 'integer', 'default' => 1 ),
+						'per_page'       => array( 'type' => 'integer', 'default' => 50 ),
+					),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_batches' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
+
+		wp_register_ability(
+			'order-machine/get-batch',
+			array(
+				'label'               => __( 'Get batch detail', 'order-machine' ),
+				'description'         => __( 'One batch including member orders.', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'batch_id' => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'batch_id' ),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_batch' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
+
+		wp_register_ability(
+			'order-machine/get-batch-groups',
+			array(
+				'label'               => __( 'Get batch groups', 'order-machine' ),
+				'description'         => __( 'Configured batch groups (thank-you card, shipping label, etc.).', 'order-machine' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(),
+				),
+				'execute_callback'    => array( __CLASS__, 'get_batch_groups' ),
+				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'meta'                => $meta,
+			)
+		);
 	}
 
 	/**
@@ -325,8 +462,12 @@ class SOM_Abilities {
 
 		$products = array();
 		foreach ( $result['products'] as $row ) {
-			$recipe = SOM_Products::get_recipe( (int) $row->id );
-			$lines  = array();
+			$recipe  = SOM_Products::get_recipe( (int) $row->id );
+			$costing = SOM_Products::recipe_costing( (int) $row->id );
+			if ( ! is_array( $costing ) ) {
+				$costing = array();
+			}
+			$lines = array();
 			foreach ( $recipe as $line ) {
 				$lines[] = array(
 					'material_id'       => (int) $line->material_id,
@@ -341,6 +482,10 @@ class SOM_Abilities {
 				'sku'                  => (string) $row->sku,
 				'is_active'            => (int) $row->is_active,
 				'workflow_template_id' => $row->workflow_template_id ? (int) $row->workflow_template_id : null,
+				'target_selling_price' => isset( $costing['target_selling_price'] ) ? $costing['target_selling_price'] : null,
+				'material_cost'        => isset( $costing['material_cost'] ) ? $costing['material_cost'] : null,
+				'profit'               => isset( $costing['profit'] ) ? $costing['profit'] : null,
+				'margin_percent'       => isset( $costing['margin_percent'] ) ? $costing['margin_percent'] : null,
 				'recipe'               => $lines,
 			);
 		}
@@ -371,12 +516,19 @@ class SOM_Abilities {
 		$materials = array();
 		foreach ( $result['materials'] as $row ) {
 			$materials[] = array(
-				'id'                  => (int) $row->id,
-				'name'                => (string) $row->name,
-				'unit'                => (string) $row->unit,
-				'current_stock'       => (float) $row->current_stock,
-				'low_stock_threshold' => (float) $row->low_stock_threshold,
-				'is_active'           => (int) $row->is_active,
+				'id'                    => (int) $row->id,
+				'name'                  => (string) $row->name,
+				'unit'                  => (string) $row->unit,
+				'current_stock'         => (float) $row->current_stock,
+				'low_stock_threshold'   => (float) $row->low_stock_threshold,
+				'is_active'             => (int) $row->is_active,
+				'unit_cost'             => null !== $row->unit_cost && '' !== $row->unit_cost ? (float) $row->unit_cost : null,
+				'weighted_average'      => isset( $row->weighted_average ) ? (float) $row->weighted_average : null,
+				'total_value_on_hand'   => null !== $row->total_value_on_hand && '' !== $row->total_value_on_hand
+					? (float) $row->total_value_on_hand
+					: null,
+				'preferred_supplier_id' => ! empty( $row->preferred_supplier_id ) ? (int) $row->preferred_supplier_id : null,
+				'goal_alert_level'      => isset( $row->goal_alert_level ) ? (string) $row->goal_alert_level : '',
 			);
 		}
 
@@ -464,5 +616,241 @@ class SOM_Abilities {
 			'pages' => (int) $query->max_num_pages,
 			'paged' => $paged,
 		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>
+	 */
+	public static function get_suppliers( $input = null ) {
+		$input  = is_array( $input ) ? $input : array();
+		$result = SOM_Suppliers::query(
+			array(
+				's'        => isset( $input['s'] ) ? (string) $input['s'] : '',
+				'paged'    => isset( $input['paged'] ) ? max( 1, (int) $input['paged'] ) : 1,
+				'per_page' => isset( $input['per_page'] ) ? max( 1, min( 100, (int) $input['per_page'] ) ) : 20,
+			)
+		);
+
+		$suppliers = array();
+		foreach ( $result['suppliers'] as $row ) {
+			$suppliers[] = array(
+				'id'           => (int) $row->id,
+				'name'         => (string) $row->name,
+				'website'      => isset( $row->website ) ? $row->website : null,
+				'contact_info' => isset( $row->contact_info ) ? $row->contact_info : null,
+				'notes'        => isset( $row->notes ) ? $row->notes : null,
+			);
+		}
+
+		return array(
+			'suppliers' => $suppliers,
+			'total'     => (int) $result['total'],
+			'pages'     => (int) $result['pages'],
+			'paged'     => (int) $result['paged'],
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>
+	 */
+	public static function get_purchase_orders( $input = null ) {
+		$input  = is_array( $input ) ? $input : array();
+		$result = SOM_Purchase_Orders::query(
+			array(
+				'status'      => isset( $input['status'] ) ? (string) $input['status'] : '',
+				'supplier_id' => isset( $input['supplier_id'] ) ? (int) $input['supplier_id'] : 0,
+				's'           => isset( $input['s'] ) ? (string) $input['s'] : '',
+				'paged'       => isset( $input['paged'] ) ? max( 1, (int) $input['paged'] ) : 1,
+				'per_page'    => isset( $input['per_page'] ) ? max( 1, min( 100, (int) $input['per_page'] ) ) : 20,
+			)
+		);
+
+		$orders = array();
+		foreach ( $result['orders'] as $row ) {
+			$orders[] = array(
+				'id'            => (int) $row->id,
+				'supplier_id'   => (int) $row->supplier_id,
+				'supplier_name' => isset( $row->supplier_name ) ? (string) $row->supplier_name : '',
+				'order_date'    => (string) $row->order_date,
+				'received_date' => isset( $row->received_date ) ? $row->received_date : null,
+				'status'        => (string) $row->status,
+				'shipping_cost' => null !== $row->shipping_cost && '' !== $row->shipping_cost ? (float) $row->shipping_cost : 0.0,
+				'other_cost'    => null !== $row->other_cost && '' !== $row->other_cost ? (float) $row->other_cost : 0.0,
+			);
+		}
+
+		return array(
+			'purchase_orders' => $orders,
+			'total'           => (int) $result['total'],
+			'pages'           => (int) $result['pages'],
+			'paged'           => (int) $result['paged'],
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	public static function get_purchase_order( $input = null ) {
+		$input = is_array( $input ) ? $input : array();
+		$id    = isset( $input['purchase_order_id'] ) ? (int) $input['purchase_order_id'] : 0;
+		$order = SOM_Purchase_Orders::get( $id );
+		if ( ! $order ) {
+			return new WP_Error( 'som_po_missing', __( 'Purchase order not found.', 'order-machine' ) );
+		}
+
+		$items = array();
+		foreach ( $order->items as $item ) {
+			$items[] = array(
+				'id'                => (int) $item->id,
+				'material_id'       => (int) $item->material_id,
+				'material_name'     => isset( $item->material_name ) ? (string) $item->material_name : '',
+				'quantity_ordered'  => (float) $item->quantity_ordered,
+				'quantity_received' => null !== $item->quantity_received && '' !== $item->quantity_received
+					? (float) $item->quantity_received
+					: 0.0,
+				'item_cost'         => (float) $item->item_cost,
+				'landed_unit_cost'  => null !== $item->landed_unit_cost && '' !== $item->landed_unit_cost
+					? (float) $item->landed_unit_cost
+					: null,
+			);
+		}
+
+		return array(
+			'id'            => (int) $order->id,
+			'supplier_id'   => (int) $order->supplier_id,
+			'supplier_name' => isset( $order->supplier_name ) ? (string) $order->supplier_name : '',
+			'order_date'    => (string) $order->order_date,
+			'received_date' => isset( $order->received_date ) ? $order->received_date : null,
+			'status'        => (string) $order->status,
+			'shipping_cost' => (float) $order->shipping_cost,
+			'other_cost'    => (float) $order->other_cost,
+			'notes'         => isset( $order->notes ) ? $order->notes : null,
+			'items'         => $items,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	public static function get_workflow_material_goals( $input = null ) {
+		$input       = is_array( $input ) ? $input : array();
+		$workflow_id = isset( $input['workflow_template_id'] ) ? (int) $input['workflow_template_id'] : 0;
+		$material_id = isset( $input['material_id'] ) ? (int) $input['material_id'] : 0;
+
+		if ( $workflow_id > 0 ) {
+			$rows = SOM_Workflow_Material_Goals::list_for_workflow( $workflow_id );
+		} elseif ( $material_id > 0 ) {
+			$rows = SOM_Workflow_Material_Goals::list_for_material( $material_id );
+		} else {
+			return new WP_Error( 'som_goals_filter', __( 'Provide workflow_template_id or material_id.', 'order-machine' ) );
+		}
+
+		$goals = array();
+		foreach ( $rows as $row ) {
+			$goals[] = array(
+				'id'                        => (int) $row->id,
+				'workflow_template_id'      => (int) $row->workflow_template_id,
+				'material_id'               => (int) $row->material_id,
+				'goal_unit_cost'            => (float) $row->goal_unit_cost,
+				'warning_threshold_percent' => (float) $row->warning_threshold_percent,
+				'material_name'             => isset( $row->material_name ) ? (string) $row->material_name : '',
+				'workflow_name'             => isset( $row->workflow_name ) ? (string) $row->workflow_name : '',
+			);
+		}
+
+		return array( 'goals' => $goals );
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>
+	 */
+	public static function get_batches( $input = null ) {
+		$input = is_array( $input ) ? $input : array();
+		$result = SOM_Batches::query(
+			array(
+				'status'         => isset( $input['status'] ) ? (string) $input['status'] : '',
+				'batch_group_id' => isset( $input['batch_group_id'] ) ? (int) $input['batch_group_id'] : 0,
+				'include_done'   => ! empty( $input['include_done'] ),
+				'paged'          => isset( $input['paged'] ) ? max( 1, (int) $input['paged'] ) : 1,
+				'per_page'       => isset( $input['per_page'] ) ? max( 1, min( 100, (int) $input['per_page'] ) ) : 50,
+			)
+		);
+
+		$batches = array();
+		foreach ( $result['batches'] as $row ) {
+			$batches[] = array(
+				'id'             => (int) $row->id,
+				'batch_group_id' => (int) $row->batch_group_id,
+				'group_name'     => isset( $row->group_name ) ? (string) $row->group_name : '',
+				'group_key'      => isset( $row->group_key ) ? (string) $row->group_key : '',
+				'status'         => (string) $row->status,
+				'item_count'     => isset( $row->item_count ) ? (int) $row->item_count : 0,
+				'action_type'    => isset( $row->group_action_type ) ? (string) $row->group_action_type : '',
+			);
+		}
+
+		return array(
+			'batches' => $batches,
+			'total'   => (int) $result['total'],
+			'pages'   => (int) $result['pages'],
+			'paged'   => (int) $result['paged'],
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	public static function get_batch( $input = null ) {
+		$input   = is_array( $input ) ? $input : array();
+		$batch_id = isset( $input['batch_id'] ) ? (int) $input['batch_id'] : 0;
+		$batch    = SOM_Batches::get( $batch_id );
+		if ( ! $batch ) {
+			return new WP_Error( 'som_batch_missing', __( 'Batch not found.', 'order-machine' ) );
+		}
+
+		$group = SOM_Batch_Groups::get( (int) $batch->batch_group_id );
+		$members = array();
+		foreach ( SOM_Batches::get_items_with_orders( $batch_id ) as $item ) {
+			$members[] = array(
+				'order_id'          => (int) $item->order_id,
+				'external_order_id' => isset( $item->external_order_id ) ? (string) $item->external_order_id : '',
+				'buyer_name'        => isset( $item->buyer_name ) ? (string) $item->buyer_name : '',
+			);
+		}
+
+		return array(
+			'id'             => (int) $batch->id,
+			'batch_group_id' => (int) $batch->batch_group_id,
+			'group_name'     => $group ? (string) $group->display_name : '',
+			'group_key'      => $group ? (string) $group->key : '',
+			'action_type'    => $group ? (string) $group->action_type : '',
+			'status'         => (string) $batch->status,
+			'last_error'     => isset( $batch->last_error ) ? $batch->last_error : null,
+			'members'        => $members,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $input Input.
+	 * @return array<string, mixed>
+	 */
+	public static function get_batch_groups( $input = null ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+		$groups = array();
+		foreach ( SOM_Batch_Groups::list_all() as $row ) {
+			$groups[] = array(
+				'id'           => (int) $row->id,
+				'key'          => (string) $row->key,
+				'display_name' => (string) $row->display_name,
+				'batch_size'   => (int) $row->batch_size,
+				'action_type'  => (string) $row->action_type,
+			);
+		}
+		return array( 'batch_groups' => $groups );
 	}
 }
