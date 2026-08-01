@@ -15,7 +15,7 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 | U3 | Landed cost / WA / goals | **Done** | Verified on wp-env 2026-07-31 |
 | U4 | Purchasing admin UI | **Done** | Verified on wp-env 2026-08-01 |
 | U5 | Batch engine | **Done** | Verified on wp-env 2026-08-01 |
-| U6 | Batches UI | Pending | Thank-you convert already done in U1 |
+| U6 | Batches UI | **Done** | Verified on wp-env 2026-08-01 |
 | U7 | REST + Abilities + smoke | Pending | |
 
 ---
@@ -569,6 +569,110 @@ Re-confirmed 2026-08-01 after plan review: plugin `0.16.0`, DB `1.5.0`, full U5 
 
 ---
 
+## Sprint U6 — Batches admin UI + step editor
+
+- **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U6 + settled U6 Q41–50)
+- **Completed:** 2026-08-01
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.17.0`
+- **DB version:** `1.5.0` (unchanged; no new DDL in U6)
+
+### Plan requirements review (`Update-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Create `admin/views/batches.php` (single expandable list) | **Done** | No separate detail page; `?batch_id=N` deep-link |
+| Create `tests/sprint-u6-smoke.php` | **Done** | |
+| Modify `admin/class-som-admin-menu.php` | **Done** | Batches submenu + release/mark-done/retry/groups save |
+| Modify `admin/views/order-detail.php` | **Done** | `waiting_batch` badge + count + link; Mark done hidden |
+| Modify `admin/views/workflow-step-editor.php` | **Done** | Batch group dropdown + combo warning |
+| Batch-groups edit UI (name / `batch_size`) | **Done** | On Batches page; key + action_type fixed |
+| Modify `includes/class-som-batches.php` | **Done** | `query`, `find_for_order`, `get_items_with_orders`, URLs, labels |
+| Modify `includes/class-som-batch-groups.php` | **Done** | `update()` |
+| Modify `orderMachine.php` (`0.17.0`) | **Done** | Notices include `som-batches` |
+| Admin CSS/JS for expand + deep-link | **Done** | Also address expand + step combo warning |
+| UI: open only by default | **Done** | Optional Include done + status/group filters |
+| UI: Release / Mark done / Retry | **Done** | collecting / ready+manual_confirm / error+script |
+| UI: member rows expand for address | **Done** | Name + order ref collapsed |
+| shipping_label via editor only | **Done** | No bulk convert |
+| Thank-you convert (plan note) | **N/A (U1)** | Still idempotent on activate; not reworked in U6 |
+| **Done when:** Batches UI matches 04 §4 + settled U6 rules | **Pass** | |
+| **Done when:** Order detail links to batch | **Pass** | |
+| **Done when:** Step editor can assign `batch_group_id` | **Pass** | shipping_label opt-in |
+| **Done when:** U6 smoke PASS | **Pass** | |
+| Open items first | Settled | Q11 convert in U1; U6 Q41–50 |
+
+### Settled U6 clarifications applied
+
+| Topic | Decision | Implemented |
+|---|---|---|
+| Page shape | Single expandable list; `?batch_id=N` | Yes |
+| Default filter | Open only | Yes (+ optional Include done) |
+| Retry UI | Yes on `error` script batches | Yes |
+| Member address | Expand | Yes |
+| Step editor combo | Warn only | Yes |
+| shipping_label | Editor opt-in only | Yes |
+| Edit groups | Name + size | Yes |
+| Order link | `som-batches&batch_id=N` | Yes |
+| Smoke / version | `0.17.0` + smoke | Yes |
+| Hide Mark done while waiting_batch | Yes | Yes |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Groups editor home | Same Batches page (top section), not a separate submenu |
+| Deep-link to done batch | If `batch_id` missing from open list, fetch and prepend so link still works |
+| Script `processing` UI | Show `last_error` + retry_after when present (no separate action until `error`) |
+| Versions | `SOM_VERSION` → `0.17.0` only (DB stays `1.5.0`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-batches.php` | `query`, `find_for_order`, `get_items_with_orders`, status labels, URLs |
+| `includes/class-som-batch-groups.php` | `update` (display name / batch_size) |
+| `admin/views/batches.php` | Groups editor + expandable batches list |
+| `admin/class-som-admin-menu.php` | Batches menu, render, POST handlers |
+| `admin/views/workflow-step-editor.php` | Batch group dropdown + warning |
+| `admin/views/order-detail.php` | `waiting_batch` UI; hide Mark done |
+| `admin/assets/js/admin.js` | Expand / address / deep-link; combo warning |
+| `admin/assets/css/admin.css` | Batch badges + card styles |
+| `orderMachine.php` | `0.17.0`; notices for `som-batches` |
+| `tests/sprint-u6-smoke.php` | Domain/UI-helper smoke |
+| `stikerts/wordpress v2/Update-Sprint-Plan.md` | U6 settled decisions |
+| `stikerts/wordpress v2/Update-Sprint-Progress.md` | This section |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| Batches UI matches 04 §4 + settled U6 rules | **Pass** |
+| Order detail links to batch; Mark done hidden while waiting_batch | **Pass** |
+| Step editor can assign `batch_group_id` (shipping_label opt-in) | **Pass** |
+| U6 smoke PASS | **Pass** |
+
+**Plan scope:** All Sprint U6 create/modify/done-when items and settled U6 rules are complete. Thank-you convert remains U1 (idempotent). REST/Abilities remain **U7**.
+
+### Explicitly out of U6
+
+- REST / Abilities for batches → **U7**
+- Thank-you step auto-convert (already U1)
+- Dashboard widgets / purchasing UI (U1–U4)
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active 0.17.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u6-smoke.php
+# PASS — Sprint U6 smoke
+```
+
+Re-confirmed 2026-08-01 after plan review: plugin `0.17.0`, DB `1.5.0`, full U6 smoke **PASS**, all plan done-when items covered.
+
+---
+
 ## Next
 
-Execute **Sprint U6** (Batches admin UI + step editor `batch_group_id` / shipping_label opt-in).
+Execute **Sprint U7** (REST + Abilities + smoke for suppliers, POs, goals, batches).

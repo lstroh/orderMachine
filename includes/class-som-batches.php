@@ -14,6 +14,8 @@ class SOM_Batches {
 
 	const HOOK_BATCH_ATTEMPT = 'som_batch_attempt';
 
+	const OPEN_STATUSES = array( 'collecting', 'ready', 'processing', 'error' );
+
 	/**
 	 * @param int $id Batch PK.
 	 * @return object|null
@@ -48,6 +50,209 @@ class SOM_Batches {
 		);
 
 		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Batch items with order display fields for admin UI.
+	 *
+	 * @param int $batch_id Batch PK.
+	 * @return array<int, object>
+	 */
+	public static function get_items_with_orders( $batch_id ) {
+		global $wpdb;
+
+		$items_t  = SOM_DB::table( 'step_batch_items' );
+		$orders_t = SOM_DB::table( 'orders' );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT i.*, o.external_order_id, o.buyer_name, o.shipping_address, o.is_complete
+				FROM {$items_t} i
+				INNER JOIN {$orders_t} o ON o.id = i.order_id
+				WHERE i.batch_id = %d
+				ORDER BY i.id ASC",
+				(int) $batch_id
+			)
+		);
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * List batches for admin (default: open statuses only).
+	 *
+	 * @param array<string, mixed> $args Filters: status, batch_group_id, include_done, paged, per_page.
+	 * @return array{batches: array<int, object>, total: int, pages: int, paged: int}
+	 */
+	public static function query( array $args = array() ) {
+		global $wpdb;
+
+		$defaults = array(
+			'status'         => '',
+			'batch_group_id' => 0,
+			'include_done'   => false,
+			'paged'          => 1,
+			'per_page'       => 50,
+		);
+		$args     = wp_parse_args( $args, $defaults );
+
+		$batches_t = SOM_DB::table( 'step_batches' );
+		$groups_t  = SOM_DB::table( 'batch_groups' );
+		$items_t   = SOM_DB::table( 'step_batch_items' );
+
+		$where  = array( '1=1' );
+		$params = array();
+
+		$status = sanitize_key( (string) $args['status'] );
+		if ( $status ) {
+			$where[]  = 'b.status = %s';
+			$params[] = $status;
+		} elseif ( empty( $args['include_done'] ) ) {
+			$placeholders = implode( ', ', array_fill( 0, count( self::OPEN_STATUSES ), '%s' ) );
+			$where[]      = "b.status IN ({$placeholders})";
+			foreach ( self::OPEN_STATUSES as $open ) {
+				$params[] = $open;
+			}
+		}
+
+		$group_id = (int) $args['batch_group_id'];
+		if ( $group_id > 0 ) {
+			$where[]  = 'b.batch_group_id = %d';
+			$params[] = $group_id;
+		}
+
+		$where_sql = implode( ' AND ', $where );
+		$per_page  = max( 1, (int) $args['per_page'] );
+		$paged     = max( 1, (int) $args['paged'] );
+		$offset    = ( $paged - 1 ) * $per_page;
+
+		$count_sql = "SELECT COUNT(*) FROM {$batches_t} b WHERE {$where_sql}";
+		if ( $params ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$total = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, $params ) );
+		} else {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$total = (int) $wpdb->get_var( $count_sql );
+		}
+
+		$pages = max( 1, (int) ceil( $total / $per_page ) );
+		if ( $paged > $pages ) {
+			$paged  = $pages;
+			$offset = ( $paged - 1 ) * $per_page;
+		}
+
+		$list_sql = "SELECT b.*, g.display_name AS group_name, g.group_key AS group_key,
+				g.batch_size AS group_batch_size, g.action_type AS group_action_type,
+				(SELECT COUNT(*) FROM {$items_t} i WHERE i.batch_id = b.id) AS item_count
+			FROM {$batches_t} b
+			INNER JOIN {$groups_t} g ON g.id = b.batch_group_id
+			WHERE {$where_sql}
+			ORDER BY FIELD(b.status, 'error', 'processing', 'ready', 'collecting', 'done'), b.id DESC
+			LIMIT %d OFFSET %d";
+
+		$list_params   = $params;
+		$list_params[] = $per_page;
+		$list_params[] = $offset;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( $wpdb->prepare( $list_sql, $list_params ) );
+		if ( ! is_array( $rows ) ) {
+			$rows = array();
+		}
+
+		foreach ( $rows as $row ) {
+			$row->key = isset( $row->group_key ) ? $row->group_key : '';
+		}
+
+		return array(
+			'batches' => $rows,
+			'total'   => $total,
+			'pages'   => $pages,
+			'paged'   => $paged,
+		);
+	}
+
+	/**
+	 * Find the most relevant open batch containing an order (for order detail).
+	 *
+	 * @param int $order_id Order PK.
+	 * @return object|null Batch row with group fields + item_count, or null.
+	 */
+	public static function find_for_order( $order_id ) {
+		global $wpdb;
+
+		$order_id  = (int) $order_id;
+		$batches_t = SOM_DB::table( 'step_batches' );
+		$groups_t  = SOM_DB::table( 'batch_groups' );
+		$items_t   = SOM_DB::table( 'step_batch_items' );
+
+		$placeholders = implode( ', ', array_fill( 0, count( self::OPEN_STATUSES ), '%s' ) );
+		$params       = array_merge( array( $order_id ), self::OPEN_STATUSES );
+
+		$sql = "SELECT b.*, g.display_name AS group_name, g.group_key AS group_key,
+				g.batch_size AS group_batch_size, g.action_type AS group_action_type,
+				(SELECT COUNT(*) FROM {$items_t} i2 WHERE i2.batch_id = b.id) AS item_count
+			FROM {$items_t} i
+			INNER JOIN {$batches_t} b ON b.id = i.batch_id
+			INNER JOIN {$groups_t} g ON g.id = b.batch_group_id
+			WHERE i.order_id = %d
+				AND b.status IN ({$placeholders})
+			ORDER BY FIELD(b.status, 'error', 'processing', 'ready', 'collecting'), b.id DESC
+			LIMIT 1";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$row = $wpdb->get_row( $wpdb->prepare( $sql, $params ) );
+		if ( $row && isset( $row->group_key ) ) {
+			$row->key = $row->group_key;
+		}
+
+		return $row ? $row : null;
+	}
+
+	/**
+	 * Status labels for admin badges.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function status_labels() {
+		return array(
+			'collecting' => __( 'Collecting', 'order-machine' ),
+			'ready'      => __( 'Ready', 'order-machine' ),
+			'processing' => __( 'Processing', 'order-machine' ),
+			'done'       => __( 'Done', 'order-machine' ),
+			'error'      => __( 'Error', 'order-machine' ),
+		);
+	}
+
+	/**
+	 * @param string $status Status key.
+	 * @return string
+	 */
+	public static function status_label( $status ) {
+		$labels = self::status_labels();
+		$status = (string) $status;
+		return isset( $labels[ $status ] ) ? $labels[ $status ] : $status;
+	}
+
+	/**
+	 * Admin Batches list URL.
+	 *
+	 * @param array<string, scalar> $args Extra query args.
+	 * @return string
+	 */
+	public static function list_url( array $args = array() ) {
+		$args = array_merge( array( 'page' => 'som-batches' ), $args );
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
+
+	/**
+	 * Deep-link URL that expands a specific batch on the list.
+	 *
+	 * @param int $batch_id Batch PK.
+	 * @return string
+	 */
+	public static function batch_url( $batch_id ) {
+		return self::list_url( array( 'batch_id' => (int) $batch_id ) );
 	}
 
 	/**

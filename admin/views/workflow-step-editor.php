@@ -20,6 +20,7 @@ $steps    = ( $template && ! empty( $template->steps ) ) ? $template->steps : ar
 $in_use   = $template && ! empty( $template->in_use );
 $products = ( $template && ! empty( $template->products ) ) ? $template->products : array();
 $actions  = SOM_Workflows::local_action_choices();
+$batch_groups = SOM_Batch_Groups::list_all();
 
 /**
  * Render one step editor card.
@@ -28,13 +29,14 @@ $actions  = SOM_Workflows::local_action_choices();
  * @param object|null $step  Existing step or null for blank.
  * @return void
  */
-$som_render_step = static function ( $index, $step = null ) use ( $actions ) {
+$som_render_step = static function ( $index, $step = null ) use ( $actions, $batch_groups ) {
 	$name     = $step ? (string) $step->name : '';
 	$step_id  = $step ? (int) $step->id : 0;
 	$manual   = $step ? (int) $step->requires_manual_confirm : 0;
 	$timer    = SOM_Workflows::timer_for_display( $step && null !== $step->timer_seconds ? (int) $step->timer_seconds : null );
 	$script   = SOM_Workflows::script_for_display( $step ? $step->script_config : null );
 	$type     = $script['type'];
+	$batch_id = $step && ! empty( $step->batch_group_id ) ? (int) $step->batch_group_id : 0;
 	$prefix   = 'som_step[' . $index . ']';
 	?>
 	<div class="som-step-card" data-som-step>
@@ -64,6 +66,25 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions ) {
 					<option value="days" <?php selected( $timer['unit'], 'days' ); ?>><?php echo esc_html__( 'days', 'order-machine' ); ?></option>
 				</select>
 				<span class="description"><?php echo esc_html__( 'Leave blank for no timer.', 'order-machine' ); ?></span>
+			</div>
+
+			<div class="som-step-gate som-step-batch" data-som-batch-gate>
+				<label>
+					<?php echo esc_html__( 'Batch group', 'order-machine' ); ?>
+					<select name="<?php echo esc_attr( $prefix ); ?>[batch_group_id]" class="som-batch-group-select">
+						<option value="0"><?php echo esc_html__( 'None', 'order-machine' ); ?></option>
+						<?php foreach ( $batch_groups as $group ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $group->id ); ?>" <?php selected( $batch_id, (int) $group->id ); ?>>
+								<?php echo esc_html( (string) $group->display_name ); ?>
+								(<?php echo esc_html( (string) $group->key ); ?>)
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<p class="description"><?php echo esc_html__( 'If set, this step is batch-only: clear manual, timer, and script gates. Shipping-label grouping is opt-in here.', 'order-machine' ); ?></p>
+				<p class="som-batch-combo-warning notice notice-warning inline" data-som-batch-warning hidden>
+					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, or script gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
+				</p>
 			</div>
 
 			<div class="som-step-gate som-step-script" data-som-script>
@@ -224,7 +245,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions ) {
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Each step may combine manual confirm, a timer, and/or a script — or have no gates.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates).', 'order-machine' ); ?></p>
 
 		<div id="som-step-list" class="som-step-list">
 			<?php

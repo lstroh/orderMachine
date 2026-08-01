@@ -170,6 +170,7 @@ if ( ! empty( $order->raw_payload ) ) {
 									'in_progress'    => __( 'In progress', 'order-machine' ),
 									'waiting_timer'  => __( 'Waiting (timer)', 'order-machine' ),
 									'waiting_script' => __( 'Waiting (script)', 'order-machine' ),
+									'waiting_batch'  => __( 'Waiting (batch)', 'order-machine' ),
 									'error'          => __( 'Error', 'order-machine' ),
 									'done'           => __( 'Done', 'order-machine' ),
 								);
@@ -189,6 +190,30 @@ if ( ! empty( $order->raw_payload ) ) {
 								);
 								?>
 							</p>
+						<?php endif; ?>
+						<?php if ( $is_current && 'waiting_batch' === $status ) : ?>
+							<?php
+							$order_batch = SOM_Batches::find_for_order( (int) $order->id );
+							?>
+							<?php if ( $order_batch ) : ?>
+								<p class="description">
+									<?php
+									printf(
+										/* translators: 1: batch group name, 2: current count, 3: batch size, 4: batch id */
+										esc_html__( 'In batch #%4$d (%1$s): %2$d of %3$d.', 'order-machine' ),
+										esc_html( (string) $order_batch->group_name ),
+										(int) $order_batch->item_count,
+										max( 1, (int) $order_batch->group_batch_size ),
+										(int) $order_batch->id
+									);
+									?>
+									<a href="<?php echo esc_url( SOM_Batches::batch_url( (int) $order_batch->id ) ); ?>">
+										<?php echo esc_html__( 'View batch', 'order-machine' ); ?>
+									</a>
+								</p>
+							<?php else : ?>
+								<p class="description"><?php echo esc_html__( 'Waiting for a batch (batch record not found).', 'order-machine' ); ?></p>
+							<?php endif; ?>
 						<?php endif; ?>
 						<?php if ( $is_current && $waiting_cb ) : ?>
 							<p class="description"><?php echo esc_html__( 'Waiting for external callback (n8n / API).', 'order-machine' ); ?></p>
@@ -223,7 +248,7 @@ if ( ! empty( $order->raw_payload ) ) {
 									?>
 								</form>
 							<?php endif; ?>
-							<?php if ( 'error' !== $status && 'waiting_script' !== $status ) : ?>
+							<?php if ( 'error' !== $status && 'waiting_script' !== $status && 'waiting_batch' !== $status ) : ?>
 								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form" data-som-advance-step data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>">
 									<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
 									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
@@ -238,6 +263,8 @@ if ( ! empty( $order->raw_payload ) ) {
 									);
 									?>
 								</form>
+							<?php elseif ( 'waiting_batch' === $status ) : ?>
+								<p class="description"><?php echo esc_html__( 'This step advances when the batch is released / marked done — not per order.', 'order-machine' ); ?></p>
 							<?php endif; ?>
 						<?php endif; ?>
 					</li>

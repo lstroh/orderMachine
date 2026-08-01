@@ -26,6 +26,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_suppliers_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_purchase_orders_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_batches_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
 		add_action( 'wp_ajax_som_preview_po_impact', array( __CLASS__, 'ajax_preview_po_impact' ) );
@@ -94,6 +95,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Batches', 'order-machine' ),
+			__( 'Batches', 'order-machine' ),
+			'manage_options',
+			'som-batches',
+			array( __CLASS__, 'render_batches' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Workflows', 'order-machine' ),
 			__( 'Workflows', 'order-machine' ),
 			'manage_options',
@@ -132,7 +142,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
 			return;
 		}
 
@@ -143,7 +153,7 @@ class SOM_Admin_Menu {
 			SOM_VERSION
 		);
 
-		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-purchase-orders', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
 			wp_enqueue_script(
 				'som-admin',
 				SOM_PLUGIN_URL . 'admin/assets/js/admin.js',
@@ -406,6 +416,59 @@ class SOM_Admin_Menu {
 	}
 
 	/**
+	 * Batches list + batch groups editor.
+	 *
+	 * @return void
+	 */
+	public static function render_batches() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$filter_status   = isset( $_GET['som_status'] ) ? sanitize_key( wp_unslash( $_GET['som_status'] ) ) : '';
+		$filter_group_id = isset( $_GET['batch_group_id'] ) ? (int) $_GET['batch_group_id'] : 0;
+		$include_done    = ! empty( $_GET['include_done'] );
+		$focus_batch_id  = isset( $_GET['batch_id'] ) ? (int) $_GET['batch_id'] : 0;
+		$paged           = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+
+		$batch_query = SOM_Batches::query(
+			array(
+				'status'         => $filter_status,
+				'batch_group_id' => $filter_group_id,
+				'include_done'   => $include_done || ( 'done' === $filter_status ),
+				'paged'          => $paged,
+			)
+		);
+
+		if ( $focus_batch_id > 0 ) {
+			$found = false;
+			foreach ( $batch_query['batches'] as $row ) {
+				if ( (int) $row->id === $focus_batch_id ) {
+					$found = true;
+					break;
+				}
+			}
+			if ( ! $found ) {
+				$extra = SOM_Batches::get( $focus_batch_id );
+				if ( $extra ) {
+					$group = SOM_Batch_Groups::get( (int) $extra->batch_group_id );
+					$extra->group_name        = $group ? (string) $group->display_name : '';
+					$extra->group_key         = $group ? (string) $group->key : '';
+					$extra->group_batch_size  = $group ? (int) $group->batch_size : 4;
+					$extra->group_action_type = $group ? (string) $group->action_type : '';
+					$extra->item_count        = count( SOM_Batches::get_items( $focus_batch_id ) );
+					$extra->key               = $extra->group_key;
+					array_unshift( $batch_query['batches'], $extra );
+					++$batch_query['total'];
+				}
+			}
+		}
+
+		$batch_groups = SOM_Batch_Groups::list_all();
+		require SOM_PLUGIN_DIR . 'admin/views/batches.php';
+	}
+
+	/**
 	 * Workflow templates list or step editor.
 	 *
 	 * @return void
@@ -660,6 +723,83 @@ class SOM_Admin_Menu {
 
 		self::flash_notice( __( 'Workflow template saved.', 'order-machine' ), 'success', 'som_workflow_saved' );
 		wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
+		exit;
+	}
+
+	/**
+	 * Save batch groups / release / mark done / retry.
+	 *
+	 * @return void
+	 */
+	public static function handle_batches_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-batches' !== $page || empty( $_POST ) ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_save_batch_groups'] ) ) {
+			check_admin_referer( 'som_save_batch_groups', 'som_batches_nonce' );
+
+			$ids   = isset( $_POST['som_group_id'] ) && is_array( $_POST['som_group_id'] ) ? wp_unslash( $_POST['som_group_id'] ) : array();
+			$names = isset( $_POST['som_group_display_name'] ) && is_array( $_POST['som_group_display_name'] ) ? wp_unslash( $_POST['som_group_display_name'] ) : array();
+			$sizes = isset( $_POST['som_group_batch_size'] ) && is_array( $_POST['som_group_batch_size'] ) ? wp_unslash( $_POST['som_group_batch_size'] ) : array();
+
+			foreach ( $ids as $raw_id ) {
+				$id = (int) $raw_id;
+				if ( $id < 1 ) {
+					continue;
+				}
+				$result = SOM_Batch_Groups::update(
+					$id,
+					array(
+						'display_name' => isset( $names[ $id ] ) ? $names[ $id ] : '',
+						'batch_size'   => isset( $sizes[ $id ] ) ? $sizes[ $id ] : 0,
+					)
+				);
+				if ( is_wp_error( $result ) ) {
+					self::flash_notice( $result->get_error_message(), 'error', 'som_batch_group_error' );
+					wp_safe_redirect( SOM_Batches::list_url() );
+					exit;
+				}
+			}
+
+			self::flash_notice( __( 'Batch groups saved.', 'order-machine' ), 'success', 'som_batch_groups_saved' );
+			wp_safe_redirect( SOM_Batches::list_url() );
+			exit;
+		}
+
+		$batch_id = isset( $_POST['som_batch_id'] ) ? (int) $_POST['som_batch_id'] : 0;
+		if ( $batch_id < 1 ) {
+			return;
+		}
+
+		check_admin_referer( 'som_batch_action', 'som_batches_nonce' );
+
+		$result = null;
+		if ( isset( $_POST['som_batch_release'] ) ) {
+			$result = SOM_Batches::release( $batch_id, true );
+			$ok_msg = __( 'Batch released.', 'order-machine' );
+		} elseif ( isset( $_POST['som_batch_mark_done'] ) ) {
+			$result = SOM_Batches::mark_done( $batch_id );
+			$ok_msg = __( 'Batch marked done.', 'order-machine' );
+		} elseif ( isset( $_POST['som_batch_retry'] ) ) {
+			$result = SOM_Batches::retry( $batch_id );
+			$ok_msg = __( 'Batch retry started.', 'order-machine' );
+		} else {
+			return;
+		}
+
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_batch_action_error' );
+		} else {
+			self::flash_notice( $ok_msg, 'success', 'som_batch_action_ok' );
+		}
+
+		wp_safe_redirect( SOM_Batches::batch_url( $batch_id ) );
 		exit;
 	}
 

@@ -137,6 +137,51 @@ class SOM_Batch_Groups {
 	}
 
 	/**
+	 * Update editable fields (display_name, batch_size). Key and action_type stay fixed.
+	 *
+	 * @param int                  $id   Group PK.
+	 * @param array<string, mixed> $data Fields.
+	 * @return true|WP_Error
+	 */
+	public static function update( $id, array $data ) {
+		global $wpdb;
+
+		$id    = (int) $id;
+		$group = self::get( $id );
+		if ( ! $group ) {
+			return new WP_Error( 'som_batch_group_missing', __( 'Batch group not found.', 'order-machine' ) );
+		}
+
+		$display_name = isset( $data['display_name'] ) ? sanitize_text_field( (string) $data['display_name'] ) : (string) $group->display_name;
+		$display_name = trim( $display_name );
+		if ( '' === $display_name ) {
+			return new WP_Error( 'som_batch_group_name', __( 'Display name is required.', 'order-machine' ) );
+		}
+
+		$batch_size = isset( $data['batch_size'] ) ? (int) $data['batch_size'] : (int) $group->batch_size;
+		if ( $batch_size < 1 ) {
+			return new WP_Error( 'som_batch_group_size', __( 'Batch size must be at least 1.', 'order-machine' ) );
+		}
+
+		$ok = $wpdb->update(
+			SOM_DB::table( 'batch_groups' ),
+			array(
+				'display_name' => $display_name,
+				'batch_size'   => $batch_size,
+				'updated_at'   => current_time( 'mysql', true ),
+			),
+			array( 'id' => $id ),
+			array( '%s', '%d', '%s' ),
+			array( '%d' )
+		);
+		if ( false === $ok ) {
+			return new WP_Error( 'som_batch_group_update', __( 'Could not update batch group.', 'order-machine' ) );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Normalize row so callers can use ->key (maps from group_key).
 	 *
 	 * @param object|null $row DB row.

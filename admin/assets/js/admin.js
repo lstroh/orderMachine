@@ -146,11 +146,16 @@
 						if ( type ) {
 							type.value = 'none';
 						}
+						var batchSelect = card.querySelector( '.som-batch-group-select' );
+						if ( batchSelect ) {
+							batchSelect.value = '0';
+						}
 						var idField = card.querySelector( 'input[name*="[id]"]' );
 						if ( idField ) {
 							idField.value = '0';
 						}
 						syncScriptPanels( card );
+						syncBatchWarning( card );
 						return;
 					}
 					card.remove();
@@ -160,6 +165,7 @@
 			if ( typeSelect ) {
 				typeSelect.addEventListener( 'change', function () {
 					syncScriptPanels( card );
+					syncBatchWarning( card );
 				} );
 			}
 			if ( rawToggle ) {
@@ -168,7 +174,47 @@
 				} );
 			}
 
+			var batchSelectBind = card.querySelector( '.som-batch-group-select' );
+			var manualBind = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+			var timerBind = card.querySelector( 'input[name*="[timer_value]"]' );
+			if ( batchSelectBind ) {
+				batchSelectBind.addEventListener( 'change', function () {
+					syncBatchWarning( card );
+				} );
+			}
+			if ( manualBind ) {
+				manualBind.addEventListener( 'change', function () {
+					syncBatchWarning( card );
+				} );
+			}
+			if ( timerBind ) {
+				timerBind.addEventListener( 'input', function () {
+					syncBatchWarning( card );
+				} );
+			}
+
 			syncScriptPanels( card );
+			syncBatchWarning( card );
+		}
+
+		function syncBatchWarning( card ) {
+			var warning = card.querySelector( '[data-som-batch-warning]' );
+			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			if ( ! warning || ! batchSelect ) {
+				return;
+			}
+			var hasBatch = batchSelect.value && batchSelect.value !== '0';
+			if ( ! hasBatch ) {
+				warning.hidden = true;
+				return;
+			}
+			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
+			var typeSelect = card.querySelector( '.som-script-type' );
+			var hasManual = manual && manual.checked;
+			var hasTimer = timer && String( timer.value ).trim() !== '';
+			var hasScript = typeSelect && typeSelect.value !== 'none';
+			warning.hidden = ! ( hasManual || hasTimer || hasScript );
 		}
 
 		cards().forEach( bindCard );
@@ -258,8 +304,70 @@
 	initPoPreviewImpact();
 	initWorkflowEditor();
 	initListingEditor();
+	initBatchesPage();
 	initCountdowns();
 	initAdvanceStepRest();
+
+	function initBatchesPage() {
+		var list = document.querySelector( '[data-som-batch-list]' );
+		if ( ! list ) {
+			return;
+		}
+
+		function setExpanded( card, expanded ) {
+			var members = card.querySelector( '[data-som-batch-members]' );
+			var toggle = card.querySelector( '[data-som-batch-toggle]' );
+			var icon = card.querySelector( '.som-batch-toggle-icon' );
+			if ( members ) {
+				members.hidden = ! expanded;
+			}
+			if ( toggle ) {
+				toggle.setAttribute( 'aria-expanded', expanded ? 'true' : 'false' );
+			}
+			if ( icon ) {
+				icon.textContent = expanded ? '▼' : '▶';
+			}
+			if ( expanded ) {
+				card.classList.add( 'is-expanded' );
+			} else {
+				card.classList.remove( 'is-expanded' );
+			}
+		}
+
+		list.querySelectorAll( '[data-som-batch-toggle]' ).forEach( function ( toggle ) {
+			toggle.addEventListener( 'click', function () {
+				var card = toggle.closest( '[data-som-batch]' );
+				if ( ! card ) {
+					return;
+				}
+				var open = toggle.getAttribute( 'aria-expanded' ) === 'true';
+				setExpanded( card, ! open );
+			} );
+		} );
+
+		list.querySelectorAll( '[data-som-address-toggle]' ).forEach( function ( toggle ) {
+			toggle.addEventListener( 'click', function () {
+				var cell = toggle.parentElement;
+				var address = cell ? cell.querySelector( '.som-batch-address' ) : null;
+				if ( ! address ) {
+					return;
+				}
+				var open = toggle.getAttribute( 'aria-expanded' ) === 'true';
+				address.hidden = open;
+				toggle.setAttribute( 'aria-expanded', open ? 'false' : 'true' );
+				toggle.textContent = open ? 'Show address' : 'Hide address';
+			} );
+		} );
+
+		var focusId = list.getAttribute( 'data-focus-batch' );
+		if ( focusId ) {
+			var focusCard = document.getElementById( 'som-batch-' + focusId );
+			if ( focusCard ) {
+				setExpanded( focusCard, true );
+				focusCard.scrollIntoView( { behavior: 'smooth', block: 'start' } );
+			}
+		}
+	}
 
 	function initGoalEditor() {
 		var goalIndex = 0;

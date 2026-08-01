@@ -451,6 +451,11 @@
 	color: #6e3a8c;
 }
 
+.som-badge-step-waiting_batch {
+	background: #e7f5ff;
+	color: #0a4b78;
+}
+
 .som-badge-step-done {
 	background: #edfaef;
 	color: #007017;
@@ -459,6 +464,93 @@
 .som-badge-step-error {
 	background: #fcf0f1;
 	color: #b32d2e;
+}
+
+.som-badge-batch-collecting {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.som-badge-batch-ready {
+	background: #e7f0fa;
+	color: #135e96;
+}
+
+.som-badge-batch-processing {
+	background: #fcf0e3;
+	color: #9a6700;
+}
+
+.som-badge-batch-done {
+	background: #edfaef;
+	color: #007017;
+}
+
+.som-badge-batch-error {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.som-batch-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.som-batch-card {
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 12px 14px;
+}
+
+.som-batch-card.is-focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.som-batch-card-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.som-batch-toggle {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	text-align: left;
+	text-decoration: none;
+}
+
+.som-batch-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.som-inline-form {
+	display: inline;
+	margin: 0;
+}
+
+.som-batch-members {
+	margin-top: 12px;
+}
+
+.som-batch-address {
+	margin: 8px 0 0;
+	white-space: pre-wrap;
+	font-family: inherit;
+	font-size: 12px;
+}
+
+.som-batch-combo-warning {
+	margin: 8px 0 0;
 }
 
 .som-panel-workflow {
