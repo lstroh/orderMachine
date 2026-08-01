@@ -1,7 +1,9 @@
 # bin_sticker.py — Documentation
 
 Generates print-ready PDFs for Kerbside Craft Co.'s wheelie bin number stickers:
-100×140mm cards, 4-up on an A4 sheet, 11 design presets. Built on `reportlab`.
+100×140mm portrait cards, 4-up on an A4 sheet, 11 design presets — except
+style 11, which is 140×100mm **landscape** (see §1 and §4). Built on
+`reportlab`.
 
 This doc covers how the file is structured, what each style does, and —
 since it comes up a lot — exactly how to move text and icons around by
@@ -25,13 +27,19 @@ Everything is drawn in **millimetres**, using reportlab's `mm` unit
   coordinates against a mockup made in one of those.
 - **Key constants** (top of file):
   ```python
-  CARD_W, CARD_H = 100 * mm, 140 * mm   # card size
-  PAD = 6 * mm                          # border inset from the cut edge
+  CARD_W, CARD_H = 100 * mm, 140 * mm   # card size (portrait -- styles 1-10)
+  PAD = 2 * mm                          # border inset from the cut edge
   ```
+- **Not every style uses `CARD_W`/`CARD_H`.** Style 11 (`house_banner`) is
+  landscape, with its own `P02_CARD_W`/`P02_CARD_H` (140×100mm) — see
+  `STYLE_CARD_SIZE`, a dict every style is registered in, which
+  `draw_sticker`/`render_sheet`/`render_gallery` all consult rather than
+  assuming one uniform size. If you ever add another non-portrait style,
+  register its size there too.
 - **`cx = ox + CARD_W / 2`** — every style computes this once and uses it
   to horizontally centre things. If you want to move something
   left/right, you're usually adjusting an offset *from* `cx`, not `cx`
-  itself.
+  itself. (Style 11 uses `P02_CARD_W` for this instead — see §4.)
 
 ---
 
@@ -87,6 +95,15 @@ that matter if you want to edit it:
 
 This is the style most people will ask "how do I move the text" about,
 so it gets its own section.
+
+**This card is landscape, not portrait.** `P02_CARD_W, P02_CARD_H = 140 *
+mm, 100 * mm` — the icon's own proportions suit a wide layout better than
+a tall one, so this style's card is rotated relative to the other 10
+(house upright, card shape rotated — not the design tipped sideways on a
+portrait card, which was considered and rejected: a peaked-roof house
+rotated 90° reads as "fallen over," not "sideways"). Every position
+constant in this section is in `P02_CARD_W`/`P02_CARD_H` terms, not
+`CARD_W`/`CARD_H`.
 
 **The icon (`assets/icons/house_banner_master.png`)** is a transparent
 silhouette — a house outline with two hollow "windows": the house body
@@ -402,6 +419,18 @@ bs.render_sheet(orders, "sheet.pdf")
 ```
 `render_sheet` takes up to 4 orders and fills all 4 slots on one A4 page.
 Fewer than 4 just leaves the remaining slots blank.
+
+**All 4 orders in one `render_sheet` call must be the same card shape.**
+The example above is fine (4 portrait styles). Mixing a portrait style
+with `house_banner` (landscape) in the same call raises `ValueError` —
+a single uniform 2×2 grid can't sensibly combine two different card
+shapes/orientations. Put `house_banner` orders in their own separate
+`render_sheet` call; the page comes out landscape A4 automatically.
+`render_gallery` handles this the same way when given a style list that
+mixes shapes — it groups by shape and gives each group its own
+correctly-oriented page(s), rather than erroring (there's no ambiguity
+there, since it's choosing the layout for you, not being handed a
+possibly-inconsistent batch to trust).
 
 ### Gallery of every style, using your own sample text
 

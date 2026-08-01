@@ -17,7 +17,7 @@ which reads as its own border) — see chat history for why "no border" was
 dropped as a differentiator.
 """
 
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor, white
 from reportlab.pdfgen import canvas
@@ -188,38 +188,38 @@ def _resolve_accent(accent_key, default="navy"):
 # styles never paint over it)
 # ---------------------------------------------------------------------------
 
-def _draw_base(c, ox, oy):
+def _draw_base(c, ox, oy, w=CARD_W, h=CARD_H):
     c.setFillColor(HexColor(BG))
-    c.rect(ox, oy, CARD_W, CARD_H, fill=1, stroke=0)
+    c.rect(ox, oy, w, h, fill=1, stroke=0)
 
     c.setStrokeColor(HexColor(GUIDE))
     c.setLineWidth(0.4)
-    c.rect(ox, oy, CARD_W, CARD_H, fill=0, stroke=1)
+    c.rect(ox, oy, w, h, fill=0, stroke=1)
 
     tick = 3 * mm
     for cx, cy, dx, dy in [
-        (ox, oy, -tick, -tick), (ox + CARD_W, oy, tick, -tick),
-        (ox, oy + CARD_H, -tick, tick), (ox + CARD_W, oy + CARD_H, tick, tick),
+        (ox, oy, -tick, -tick), (ox + w, oy, tick, -tick),
+        (ox, oy + h, -tick, tick), (ox + w, oy + h, tick, tick),
     ]:
         c.line(cx, cy, cx + dx, cy)
         c.line(cx, cy, cx, cy + dy)
 
 
-def _draw_border(c, ox, oy, order, weight="single"):
+def _draw_border(c, ox, oy, order, weight="single", w=CARD_W, h=CARD_H):
     accent = HexColor(_resolve_accent(order.get("accent", "charcoal")))
     c.setStrokeColor(accent)
     c.setLineWidth(1.1)
     c.setDash()
-    c.rect(ox + PAD, oy + PAD, CARD_W - 2 * PAD, CARD_H - 2 * PAD, fill=0, stroke=1)
+    c.rect(ox + PAD, oy + PAD, w - 2 * PAD, h - 2 * PAD, fill=0, stroke=1)
     if weight == "double":
         c.setLineWidth(0.5)
         inset = PAD + 2.2 * mm
-        c.rect(ox + inset, oy + inset, CARD_W - 2 * inset, CARD_H - 2 * inset, fill=0, stroke=1)
+        c.rect(ox + inset, oy + inset, w - 2 * inset, h - 2 * inset, fill=0, stroke=1)
     elif weight == "dashed":
         c.setDash(2, 2)
         c.setLineWidth(0.7)
         inset = PAD + 2.0 * mm
-        c.rect(ox + inset, oy + inset, CARD_W - 2 * inset, CARD_H - 2 * inset, fill=0, stroke=1)
+        c.rect(ox + inset, oy + inset, w - 2 * inset, h - 2 * inset, fill=0, stroke=1)
         c.setDash()
 
 # ---------------------------------------------------------------------------
@@ -556,16 +556,19 @@ def _fit_font_size(text, font, max_size, min_size, max_width, step=0.5):
 # for the general recipe (rescale from the ORIGINAL pixel measurements,
 # don't nudge these mm values directly).
 # ---------------------------------------------------------------------------
-P02_ICON = dict(x=4.834 * mm, y=38.926 * mm, w=90.331 * mm, h=62.149 * mm)
-P02_ICON_SCALE = 0.066469  # mm per source-icon px -- rescaled for PAD=2mm, see chat history
-P02_ICON_X_LEFT = 4.834 * mm
-P02_ICON_Y_TOP = 38.926 * mm  # icon's top edge, measured from the card's top edge
+P02_CARD_W = 140 * mm  # landscape -- this style's card is a different shape/size
+P02_CARD_H = 100 * mm  # than the other 10 styles' portrait CARD_W/CARD_H
 
-P02_NUMBER_CENTER_Y = 77.215 * mm  # RL y; rescaled -- see references note below
-P02_NUMBER_MAX_WIDTH = 27.219 * 0.90 * mm  # house interior gap width, 10% safety margin
+P02_ICON = dict(x=8.8 * mm, y=7.9391 * mm, w=122.4 * mm, h=84.1219 * mm)
+P02_ICON_SCALE = 0.090066  # mm per source-icon px -- rescaled for the landscape card, see chat history
+P02_ICON_X_LEFT = 8.8 * mm
+P02_ICON_Y_TOP = 7.9391 * mm  # icon's top edge, measured from the card's top edge
 
-P02_STREET_CENTER_Y = 59.142 * mm  # RL y; rescaled -- see references note below
-P02_STREET_MAX_WIDTH = 63.81 * 0.90 * mm  # banner usable-band width, 10% safety margin
+P02_NUMBER_CENTER_Y = 59.7317 * mm  # RL y
+P02_NUMBER_MAX_WIDTH = 36.8821 * 0.90 * mm  # house interior gap width, 10% safety margin
+
+P02_STREET_CENTER_Y = 35.2426 * mm  # RL y
+P02_STREET_MAX_WIDTH = 86.4636 * 0.90 * mm  # banner usable-band width, 10% safety margin
 
 # Quadratic fit (least-squares, residual std <1px) to the banner's own
 # top/bottom midline, sampled column-by-column from the source PNG, over
@@ -617,10 +620,12 @@ def _style_p02_house_banner(c, ox, oy, order):
     artwork (not a plain-shape vector like style 5's house silhouette),
     with the house number nested inside the house body and the street
     name curved along the banner ribbon, matching the source art's own
-    shape. See chat history for the full derivation."""
+    shape. LANDSCAPE (140x100mm) -- the only style with a different card
+    shape than the rest; see STYLE_CARD_SIZE and P02_CARD_W/H. See chat
+    history for the full derivation."""
     accent_key = order.get("accent", "navy")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + CARD_W / 2
+    cx = ox + P02_CARD_W / 2
 
     icon_path = _p02_icon_path(accent_key)
     if icon_path:
@@ -631,25 +636,24 @@ def _style_p02_house_banner(c, ox, oy, order):
         )
     else:
         # Graceful fallback if the master art is missing -- plain vector
-        # house, flat (uncurved) text, same rough vertical rhythm as
-        # style 5. NOT a lesser version of the same design -- there's no
-        # vector equivalent of "number nested in a hollow illustrated
-        # house with a curved banner," so this is really a substitution,
-        # not a degradation. Warn loudly so it's never discovered only
-        # after looking at the printed output (see chat history).
+        # house, flat (uncurved) text. NOT a lesser version of the same
+        # design -- there's no vector equivalent of "number nested in a
+        # hollow illustrated house with a curved banner," so this is
+        # really a substitution, not a degradation. Warn loudly so it's
+        # never discovered only after looking at the printed output.
         print(
             f"\u26a0 house_banner: master icon not found at "
             f"{_asset_path(P02_ICON_MASTER)!r} -- rendering plain house "
             f"fallback instead of the illustrated P02 design for "
             f"house_number={order.get('house_number')!r}."
         )
-        _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 14 * mm, accent_hex, "house", draw_house_icon)
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "house", draw_house_icon)
         c.setFillColor(HexColor(INK))
-        c.setFont("Helvetica-Bold", 54)
-        c.drawCentredString(cx, oy + CARD_H * 0.48, order["house_number"])
-        c.setFont("Helvetica", 16)
-        c.drawCentredString(cx, oy + CARD_H * 0.30, order["street_name"])
-        _draw_border(c, ox, oy, order, "single")
+        c.setFont("Helvetica-Bold", 44)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.45, order["house_number"])
+        c.setFont("Helvetica", 14)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.25, order["street_name"])
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
         return
 
     number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 44, 20, P02_NUMBER_MAX_WIDTH)
@@ -668,7 +672,7 @@ def _style_p02_house_banner(c, ox, oy, order):
         ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
     )
 
-    _draw_border(c, ox, oy, order, "single")
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
 
 
 STYLES = {
@@ -696,8 +700,18 @@ STYLE_LABELS = {
     "vintage": "8. Vintage dashed/postmark",
     "corner_flourish": "9. Four-corner flourish",
     "paw": "10. Paw print accent",
-    "house_banner": "11. House + banner illustrated",
+    "house_banner": "11. House + banner illustrated (landscape)",
 }
+
+# Card size per style. Every style defaults to the shared portrait
+# (CARD_W, CARD_H) EXCEPT house_banner, which is landscape
+# (P02_CARD_W, P02_CARD_H) -- the first and so far only style with a
+# different card shape. draw_sticker/render_sheet/render_gallery all
+# look up a style's real size here rather than assuming CARD_W/CARD_H
+# uniformly -- if you add another non-portrait style in future, register
+# its size here too, or it will silently get drawn onto a portrait base.
+STYLE_CARD_SIZE = {style: (CARD_W, CARD_H) for style in STYLES}
+STYLE_CARD_SIZE["house_banner"] = (P02_CARD_W, P02_CARD_H)
 
 
 def draw_sticker(c, ox, oy, order):
@@ -709,55 +723,89 @@ def draw_sticker(c, ox, oy, order):
         accent       key in ACCENTS              (each style has its own default)
         bin_type     str or None                 (style "recycle" only)
     """
-    _draw_base(c, ox, oy)
-    STYLES[order.get("style", "minimal")](c, ox, oy, order)
+    style = order.get("style", "minimal")
+    w, h = STYLE_CARD_SIZE.get(style, (CARD_W, CARD_H))
+    _draw_base(c, ox, oy, w, h)
+    STYLES[style](c, ox, oy, order)
+
+
+def _sheet_layout(card_w, card_h, page_w, page_h):
+    margin_x = (page_w - 2 * card_w) / 2
+    margin_y = (page_h - 2 * card_h) / 2
+    return margin_x, margin_y, [
+        (margin_x, margin_y + card_h), (margin_x + card_w, margin_y + card_h),
+        (margin_x, margin_y), (margin_x + card_w, margin_y),
+    ]
 
 
 def render_sheet(orders, out_path, caption=False):
     """orders: list of up to 4 dicts. Fills one A4 sheet, 2x2. Set
     caption=True to print each design's label in the bottom margin
-    (used for the design gallery, not for real customer orders)."""
-    c = canvas.Canvas(out_path, pagesize=A4)
-    page_w, page_h = A4
-    margin_x = (page_w - 2 * CARD_W) / 2   # 5mm each side
-    margin_y = (page_h - 2 * CARD_H) / 2   # 8.5mm each side
-    positions = [
-        (margin_x, margin_y + CARD_H), (margin_x + CARD_W, margin_y + CARD_H),
-        (margin_x, margin_y), (margin_x + CARD_W, margin_y),
-    ]
+    (used for the design gallery, not for real customer orders).
+
+    All orders in one call must use styles with the SAME card size --
+    this fills one uniform 2x2 grid, so a batch mixing e.g. a portrait
+    style with landscape house_banner can't be laid out sensibly in one
+    call. Split into separate render_sheet calls per card shape instead;
+    mixing raises ValueError rather than silently producing a wrong
+    layout (a card drawn at the wrong size/position on a shared grid)."""
+    sizes = {STYLE_CARD_SIZE.get(o.get("style", "minimal"), (CARD_W, CARD_H)) for o in orders}
+    if len(sizes) > 1:
+        raise ValueError(
+            f"render_sheet got orders with different card sizes ({sizes}) -- "
+            "a single sheet can't mix card shapes in one uniform 2x2 grid. "
+            "Split into separate render_sheet calls, one per card shape."
+        )
+    card_w, card_h = sizes.pop() if sizes else (CARD_W, CARD_H)
+    page_size = landscape(A4) if card_w > card_h else A4
+    page_w, page_h = page_size
+    margin_x, margin_y, positions = _sheet_layout(card_w, card_h, page_w, page_h)
+
+    c = canvas.Canvas(out_path, pagesize=page_size)
     for order, (x, y) in zip(orders, positions):
         draw_sticker(c, x, y, order)
         if caption and "style" in order:
             c.setFont("Helvetica", 6)
             c.setFillColor(HexColor("#888888"))
-            c.drawCentredString(x + CARD_W / 2, 2.5 * mm, STYLE_LABELS.get(order["style"], order["style"]))
+            c.drawCentredString(x + card_w / 2, 2.5 * mm, STYLE_LABELS.get(order["style"], order["style"]))
     c.showPage()
     c.save()
 
 
 def render_gallery(style_keys, sample_order, out_path):
     """One sticker per style in style_keys, same sample_order text on all
-    of them, paginated 4-up across as many A4 pages as needed."""
-    c = canvas.Canvas(out_path, pagesize=A4)
-    page_w, page_h = A4
-    margin_x = (page_w - 2 * CARD_W) / 2
-    margin_y = (page_h - 2 * CARD_H) / 2
-    positions = [
-        (margin_x, margin_y + CARD_H), (margin_x + CARD_W, margin_y + CARD_H),
-        (margin_x, margin_y), (margin_x + CARD_W, margin_y),
-    ]
-    for i, style in enumerate(style_keys):
-        slot = i % 4
-        if slot == 0 and i > 0:
-            c.showPage()
-        x, y = positions[slot]
-        order = dict(sample_order)
-        order["style"] = style
-        draw_sticker(c, x, y, order)
-        c.setFont("Helvetica", 6)
-        c.setFillColor(HexColor("#888888"))
-        c.drawCentredString(x + CARD_W / 2, 2.5 * mm, STYLE_LABELS.get(style, style))
-    c.showPage()
+    of them, paginated 4-up across as many A4 pages as needed.
+
+    Styles are grouped by card shape (portrait vs. landscape) and each
+    group gets its own page(s) in the matching orientation -- a page
+    can't sensibly mix a 100x140mm portrait card with a 140x100mm
+    landscape one in one uniform grid, same reasoning as render_sheet."""
+    groups = {}
+    for style in style_keys:
+        size = STYLE_CARD_SIZE.get(style, (CARD_W, CARD_H))
+        groups.setdefault(size, []).append(style)
+
+    c = canvas.Canvas(out_path, pagesize=A4)  # placeholder; first setPageSize call below fixes it
+    first_page = True
+    for (card_w, card_h), styles_in_group in groups.items():
+        page_size = landscape(A4) if card_w > card_h else A4
+        page_w, page_h = page_size
+        margin_x, margin_y, positions = _sheet_layout(card_w, card_h, page_w, page_h)
+        for i, style in enumerate(styles_in_group):
+            slot = i % 4
+            if not first_page and slot == 0:
+                c.showPage()
+            first_page = False
+            c.setPageSize(page_size)
+            x, y = positions[slot]
+            order = dict(sample_order)
+            order["style"] = style
+            draw_sticker(c, x, y, order)
+            c.setFont("Helvetica", 6)
+            c.setFillColor(HexColor("#888888"))
+            c.drawCentredString(x + card_w / 2, 2.5 * mm, STYLE_LABELS.get(style, style))
+        c.showPage()
+        first_page = True  # next group starts a fresh page regardless
     c.save()
 
 
