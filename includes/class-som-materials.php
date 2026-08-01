@@ -23,6 +23,11 @@ class SOM_Materials {
 	const LOG_LIMIT = 10;
 
 	/**
+	 * Purchase-history rows on the material detail screen.
+	 */
+	const PURCHASE_HISTORY_LIMIT = 20;
+
+	/**
 	 * Query materials for the admin list.
 	 *
 	 * @param array<string, mixed> $args Filters: status, s, paged, per_page.
@@ -88,7 +93,11 @@ class SOM_Materials {
 		}
 
 		foreach ( $materials as $material ) {
-			$material->is_low_stock = self::is_low_stock( $material );
+			$material->is_low_stock      = self::is_low_stock( $material );
+			$material->weighted_average  = SOM_Material_Costing::unit_cost_for_consumption( $material );
+			$material->goal_alert_level  = SOM_Material_Costing::worst_alert_level(
+				SOM_Material_Costing::goal_alerts_for_material( (int) $material->id, (float) $material->weighted_average )
+			);
 		}
 
 		return array(
@@ -138,10 +147,94 @@ class SOM_Materials {
 			return null;
 		}
 
-		$material->is_low_stock = self::is_low_stock( $material );
-		$material->stock_log    = self::get_stock_log( $material_id, self::LOG_LIMIT );
+		$material->is_low_stock           = self::is_low_stock( $material );
+		$material->weighted_average       = SOM_Material_Costing::unit_cost_for_consumption( $material );
+		$material->stock_log              = self::get_stock_log( $material_id, self::LOG_LIMIT );
+		$material->purchase_history       = self::get_purchase_history( $material_id, self::PURCHASE_HISTORY_LIMIT );
+		$material->average_lead_time_days = self::average_lead_time_days( $material_id );
+		$material->goal_alerts            = SOM_Material_Costing::goal_alerts_for_material(
+			$material_id,
+			(float) $material->weighted_average
+		);
+		$material->goal_alert_level       = SOM_Material_Costing::worst_alert_level( $material->goal_alerts );
 
 		return $material;
+	}
+
+	/**
+	 * Average lead time in days across POs that received this material.
+	 *
+	 * @param int $material_id Material PK.
+	 * @return float|null Null when no received history.
+	 */
+	public static function average_lead_time_days( $material_id ) {
+		global $wpdb;
+
+		$items_t = SOM_DB::table( 'purchase_order_items' );
+		$po_t    = SOM_DB::table( 'purchase_orders' );
+
+		$avg = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT AVG( DATEDIFF( po.received_date, po.order_date ) )
+				FROM {$items_t} poi
+				INNER JOIN {$po_t} po ON po.id = poi.purchase_order_id
+				WHERE poi.material_id = %d
+					AND poi.quantity_received IS NOT NULL
+					AND poi.quantity_received > 0
+					AND po.received_date IS NOT NULL
+					AND po.order_date IS NOT NULL
+					AND po.status IN ( 'received', 'partially_received' )",
+				(int) $material_id
+			)
+		);
+
+		if ( null === $avg || '' === $avg ) {
+			return null;
+		}
+
+		return round( (float) $avg, 1 );
+	}
+
+	/**
+	 * Dedicated purchase history for a material (received PO lines).
+	 *
+	 * @param int $material_id Material PK.
+	 * @param int $limit       Max rows.
+	 * @return array<int, object>
+	 */
+	public static function get_purchase_history( $material_id, $limit = 20 ) {
+		global $wpdb;
+
+		$items_t     = SOM_DB::table( 'purchase_order_items' );
+		$po_t        = SOM_DB::table( 'purchase_orders' );
+		$suppliers_t = SOM_DB::table( 'suppliers' );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT poi.id AS purchase_order_item_id,
+					poi.purchase_order_id,
+					poi.quantity_ordered,
+					poi.quantity_received,
+					poi.item_cost,
+					poi.landed_unit_cost,
+					po.order_date,
+					po.received_date,
+					po.status AS po_status,
+					s.name AS supplier_name
+				FROM {$items_t} poi
+				INNER JOIN {$po_t} po ON po.id = poi.purchase_order_id
+				INNER JOIN {$suppliers_t} s ON s.id = po.supplier_id
+				WHERE poi.material_id = %d
+					AND poi.quantity_received IS NOT NULL
+					AND poi.quantity_received > 0
+				ORDER BY po.received_date DESC, po.id DESC, poi.id DESC
+				LIMIT %d",
+				(int) $material_id,
+				max( 1, (int) $limit )
+			)
+		);
+
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**

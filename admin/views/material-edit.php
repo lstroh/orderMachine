@@ -14,9 +14,14 @@ if ( ! current_user_can( 'manage_options' ) ) {
 	return;
 }
 
-$is_new   = ! empty( $is_new );
-$material = isset( $material ) ? $material : null;
-$stock_log = ( $material && ! empty( $material->stock_log ) ) ? $material->stock_log : array();
+$is_new           = ! empty( $is_new );
+$material         = isset( $material ) ? $material : null;
+$stock_log        = ( $material && ! empty( $material->stock_log ) ) ? $material->stock_log : array();
+$purchase_history = ( $material && ! empty( $material->purchase_history ) ) ? $material->purchase_history : array();
+$goal_alerts      = ( $material && ! empty( $material->goal_alerts ) ) ? $material->goal_alerts : array();
+$wa               = $material ? (float) $material->weighted_average : 0.0;
+$value_on_hand    = $material ? (float) $material->total_value_on_hand : 0.0;
+$lead_days        = $material && null !== $material->average_lead_time_days ? (float) $material->average_lead_time_days : null;
 ?>
 <div class="wrap som-catalog-wrap">
 	<h1>
@@ -33,7 +38,7 @@ $stock_log = ( $material && ! empty( $material->stock_log ) ) ? $material->stock
 
 	<?php if ( ! $is_new && $material ) : ?>
 		<div class="som-stock-summary som-panel">
-			<h2><?php echo esc_html__( 'Current stock', 'order-machine' ); ?></h2>
+			<h2><?php echo esc_html__( 'Stock &amp; costing', 'order-machine' ); ?></h2>
 			<p class="som-stock-level">
 				<?php echo esc_html( number_format_i18n( (float) $material->current_stock, 2 ) ); ?>
 				<span class="som-muted"><?php echo esc_html( (string) $material->unit ); ?></span>
@@ -41,7 +46,61 @@ $stock_log = ( $material && ! empty( $material->stock_log ) ) ? $material->stock
 					<span class="som-badge som-badge-low-stock"><?php echo esc_html__( 'Low stock', 'order-machine' ); ?></span>
 				<?php endif; ?>
 			</p>
+			<ul class="som-costing-summary">
+				<li>
+					<strong><?php echo esc_html__( 'Weighted average', 'order-machine' ); ?>:</strong>
+					£<?php echo esc_html( number_format_i18n( $wa, 4 ) ); ?>
+					<span class="som-muted"><?php echo esc_html__( 'per unit', 'order-machine' ); ?></span>
+				</li>
+				<li>
+					<strong><?php echo esc_html__( 'Total value on hand', 'order-machine' ); ?>:</strong>
+					£<?php echo esc_html( number_format_i18n( $value_on_hand, 2 ) ); ?>
+				</li>
+				<li>
+					<strong><?php echo esc_html__( 'Average lead time', 'order-machine' ); ?>:</strong>
+					<?php
+					if ( null === $lead_days ) {
+						echo '<span class="som-muted">' . esc_html__( 'No receive history yet', 'order-machine' ) . '</span>';
+					} else {
+						printf(
+							/* translators: %s: number of days */
+							esc_html__( '%s days', 'order-machine' ),
+							esc_html( number_format_i18n( $lead_days, 1 ) )
+						);
+					}
+					?>
+				</li>
+			</ul>
 		</div>
+
+		<?php if ( ! empty( $goal_alerts ) ) : ?>
+			<div class="som-panel som-goal-alerts-panel">
+				<h2><?php echo esc_html__( 'Goal-cost alerts', 'order-machine' ); ?></h2>
+				<p class="description"><?php echo esc_html__( 'Workflows where this material’s weighted average is approaching or over the cost goal.', 'order-machine' ); ?></p>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th scope="col"><?php echo esc_html__( 'Workflow', 'order-machine' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Goal unit cost', 'order-machine' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Alert', 'order-machine' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $goal_alerts as $alert ) : ?>
+							<tr>
+								<td><?php echo esc_html( (string) $alert['workflow_name'] ); ?></td>
+								<td>£<?php echo esc_html( number_format_i18n( (float) $alert['goal_unit_cost'], 4 ) ); ?></td>
+								<td>
+									<span class="som-badge som-badge-goal-<?php echo esc_attr( sanitize_html_class( (string) $alert['level'] ) ); ?>">
+										<?php echo esc_html( SOM_Material_Costing::alert_label( (string) $alert['level'] ) ); ?>
+									</span>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		<?php endif; ?>
 	<?php endif; ?>
 
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-materials' ) ); ?>" class="som-material-form">
@@ -73,18 +132,20 @@ $stock_log = ( $material && ! empty( $material->stock_log ) ) ? $material->stock
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="som_unit_cost"><?php echo esc_html__( 'Unit cost', 'order-machine' ); ?></label></th>
+				<th scope="row"><label for="som_unit_cost"><?php echo esc_html__( 'Unit cost override', 'order-machine' ); ?></label></th>
 				<td>
 					<input type="number" step="0.0001" min="0" id="som_unit_cost" name="som_unit_cost" value="<?php echo esc_attr( $material && null !== $material->unit_cost ? (string) $material->unit_cost : '' ); ?>" class="small-text" />
-					<p class="description"><?php echo esc_html__( 'Optional — for cost reporting later.', 'order-machine' ); ?></p>
+					<p class="description">
+						<?php echo esc_html__( 'Manual override. Saving a new value revalues total value on hand = current stock × unit cost and writes a correcting stock-log row. Purchases update this from the weighted average automatically.', 'order-machine' ); ?>
+					</p>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><label for="som_preferred_supplier"><?php echo esc_html__( 'Preferred supplier', 'order-machine' ); ?></label></th>
 				<td>
 					<?php
-					$suppliers           = SOM_Suppliers::list_all();
-					$preferred_supplier  = $material && ! empty( $material->preferred_supplier_id ) ? (int) $material->preferred_supplier_id : 0;
+					$suppliers          = SOM_Suppliers::list_all();
+					$preferred_supplier = $material && ! empty( $material->preferred_supplier_id ) ? (int) $material->preferred_supplier_id : 0;
 					?>
 					<select id="som_preferred_supplier" name="som_preferred_supplier">
 						<option value=""><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
@@ -115,6 +176,50 @@ $stock_log = ( $material && ! empty( $material->stock_log ) ) ? $material->stock
 	</form>
 
 	<?php if ( ! $is_new && $material ) : ?>
+		<h2><?php echo esc_html__( 'Purchase history', 'order-machine' ); ?></h2>
+		<?php if ( empty( $purchase_history ) ) : ?>
+			<p class="som-muted"><?php echo esc_html__( 'No received purchase lines yet.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<table class="widefat striped som-purchase-history-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Received', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'PO', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Supplier', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Qty received', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Landed unit cost', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $purchase_history as $row ) : ?>
+						<tr>
+							<td>
+								<?php
+								echo $row->received_date
+									? esc_html( (string) $row->received_date )
+									: '<span class="som-muted">—</span>';
+								?>
+							</td>
+							<td>
+								<a href="<?php echo esc_url( SOM_Purchase_Orders::detail_url( (int) $row->purchase_order_id ) ); ?>">
+									#<?php echo esc_html( (string) (int) $row->purchase_order_id ); ?>
+								</a>
+							</td>
+							<td><?php echo esc_html( (string) $row->supplier_name ); ?></td>
+							<td><?php echo esc_html( number_format_i18n( (float) $row->quantity_received, 2 ) ); ?></td>
+							<td>
+								<?php
+								echo null !== $row->landed_unit_cost && '' !== $row->landed_unit_cost
+									? '£' . esc_html( number_format_i18n( (float) $row->landed_unit_cost, 4 ) )
+									: '<span class="som-muted">—</span>';
+								?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
 		<h2><?php echo esc_html__( 'Adjust stock', 'order-machine' ); ?></h2>
 		<p class="description"><?php echo esc_html__( 'Enter a positive or negative delta (e.g. +10 or -2.5). Stock can go negative.', 'order-machine' ); ?></p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-materials' ) ); ?>" class="som-stock-adjust-form">

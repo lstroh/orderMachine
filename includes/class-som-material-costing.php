@@ -182,12 +182,20 @@ class SOM_Material_Costing {
 	 * @return array<int, array{goal_id:int,workflow_template_id:int,workflow_name:string,goal_unit_cost:float,level:string}>
 	 */
 	public static function goal_alerts_for_material( $material_id, $wa = null ) {
+		global $wpdb;
+
 		$material_id = (int) $material_id;
+		$table       = SOM_DB::table( 'materials' );
+		$material    = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, name, current_stock, total_value_on_hand, unit_cost FROM {$table} WHERE id = %d LIMIT 1",
+				$material_id
+			)
+		);
+		if ( ! $material ) {
+			return array();
+		}
 		if ( null === $wa ) {
-			$material = SOM_Materials::get( $material_id );
-			if ( ! $material ) {
-				return array();
-			}
 			$wa = self::unit_cost_for_consumption( $material );
 		}
 
@@ -199,6 +207,8 @@ class SOM_Material_Costing {
 			}
 			$alerts[] = array(
 				'goal_id'              => (int) $goal->id,
+				'material_id'          => $material_id,
+				'material_name'        => (string) $material->name,
 				'workflow_template_id' => (int) $goal->workflow_template_id,
 				'workflow_name'        => isset( $goal->workflow_name ) ? (string) $goal->workflow_name : '',
 				'goal_unit_cost'       => (float) $goal->goal_unit_cost,
@@ -207,6 +217,43 @@ class SOM_Material_Costing {
 		}
 
 		return $alerts;
+	}
+
+	/**
+	 * Worst alert level among a list of goal alerts (over > approaching).
+	 *
+	 * @param array<int, array{level?:string}> $alerts Alert rows.
+	 * @return string ''|approaching|over
+	 */
+	public static function worst_alert_level( array $alerts ) {
+		$worst = '';
+		foreach ( $alerts as $alert ) {
+			$level = isset( $alert['level'] ) ? (string) $alert['level'] : '';
+			if ( 'over' === $level ) {
+				return 'over';
+			}
+			if ( 'approaching' === $level ) {
+				$worst = 'approaching';
+			}
+		}
+		return $worst;
+	}
+
+	/**
+	 * Human-readable alert label.
+	 *
+	 * @param string $level ''|approaching|over.
+	 * @return string
+	 */
+	public static function alert_label( $level ) {
+		$level = sanitize_key( (string) $level );
+		if ( 'over' === $level ) {
+			return __( 'Over goal', 'order-machine' );
+		}
+		if ( 'approaching' === $level ) {
+			return __( 'Approaching goal', 'order-machine' );
+		}
+		return '';
 	}
 
 	/**

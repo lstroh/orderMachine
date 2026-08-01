@@ -13,7 +13,7 @@ Assumption: base plugin Phases 1–11 complete (`SOM_VERSION` was `0.11.0`, `SOM
 | U1 | Shared schema upgrade | **Done** | Verified on wp-env 2026-07-31 |
 | U2 | Suppliers + purchase orders | **Done** | Verified on wp-env 2026-07-31 |
 | U3 | Landed cost / WA / goals | **Done** | Verified on wp-env 2026-07-31 |
-| U4 | Purchasing admin UI | Pending | Preferred supplier already on material edit (U2) |
+| U4 | Purchasing admin UI | **Done** | Verified on wp-env 2026-08-01 |
 | U5 | Batch engine | Pending | |
 | U6 | Batches UI | Pending | Thank-you convert already done in U1 |
 | U7 | REST + Abilities + smoke | Pending | |
@@ -339,6 +339,130 @@ Re-confirmed 2026-07-31 after plan review: plugin `0.14.0`, full U3 smoke **PASS
 
 ---
 
+## Sprint U4 — Purchasing admin UI (costing surfaces)
+
+- **Status:** **Done** (confirmed complete vs `Update-Sprint-Plan.md` § Sprint U4 + 03 §6)
+- **Completed:** 2026-08-01
+- **Verified on:** wp-env (dev site `http://localhost:8888`)
+- **Plugin version:** `0.15.0`
+- **DB version:** `1.4.0` (unchanged; no new DDL in U4)
+
+### Plan requirements review (`Update-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Materials enhanced (WA, value, lead time, PO history, badges) | **Done** | List: WA + value + badges; edit: summary, lead time, breakdown, dedicated PO history |
+| Workflow material goals UI | **Done** | Template-level section on `workflow-step-editor.php` + `sync_for_workflow` on save |
+| Product Costing list + edit | **Done** | List columns (target / material cost / margin / badges); edit Costing panel |
+| Preview Impact button | **Done** | `wp_ajax_som_preview_po_impact` from PO create/edit form (unsaved OK) |
+| Post-receive alert notice | **Done** | Flash warning after receive in `handle_purchase_orders_actions`; redirects to receive URL while still receivable (not a separate receive-view edit) |
+| Unit cost override UX | **Done** | Read-only WA + value on hand; editable `unit_cost` override/revalue copy |
+| Domain helpers (lead time, PO history) | **Done** | `SOM_Materials::average_lead_time_days`, `get_purchase_history` |
+| `SOM_VERSION` → `0.15.0` | **Done** | |
+| `tests/sprint-u4-smoke.php` | **Done** | Goals sync, preview, lead time, PO history, list badges, product alerts |
+| **Done when:** All 03 §6 UI rows (ex dashboard widget) | **Pass** | See §6 checklist below |
+| **Done when:** Preview shows WA + goal + product margin | **Pass** | |
+| **Done when:** Alerts on Materials list + Product Costing + receive | **Pass** | |
+| **Done when:** U4 smoke PASS | **Pass** | |
+| Open items first | Settled | P4 (no widget); U4 Q22–30 settled in plan |
+
+### 03 §6 UI rows checklist
+
+| Page / section | Status | Notes |
+|---|---|---|
+| Suppliers | **Done (U2)** | Unchanged in U4 |
+| Purchase Orders (list) | **Done (U2)** | Unchanged in U4 |
+| Purchase Order (create/edit) + Preview Impact | **Done** | Preview Impact + results panel added |
+| Purchase Order (receive) | **Done** | Receive flow from U2/U3; U4 adds post-receive alert flash |
+| Materials (enhanced) | **Done** | WA, value on hand, avg lead time, preferred supplier (U2), purchase history, goal badges |
+| Workflow material goals | **Done** | On workflow template editor |
+| Product Costing | **Done** | Target price, live cost, profit/margin, goal alerts, listing prices side by side |
+| Dashboard cost-alerts widget | **Out of scope** | P4 deferred |
+
+### Settled U4 clarifications applied
+
+| Topic | Decision | Implemented |
+|---|---|---|
+| Product Costing home | Both list + edit | Yes |
+| Goals UI | Template-level on workflow editor | Yes |
+| Preview Impact | Create/edit only; admin-ajax | Yes |
+| Lead time | Overall average | Yes |
+| Purchase history | Dedicated PO-history table | Yes |
+| Alert badges | List badges; edit breakdown | Yes |
+| Unit cost UI | WA/value read-only; override control | Yes |
+| Post-receive alerts | Receive-screen success notice | Yes (flash + stay on receive when open) |
+| U4 smoke | Yes | Yes |
+| P5 UI copy | Document workflow reassignment follows goals | Yes — product edit + goals section descriptions |
+
+### Decisions applied during build
+
+| Topic | Decision |
+|---|---|
+| Product Costing | List columns **and** edit panel |
+| Goals UI | Template-level on workflow editor |
+| Preview | PO create/edit only; admin-ajax from form |
+| Lead time | Overall average days (`DATEDIFF(received_date, order_date)`) |
+| Purchase history | Dedicated table (date, PO link, supplier, qty, landed unit cost) |
+| Alert badges | List only; full per-workflow breakdown on material edit |
+| Unit cost UI | WA + value read-only; `unit_cost` = override/revalue |
+| Receive alerts | Success + warning notice; redirect to receive if still open, else PO detail |
+| `purchase-order-receive.php` | No view markup change — notice via admin flash after POST |
+| Versions | `SOM_VERSION` → `0.15.0` (DB stays `1.4.0`) |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-materials.php` | Lead time, PO history, WA/alerts on get/query |
+| `includes/class-som-material-costing.php` | `worst_alert_level`, `alert_label`; material name on alerts |
+| `includes/class-som-workflow-material-goals.php` | `sync_for_workflow` |
+| `includes/class-som-products.php` | `target_selling_price` on create |
+| `admin/class-som-admin-menu.php` | Goals save, product target, receive alerts, preview ajax, script localize |
+| `admin/views/materials-list.php` | WA, value, goal badges |
+| `admin/views/material-edit.php` | Costing summary, alerts breakdown, PO history, override copy |
+| `admin/views/products-list.php` | Target / material cost / margin / badges |
+| `admin/views/product-edit.php` | Target field + Product Costing panel + P5 copy |
+| `admin/views/workflow-step-editor.php` | Material cost goals section |
+| `admin/views/purchase-order-edit.php` | Preview Impact button + results panel |
+| `admin/assets/js/admin.js` | Goals rows + Preview Impact ajax |
+| `admin/assets/css/admin.css` | Goal badge / preview / costing styles |
+| `orderMachine.php` | `0.15.0` |
+| `tests/sprint-u4-smoke.php` | Domain/UI-helper smoke |
+| `stikerts/wordpress v2/Update-Sprint-Plan.md` | U4 settled decisions (before build) |
+| `stikerts/wordpress v2/Update-Sprint-Progress.md` | This section |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| All UI rows from 03 §6 (except deferred dashboard widget) | **Pass** |
+| Preview Impact shows WA + goal + product margin impact | **Pass** |
+| Alerts on Materials list + Product Costing + receive notice | **Pass** |
+| U4 smoke PASS | **Pass** |
+
+**Plan scope:** All Sprint U4 modify/done-when items and settled U4 UI rules are complete. Preferred supplier was already on material edit from U2.
+
+### Explicitly out of U4
+
+- Dashboard cost-alerts widget (P4)
+- Batch engine / batches UI → **U5/U6**
+- REST / Abilities → **U7**
+
+### How verified (wp-env)
+
+```bash
+npx @wordpress/env run cli wp plugin list --name=orderMachine
+# orderMachine active 0.15.0
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u4-smoke.php
+# PASS — Sprint U4 smoke
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-u3-smoke.php
+# PASS — Sprint U3 smoke (regression)
+```
+
+Re-confirmed 2026-08-01 after plan review: plugin `0.15.0`, full U4 smoke **PASS**, all plan/§6 done-when items covered.
+
+---
+
 ## Next
 
-Execute **Sprint U4** (purchasing admin UI: costing surfaces, Preview Impact, goals UI, Product Costing, alert badges).
+Execute **Sprint U5** (batch gate in workflow engine).

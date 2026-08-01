@@ -74,14 +74,15 @@ $status_options = array(
 				<th scope="col" class="column-unit"><?php echo esc_html__( 'Unit', 'order-machine' ); ?></th>
 				<th scope="col" class="column-stock"><?php echo esc_html__( 'Current stock', 'order-machine' ); ?></th>
 				<th scope="col" class="column-threshold"><?php echo esc_html__( 'Low-stock at', 'order-machine' ); ?></th>
-				<th scope="col" class="column-cost"><?php echo esc_html__( 'Unit cost', 'order-machine' ); ?></th>
+				<th scope="col" class="column-cost"><?php echo esc_html__( 'WA cost', 'order-machine' ); ?></th>
+				<th scope="col" class="column-value"><?php echo esc_html__( 'Value on hand', 'order-machine' ); ?></th>
 				<th scope="col" class="column-status"><?php echo esc_html__( 'Status', 'order-machine' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( empty( $materials ) ) : ?>
 				<tr>
-					<td colspan="6"><?php echo esc_html__( 'No materials found.', 'order-machine' ); ?></td>
+					<td colspan="7"><?php echo esc_html__( 'No materials found.', 'order-machine' ); ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $materials as $material ) : ?>
@@ -94,6 +95,12 @@ $status_options = array(
 							</strong>
 							<?php if ( ! empty( $material->is_low_stock ) ) : ?>
 								<br /><span class="som-badge som-badge-low-stock"><?php echo esc_html__( 'Low stock', 'order-machine' ); ?></span>
+							<?php endif; ?>
+							<?php if ( ! empty( $material->goal_alert_level ) ) : ?>
+								<br />
+								<span class="som-badge som-badge-goal-<?php echo esc_attr( sanitize_html_class( (string) $material->goal_alert_level ) ); ?>">
+									<?php echo esc_html( SOM_Material_Costing::alert_label( (string) $material->goal_alert_level ) ); ?>
+								</span>
 							<?php endif; ?>
 						</td>
 						<td class="column-unit"><?php echo esc_html( (string) $material->unit ); ?></td>
@@ -108,11 +115,10 @@ $status_options = array(
 							?>
 						</td>
 						<td class="column-cost">
-							<?php
-							echo null !== $material->unit_cost && '' !== $material->unit_cost
-								? esc_html( number_format_i18n( (float) $material->unit_cost, 4 ) )
-								: '<span class="som-muted">—</span>';
-							?>
+							£<?php echo esc_html( number_format_i18n( (float) $material->weighted_average, 4 ) ); ?>
+						</td>
+						<td class="column-value">
+							£<?php echo esc_html( number_format_i18n( (float) $material->total_value_on_hand, 2 ) ); ?>
 						</td>
 						<td class="column-status">
 							<?php if ( (int) $material->is_active ) : ?>

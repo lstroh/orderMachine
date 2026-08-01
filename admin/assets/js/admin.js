@@ -253,11 +253,191 @@
 	}
 
 	initRecipeEditor();
+	initGoalEditor();
 	initPoLineEditor();
+	initPoPreviewImpact();
 	initWorkflowEditor();
 	initListingEditor();
 	initCountdowns();
 	initAdvanceStepRest();
+
+	function initGoalEditor() {
+		var goalIndex = 0;
+		var tbody = document.getElementById( 'som-goal-rows' );
+		var template = document.getElementById( 'som-goal-row-template' );
+		var addButton = document.getElementById( 'som-goal-add-row' );
+
+		if ( ! tbody || ! template ) {
+			return;
+		}
+
+		function nextIndex() {
+			goalIndex += 1;
+			return 'g' + goalIndex + '_' + Date.now();
+		}
+
+		function bindRemoveButtons( scope ) {
+			var buttons = ( scope || document ).querySelectorAll( '.som-goal-remove' );
+			buttons.forEach( function ( button ) {
+				if ( button.dataset.bound ) {
+					return;
+				}
+				button.dataset.bound = '1';
+				button.addEventListener( 'click', function () {
+					var row = button.closest( 'tr' );
+					if ( row && tbody.querySelectorAll( '.som-goal-row' ).length > 1 ) {
+						row.remove();
+					} else if ( row ) {
+						row.querySelectorAll( 'select, input' ).forEach( function ( field ) {
+							if ( field.name && field.name.indexOf( 'som_goal_threshold' ) !== -1 ) {
+								field.value = '90';
+							} else {
+								field.value = '';
+							}
+						} );
+					}
+				} );
+			} );
+		}
+
+		if ( addButton ) {
+			addButton.addEventListener( 'click', function () {
+				var index = nextIndex();
+				var html = template.innerHTML.replace( /__INDEX__/g, index );
+				var wrapper = document.createElement( 'tbody' );
+				wrapper.innerHTML = html.trim();
+				var row = wrapper.firstElementChild;
+				if ( row ) {
+					tbody.appendChild( row );
+					bindRemoveButtons( row );
+				}
+			} );
+		}
+
+		bindRemoveButtons( tbody );
+	}
+
+	function initPoPreviewImpact() {
+		var button = document.getElementById( 'som-po-preview-impact' );
+		var results = document.getElementById( 'som-po-preview-results' );
+		if ( ! button || ! results || typeof somAdmin === 'undefined' || ! somAdmin.ajaxUrl ) {
+			return;
+		}
+
+		function money( n, places ) {
+			var v = Number( n );
+			if ( isNaN( v ) ) {
+				return '—';
+			}
+			return '£' + v.toFixed( places );
+		}
+
+		function alertBadge( level ) {
+			if ( ! level ) {
+				return '';
+			}
+			var label = level === 'over' ? 'Over goal' : 'Approaching goal';
+			return '<span class="som-badge som-badge-goal-' + level + '">' + label + '</span>';
+		}
+
+		button.addEventListener( 'click', function () {
+			var items = [];
+			document.querySelectorAll( '#som-po-line-rows .som-po-line-row' ).forEach( function ( row ) {
+				var material = row.querySelector( 'select[name^="som_po_material"]' );
+				var qty = row.querySelector( 'input[name^="som_po_qty"]' );
+				var cost = row.querySelector( 'input[name^="som_po_item_cost"]' );
+				if ( ! material || ! material.value ) {
+					return;
+				}
+				items.push( {
+					material_id: material.value,
+					quantity_ordered: qty ? qty.value : '',
+					item_cost: cost ? cost.value : ''
+				} );
+			} );
+
+			var shipping = document.getElementById( 'som_po_shipping' );
+			var other = document.getElementById( 'som_po_other' );
+			var body = new window.FormData();
+			body.append( 'action', 'som_preview_po_impact' );
+			body.append( 'nonce', somAdmin.previewNonce || '' );
+			body.append( 'shipping_cost', shipping ? shipping.value : '0' );
+			body.append( 'other_cost', other ? other.value : '0' );
+			body.append( 'items', JSON.stringify( items ) );
+
+			button.disabled = true;
+			results.hidden = false;
+			results.innerHTML = '<p class="som-muted">Calculating preview…</p>';
+
+			fetch( somAdmin.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: body
+			} )
+				.then( function ( res ) {
+					return res.json();
+				} )
+				.then( function ( payload ) {
+					button.disabled = false;
+					if ( ! payload || ! payload.success ) {
+						var msg = payload && payload.data && payload.data.message ? payload.data.message : 'Preview failed.';
+						results.innerHTML = '<div class="notice notice-error inline"><p>' + msg + '</p></div>';
+						return;
+					}
+
+					var data = payload.data || {};
+					var html = '<h2>Preview Impact</h2>';
+					if ( data.warnings && data.warnings.length ) {
+						html += '<div class="notice notice-warning inline"><p>' + data.warnings.join( ' ' ) + '</p></div>';
+					}
+
+					html += '<h3>Materials</h3><table class="widefat striped"><thead><tr>' +
+						'<th>Material</th><th>Landed unit</th><th>Current WA</th><th>Projected WA</th><th>Alerts</th>' +
+						'</tr></thead><tbody>';
+					( data.lines || [] ).forEach( function ( line ) {
+						var alerts = ( line.goal_alerts || [] ).map( function ( a ) {
+							return alertBadge( a.level ) + ' ' + ( a.workflow_name || '' );
+						} ).join( '<br />' ) || '—';
+						html += '<tr>' +
+							'<td>' + ( line.material_name || '' ) + '</td>' +
+							'<td>' + money( line.landed_unit_cost, 4 ) + '</td>' +
+							'<td>' + money( line.current_unit_cost, 4 ) + '</td>' +
+							'<td>' + money( line.projected_unit_cost, 4 ) + '</td>' +
+							'<td>' + alerts + '</td>' +
+							'</tr>';
+					} );
+					html += '</tbody></table>';
+
+					html += '<h3>Product impact</h3>';
+					if ( ! data.products || ! data.products.length ) {
+						html += '<p class="som-muted">No products use these materials.</p>';
+					} else {
+						html += '<table class="widefat striped"><thead><tr>' +
+							'<th>Product</th><th>Material cost</th><th>Target</th><th>Margin</th><th>Alerts</th>' +
+							'</tr></thead><tbody>';
+						data.products.forEach( function ( p ) {
+							var alerts = ( p.goal_alerts || [] ).map( function ( a ) {
+								return alertBadge( a.level ) + ' ' + ( a.material_name || '' );
+							} ).join( '<br />' ) || '—';
+							html += '<tr>' +
+								'<td>' + ( p.product_name || '' ) + '</td>' +
+								'<td>' + money( p.material_cost, 4 ) + '</td>' +
+								'<td>' + ( p.target_selling_price == null ? '—' : money( p.target_selling_price, 2 ) ) + '</td>' +
+								'<td>' + ( p.margin_percent == null ? '—' : Number( p.margin_percent ).toFixed( 1 ) + '%' ) + '</td>' +
+								'<td>' + alerts + '</td>' +
+								'</tr>';
+						} );
+						html += '</tbody></table>';
+					}
+
+					results.innerHTML = html;
+				} )
+				.catch( function () {
+					button.disabled = false;
+					results.innerHTML = '<div class="notice notice-error inline"><p>Preview failed (network error).</p></div>';
+				} );
+		} );
+	}
 
 	function initPoLineEditor() {
 		var lineIndex = 0;

@@ -28,6 +28,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_purchase_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
+		add_action( 'wp_ajax_som_preview_po_impact', array( __CLASS__, 'ajax_preview_po_impact' ) );
 	}
 
 	/**
@@ -151,15 +152,17 @@ class SOM_Admin_Menu {
 				true
 			);
 
+			$localize = array();
 			if ( 'som-orders' === $page ) {
-				wp_localize_script(
-					'som-admin',
-					'somAdmin',
-					array(
-						'restUrl'   => esc_url_raw( rest_url( 'som/v1/' ) ),
-						'restNonce' => wp_create_nonce( 'wp_rest' ),
-					)
-				);
+				$localize['restUrl']   = esc_url_raw( rest_url( 'som/v1/' ) );
+				$localize['restNonce'] = wp_create_nonce( 'wp_rest' );
+			}
+			if ( 'som-purchase-orders' === $page ) {
+				$localize['ajaxUrl']      = admin_url( 'admin-ajax.php' );
+				$localize['previewNonce'] = wp_create_nonce( 'som_preview_po_impact' );
+			}
+			if ( $localize ) {
+				wp_localize_script( 'som-admin', 'somAdmin', $localize );
 			}
 		}
 	}
@@ -636,6 +639,25 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		$goal_materials  = isset( $_POST['som_goal_material'] ) && is_array( $_POST['som_goal_material'] ) ? wp_unslash( $_POST['som_goal_material'] ) : array();
+		$goal_costs      = isset( $_POST['som_goal_cost'] ) && is_array( $_POST['som_goal_cost'] ) ? wp_unslash( $_POST['som_goal_cost'] ) : array();
+		$goal_thresholds = isset( $_POST['som_goal_threshold'] ) && is_array( $_POST['som_goal_threshold'] ) ? wp_unslash( $_POST['som_goal_threshold'] ) : array();
+		$goal_rows       = array();
+		foreach ( $goal_materials as $key => $material_id ) {
+			$goal_rows[] = array(
+				'material_id'               => $material_id,
+				'goal_unit_cost'            => isset( $goal_costs[ $key ] ) ? $goal_costs[ $key ] : '',
+				'warning_threshold_percent' => isset( $goal_thresholds[ $key ] ) ? $goal_thresholds[ $key ] : 90,
+			);
+		}
+
+		$goals_result = SOM_Workflow_Material_Goals::sync_for_workflow( $template_id, $goal_rows );
+		if ( is_wp_error( $goals_result ) ) {
+			self::flash_notice( $goals_result->get_error_message(), 'error', 'som_goals_error' );
+			wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
+			exit;
+		}
+
 		self::flash_notice( __( 'Workflow template saved.', 'order-machine' ), 'success', 'som_workflow_saved' );
 		wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
 		exit;
@@ -660,10 +682,11 @@ class SOM_Admin_Menu {
 
 		$product_id = isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0;
 		$data       = array(
-			'name'                 => isset( $_POST['som_product_name'] ) ? wp_unslash( $_POST['som_product_name'] ) : '',
-			'sku'                  => isset( $_POST['som_product_sku'] ) ? wp_unslash( $_POST['som_product_sku'] ) : '',
-			'workflow_template_id' => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
-			'is_active'            => ! empty( $_POST['som_product_is_active'] ),
+			'name'                  => isset( $_POST['som_product_name'] ) ? wp_unslash( $_POST['som_product_name'] ) : '',
+			'sku'                   => isset( $_POST['som_product_sku'] ) ? wp_unslash( $_POST['som_product_sku'] ) : '',
+			'workflow_template_id'  => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
+			'target_selling_price'  => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
+			'is_active'             => ! empty( $_POST['som_product_is_active'] ),
 		);
 
 		if ( $product_id > 0 ) {
@@ -838,14 +861,62 @@ class SOM_Admin_Menu {
 			$deltas = isset( $_POST['som_receive_qty'] ) && is_array( $_POST['som_receive_qty'] )
 				? wp_unslash( $_POST['som_receive_qty'] )
 				: array();
-			$result = SOM_Purchase_Orders::receive( $po_id, $deltas );
+
+			$order_before = SOM_Purchase_Orders::get( $po_id );
+			$result       = SOM_Purchase_Orders::receive( $po_id, $deltas );
 			if ( is_wp_error( $result ) ) {
 				self::flash_notice( $result->get_error_message(), 'error', 'som_po_receive_error' );
 				wp_safe_redirect( SOM_Purchase_Orders::receive_url( $po_id ) );
 				exit;
 			}
+
 			self::flash_notice( __( 'Stock received.', 'order-machine' ), 'success', 'som_po_received' );
-			wp_safe_redirect( SOM_Purchase_Orders::detail_url( $po_id ) );
+
+			$alert_lines = array();
+			if ( $order_before && ! empty( $order_before->items ) ) {
+				$seen = array();
+				foreach ( $deltas as $item_id => $raw_delta ) {
+					$item_id = (int) $item_id;
+					$raw     = trim( (string) $raw_delta );
+					if ( '' === $raw || ! is_numeric( $raw ) || (float) $raw <= 0 ) {
+						continue;
+					}
+					foreach ( $order_before->items as $item ) {
+						if ( (int) $item->id !== $item_id ) {
+							continue;
+						}
+						$mid = (int) $item->material_id;
+						if ( isset( $seen[ $mid ] ) ) {
+							continue;
+						}
+						$seen[ $mid ] = true;
+						foreach ( SOM_Material_Costing::goal_alerts_for_material( $mid ) as $alert ) {
+							$alert_lines[] = sprintf(
+								/* translators: 1: material name, 2: workflow name, 3: alert label */
+								__( '%1$s — %2$s: %3$s', 'order-machine' ),
+								$alert['material_name'],
+								$alert['workflow_name'],
+								SOM_Material_Costing::alert_label( $alert['level'] )
+							);
+						}
+					}
+				}
+			}
+
+			if ( $alert_lines ) {
+				self::flash_notice(
+					__( 'Cost goal alerts after receive:', 'order-machine' ) . ' ' . implode( '; ', $alert_lines ),
+					'warning',
+					'som_po_receive_alerts'
+				);
+			}
+
+			$fresh = SOM_Purchase_Orders::get( $po_id );
+			if ( $fresh && ! empty( $fresh->can_receive ) ) {
+				wp_safe_redirect( SOM_Purchase_Orders::receive_url( $po_id ) );
+			} else {
+				wp_safe_redirect( SOM_Purchase_Orders::detail_url( $po_id ) );
+			}
 			exit;
 		}
 
@@ -1098,6 +1169,56 @@ class SOM_Admin_Menu {
 		// Keep settings page notices working via legacy transient.
 		add_settings_error( 'som_settings', $code, $message, $type );
 		set_transient( 'som_settings_errors', get_settings_errors( 'som_settings' ), 30 );
+	}
+
+	/**
+	 * AJAX: Preview Impact for an unsaved / in-progress PO form.
+	 *
+	 * @return void
+	 */
+	public static function ajax_preview_po_impact() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Forbidden.', 'order-machine' ) ), 403 );
+		}
+
+		check_ajax_referer( 'som_preview_po_impact', 'nonce' );
+
+		$shipping  = isset( $_POST['shipping_cost'] ) ? wp_unslash( $_POST['shipping_cost'] ) : '0';
+		$other     = isset( $_POST['other_cost'] ) ? wp_unslash( $_POST['other_cost'] ) : '0';
+		$raw_items = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : array();
+		if ( is_string( $raw_items ) ) {
+			$decoded   = json_decode( $raw_items, true );
+			$raw_items = is_array( $decoded ) ? $decoded : array();
+		}
+		if ( ! is_array( $raw_items ) ) {
+			$raw_items = array();
+		}
+
+		$items = array();
+		foreach ( $raw_items as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$items[] = array(
+				'material_id'      => isset( $row['material_id'] ) ? (int) $row['material_id'] : 0,
+				'quantity_ordered' => isset( $row['quantity_ordered'] ) ? $row['quantity_ordered'] : 0,
+				'item_cost'        => isset( $row['item_cost'] ) ? $row['item_cost'] : 0,
+			);
+		}
+
+		$preview = SOM_Material_Costing::preview_impact(
+			array(
+				'shipping_cost' => $shipping,
+				'other_cost'    => $other,
+				'items'         => $items,
+			)
+		);
+
+		if ( is_wp_error( $preview ) ) {
+			wp_send_json_error( array( 'message' => $preview->get_error_message() ) );
+		}
+
+		wp_send_json_success( $preview );
 	}
 
 	/**

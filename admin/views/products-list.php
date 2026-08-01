@@ -70,18 +70,23 @@ $status_options = array(
 				<th scope="col" class="column-name"><?php echo esc_html__( 'Name', 'order-machine' ); ?></th>
 				<th scope="col" class="column-sku"><?php echo esc_html__( 'SKU', 'order-machine' ); ?></th>
 				<th scope="col" class="column-workflow"><?php echo esc_html__( 'Workflow', 'order-machine' ); ?></th>
-				<th scope="col" class="column-recipe"><?php echo esc_html__( 'Recipe', 'order-machine' ); ?></th>
-				<th scope="col" class="column-listings"><?php echo esc_html__( 'Listings', 'order-machine' ); ?></th>
+				<th scope="col" class="column-target"><?php echo esc_html__( 'Target price', 'order-machine' ); ?></th>
+				<th scope="col" class="column-material-cost"><?php echo esc_html__( 'Material cost', 'order-machine' ); ?></th>
+				<th scope="col" class="column-margin"><?php echo esc_html__( 'Margin', 'order-machine' ); ?></th>
 				<th scope="col" class="column-status"><?php echo esc_html__( 'Status', 'order-machine' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( empty( $products ) ) : ?>
 				<tr>
-					<td colspan="6"><?php echo esc_html__( 'No products found.', 'order-machine' ); ?></td>
+					<td colspan="7"><?php echo esc_html__( 'No products found.', 'order-machine' ); ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $products as $product ) : ?>
+					<?php
+					$costing     = SOM_Products::recipe_costing( (int) $product->id );
+					$alert_level = $costing ? SOM_Material_Costing::worst_alert_level( $costing['goal_alerts'] ) : '';
+					?>
 					<tr>
 						<td class="column-name">
 							<strong>
@@ -89,6 +94,12 @@ $status_options = array(
 									<?php echo esc_html( (string) $product->name ); ?>
 								</a>
 							</strong>
+							<?php if ( $alert_level ) : ?>
+								<br />
+								<span class="som-badge som-badge-goal-<?php echo esc_attr( sanitize_html_class( $alert_level ) ); ?>">
+									<?php echo esc_html( SOM_Material_Costing::alert_label( $alert_level ) ); ?>
+								</span>
+							<?php endif; ?>
 						</td>
 						<td class="column-sku">
 							<?php if ( ! empty( $product->sku ) ) : ?>
@@ -106,17 +117,32 @@ $status_options = array(
 							}
 							?>
 						</td>
-						<td class="column-recipe">
+						<td class="column-target">
 							<?php
-							printf(
-								/* translators: %d: material count */
-								esc_html( _n( '%d material', '%d materials', (int) $product->recipe_count, 'order-machine' ) ),
-								(int) $product->recipe_count
-							);
+							if ( $costing && null !== $costing['target_selling_price'] ) {
+								echo '£' . esc_html( number_format_i18n( (float) $costing['target_selling_price'], 2 ) );
+							} else {
+								echo '<span class="som-muted">—</span>';
+							}
 							?>
 						</td>
-						<td class="column-listings">
-							<?php echo esc_html( (string) (int) $product->listing_count ); ?>
+						<td class="column-material-cost">
+							<?php
+							if ( $costing ) {
+								echo '£' . esc_html( number_format_i18n( (float) $costing['material_cost'], 4 ) );
+							} else {
+								echo '<span class="som-muted">—</span>';
+							}
+							?>
+						</td>
+						<td class="column-margin">
+							<?php
+							if ( $costing && null !== $costing['margin_percent'] ) {
+								echo esc_html( number_format_i18n( (float) $costing['margin_percent'], 1 ) ) . '%';
+							} else {
+								echo '<span class="som-muted">—</span>';
+							}
+							?>
 						</td>
 						<td class="column-status">
 							<?php if ( (int) $product->is_active ) : ?>

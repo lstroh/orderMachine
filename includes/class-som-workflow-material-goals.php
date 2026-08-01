@@ -238,6 +238,60 @@ class SOM_Workflow_Material_Goals {
 	}
 
 	/**
+	 * Replace all goals for a workflow from editor rows.
+	 *
+	 * Empty material rows are skipped. Goals not present in $rows are deleted.
+	 *
+	 * @param int                      $workflow_template_id Template PK.
+	 * @param array<int, array<string, mixed>> $rows Each: material_id, goal_unit_cost, warning_threshold_percent.
+	 * @return true|WP_Error
+	 */
+	public static function sync_for_workflow( $workflow_template_id, array $rows ) {
+		$workflow_template_id = (int) $workflow_template_id;
+		if ( $workflow_template_id < 1 || ! SOM_Workflows::get( $workflow_template_id ) ) {
+			return new WP_Error( 'som_goal_workflow', __( 'Workflow template is required.', 'order-machine' ) );
+		}
+
+		$keep_material_ids = array();
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$material_id = isset( $row['material_id'] ) ? (int) $row['material_id'] : 0;
+			$goal_raw    = isset( $row['goal_unit_cost'] ) ? trim( (string) $row['goal_unit_cost'] ) : '';
+			if ( $material_id < 1 || '' === $goal_raw ) {
+				continue;
+			}
+			if ( isset( $keep_material_ids[ $material_id ] ) ) {
+				return new WP_Error( 'som_goal_dup', __( 'Each material can only have one goal per workflow.', 'order-machine' ) );
+			}
+			$result = self::upsert(
+				array(
+					'workflow_template_id'      => $workflow_template_id,
+					'material_id'               => $material_id,
+					'goal_unit_cost'            => $goal_raw,
+					'warning_threshold_percent' => isset( $row['warning_threshold_percent'] ) ? $row['warning_threshold_percent'] : 90,
+				)
+			);
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			$keep_material_ids[ $material_id ] = true;
+		}
+
+		foreach ( self::list_for_workflow( $workflow_template_id ) as $existing ) {
+			if ( ! isset( $keep_material_ids[ (int) $existing->material_id ] ) ) {
+				$deleted = self::delete( (int) $existing->id );
+				if ( is_wp_error( $deleted ) ) {
+					return $deleted;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Evaluate alert level for a goal against a weighted-average cost.
 	 *
 	 * @param object $goal Goal row.

@@ -224,14 +224,15 @@ class SOM_Products {
 		$inserted = $wpdb->insert(
 			SOM_DB::table( 'products' ),
 			array(
-				'name'                 => $name,
-				'sku'                  => $sku,
-				'workflow_template_id' => $workflow_id,
-				'is_active'            => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
-				'created_at'           => $now,
-				'updated_at'           => $now,
+				'name'                  => $name,
+				'sku'                   => $sku,
+				'workflow_template_id'  => $workflow_id,
+				'target_selling_price'  => self::nullable_price( $data, 'target_selling_price' ),
+				'is_active'             => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
+				'created_at'            => $now,
+				'updated_at'            => $now,
 			),
-			array( '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {

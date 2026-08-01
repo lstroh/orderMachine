@@ -85,7 +85,17 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 							);
 							?>
 						</p>
+					<?php else : ?>
+						<p class="description"><?php echo esc_html__( 'If you reassign the workflow later, cost-goal alerts follow that workflow’s material goals automatically.', 'order-machine' ); ?></p>
 					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="som_target_selling_price"><?php echo esc_html__( 'Target selling price', 'order-machine' ); ?></label></th>
+				<td>
+					<input type="number" step="0.01" min="0" class="small-text" id="som_target_selling_price" name="som_target_selling_price" value="<?php echo esc_attr( $product && null !== $product->target_selling_price && '' !== $product->target_selling_price ? (string) $product->target_selling_price : '' ); ?>" />
+					<span class="som-muted">GBP</span>
+					<p class="description"><?php echo esc_html__( 'Competition-driven target price. Profit and margin are calculated from live recipe material cost.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -188,6 +198,133 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 			<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save product', 'order-machine' ); ?></button>
 		</p>
 	</form>
+
+	<?php
+	if ( ! $is_new && $product ) :
+		$costing = SOM_Products::recipe_costing( (int) $product->id );
+		?>
+		<div class="som-panel som-product-costing-panel">
+			<h2><?php echo esc_html__( 'Product Costing', 'order-machine' ); ?></h2>
+			<?php if ( ! $costing ) : ?>
+				<p class="som-muted"><?php echo esc_html__( 'Could not load costing for this product.', 'order-machine' ); ?></p>
+			<?php else : ?>
+				<ul class="som-costing-summary">
+					<li>
+						<strong><?php echo esc_html__( 'Target selling price', 'order-machine' ); ?>:</strong>
+						<?php
+						echo null !== $costing['target_selling_price']
+							? '£' . esc_html( number_format_i18n( (float) $costing['target_selling_price'], 2 ) )
+							: '<span class="som-muted">' . esc_html__( 'Not set', 'order-machine' ) . '</span>';
+						?>
+					</li>
+					<li>
+						<strong><?php echo esc_html__( 'Live material cost', 'order-machine' ); ?>:</strong>
+						£<?php echo esc_html( number_format_i18n( (float) $costing['material_cost'], 4 ) ); ?>
+					</li>
+					<li>
+						<strong><?php echo esc_html__( 'Profit', 'order-machine' ); ?>:</strong>
+						<?php
+						echo null !== $costing['profit']
+							? '£' . esc_html( number_format_i18n( (float) $costing['profit'], 4 ) )
+							: '<span class="som-muted">—</span>';
+						?>
+					</li>
+					<li>
+						<strong><?php echo esc_html__( 'Margin', 'order-machine' ); ?>:</strong>
+						<?php
+						echo null !== $costing['margin_percent']
+							? esc_html( number_format_i18n( (float) $costing['margin_percent'], 1 ) ) . '%'
+							: '<span class="som-muted">—</span>';
+						?>
+					</li>
+				</ul>
+
+				<?php if ( ! empty( $costing['lines'] ) ) : ?>
+					<table class="widefat striped">
+						<thead>
+							<tr>
+								<th scope="col"><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Qty / unit', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Unit cost', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Line cost', 'order-machine' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $costing['lines'] as $line ) : ?>
+								<tr>
+									<td><?php echo esc_html( (string) $line['material_name'] ); ?></td>
+									<td><?php echo esc_html( number_format_i18n( (float) $line['quantity_per_unit'], 2 ) ); ?></td>
+									<td>£<?php echo esc_html( number_format_i18n( (float) $line['unit_cost'], 4 ) ); ?></td>
+									<td>£<?php echo esc_html( number_format_i18n( (float) $line['line_cost'], 4 ) ); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+
+				<?php if ( ! empty( $costing['goal_alerts'] ) ) : ?>
+					<h3><?php echo esc_html__( 'Goal-cost alerts', 'order-machine' ); ?></h3>
+					<ul>
+						<?php foreach ( $costing['goal_alerts'] as $alert ) : ?>
+							<li>
+								<span class="som-badge som-badge-goal-<?php echo esc_attr( sanitize_html_class( (string) $alert['level'] ) ); ?>">
+									<?php echo esc_html( SOM_Material_Costing::alert_label( (string) $alert['level'] ) ); ?>
+								</span>
+								<?php
+								printf(
+									/* translators: 1: material name, 2: goal cost */
+									esc_html__( '%1$s — goal £%2$s', 'order-machine' ),
+									esc_html( isset( $alert['material_name'] ) ? (string) $alert['material_name'] : '' ),
+									esc_html( number_format_i18n( (float) $alert['goal_unit_cost'], 4 ) )
+								);
+								?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+
+				<h3><?php echo esc_html__( 'Live listing prices', 'order-machine' ); ?></h3>
+				<?php if ( empty( $listings ) ) : ?>
+					<p class="som-muted"><?php echo esc_html__( 'No listings linked — set a target price above and compare once listings are mapped.', 'order-machine' ); ?></p>
+				<?php else : ?>
+					<table class="widefat striped">
+						<thead>
+							<tr>
+								<th scope="col"><?php echo esc_html__( 'Channel', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Listing', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Live price', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'vs target', 'order-machine' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $listings as $listing ) : ?>
+								<tr>
+									<td><span class="som-badge som-badge-channel"><?php echo esc_html( (string) $listing->channel_name ); ?></span></td>
+									<td>
+										<a href="<?php echo esc_url( SOM_Listings::detail_url( (int) $listing->id ) ); ?>">
+											<code><?php echo esc_html( (string) $listing->external_listing_id ); ?></code>
+										</a>
+									</td>
+									<td>£<?php echo esc_html( number_format_i18n( (float) $listing->price, 2 ) ); ?></td>
+									<td>
+										<?php
+										if ( null !== $costing['target_selling_price'] ) {
+											$diff = (float) $listing->price - (float) $costing['target_selling_price'];
+											$sign = $diff > 0 ? '+' : '';
+											echo esc_html( $sign . number_format_i18n( $diff, 2 ) );
+										} else {
+											echo '<span class="som-muted">—</span>';
+										}
+										?>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
 
 	<?php if ( ! $is_new && ! empty( $listings ) ) : ?>
 		<h2><?php echo esc_html__( 'Linked listings', 'order-machine' ); ?></h2>

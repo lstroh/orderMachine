@@ -244,6 +244,80 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions ) {
 			<button type="button" class="button" id="som-step-add"><?php echo esc_html__( 'Add step', 'order-machine' ); ?></button>
 		</p>
 
+		<?php
+		$goal_rows        = ( ! $is_new && $template ) ? SOM_Workflow_Material_Goals::list_for_workflow( (int) $template->id ) : array();
+		$material_options = SOM_Materials::list_active();
+		$goal_blank       = max( 1, 2 - count( $goal_rows ) );
+		$goal_index       = 0;
+		?>
+		<h2><?php echo esc_html__( 'Material cost goals', 'order-machine' ); ?></h2>
+		<p class="description">
+			<?php echo esc_html__( 'Optional per-material cost ceilings for this workflow. Alerts fire when a material’s weighted average approaches or exceeds the goal. If a product’s workflow is reassigned later, its alerts follow the new workflow’s goals.', 'order-machine' ); ?>
+		</p>
+		<table class="widefat striped som-goal-table" id="som-goal-table">
+			<thead>
+				<tr>
+					<th scope="col"><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Goal unit cost', 'order-machine' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Warn at % of goal', 'order-machine' ); ?></th>
+					<th scope="col" class="som-recipe-actions-col"></th>
+				</tr>
+			</thead>
+			<tbody id="som-goal-rows">
+				<?php foreach ( $goal_rows as $goal ) : ?>
+					<?php ++$goal_index; ?>
+					<tr class="som-goal-row">
+						<td>
+							<select name="som_goal_material[<?php echo esc_attr( (string) $goal_index ); ?>]">
+								<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+								<?php foreach ( $material_options as $material ) : ?>
+									<option value="<?php echo esc_attr( (string) (int) $material->id ); ?>" <?php selected( (int) $goal->material_id, (int) $material->id ); ?>>
+										<?php echo esc_html( (string) $material->name ); ?> (<?php echo esc_html( (string) $material->unit ); ?>)
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+						<td>
+							<input type="number" step="0.0001" min="0.0001" name="som_goal_cost[<?php echo esc_attr( (string) $goal_index ); ?>]" value="<?php echo esc_attr( (string) $goal->goal_unit_cost ); ?>" class="small-text" />
+						</td>
+						<td>
+							<input type="number" step="0.01" min="0.01" max="100" name="som_goal_threshold[<?php echo esc_attr( (string) $goal_index ); ?>]" value="<?php echo esc_attr( (string) $goal->warning_threshold_percent ); ?>" class="small-text" />
+						</td>
+						<td class="som-recipe-actions-col">
+							<button type="button" class="button-link som-goal-remove" aria-label="<?php echo esc_attr__( 'Remove row', 'order-machine' ); ?>">&times;</button>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				<?php for ( $i = 0; $i < $goal_blank; $i++ ) : ?>
+					<?php ++$goal_index; ?>
+					<tr class="som-goal-row">
+						<td>
+							<select name="som_goal_material[<?php echo esc_attr( (string) $goal_index ); ?>]">
+								<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+								<?php foreach ( $material_options as $material ) : ?>
+									<option value="<?php echo esc_attr( (string) (int) $material->id ); ?>">
+										<?php echo esc_html( (string) $material->name ); ?> (<?php echo esc_html( (string) $material->unit ); ?>)
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+						<td>
+							<input type="number" step="0.0001" min="0.0001" name="som_goal_cost[<?php echo esc_attr( (string) $goal_index ); ?>]" value="" class="small-text" />
+						</td>
+						<td>
+							<input type="number" step="0.01" min="0.01" max="100" name="som_goal_threshold[<?php echo esc_attr( (string) $goal_index ); ?>]" value="90" class="small-text" />
+						</td>
+						<td class="som-recipe-actions-col">
+							<button type="button" class="button-link som-goal-remove" aria-label="<?php echo esc_attr__( 'Remove row', 'order-machine' ); ?>">&times;</button>
+						</td>
+					</tr>
+				<?php endfor; ?>
+			</tbody>
+		</table>
+		<p>
+			<button type="button" class="button" id="som-goal-add-row"><?php echo esc_html__( 'Add goal row', 'order-machine' ); ?></button>
+		</p>
+
 		<p class="submit">
 			<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save template', 'order-machine' ); ?></button>
 		</p>
@@ -252,4 +326,28 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions ) {
 
 <template id="som-step-card-template">
 	<?php $som_render_step( '__INDEX__', null ); ?>
+</template>
+
+<template id="som-goal-row-template">
+	<tr class="som-goal-row">
+		<td>
+			<select name="som_goal_material[__INDEX__]">
+				<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+				<?php foreach ( $material_options as $material ) : ?>
+					<option value="<?php echo esc_attr( (string) (int) $material->id ); ?>">
+						<?php echo esc_html( (string) $material->name ); ?> (<?php echo esc_html( (string) $material->unit ); ?>)
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</td>
+		<td>
+			<input type="number" step="0.0001" min="0.0001" name="som_goal_cost[__INDEX__]" value="" class="small-text" />
+		</td>
+		<td>
+			<input type="number" step="0.01" min="0.01" max="100" name="som_goal_threshold[__INDEX__]" value="90" class="small-text" />
+		</td>
+		<td class="som-recipe-actions-col">
+			<button type="button" class="button-link som-goal-remove" aria-label="<?php echo esc_attr__( 'Remove row', 'order-machine' ); ?>">&times;</button>
+		</td>
+	</tr>
 </template>

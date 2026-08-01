@@ -42,6 +42,15 @@ Spec sources: `01-Update-Overview.md`, `02-Update-Data-Model.md`, `03-Update-Raw
 | Consumption at zero stock (U3) | If WA undefined (`current_stock` 0 and value 0), use `unit_cost` if set, else `0` |
 | U3 vs U4 boundary | U3 domain only: goals CRUD + alert checks; preview-in-memory service; recipe/margin helpers; correcting adjustment path. Preview button, goals UI, Product Costing, alert badges → **U4** |
 | U3 smoke (U3) | Yes — worked examples from 03 §2 + consumption value check + preview parity |
+| Product Costing UI (U4) | **Both:** costing columns on products list **and** Costing panel on product edit (target price, recipe cost/margin, goal alerts, listing prices) |
+| Goals UI home (U4) | **Material cost goals** section on workflow template editor (`workflow-step-editor.php`) — template-level, not per step |
+| Preview Impact (U4) | PO **create/edit only** (not receive); **admin-ajax** from current form fields (works unsaved) |
+| Lead time (U4) | One **overall average** per material (`received_date − order_date` across past POs) |
+| Purchase history (U4) | Dedicated PO-history table on material edit (date, supplier, qty, landed unit cost, link to PO) — not just filtered stock log |
+| Alert badges (U4) | Materials **list** badges only; full per-workflow breakdown on material **edit** |
+| Material unit cost UI (U4) | Read-only WA + value on hand; keep `unit_cost` as explicit override/revalue control with clearer copy |
+| Post-receive alerts (U4) | Success notice with alert summary on the **receive** screen |
+| U4 smoke (U4) | Yes — `tests/sprint-u4-smoke.php` (preview handler + goals save round-trip + costing UI data helpers) |
 
 ---
 
@@ -120,6 +129,18 @@ U3 clarifications (answered before build):
 20. **U3 vs U4?** → **Domain only in U3; UI surfaces in U4.**
 21. **U3 smoke test?** → **Yes.**
 
+U4 clarifications (answered before build):
+
+22. **Product Costing home:** Separate page, edit panel, or both? → **Both** (list columns + edit panel).
+23. **Goals UI:** Template-level section on workflow editor (not per step)? → **Yes.**
+24. **Preview Impact:** Create/edit only; admin-ajax from unsaved form? → **Yes** (not on receive; admin-ajax).
+25. **Lead time:** Overall average vs per-supplier breakdown? → **Overall average.**
+26. **Purchase history:** Filtered stock log or dedicated PO-history table? → **Dedicated PO-history table.**
+27. **Alert badges:** List + edit, or list badges + edit breakdown? → **List badges; full workflow breakdown on edit.**
+28. **Material unit cost UI:** Read-only WA + value; `unit_cost` as override/revalue? → **Yes.**
+29. **Post-receive alerts:** Receive-screen notice vs badges only? → **Receive-screen success notice.**
+30. **U4 smoke?** → **Yes.**
+
 No further blockers.
 
 ---
@@ -172,10 +193,11 @@ flowchart LR
 
 ### Sprint U4 — Purchasing admin UI (costing surfaces)
 
-- **Covers:** Materials enhanced, workflow goals UI, Product Costing, Preview Impact button
-- **Modify:** `admin/views/materials-list.php`, `admin/views/material-edit.php`, `admin/views/product-edit.php` / products list, `admin/views/workflow-step-editor.php` or workflow templates view for goals, PO create/edit views from U2, `admin/assets` CSS/JS as needed, menu registration
-- **Done when:** All UI rows from 03 §6 work (except deferred dashboard widget); Preview Impact shows WA + goal + product margin impact; alerts on Materials + Product Costing
-- **Open items first:** P4 settled (no widget)
+- **Covers:** Materials enhanced, workflow goals UI, Product Costing, Preview Impact button, post-receive alert notice
+- **Modify:** `admin/views/materials-list.php`, `admin/views/material-edit.php`, `admin/views/product-edit.php`, `admin/views/products-list.php`, `admin/views/workflow-step-editor.php` (goals section), `admin/views/purchase-order-edit.php` (Preview Impact), `admin/views/purchase-order-receive.php` (alert notice), `admin/class-som-admin-menu.php` (POST/ajax handlers), `admin/assets` CSS/JS; domain helpers as needed (avg lead time, PO history for material); `orderMachine.php` (`SOM_VERSION` → `0.15.0`); `tests/sprint-u4-smoke.php`
+- **UI rules (settled):** Product Costing = list columns + edit panel; goals = template-level on workflow editor; Preview = admin-ajax on PO create/edit only; lead time = overall average; dedicated PO-history table on material edit; list badges + edit breakdown; WA/value read-only + `unit_cost` override; receive-screen alert notice
+- **Done when:** All UI rows from 03 §6 work (except deferred dashboard widget); Preview Impact shows WA + goal + product margin impact; alerts on Materials list + Product Costing + receive notice; U4 smoke PASS
+- **Open items first:** P4 settled (no widget); U4 clarifying answers settled
 
 ### Sprint U5 — Batch gate in workflow engine
 

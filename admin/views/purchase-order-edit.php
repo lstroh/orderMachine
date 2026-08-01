@@ -259,11 +259,18 @@ $default_date = current_time( 'Y-m-d' );
 		<?php endif; ?>
 
 		<?php if ( ! $order || ! in_array( $order->status, array( 'received', 'cancelled' ), true ) ) : ?>
-			<p class="submit">
+			<p class="submit som-po-submit-row">
 				<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save purchase order', 'order-machine' ); ?></button>
+				<?php if ( $can_edit_lines ) : ?>
+					<button type="button" class="button" id="som-po-preview-impact"><?php echo esc_html__( 'Preview Impact', 'order-machine' ); ?></button>
+				<?php endif; ?>
 			</p>
 		<?php endif; ?>
 	</form>
+
+	<?php if ( $can_edit_lines ) : ?>
+		<div id="som-po-preview-results" class="som-panel som-po-preview-results" hidden></div>
+	<?php endif; ?>
 </div>
 
 <?php if ( $can_edit_lines ) : ?>
