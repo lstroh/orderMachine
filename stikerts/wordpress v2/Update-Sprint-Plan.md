@@ -61,6 +61,16 @@ Spec sources: `01-Update-Overview.md`, `02-Update-Data-Model.md`, `03-Update-Raw
 | U5 smoke / version (U5) | Yes — `tests/sprint-u5-smoke.php`; `SOM_VERSION` → `0.16.0`; DB → `1.5.0` |
 | Seed thank-you (U5) | Leave seed with per-order `script_config`; `convert_thankyou_steps` on activate remains the fix |
 | Shipping-label convert (U5) | Engine only — no auto-assign of existing Ship steps; shipping_label opt-in stays **U6** |
+| Batches page shape (U6) | **Single list** with expandable batch rows; `?batch_id=N` scrolls/expands that batch (no separate detail page) |
+| Batches list default (U6) | Open only: `collecting` / `ready` / `processing` / `error` (hide `done` by default) |
+| Batch Retry UI (U6) | **Yes** — Retry button on `error` batches (calls `SOM_Batches::retry`) |
+| Member row detail (U6) | Name + order ref collapsed; **expand** for full shipping address |
+| Step editor batch gate (U6) | Dropdown of batch groups; if combined with manual/timer/script → **warning only** (save still rejected by existing validation) |
+| shipping_label opt-in (U6) | Editor only — **no** bulk convert of existing Ship steps |
+| Batch groups admin (U6) | **Allow** edit of display name / `batch_size` (seeded rows; keep `group_key` / `action_type` fixed) |
+| Order → batch link (U6) | `admin.php?page=som-batches&batch_id=N` |
+| U6 smoke / version (U6) | Yes — `tests/sprint-u6-smoke.php`; `SOM_VERSION` → `0.17.0` (no DB bump unless groups edit needs none) |
+| Order detail Mark done (U6) | While `waiting_batch`, **hide/disable** per-order Mark done (advance is batch-level only) |
 
 ---
 
@@ -164,6 +174,19 @@ U5 clarifications (answered before build):
 39. **Seed thank-you steps:** Set `batch_group_id` in seed, or keep convert-on-activate? → **Keep convert-on-activate.**
 40. **Auto-convert shipping_label onto Ship steps in U5?** → **No — engine only; U6 editor opt-in.**
 
+U6 clarifications (answered before build):
+
+41. **Batches page shape:** List+detail vs single expandable list? → **Single list** with expand; `?batch_id=N` deep-link.
+42. **History filter:** Include `done`? → **Open only** by default (`collecting` / `ready` / `processing` / `error`).
+43. **Retry button on error batches?** → **Yes.**
+44. **Member address display:** Always full vs expand? → **Expand** (name + order ref collapsed).
+45. **Step editor on batch + other gates:** Auto-clear or warn? → **Warn only** (validation still rejects save).
+46. **shipping_label bulk convert?** → **No** — editor opt-in only.
+47. **Edit batch groups?** → **Yes** — display name + `batch_size` (key/action_type fixed).
+48. **Order detail link:** `?batch_id=N`? → **Yes.**
+49. **U6 smoke + version?** → **Yes** (`sprint-u6-smoke.php`; plugin `0.17.0`).
+50. **Hide per-order Mark done while `waiting_batch`?** → **Yes.**
+
 No further blockers.
 
 ---
@@ -233,12 +256,13 @@ flowchart LR
 
 ### Sprint U6 — Batches admin UI + thank-you step conversion
 
-- **Covers:** Batches page; order detail waiting_batch; step editor `batch_group_id`
-- **Create:** `admin/views/batches.php` (and detail if needed)
-- **Modify:** `admin/class-som-admin-menu.php`, `admin/views/order-detail.php`, `admin/views/workflow-step-editor.php`; shipping_label opt-in via editor
+- **Covers:** Batches page; order detail waiting_batch; step editor `batch_group_id`; batch groups edit
+- **Create:** `admin/views/batches.php` (single expandable list; no separate detail view); `tests/sprint-u6-smoke.php`
+- **Modify:** `admin/class-som-admin-menu.php` (Batches submenu + POST handlers); `admin/views/order-detail.php` (`waiting_batch` badge + batch link; hide Mark done); `admin/views/workflow-step-editor.php` (batch group dropdown + combo warning); batch-groups edit UI (display name / `batch_size`); `includes/class-som-batches.php` (list/query + find-by-order helpers as needed); `includes/class-som-batch-groups.php` (update); `orderMachine.php` (`SOM_VERSION` → `0.17.0`); admin CSS/JS for expand + deep-link
+- **UI rules (settled):** Open batches only by default; Release on `collecting`; Mark done on `ready` `manual_confirm`; Retry on `error`; member rows expand for address; `?batch_id=N` scrolls/expands; shipping_label via editor only; batch groups editable (name/size); no per-order Mark done while `waiting_batch`
 - **Note:** Thank-you step auto-convert shipped in **U1** (`SOM_Batch_Groups::convert_thankyou_steps`) — U6 only needs UI + editor wiring; re-run convert remains idempotent on load
-- **Done when:** Batches UI matches 04 §4; order detail links to batch; step editor can assign `batch_group_id` (shipping_label opt-in)
-- **Open items first:** Q11 settled (convert done in U1)
+- **Done when:** Batches UI matches 04 §4 + settled U6 rules; order detail links to batch; step editor can assign `batch_group_id` (shipping_label opt-in); U6 smoke PASS
+- **Open items first:** Q11 settled (convert done in U1); U6 clarifying answers settled
 
 ### Sprint U7 — REST + Abilities + smoke tests
 
