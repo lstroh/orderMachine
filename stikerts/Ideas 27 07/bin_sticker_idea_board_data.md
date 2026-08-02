@@ -16,6 +16,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** 190 × 140mm (stated on listing)  
 **Fits per A4:** 4 at our 100×140mm size, adapted version  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your existing 10 designs, once adapted to a printable colour
@@ -33,6 +34,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Created  
 **Size as pinned:** Not stated — estimated ~140×100mm from proportions on bin photo  
 **Fits per A4:** N/A as pinned. 4 at our spec if reinterpreted as a printed design  
 **Est. cost/unit:** As pinned: new adhesive-vinyl material line, not in current cost sheet. Printed version: ~£0.14–0.47/sticker, same as current designs
@@ -50,6 +52,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~120×100mm from bin proportions  
 **Fits per A4:** N/A as pinned. 4 at our spec if reinterpreted as a printed design  
 **Est. cost/unit:** As pinned: new adhesive-vinyl line. Printed version: ~£0.14–0.47/sticker
@@ -67,6 +70,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~150×110mm oval  
 **Fits per A4:** N/A as pinned. 4 at our spec if reinterpreted as a printed design  
 **Est. cost/unit:** As pinned: new adhesive-vinyl line. Printed version: ~£0.14–0.47/sticker
@@ -84,6 +88,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** 364mm high (stated)  
 **Fits per A4:** N/A as pinned (way past our 140mm height, irregular shape). 4 at our spec if reinterpreted  
 **Est. cost/unit:** As pinned: new material/contour-cut line. Adapted: ~£0.14–0.47/sticker like your other designs, but a realistic full-colour flower uses more ink than your current flat-vector floral icon (#3) — worth a small per-unit bump once you test print
@@ -101,6 +106,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** 15cm / 20cm / 30cm wide (3 explicit size tiers shown)  
 **Fits per A4:** N/A as pinned — circular, larger than our rectangle, not a like-for-like comparison  
 **Est. cost/unit:** As pinned: new vinyl material line, and this specific wreath detail is genuinely hard to weed cleanly even with a Cricut — expect longer production time per unit than your flat designs
@@ -118,6 +124,7 @@
 **Production:** Needs Cricut  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** 240 × 145mm (stated)  
 **Fits per A4:** N/A — not a printed/cut product  
 **Est. cost/unit:** N/A — this would be a sourced/resold hardware item, not something made with your printer, laminator, or cutting tools
@@ -135,6 +142,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium  
+**Design status:** Not created  
 **Size as pinned:** Not stated — text appears small relative to bin, estimated ~20–30mm cap height  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl material line
@@ -152,6 +160,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~150×110mm from proportions  
 **Fits per A4:** N/A as pinned. 4 at our spec once a border is added — this is essentially your Minimal design (#2)  
 **Est. cost/unit:** As pinned: new vinyl line. As printed with border added: same ~£0.14–0.47/sticker as #2 already
@@ -169,6 +178,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~150×110mm from proportions  
 **Fits per A4:** N/A as pinned. 4 at our spec once a border is added  
 **Est. cost/unit:** Same as P09a
@@ -186,6 +196,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at our spec if reinterpreted  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: ~£0.14–0.47/sticker, same as your current set — a thin outline uses very little extra ink
@@ -203,6 +214,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~140×100mm  
 **Fits per A4:** N/A as pinned. 4 at our spec once a border is added  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: ~£0.14–0.47/sticker, same as your current set
@@ -220,6 +232,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at our spec once a border is added — already = Minimal (#2)  
 **Est. cost/unit:** Same as P09a
@@ -237,6 +250,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** 200 × 155mm (stated, marketed as their 'LARGE' option)  
 **Fits per A4:** N/A as pinned (vinyl cut, and larger than A4-quartering math would apply to anyway)  
 **Est. cost/unit:** As pinned: new vinyl line. You already have this concept built and costed as design #9
@@ -254,6 +268,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at our spec once a border is added  
 **Est. cost/unit:** Same as P09a
@@ -271,6 +286,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~130×90mm oval  
 **Fits per A4:** N/A as an oval. 4 per A4 if rebuilt as a 100×140mm rectangle  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set — full-colour illustrated art uses somewhat more ink than a flat vector icon, similar to the P05 daisy consideration
@@ -288,6 +304,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — estimated ~150×140mm  
 **Fits per A4:** N/A as pinned. 4 at our spec if reinterpreted as a printed design  
 **Est. cost/unit:** As pinned: new vinyl line. Printed: ~£0.14–0.47/sticker, similar ink use to a detailed icon
@@ -305,6 +322,7 @@
 **Production:** Needs Cricut  
 **Solutions:** WC, CV, CRICUT  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -322,6 +340,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. Already = 4 per A4 via your existing design #4  
 **Est. cost/unit:** As pinned: new vinyl line. Already costed via #4 if adapted
@@ -339,6 +358,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as a true circular die-cut. 4 per A4 if built as a printed circle motif on a rectangle card  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: ~£0.14–0.47/sticker, same as your current set
@@ -356,6 +376,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at our spec if printed as a simplified 'number only' variant  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: same ~£0.14–0.47/sticker — a shorter design doesn't meaningfully reduce ink/material cost, it's a content simplification, not a cost saving
@@ -373,6 +394,7 @@
 **Production:** Needs Cricut  
 **Solutions:** WC, PTC, CRICUT  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A directly comparable — but since one small house shape is well within the ~183×270mm Print-Then-Cut registration-mark limit (unlike your 4-up rectangle sheet), multiple could plausibly fit in one pass depending on layout  
 **Est. cost/unit:** As pinned: new material line, plus this uses genuine Cricut Print-Then-Cut time (design, print, then a second machine pass to cut) — meaningfully more production time than your guillotine workflow
@@ -390,6 +412,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** 15cm (stated)  
 **Fits per A4:** N/A as pinned. 4 at our spec if printed as ink inside a rectangle card, same fix as P10/P17  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: ~£0.14–0.47/sticker, same as your current set
@@ -407,6 +430,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — proportioned similarly to your other small-format designs  
 **Fits per A4:** 4 per A4, matching your spec directly  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -424,6 +448,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — real pricing given: £2.99+ base, £4.64+ with postage  
 **Fits per A4:** N/A as pinned. 4 at our spec if the cats are resized to sit fully within the card  
 **Est. cost/unit:** As pinned: new vinyl line + irregular cut. Adapted: ~£0.14–0.47/sticker, same as your current set
@@ -441,6 +466,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — smaller than a full bin, caddy-proportioned  
 **Fits per A4:** N/A as pinned — and note: a caddy needs its own size spec, not just a scaled-down version of your 100×140mm bin sticker  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: would need a genuinely new smaller size defined and costed separately, not reused from your bin sticker sheet
@@ -458,6 +484,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** Medium  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** 4 per A4, matching your spec directly  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -475,6 +502,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** Very High  
+**Design status:** Created  
 **Size as pinned:** Not stated  
 **Fits per A4:** 4 per A4, matching your spec directly  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -482,6 +510,12 @@
 **What's in the image:** Green bin, Amazon product photo: white rectangular card, single-line border, '96 / Roman Road' in bold serif, small decorative scroll flourish beneath the street name.
 
 **Notes:** This validates your own Classic design (#1) almost exactly — same core ingredients (serif number+street, single border, small flourish accent), just with the flourish placed below the street name instead of between number and street. Combined with the sales volume shown here, this is strong evidence that Classic's underlying formula — not just the corner-flourish or wreath variants — is the single safest bet of everything reviewed across all 25 ideas so far.
+
+**Mockup prompt (Midjourney):** A classic ornate-border address sticker design for a wheelie bin, featuring a bold serif house number '36' displayed prominently near the top, and a wide street name 'GROVE STREET' in bold serif capital letters below it, flanked by a thin decorative line on either side with a small scroll flourish at the center, no icon or illustration — text and flourish only, clean typography on a plain white card with a solid thick black rectangular border with rounded corners, landscape orientation --style raw --stylize 50 --ar 7:5
+
+**Mockup prompt (Lovart):** Design a wheelie bin address sticker layout, landscape orientation, roughly 140mm wide by 100mm tall. Include a bold serif house number '36' placed near the top, and a wide street name 'GROVE STREET' in bold serif capital letters below it, flanked by a thin decorative line on either side with a small scroll flourish at the center. No icon or illustration — text and flourish only. Plain white card background with a solid thick black rectangular border with rounded corners. This is for composition and layout reference only — the text is a placeholder and will not be used exactly as generated.
+
+**Outcome:** This prompt run produced two variant renders (chat: Image 1, Image 2), which became finished designs D02 (`p25_landscape_flourish`) and D03 (`p25b_landscape_flourish`) — see `bin_sticker_products_gallery_data.md`.
 
 ---
 
@@ -492,6 +526,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at our spec if printed as ink inside a rectangle card  
 **Est. cost/unit:** As pinned: new vinyl line. Adapted: ~£0.14–0.47/sticker, same as your current set
@@ -509,6 +544,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** Very High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** 4 per A4, matching your spec directly  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -526,6 +562,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — 'Various Colours, Various Sizes' offered  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -543,6 +580,7 @@
 **Production:** Needs Cricut  
 **Solutions:** CRICUT  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A — reflective sheet isn't used the same way as your printable A4 stock  
 **Est. cost/unit:** New material line entirely, not in your current cost sheet or Equipment Guide — reflective adhesive vinyl would need sourcing and pricing from scratch
@@ -562,6 +600,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -579,6 +618,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** Same as P30a
@@ -596,6 +636,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -613,6 +654,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -630,6 +672,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** '3 Sizes' offered (exact dimensions not stated)  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -647,6 +690,7 @@
 **Production:** Needs Cricut  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A — not a printed/cut sticker product  
 **Est. cost/unit:** N/A — would be a sourced/manufactured hardware item, same category issue as P07's solar sign
@@ -664,6 +708,7 @@
 **Production:** Doable now  
 **Solutions:** WC, PTC, CRICUT  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned — but a single small shape like this fits within the Explore 5's registration-mark limit, same consideration as P19  
 **Est. cost/unit:** As pinned: new material/process line, Print-Then-Cut takes meaningfully longer per unit than your guillotine workflow
@@ -681,6 +726,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at our spec if simplified onto a plain rectangle card  
 **Est. cost/unit:** As pinned: Print-Then-Cut process. Adapted: ~£0.14–0.47/sticker, same as your current set
@@ -698,6 +744,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -715,6 +762,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** 2 size options offered (exact dimensions not stated)  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -732,6 +780,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned. 4 at spec if adapted onto a plain rectangle card  
 **Est. cost/unit:** As pinned: Print-Then-Cut process. Adapted: ~£0.14–0.47/sticker
@@ -749,6 +798,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -766,6 +816,7 @@
 **Production:** Needs Cricut  
 **Solutions:** CRICUT  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A  
 **Est. cost/unit:** New material line, same issue as P29 — reflective/holographic vinyl isn't in your current cost sheet or Equipment Guide
@@ -783,6 +834,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -800,6 +852,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned  
 **Est. cost/unit:** As pinned: new vinyl line
@@ -817,6 +870,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** Very High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** 4 per A4, matching your spec directly  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -834,6 +888,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — the scene looks larger than a typical icon, possibly 200mm+ tall as pinned  
 **Fits per A4:** 4 per A4 if scaled to your 100×140mm spec  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set — fine line detail costs nothing extra once printed rather than cut
@@ -851,6 +906,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** 4 per A4 at your spec, with a border added — essentially design #2 minus the street name  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -868,6 +924,7 @@
 **Production:** Doable now  
 **Solutions:** WC  
 **Selling prediction:** Very High  
+**Design status:** Not created  
 **Size as pinned:** 140 × 150mm (stated)  
 **Fits per A4:** 4 per A4 at your spec (their stated 140×150mm is close to, though not identical to, your 100×140mm)  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -885,6 +942,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — real price given: £5.50, free delivery  
 **Fits per A4:** 4 per A4 if adapted to your rectangle card  
 **Est. cost/unit:** ~£0.14–0.47/sticker, same as your current set
@@ -904,6 +962,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated — a compact, wide/landscape rectangle rather than your portrait 100×140mm shape  
 **Fits per A4:** N/A as pinned at this size/shape — this is a smaller, more compact product than your number+street card, not a straightforward 4-per-A4 fit  
 **Est. cost/unit:** ~£0.14–0.47/sticker if adapted to a printed card, similar to your current set, though a smaller card would use less material per unit
@@ -921,6 +980,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned at this size/shape  
 **Est. cost/unit:** ~£0.14–0.47/sticker if adapted, similar to your current set
@@ -938,6 +998,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as pinned at this size/shape  
 **Est. cost/unit:** ~£0.14–0.47/sticker if adapted, similar to your current set
@@ -955,6 +1016,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** Medium-High  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A as a true circular die-cut. 4 per A4 if printed as a circle graphic on a rectangle card  
 **Est. cost/unit:** ~£0.14–0.47/sticker if adapted, same as your current set
@@ -974,6 +1036,7 @@
 **Production:** Needs Cricut  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated — but visually covers most of the bin's front face, well beyond a corner sticker  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -991,6 +1054,7 @@
 **Production:** Needs Cricut  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated — full front-panel coverage  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1008,6 +1072,7 @@
 **Production:** Needs Cricut  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated — full-canister coverage on a large cylindrical bin  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1025,6 +1090,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated — large eyes/mouth shapes sized to the bin front  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1042,6 +1108,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1059,6 +1126,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1076,6 +1144,7 @@
 **Production:** Needs Cricut  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated — full front-panel coverage  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1093,6 +1162,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated — sold as an 8-pack  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1110,6 +1180,7 @@
 **Production:** Doable now  
 **Solutions:** NA  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only
@@ -1127,6 +1198,7 @@
 **Production:** Doable now  
 **Solutions:** WC, CV  
 **Selling prediction:** N/A  
+**Design status:** Not created  
 **Size as pinned:** Not stated  
 **Fits per A4:** N/A — inspiration only  
 **Est. cost/unit:** N/A — inspiration only

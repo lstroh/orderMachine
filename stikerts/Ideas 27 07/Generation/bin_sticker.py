@@ -328,6 +328,27 @@ def draw_postmark_icon(c, cx, cy, size, color):
     c.restoreState()
 
 
+def draw_center_flourish(c, cx, y, icon_rel_path, width, color=INK):
+    """Draws a flourish as a real image asset (extracted from the
+    reference PNG via icon-silhouette-extraction, then recoloured/cached
+    exactly like the P02 house icon -- see recolour_silhouette /
+    _p02_icon_path above for the pattern this follows), rather than a
+    hand-drawn or hand-traced vector approximation. width is the desired
+    real-world width in points/mm; height is derived from the source
+    PNG's own aspect ratio so it isn't stretched."""
+    master = _asset_path(icon_rel_path)
+    if not os.path.exists(master):
+        return  # asset missing -- draw nothing rather than a wrong placeholder
+    name = os.path.splitext(os.path.basename(icon_rel_path))[0]
+    coloured_path = _asset_path(f"assets/icons/{name}_{color.lstrip('#')}.png")
+    if not os.path.exists(coloured_path):
+        recolour_silhouette(master, coloured_path, color)
+    img = ImageReader(coloured_path)
+    iw, ih = img.getSize()
+    height = width * ih / iw
+    c.drawImage(img, cx - width / 2, y - height / 2, width=width, height=height, mask="auto")
+
+
 def draw_corner_ornament(c, cx, cy, size, color, rot=0):
     """Base shape (rot=0) is oriented for the TOP-LEFT corner: the arc
     curls from the top edge to the left edge, bulging toward the outer
@@ -577,6 +598,169 @@ P02_STREET_MAX_WIDTH = 86.4636 * 0.90 * mm  # banner usable-band width, 10% safe
 # along, not an eyeballed arc.
 P02_BANNER_CURVE_COEFFS = (3.36374116e-04, -4.56481049e-01, 7.64104309e+02)
 
+# ---------------------------------------------------------------------------
+# P25 landscape flourish -- constants measured from the Midjourney reference
+# PNG (chat "Image 1", 1312x928px, uploaded as
+# u3898592314_..._2.png), by pixel row/column band detection, not eyeballed.
+# Reuses P02_CARD_W/H (140x100mm landscape) -- see that style's comment for
+# why a second card shape needs registering in STYLE_CARD_SIZE.
+#
+# IMPORTANT: P25 in the gallery/idea board has fits_spec=Yes for the
+# standard 100x140mm PORTRAIT card. This style is the landscape mockup
+# variant explored in chat instead (flagged as a deliberate departure at
+# the time) -- treat this as its own exploratory style, not "P25 built
+# to spec", unless a landscape product line is adopted.
+# ---------------------------------------------------------------------------
+_P25_SRC_H_PX = 928  # source PNG height in px, used as the frac-from-bottom basis
+
+def _p25_frac(row_px):
+    """Convert a measured source-image row (0 = top) to a fraction of
+    P02_CARD_H measured from the card's bottom -- same convention as the
+    oy + CARD_H * frac pattern used by every other style in this file."""
+    return 1 - row_px / _P25_SRC_H_PX
+
+P25_NUMBER_BASELINE_FRAC = _p25_frac(367)     # bottom of the "36" glyphs
+P25_FLOURISH1_Y_FRAC = _p25_frac(440)         # line between number and street
+P25_STREET_BASELINE_FRAC = _p25_frac(602)     # bottom of "GROVE STREET"
+P25_FLOURISH2_Y_FRAC = _p25_frac(660)         # line below street name
+
+P25_NUMBER_SIZE = 90          # pt, Times-Bold -- matches measured ~21.2mm cap height
+P25_STREET_MAX_WIDTH = 122 * mm  # measured text band was ~116mm; small safety margin
+P25_FLOURISH_HALF_WIDTH = 58 * mm  # measured flourish/street band was ~116mm wide
+P25_BORDER_WEIGHT = 4.5       # pt -- "solid thick" per user request, vs. 1.1pt elsewhere
+P25_BORDER_RADIUS = 5 * mm    # measured corner rounding
+
+# Flourish assets -- unlike the vector icons above, these are extracted
+# directly from the reference PNG's own ink (icon-silhouette-extraction
+# skill: luminance-separated, connected-component-cleaned, cropped to
+# content), not hand-drawn or hand-traced polygons. That approach was
+# tried first and rejected (chat) -- the double lines and scroll are one
+# continuous fused stroke in the source art with no gap to cut a vector
+# path along, so hand-approximating it as separate polygons kept coming
+# out visually wrong. Using the real extracted pixels sidesteps that.
+# The two are genuinely different shapes (each extracted independently),
+# not a mirror of one another -- see chat.
+P25_FLOURISH1_ICON = "assets/icons/p25_flourish1.png"  # aspect 22.23:1 (w:h)
+P25_FLOURISH2_ICON = "assets/icons/p25_flourish2.png"  # aspect 21.74:1 (w:h)
+P25_FLOURISH_WIDTH = 116 * mm  # measured span of the line+swirl assembly
+
+# ---------------------------------------------------------------------------
+# P25b -- second Midjourney render (chat "Image 2": double-line border with
+# corner caps, single flourish between number and street, not above+below).
+# Same extraction method as P25 (icon-silhouette-extraction skill), applied
+# with the crop-clipping check from the start this time -- see chat.
+#
+# Corner caps NOT extracted/replicated yet -- that's a separate ornament
+# from the flourish (attached to the border, not a finite self-contained
+# shape the same way), and doing it justice needs its own crop/extraction
+# pass. Border here uses the existing plain double-line style as a
+# placeholder; swap in a real corner-cap asset later if wanted.
+# ---------------------------------------------------------------------------
+P25B_FLOURISH_ICON = "assets/icons/p25b_flourish.png"  # aspect 18.22:1 (w:h)
+P25B_FLOURISH_WIDTH = 123 * mm  # measured span of the line+swirl assembly
+
+P25B_NUMBER_BASELINE_FRAC = _p25_frac(380)   # bottom of the "36" glyphs
+P25B_FLOURISH_Y_FRAC = _p25_frac(470)        # the flourish's own line row
+P25B_STREET_BASELINE_FRAC = _p25_frac(660)   # bottom of "GROVE STREET"
+
+# Corner-cap ornament -- extracted the same way as the flourishes (each
+# corner cropped generously, icon-silhouette-extraction, checked against
+# check_crop_clipping), BUT this time each of the 4 corners was cropped
+# and extracted INDEPENDENTLY from its own actual pixels, not derived by
+# rotating one master copy. A direct pixel comparison (chat) showed the
+# source art is NOT symmetric under 90-degree rotation -- 3 of the 4
+# corners differed from a rotated top-left by 8-18% of their pixels --
+# so the first version's rotated copies were visibly wrong for most
+# corners. Same reasoning applies to the straight-line border spec below:
+# measured per edge (top/bottom/left/right independently), not assumed
+# uniform, since the source's insets differ edge to edge by up to ~1.7mm
+# (top and bottom in particular).
+P25B_CORNER_TL = "assets/icons/p25b_corner_tl.png"
+P25B_CORNER_TR = "assets/icons/p25b_corner_tr.png"
+P25B_CORNER_BR = "assets/icons/p25b_corner_br.png"
+P25B_CORNER_BL = "assets/icons/p25b_corner_bl.png"
+
+# Axis-correct px/mm -- the source PNG maps 1312x928px to a 140x100mm
+# landscape card, and those two ratios are NOT quite identical
+# (9.3714 vs 9.28 px/mm), so row-based (vertical) measurements and
+# column-based (horizontal) measurements need their own conversion
+# factor, not one shared constant, or the two axes end up ~1% off from
+# each other -- small on its own, but part of what compounded into the
+# corner/edge misalignment (see chat).
+P25B_PXMM_X = 1312 / 140.0
+P25B_PXMM_Y = 928 / 100.0
+P25B_CORNER_W = 165 / P25B_PXMM_X * mm  # corner crop was 165x165px, NOT square in real mm
+P25B_CORNER_H = 165 / P25B_PXMM_Y * mm
+
+# Per-edge straight double-line spec: (outer_inset_mm, outer_width_mm,
+# inner_inset_mm, inner_width_mm), insets measured from the true card
+# edge. top/bottom use P25B_PXMM_Y (row-based), left/right use
+# P25B_PXMM_X (column-based) -- see chat for the raw pixel measurements.
+P25B_EDGE_SPEC = {
+    "top":    (5.603, 2.371, 8.944, 0.970),
+    "bottom": (7.328, 2.371, 10.668, 0.970),
+    "left":   (5.015, 2.454, 8.430, 0.960),
+    "right":  (5.229, 2.454, 8.643, 0.960),
+}
+
+
+def draw_corner_bracket(c, ox, oy, w, h, color=INK):
+    """Places the 4 INDEPENDENTLY-extracted corner-bracket assets so
+    each one's anchor pixel (the corner of its own crop, which is the
+    card's true physical corner) lands exactly on the matching card
+    corner -- no rotation needed, since each was cropped directly from
+    its own true corner in the source (see P25B_CORNER_* comment above
+    for why rotating one copy was tried first and rejected).
+
+    reportlab's drawImage places a PIL image's row 0 (top) at the TOP of
+    its target box and column 0 (left) at the box's LEFT."""
+    paths = {"tl": P25B_CORNER_TL, "tr": P25B_CORNER_TR,
+             "br": P25B_CORNER_BR, "bl": P25B_CORNER_BL}
+    boxes = {
+        "tl": (ox, oy + h - P25B_CORNER_H),
+        "tr": (ox + w - P25B_CORNER_W, oy + h - P25B_CORNER_H),
+        "br": (ox + w - P25B_CORNER_W, oy),
+        "bl": (ox, oy),
+    }
+    for key, rel_path in paths.items():
+        master = _asset_path(rel_path)
+        if not os.path.exists(master):
+            continue
+        name = os.path.splitext(os.path.basename(rel_path))[0]
+        coloured_path = _asset_path(f"assets/icons/{name}_{color.lstrip('#')}.png")
+        if not os.path.exists(coloured_path):
+            recolour_silhouette(master, coloured_path, color)
+        img = ImageReader(coloured_path)
+        x, y = boxes[key]
+        c.drawImage(img, x, y, width=P25B_CORNER_W, height=P25B_CORNER_H, mask="auto")
+
+
+def draw_p25b_border(c, ox, oy, w, h, color=INK):
+    """Straight double-line segments between the 4 corner brackets, one
+    per edge using that edge's OWN measured spec (P25B_EDGE_SPEC) rather
+    than one shared spec -- see the constants' comment for why."""
+    c.saveState()
+    c.setFillColor(HexColor(color))
+    to, tw, ti, tiw = P25B_EDGE_SPEC["top"]
+    bo, bw, bi, biw = P25B_EDGE_SPEC["bottom"]
+    lo, lw, li, liw = P25B_EDGE_SPEC["left"]
+    ro, rw, ri, riw = P25B_EDGE_SPEC["right"]
+    run_x = w - P25B_CORNER_W - P25B_CORNER_W
+    run_y = h - P25B_CORNER_H - P25B_CORNER_H
+    # top edge (outer then inner), inset downward from the top edge
+    c.rect(ox + P25B_CORNER_W, oy + h - (to + tw) * mm, run_x, tw * mm, fill=1, stroke=0)
+    c.rect(ox + P25B_CORNER_W, oy + h - (ti + tiw) * mm, run_x, tiw * mm, fill=1, stroke=0)
+    # bottom edge, inset upward from the bottom edge
+    c.rect(ox + P25B_CORNER_W, oy + bo * mm, run_x, bw * mm, fill=1, stroke=0)
+    c.rect(ox + P25B_CORNER_W, oy + bi * mm, run_x, biw * mm, fill=1, stroke=0)
+    # left edge, inset rightward from the left edge
+    c.rect(ox + lo * mm, oy + P25B_CORNER_H, lw * mm, run_y, fill=1, stroke=0)
+    c.rect(ox + li * mm, oy + P25B_CORNER_H, liw * mm, run_y, fill=1, stroke=0)
+    # right edge, inset leftward from the right edge
+    c.rect(ox + w - (ro + rw) * mm, oy + P25B_CORNER_H, rw * mm, run_y, fill=1, stroke=0)
+    c.rect(ox + w - (ri + riw) * mm, oy + P25B_CORNER_H, riw * mm, run_y, fill=1, stroke=0)
+    c.restoreState()
+
 
 
 
@@ -616,13 +800,15 @@ def _draw_curved_text(c, text, cx, baseline, font, size, color,
 
 
 def _style_p02_house_banner(c, ox, oy, order):
-    """11. Illustrated house + flowers + banner — real Midjourney-sourced
-    artwork (not a plain-shape vector like style 5's house silhouette),
-    with the house number nested inside the house body and the street
-    name curved along the banner ribbon, matching the source art's own
-    shape. LANDSCAPE (140x100mm) -- the only style with a different card
-    shape than the rest; see STYLE_CARD_SIZE and P02_CARD_W/H. See chat
-    history for the full derivation."""
+    """11. D01 (Cottage Bloom Banner) -- Illustrated house + flowers +
+    banner — real Midjourney-sourced artwork (not a plain-shape vector
+    like style 5's house silhouette), with the house number nested
+    inside the house body and the street name curved along the banner
+    ribbon, matching the source art's own shape. LANDSCAPE (140x100mm)
+    -- the only style with a different card shape than the rest; see
+    STYLE_CARD_SIZE and P02_CARD_W/H. See chat history for the full
+    derivation, and STYLE_PRODUCT_ID / bin_sticker_products_gallery_data.md
+    for how this maps to the D01 catalogue entry."""
     accent_key = order.get("accent", "navy")
     accent_hex = _resolve_accent(accent_key)
     cx = ox + P02_CARD_W / 2
@@ -675,6 +861,84 @@ def _style_p02_house_banner(c, ox, oy, order):
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
 
 
+def _style_p25_landscape_flourish(c, ox, oy, order):
+    """12. D02 (Regency Double Flourish) -- bold serif number + wide
+    street name flanked by a scroll flourish both above AND below the
+    street name, inside a solid thick rounded-corner border. Derived
+    from the chat's Midjourney render ("Image 1") via the P25_*
+    constants above, measured from the source PNG's pixel rows/columns
+    -- not redrawn from memory.
+
+    Pure black-on-white per explicit request: no accent colour anywhere,
+    unlike every other style here which takes order["accent"].
+
+    LANDSCAPE, 140x100mm (P02_CARD_W/H) -- NOT the portrait 100x140mm
+    spec that P25's fits_spec=Yes in the idea board refers to. This is
+    the off-spec mockup variant, kept as the user's deliberate choice
+    after being flagged; don't treat it as "P25 built to spec". Now a
+    catalogued product regardless (D02) -- see STYLE_PRODUCT_ID and
+    bin_sticker_products_gallery_data.md."""
+    w, h = P02_CARD_W, P02_CARD_H
+    cx = ox + w / 2
+
+    c.saveState()
+    c.setStrokeColor(HexColor(INK))
+    c.setLineWidth(P25_BORDER_WEIGHT)
+    c.roundRect(ox + PAD, oy + PAD, w - 2 * PAD, h - 2 * PAD, P25_BORDER_RADIUS, fill=0, stroke=1)
+    c.restoreState()
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Times-Bold", P25_NUMBER_SIZE)
+    c.drawCentredString(cx, oy + h * P25_NUMBER_BASELINE_FRAC, order["house_number"])
+
+    draw_center_flourish(c, cx, oy + h * P25_FLOURISH1_Y_FRAC, P25_FLOURISH1_ICON, P25_FLOURISH_WIDTH)
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25_STREET_MAX_WIDTH)
+    c.setFont("Times-Bold", street_size)
+    c.drawCentredString(cx, oy + h * P25_STREET_BASELINE_FRAC, street_text)
+
+    draw_center_flourish(c, cx, oy + h * P25_FLOURISH2_Y_FRAC, P25_FLOURISH2_ICON, P25_FLOURISH_WIDTH)
+
+
+def _style_p25b_landscape_flourish(c, ox, oy, order):
+    """13. D03 (Manor Frame Classic) -- second Midjourney render (chat
+    "Image 2"): bold serif number + wide street name with a SINGLE
+    scroll flourish between them (not above+below like p25_landscape_
+    flourish/D02), inside a double-line border. Extracted via the same
+    icon-silhouette-extraction skill as P25's flourishes, this time
+    checking check_crop_clipping() from the start (the skill was
+    updated after P25's first extraction silently clipped most of the
+    curl detail -- see chat/skill history).
+
+    Border is the real double-line-with-corner-bracket ornament from
+    Image 2, not a placeholder -- see draw_corner_bracket() and the
+    P25B_CORNER_*/P25B_*_LINE_* constants above for the extraction and
+    measurement approach.
+
+    Pure black-on-white, no accent colour, per the same request as P25.
+    LANDSCAPE 140x100mm -- same off-spec-vs-idea-board caveat as
+    p25_landscape_flourish applies here too. Now a catalogued product
+    regardless (D03) -- see STYLE_PRODUCT_ID and
+    bin_sticker_products_gallery_data.md."""
+    w, h = P02_CARD_W, P02_CARD_H
+    cx = ox + w / 2
+
+    draw_corner_bracket(c, ox, oy, w, h)
+    draw_p25b_border(c, ox, oy, w, h)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Times-Bold", P25_NUMBER_SIZE)
+    c.drawCentredString(cx, oy + h * P25B_NUMBER_BASELINE_FRAC, order["house_number"])
+
+    draw_center_flourish(c, cx, oy + h * P25B_FLOURISH_Y_FRAC, P25B_FLOURISH_ICON, P25B_FLOURISH_WIDTH)
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25_STREET_MAX_WIDTH)
+    c.setFont("Times-Bold", street_size)
+    c.drawCentredString(cx, oy + h * P25B_STREET_BASELINE_FRAC, street_text)
+
+
 STYLES = {
     "classic": _style_classic,
     "minimal": _style_minimal,
@@ -687,6 +951,8 @@ STYLES = {
     "corner_flourish": _style_corner_flourish,
     "paw": _style_paw,
     "house_banner": _style_p02_house_banner,
+    "p25_landscape_flourish": _style_p25_landscape_flourish,
+    "p25b_landscape_flourish": _style_p25b_landscape_flourish,
 }
 
 STYLE_LABELS = {
@@ -700,7 +966,26 @@ STYLE_LABELS = {
     "vintage": "8. Vintage dashed/postmark",
     "corner_flourish": "9. Four-corner flourish",
     "paw": "10. Paw print accent",
-    "house_banner": "11. House + banner illustrated (landscape)",
+    "house_banner": "11. D01 — Cottage Bloom Banner (landscape)",
+    "p25_landscape_flourish": "12. D02 — Regency Double Flourish (landscape)",
+    "p25b_landscape_flourish": "13. D03 — Manor Frame Classic (landscape)",
+}
+
+# Cross-reference from a style key to its internal product ID in
+# bin_sticker_products_gallery.html / bin_sticker_products_gallery_data.md
+# -- only styles that have actually shipped as a catalogued product get
+# an entry here (currently all 3 of the landscape styles; none of
+# styles 1-10 have been added to the products gallery yet). This is the
+# SAME direction of lookup products_io.py's next_product_id()/
+# insert_product_card() expect an entry dict to already know when
+# adding a new one -- if you build a 4th finished design, add it here
+# too, or STYLE_LABELS and the products gallery will drift apart the
+# same way the idea board's HTML/.md drifted before insert_md_fields
+# existed.
+STYLE_PRODUCT_ID = {
+    "house_banner": "D01",
+    "p25_landscape_flourish": "D02",
+    "p25b_landscape_flourish": "D03",
 }
 
 # Card size per style. Every style defaults to the shared portrait
@@ -712,6 +997,8 @@ STYLE_LABELS = {
 # its size here too, or it will silently get drawn onto a portrait base.
 STYLE_CARD_SIZE = {style: (CARD_W, CARD_H) for style in STYLES}
 STYLE_CARD_SIZE["house_banner"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p25_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p25b_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 
 
 def draw_sticker(c, ox, oy, order):

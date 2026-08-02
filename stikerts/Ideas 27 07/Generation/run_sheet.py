@@ -9,10 +9,12 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import bin_sticker as bs
 
 orders = [
-    {"house_number": "36", "street_name": "Grove Street", "style": "house_banner", "accent": "navy"},
-    {"house_number": "36", "street_name": "Grove Street", "style": "house_banner", "accent": "navy"},
-    {"house_number": "36", "street_name": "Grove Street", "style": "house_banner", "accent": "navy"},
-    {"house_number": "36", "street_name": "Grove Street", "style": "house_banner", "accent": "navy"},
+    #{"house_number": "36", "street_name": "Grove Street", "style": "house_banner", "accent": "navy"},
+    #{"house_number": "36", "street_name": "Grove Street", "style": "p25_landscape_flourish", "accent": "black"},
+    {"house_number": "36", "street_name": "Grove Street", "style": "p25b_landscape_flourish", "accent": "black"},
+    {"house_number": "36", "street_name": "Grove Street", "style": "p25b_landscape_flourish", "accent": "black"},
+    {"house_number": "36", "street_name": "Grove Street", "style": "p25b_landscape_flourish", "accent": "black"},
+    {"house_number": "36", "street_name": "Grove Street", "style": "p25b_landscape_flourish", "accent": "black"},
 ]
 
 out = "sheet.pdf"

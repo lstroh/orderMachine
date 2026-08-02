@@ -1,8 +1,8 @@
 # bin_sticker.py — Documentation
 
 Generates print-ready PDFs for Kerbside Craft Co.'s wheelie bin number stickers:
-100×140mm portrait cards, 4-up on an A4 sheet, 11 design presets — except
-style 11, which is 140×100mm **landscape** (see §1 and §4). Built on
+100×140mm portrait cards, 4-up on an A4 sheet, 13 design presets — except
+styles 11–13, which are 140×100mm **landscape** (see §1, §4, and §10). Built on
 `reportlab`.
 
 This doc covers how the file is structured, what each style does, and —
@@ -30,9 +30,10 @@ Everything is drawn in **millimetres**, using reportlab's `mm` unit
   CARD_W, CARD_H = 100 * mm, 140 * mm   # card size (portrait -- styles 1-10)
   PAD = 2 * mm                          # border inset from the cut edge
   ```
-- **Not every style uses `CARD_W`/`CARD_H`.** Style 11 (`house_banner`) is
-  landscape, with its own `P02_CARD_W`/`P02_CARD_H` (140×100mm) — see
-  `STYLE_CARD_SIZE`, a dict every style is registered in, which
+- **Not every style uses `CARD_W`/`CARD_H`.** Styles 11–13 (`house_banner`,
+  `p25_landscape_flourish`, `p25b_landscape_flourish`) are all landscape,
+  reusing `P02_CARD_W`/`P02_CARD_H` (140×100mm) — see `STYLE_CARD_SIZE`,
+  a dict every style is registered in, which
   `draw_sticker`/`render_sheet`/`render_gallery` all consult rather than
   assuming one uniform size. If you ever add another non-portrait style,
   register its size there too.
@@ -53,15 +54,17 @@ Everything is drawn in **millimetres**, using reportlab's `mm` unit
 | `ACCENTS` | The 6 accent colours every style can use |
 | `_draw_base` / `_draw_border` | Every card's white background + cut-guide corner ticks, and the border line (single/double/dashed) |
 | Vector icon helpers (`draw_flower_icon`, `draw_house_icon`, etc.) | Plain-shape fallback icons, no external files needed |
-| **`_style_*` functions (11 of them)** | **One per design — this is what you'll edit to move text/icons** |
-| `_fit_font_size` | Shrinks text to fit a given width — used by style 11 |
+| **`_style_*` functions (13 of them)** | **One per design — this is what you'll edit to move text/icons** |
+| `_fit_font_size` | Shrinks text to fit a given width — used by styles 11–13 |
 | P02 geometry block + `_draw_curved_text` | Style 11's icon-nesting and curved-text machinery (see §4) |
+| `draw_center_flourish` / `draw_corner_bracket` / `draw_p25b_border` | Styles 12–13's PNG-asset placement helpers — different mechanism from `_draw_icon` (see §10) |
+| P25 / P25b constants block | Styles 12–13's measured layout constants (see §10) |
 | `STYLES` / `STYLE_LABELS` | Dicts mapping a style key (e.g. `"classic"`) to its function and display label |
 | `draw_sticker` / `render_sheet` / `render_gallery` | Top-level entry points |
 
 ---
 
-## 3. The 11 styles
+## 3. The 13 styles
 
 | # | Key | Icon | Number font | Street font | Border |
 |---|---|---|---|---|---|
@@ -76,10 +79,22 @@ Everything is drawn in **millimetres**, using reportlab's `mm` unit
 | 9 | `corner_flourish` | 4× corner ornament (vector/PNG) | Times-Bold 54 | Times-Roman 16 | double |
 | 10 | `paw` | paw print (vector/PNG) | Helvetica-Bold 54 | Helvetica-Oblique 16 | single |
 | 11 | `house_banner` | illustrated house+flowers+banner (PNG only, no vector fallback shape) | Helvetica-Bold, auto-fit 20–44 | Helvetica-Bold, auto-fit 8–19 (curved) | single |
+| 12 | `p25_landscape_flourish` | 2× traced flourish PNGs, one above/one below street name | Times-Bold 90 | Times-Bold, auto-fit 16–50 | solid rounded rect |
+| 13 | `p25b_landscape_flourish` | 1× traced flourish PNG + 4× independently-traced corner brackets | Times-Bold 90 | Times-Bold, auto-fit 16–50 | double line, per-edge spec |
 
 Styles 3, 4, 5, 8, 9, 10 use `ICON_ASSETS` — if you drop a matching PNG
 at the path listed in that dict, the style automatically switches from
 its plain vector icon to the illustrated one. No code change needed.
+
+Styles 12–13 are different again from style 11: they have **no vector
+fallback at all** (not even a placeholder shape) — if their PNG assets
+are missing, `draw_center_flourish`/`draw_corner_bracket` just draw
+nothing for that element rather than substituting anything. They're also
+the two styles where `accent` is a no-op: both are pure black-ink-on-white
+by design (chat request), so `_resolve_accent` is never called in either
+style function. See §10 for the full writeup — extraction method,
+required asset files, and two real bugs found while building them that
+are worth knowing about if you ever touch their constants.
 
 Style 11 (`house_banner`) is different from the other 10 in two ways
 that matter if you want to edit it:
@@ -278,6 +293,11 @@ help regenerating the whole geometry block than to hand-adjust it.
 name (19pt → down to 8pt) to fit the hollow widths, so unlike styles
 1–10 there's no single font-size number to edit for a specific order;
 it's already responsive to whatever text is in that order.
+
+**Styles 12–13 are landscape too, but built with a different mechanism**
+than this one (traced PNG assets placed directly rather than text
+nested inside icon hollows) — see §10, not this section, if you're
+working on those.
 
 ---
 
@@ -598,5 +618,119 @@ anywhere `accent` is accepted.
     "bin_type": None,           # only used by the "recycle" style
 }
 ```
+
+---
+
+## 10. Styles 12–13: `p25_landscape_flourish` / `p25b_landscape_flourish`
+
+These two are landscape like style 11, but built a different way: no
+icon hollows, no curve-fitting — just small decorative PNG assets
+(flourishes, corner brackets) placed directly at measured positions
+around plain drawn text and borders. Both came from two Midjourney
+mockup renders (chat: "Image 1" and "Image 2" — same "36 GROVE STREET"
+ornate-border concept, two different border/flourish treatments), turned
+into reusable assets with the `icon-silhouette-extraction` skill
+(`/mnt/skills/user/icon-silhouette-extraction/` if you have access to
+it — same skill used for style 11's icon, extended with two new checks
+while building these, described below).
+
+### What's different from style 11
+
+- **No fallback at all.** If a required PNG is missing,
+  `draw_center_flourish`/`draw_corner_bracket` silently draw nothing for
+  that element — there's no vector placeholder like styles 3/4/5/8/9/10
+  have, and no rough-shape fallback like style 11 has.
+- **Pure black-on-white, always.** Neither style function calls
+  `_resolve_accent()` — `accent` in the order dict is accepted but
+  ignored for these two, by deliberate request (chat), not an oversight.
+- **Multiple small assets instead of one master icon.** Style 12 needs 2
+  PNGs, style 13 needs 5 (1 flourish + 4 corner brackets) — see the file
+  list below.
+
+### Required asset files
+
+Both styles need their PNGs present at `assets/icons/` (relative to
+wherever `bin_sticker.py` is run from, same convention as every other
+icon path in this file):
+
+```
+assets/icons/p25_flourish1.png       # style 12, above the street name
+assets/icons/p25_flourish2.png       # style 12, below the street name
+assets/icons/p25b_flourish.png       # style 13, between number and street
+assets/icons/p25b_corner_tl.png      # style 13, all 4 corners --
+assets/icons/p25b_corner_tr.png      #   independently extracted, NOT
+assets/icons/p25b_corner_br.png      #   4 rotated copies of one file
+assets/icons/p25b_corner_bl.png      #   (see "Two real bugs" below)
+```
+
+Recoloured/cached copies (e.g. `p25b_corner_tl_111111.png`) get generated
+alongside these automatically on first render, same disk-caching pattern
+as `house_banner`'s `_p02_icon_path()` — delete a cached file if you ever
+replace its master and the recolour doesn't seem to update.
+
+### Layout constants
+
+```python
+P25_NUMBER_BASELINE_FRAC, P25_FLOURISH1_Y_FRAC, ...   # style 12, CARD_H fractions
+P25B_NUMBER_BASELINE_FRAC, P25B_FLOURISH_Y_FRAC, ...   # style 13, CARD_H fractions
+P25B_CORNER_W, P25B_CORNER_H                            # style 13 corner asset real-world size
+P25B_EDGE_SPEC = {"top": (...), "bottom": (...), "left": (...), "right": (...)}
+```
+
+Same idea as `CARD_H * 0.48`-style fractions in styles 1–10 (§5) for the
+`*_FRAC` constants — edit the fraction to move text up/down. The corner
+and edge-spec constants are different: they're direct pixel-to-mm
+measurements from the source Midjourney PNG, not proportions, and moving
+them without re-measuring will desync the corner brackets from the
+straight border lines (visible as a seam — exactly the bug described
+below, if you get it wrong).
+
+### Two real bugs found while building these — worth knowing before touching the constants
+
+**1. Assumed the border was symmetric under rotation; it wasn't.** The
+first version of style 13's 4 corner brackets was built by extracting
+ONE corner and rotating it 3 ways for the others, assuming the source
+art was rotationally symmetric. A direct pixel comparison showed the
+other 3 corners differed from that assumption by **8–18%** — enough to
+be visibly wrong once rendered, not just slightly imprecise. AI-generated
+art is often close-but-not-exact under this kind of symmetry; don't
+assume it without checking. Fixed by extracting all 4 corners
+independently from their own regions in the source image instead.
+
+**2. Assumed one edge's measured line-spacing applied to all four.** The
+straight double-line border's inset/gap was originally measured once
+(top edge) and reused for bottom/left/right. Direct measurement of each
+edge independently showed the bottom edge's lines actually sit **~1.7mm
+further inward** than the top's, with left/right differing by smaller
+amounts too — real asymmetry in the source, not measurement noise. Fixed
+by measuring and using a separate `P25B_EDGE_SPEC` entry per edge instead
+of one shared spec. A smaller, related issue: the source image's
+horizontal and vertical px/mm ratios weren't quite identical either
+(9.371 vs 9.28), so measurements need the axis-correct one, not one
+blended constant.
+
+**The general lesson (now baked into the skill itself):** before reusing
+one extracted asset via rotation/mirroring, or one measured spec across
+multiple instances of a repeating element, verify the assumption with
+`silhouette_utils.check_symmetry_assumption()` rather than trusting it
+looks plausible. The skill's `check_crop_clipping()` (also added this
+project — catches a crop cutting off part of the artwork before you
+build output from it) and `check_symmetry_assumption()` are both worth
+knowing about if you extract a new asset for a future style; see the
+skill's `SKILL.md` "Common mistakes" section for the full writeup with
+these exact cases as the worked examples.
+
+### Testing a new render of either style
+
+```python
+import bin_sticker as bs
+
+order = {"house_number": "36", "street_name": "Grove Street", "style": "p25b_landscape_flourish"}
+bs.render_sheet([order], "p25b_test.pdf")
+```
+
+Same `render_sheet`/`render_gallery` entry points as every other style —
+nothing special needed, just make sure the `assets/icons/` files above
+are present alongside `bin_sticker.py` before running.
 
 
