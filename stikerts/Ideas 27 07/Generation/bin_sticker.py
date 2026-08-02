@@ -882,15 +882,31 @@ def _style_p02_house_banner(c, ox, oy, order):
             _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
             return
 
-        number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 44, 20, P02_NUMBER_MAX_WIDTH)
+        # cap=76 chosen from real measurement (chat): rendered in isolation
+        # and checked pixel-by-pixel against the icon's own roofline --
+        # 76pt leaves ~4mm clearance from the roof's interior edge (84pt+
+        # gets to <2mm, too tight for print/trim safety, same 3mm rule as
+        # the outer card-edge margin). Width isn't the limiting factor
+        # here (P02_NUMBER_MAX_WIDTH allows up to ~84pt for "36") --
+        # height against the roof is.
+        number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 76, 20, P02_NUMBER_MAX_WIDTH)
         asc, desc = getAscentDescent("Helvetica-Bold", number_size)
         number_baseline = P02_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
         c.setFillColor(HexColor(accent_hex))
+        c.setStrokeColor(HexColor(accent_hex))
+        c.setLineWidth(0.5)
         c.setFont("Helvetica-Bold", number_size)
-        c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+        # mode=2 (fill+stroke) fattens the glyph edges slightly for extra
+        # boldness beyond what the Helvetica-Bold face alone gives --
+        # there's no heavier standard weight available without embedding
+        # a custom font. Re-checked against the roofline after adding
+        # this too (stroke adds a small amount of ink at the glyph edges,
+        # including vertically) -- clearance only drops by ~0.1mm, still
+        # comfortably safe.
+        c.drawCentredString(cx, oy + number_baseline, order["house_number"], mode=2)
 
         street_text = order["street_name"].upper()
-        street_size = _fit_font_size(street_text, "Helvetica-Bold", 19, 8, P02_STREET_MAX_WIDTH)
+        street_size = _fit_font_size(street_text, "Helvetica-Bold", 22, 8, P02_STREET_MAX_WIDTH)
         asc, desc = getAscentDescent("Helvetica-Bold", street_size)
         street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
         _draw_curved_text(
