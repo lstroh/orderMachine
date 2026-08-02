@@ -97,6 +97,8 @@ Fixture unmatched rows are **expected** for UAT §5.2 — not a defect.
 | §4.2 – §8.1 | Re-check Add material after BUG-002 |
 | §8.2+ | Continue |
 
+**Automated coverage:** `tests/bugfix-001-002-smoke.php` (wp-env) — PASS 2026-08-02.
+
 ---
 
 *End of bugs log. Append new open `BUG-NNN` entries above Closed as testing continues.*
