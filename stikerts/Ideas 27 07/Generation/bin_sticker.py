@@ -799,6 +799,45 @@ def _draw_curved_text(c, text, cx, baseline, font, size, color,
         x_cursor += cw
 
 
+def _draw_uniformly_scaled(c, ox, oy, w, h, scale, draw_fn):
+    """Runs draw_fn() (a zero-arg closure that draws a style exactly as
+    it normally would, using the real ox/oy/w/h) inside a canvas
+    transform that scales EVERYTHING it draws uniformly (same factor on
+    both axes) about the card's own centre point, then restores the
+    canvas state.
+
+    Used to pull a design's ink in from the card edges by a small
+    margin for print/trim/lamination safety, WITHOUT hand-editing each
+    style's individual layout constants -- deliberately chosen over
+    that for house_banner/D01 specifically, since its constants are
+    pixel-fitted to the source artwork (P02_BANNER_CURVE_COEFFS etc)
+    and the code's own comments already warn against nudging those mm
+    values by hand; a uniform scale-about-centre preserves every shape,
+    curve, and proportion exactly, just smaller, which is safe
+    regardless of how many interdependent constants exist underneath.
+    scale=1.0 is a no-op (draws exactly as before)."""
+    c.saveState()
+    cx_pivot, cy_pivot = ox + w / 2, oy + h / 2
+    c.translate(cx_pivot, cy_pivot)
+    c.scale(scale, scale)
+    c.translate(-cx_pivot, -cy_pivot)
+    draw_fn()
+    c.restoreState()
+
+
+# Uniform scale-about-centre factors for D01/D02, derived from real
+# printed-proof feedback (chat): both had only ~1.2-1.9mm of true
+# clearance between their ink and the physical card edge at top/bottom,
+# not enough margin for laminate/trim registration error. Solved for
+# the largest scale that gets BOTH top and bottom clearance to >=3mm,
+# using clearances measured directly from a rendered proof (pixel
+# analysis), not estimated from the layout constants by hand. D03 was
+# explicitly excluded -- confirmed fine in the same round of physical
+# testing, left untouched deliberately, not an oversight.
+P02_SAFETY_SCALE = 0.9747
+P25_SAFETY_SCALE = 0.9619
+
+
 def _style_p02_house_banner(c, ox, oy, order):
     """11. D01 (Cottage Bloom Banner) -- Illustrated house + flowers +
     banner — real Midjourney-sourced artwork (not a plain-shape vector
@@ -813,52 +852,55 @@ def _style_p02_house_banner(c, ox, oy, order):
     accent_hex = _resolve_accent(accent_key)
     cx = ox + P02_CARD_W / 2
 
-    icon_path = _p02_icon_path(accent_key)
-    if icon_path:
-        img = ImageReader(icon_path)
-        c.drawImage(
-            img, ox + P02_ICON["x"], oy + P02_ICON["y"], P02_ICON["w"], P02_ICON["h"],
-            mask="auto", preserveAspectRatio=True, anchor="c",
+    def _draw():
+        icon_path = _p02_icon_path(accent_key)
+        if icon_path:
+            img = ImageReader(icon_path)
+            c.drawImage(
+                img, ox + P02_ICON["x"], oy + P02_ICON["y"], P02_ICON["w"], P02_ICON["h"],
+                mask="auto", preserveAspectRatio=True, anchor="c",
+            )
+        else:
+            # Graceful fallback if the master art is missing -- plain vector
+            # house, flat (uncurved) text. NOT a lesser version of the same
+            # design -- there's no vector equivalent of "number nested in a
+            # hollow illustrated house with a curved banner," so this is
+            # really a substitution, not a degradation. Warn loudly so it's
+            # never discovered only after looking at the printed output.
+            print(
+                f"\u26a0 house_banner: master icon not found at "
+                f"{_asset_path(P02_ICON_MASTER)!r} -- rendering plain house "
+                f"fallback instead of the illustrated P02 design for "
+                f"house_number={order.get('house_number')!r}."
+            )
+            _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "house", draw_house_icon)
+            c.setFillColor(HexColor(INK))
+            c.setFont("Helvetica-Bold", 44)
+            c.drawCentredString(cx, oy + P02_CARD_H * 0.45, order["house_number"])
+            c.setFont("Helvetica", 14)
+            c.drawCentredString(cx, oy + P02_CARD_H * 0.25, order["street_name"])
+            _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+            return
+
+        number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 44, 20, P02_NUMBER_MAX_WIDTH)
+        asc, desc = getAscentDescent("Helvetica-Bold", number_size)
+        number_baseline = P02_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+        c.setFillColor(HexColor(accent_hex))
+        c.setFont("Helvetica-Bold", number_size)
+        c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+        street_text = order["street_name"].upper()
+        street_size = _fit_font_size(street_text, "Helvetica-Bold", 19, 8, P02_STREET_MAX_WIDTH)
+        asc, desc = getAscentDescent("Helvetica-Bold", street_size)
+        street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+        _draw_curved_text(
+            c, street_text, cx, oy + street_baseline, "Helvetica-Bold", street_size, accent_hex,
+            ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
         )
-    else:
-        # Graceful fallback if the master art is missing -- plain vector
-        # house, flat (uncurved) text. NOT a lesser version of the same
-        # design -- there's no vector equivalent of "number nested in a
-        # hollow illustrated house with a curved banner," so this is
-        # really a substitution, not a degradation. Warn loudly so it's
-        # never discovered only after looking at the printed output.
-        print(
-            f"\u26a0 house_banner: master icon not found at "
-            f"{_asset_path(P02_ICON_MASTER)!r} -- rendering plain house "
-            f"fallback instead of the illustrated P02 design for "
-            f"house_number={order.get('house_number')!r}."
-        )
-        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "house", draw_house_icon)
-        c.setFillColor(HexColor(INK))
-        c.setFont("Helvetica-Bold", 44)
-        c.drawCentredString(cx, oy + P02_CARD_H * 0.45, order["house_number"])
-        c.setFont("Helvetica", 14)
-        c.drawCentredString(cx, oy + P02_CARD_H * 0.25, order["street_name"])
+
         _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
-        return
 
-    number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 44, 20, P02_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
-    number_baseline = P02_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
-    c.setFillColor(HexColor(accent_hex))
-    c.setFont("Helvetica-Bold", number_size)
-    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
-
-    street_text = order["street_name"].upper()
-    street_size = _fit_font_size(street_text, "Helvetica-Bold", 19, 8, P02_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", street_size)
-    street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
-    _draw_curved_text(
-        c, street_text, cx, oy + street_baseline, "Helvetica-Bold", street_size, accent_hex,
-        ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
-    )
-
-    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+    _draw_uniformly_scaled(c, ox, oy, P02_CARD_W, P02_CARD_H, P02_SAFETY_SCALE, _draw)
 
 
 def _style_p25_landscape_flourish(c, ox, oy, order):
@@ -881,24 +923,27 @@ def _style_p25_landscape_flourish(c, ox, oy, order):
     w, h = P02_CARD_W, P02_CARD_H
     cx = ox + w / 2
 
-    c.saveState()
-    c.setStrokeColor(HexColor(INK))
-    c.setLineWidth(P25_BORDER_WEIGHT)
-    c.roundRect(ox + PAD, oy + PAD, w - 2 * PAD, h - 2 * PAD, P25_BORDER_RADIUS, fill=0, stroke=1)
-    c.restoreState()
+    def _draw():
+        c.saveState()
+        c.setStrokeColor(HexColor(INK))
+        c.setLineWidth(P25_BORDER_WEIGHT)
+        c.roundRect(ox + PAD, oy + PAD, w - 2 * PAD, h - 2 * PAD, P25_BORDER_RADIUS, fill=0, stroke=1)
+        c.restoreState()
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Times-Bold", P25_NUMBER_SIZE)
-    c.drawCentredString(cx, oy + h * P25_NUMBER_BASELINE_FRAC, order["house_number"])
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", P25_NUMBER_SIZE)
+        c.drawCentredString(cx, oy + h * P25_NUMBER_BASELINE_FRAC, order["house_number"])
 
-    draw_center_flourish(c, cx, oy + h * P25_FLOURISH1_Y_FRAC, P25_FLOURISH1_ICON, P25_FLOURISH_WIDTH)
+        draw_center_flourish(c, cx, oy + h * P25_FLOURISH1_Y_FRAC, P25_FLOURISH1_ICON, P25_FLOURISH_WIDTH)
 
-    street_text = order["street_name"].upper()
-    street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25_STREET_MAX_WIDTH)
-    c.setFont("Times-Bold", street_size)
-    c.drawCentredString(cx, oy + h * P25_STREET_BASELINE_FRAC, street_text)
+        street_text = order["street_name"].upper()
+        street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25_STREET_MAX_WIDTH)
+        c.setFont("Times-Bold", street_size)
+        c.drawCentredString(cx, oy + h * P25_STREET_BASELINE_FRAC, street_text)
 
-    draw_center_flourish(c, cx, oy + h * P25_FLOURISH2_Y_FRAC, P25_FLOURISH2_ICON, P25_FLOURISH_WIDTH)
+        draw_center_flourish(c, cx, oy + h * P25_FLOURISH2_Y_FRAC, P25_FLOURISH2_ICON, P25_FLOURISH_WIDTH)
+
+    _draw_uniformly_scaled(c, ox, oy, w, h, P25_SAFETY_SCALE, _draw)
 
 
 def _style_p25b_landscape_flourish(c, ox, oy, order):
@@ -1016,12 +1061,29 @@ def draw_sticker(c, ox, oy, order):
     STYLES[style](c, ox, oy, order)
 
 
-def _sheet_layout(card_w, card_h, page_w, page_h):
-    margin_x = (page_w - 2 * card_w) / 2
+def _sheet_layout(card_w, card_h, page_w, page_h, right_margin=3 * mm):
+    """Positions the 2x2 grid biased toward the RIGHT of the page --
+    left margin absorbs the leftover horizontal slack, right margin
+    stays at a small fixed minimum. Top/bottom stay symmetric (centred
+    vertically, no bias).
+
+    An earlier version biased top/bottom instead of left/right -- that
+    was based on a wrong guess about which edge the user's laminate
+    registration error actually shows up on. Replaced once they
+    clarified (chat) it's left/right, not top/bottom. If print testing
+    shows it needs to flip direction (bigger margin on the right
+    instead), swap which side gets `right_margin` here.
+
+    right_margin is a target, not a guarantee: clamped to half the
+    available horizontal slack if the page doesn't have enough room to
+    give it (shouldn't happen at real A4 sizes)."""
     margin_y = (page_h - 2 * card_h) / 2
-    return margin_x, margin_y, [
-        (margin_x, margin_y + card_h), (margin_x + card_w, margin_y + card_h),
-        (margin_x, margin_y), (margin_x + card_w, margin_y),
+    total_x_slack = page_w - 2 * card_w
+    right_margin = min(right_margin, max(total_x_slack / 2, 0))
+    left_margin = total_x_slack - right_margin
+    return left_margin, margin_y, [
+        (left_margin, margin_y + card_h), (left_margin + card_w, margin_y + card_h),
+        (left_margin, margin_y), (left_margin + card_w, margin_y),
     ]
 
 
@@ -1054,7 +1116,7 @@ def render_sheet(orders, out_path, caption=False):
         if caption and "style" in order:
             c.setFont("Helvetica", 6)
             c.setFillColor(HexColor("#888888"))
-            c.drawCentredString(x + card_w / 2, 2.5 * mm, STYLE_LABELS.get(order["style"], order["style"]))
+            c.drawCentredString(x + card_w / 2, margin_y / 2, STYLE_LABELS.get(order["style"], order["style"]))
     c.showPage()
     c.save()
 
@@ -1090,7 +1152,7 @@ def render_gallery(style_keys, sample_order, out_path):
             draw_sticker(c, x, y, order)
             c.setFont("Helvetica", 6)
             c.setFillColor(HexColor("#888888"))
-            c.drawCentredString(x + card_w / 2, 2.5 * mm, STYLE_LABELS.get(style, style))
+            c.drawCentredString(x + card_w / 2, margin_y / 2, STYLE_LABELS.get(style, style))
         c.showPage()
         first_page = True  # next group starts a fresh page regardless
     c.save()
