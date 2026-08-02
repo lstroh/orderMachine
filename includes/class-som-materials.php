@@ -639,11 +639,11 @@ class SOM_Materials {
 	/**
 	 * Admin URL for a single material edit screen.
 	 *
-	 * @param int $material_id Material PK.
+	 * @param int|string $material_id Material PK or "new".
 	 * @return string
 	 */
 	public static function detail_url( $material_id ) {
-		return self::list_url( array( 'material_id' => (int) $material_id ) );
+		return self::list_url( array( 'material_id' => $material_id ) );
 	}
 
 	/**

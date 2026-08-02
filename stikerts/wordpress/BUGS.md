@@ -1,8 +1,7 @@
 # Order Machine — Bugs & UX issues (user testing)
 
 *Logged during Local acceptance testing against plugin **0.18.0** / DB **1.5.0**.*  
-*Companion: [`USER-ACCEPTANCE-TESTS.md`](USER-ACCEPTANCE-TESTS.md).*  
-*Do not treat this file as a fix list yet — capture only. Fix when asked.*
+*Companion: [`USER-ACCEPTANCE-TESTS.md`](USER-ACCEPTANCE-TESTS.md).*
 
 ---
 
@@ -20,41 +19,26 @@
 
 ## Open
 
+*(None right now — add new `BUG-NNN` entries here as testing continues.)*
+
+---
+
+## Closed / fixed
+
 ### BUG-001 — Orders status filter has no “current step” options (e.g. Print)
 
 | | |
 |---|---|
 | **Severity** | UX |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Found in** | §4.1 Orders list filters |
-| **Env** | Local, dummy credentials, fixture orders |
-| **Date** | 2026-08-02 |
+| **Fixed** | 2026-08-02 |
 
-**Observed**
+**Fix**
 
-Status dropdown only offers order-lifecycle options:
+Added a separate **Current step** dropdown on the Orders list (alongside Status). Options are distinct workflow step names (e.g. Print, Dry). Filtering matches `orders.current_step_id` → `workflow_steps.name`. Status filter unchanged (Open / Complete / Needs mapping / etc.).
 
-- All statuses  
-- Open  
-- Complete  
-- Needs mapping  
-- Needs workflow  
-- Cancelled  
-
-There is no way to filter the list by **workflow step** (e.g. Print, Dry, Laminate, Ship, Thank-you).
-
-**Expected (tester)**
-
-Ability to filter to orders currently on a given production step (e.g. “show me everything on Print”).
-
-**Notes (current behaviour — not fixing here)**
-
-Today the status filter is intentionally **order status / mapping flags**, not workflow progress. Current step name can appear as a column/badge on the list for open assigned orders, but it is not a filter dimension.
-
-**Possible later directions (ideas only)**
-
-- Add a separate “Current step” filter (template-aware or global step name).  
-- Or rename the existing control so it’s clearer it is not “production stage”.
+**Files:** `includes/class-som-orders.php` (`step_name_options`, `query` `current_step`), `admin/views/orders-list.php`
 
 ---
 
@@ -63,41 +47,15 @@ Today the status filter is intentionally **order status / mapping flags**, not w
 | | |
 |---|---|
 | **Severity** | Major |
-| **Status** | Open |
-| **Found in** | §8.1 / Materials list (around UAT materials CRUD) |
-| **Env** | Local, dummy credentials |
-| **Date** | 2026-08-02 |
+| **Status** | Fixed |
+| **Found in** | §8.1 / Materials list |
+| **Fixed** | 2026-08-02 |
 
-**Observed**
+**Fix**
 
-On **Materials**, clicking **Add material** does not open the create form — page appears unchanged / nothing useful happens.
+`SOM_Materials::detail_url()` no longer casts the id to `(int)`, so `'new'` is preserved in the URL (same pattern as products / suppliers / listings / POs).
 
-**Expected**
-
-Open the new-material edit screen (`material_id=new`).
-
-**Likely cause (investigation only — not fixed)**
-
-`SOM_Materials::detail_url( 'new' )` casts the id with `(int)`, so `'new'` becomes `0`:
-
-```php
-// includes/class-som-materials.php — detail_url()
-return self::list_url( array( 'material_id' => (int) $material_id ) );
-```
-
-Link becomes `…&material_id=0`. Renderer only opens the edit form for `material_id=new` or a positive numeric id, so `0` falls through to the list again.
-
-Products / suppliers / listings / POs pass `'new'` through without casting — materials is the outlier.
-
-**Workaround until fixed**
-
-None clean in UI. Editing an existing material still works via its name link.
-
----
-
-## Closed / not bugs
-
-*(Move items here when confirmed by design or fixed.)*
+**Files:** `includes/class-som-materials.php`
 
 ---
 
@@ -135,9 +93,10 @@ Fixture unmatched rows are **expected** for UAT §5.2 — not a defect.
 
 | UAT range | Result |
 |---|---|
-| §0 – §4.1 | OK aside from BUG-001 |
-| §4.2 – §8.1 | Mostly OK; BUG-002 blocks Add material (2026-08-02) |
+| §0 – §4.1 | OK; BUG-001 fixed — re-check Current step filter |
+| §4.2 – §8.1 | Re-check Add material after BUG-002 |
+| §8.2+ | Continue |
 
 ---
 
-*End of bugs log. Append new `BUG-NNN` entries above the Closed section as testing continues.*
+*End of bugs log. Append new open `BUG-NNN` entries above Closed as testing continues.*

@@ -11,28 +11,31 @@ if ( ! current_user_can( 'manage_options' ) ) {
 	return;
 }
 
-$status    = isset( $_GET['som_status'] ) ? sanitize_key( wp_unslash( $_GET['som_status'] ) ) : '';
-$channel   = isset( $_GET['som_channel'] ) ? sanitize_key( wp_unslash( $_GET['som_channel'] ) ) : '';
-$date_from = isset( $_GET['som_date_from'] ) ? sanitize_text_field( wp_unslash( $_GET['som_date_from'] ) ) : '';
-$date_to   = isset( $_GET['som_date_to'] ) ? sanitize_text_field( wp_unslash( $_GET['som_date_to'] ) ) : '';
-$search    = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-$paged     = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+$status       = isset( $_GET['som_status'] ) ? sanitize_key( wp_unslash( $_GET['som_status'] ) ) : '';
+$current_step = isset( $_GET['som_current_step'] ) ? sanitize_text_field( wp_unslash( $_GET['som_current_step'] ) ) : '';
+$channel      = isset( $_GET['som_channel'] ) ? sanitize_key( wp_unslash( $_GET['som_channel'] ) ) : '';
+$date_from    = isset( $_GET['som_date_from'] ) ? sanitize_text_field( wp_unslash( $_GET['som_date_from'] ) ) : '';
+$date_to      = isset( $_GET['som_date_to'] ) ? sanitize_text_field( wp_unslash( $_GET['som_date_to'] ) ) : '';
+$search       = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+$paged        = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
 $result = SOM_Orders::query(
 	array(
-		'status'    => $status,
-		'channel'   => $channel,
-		'date_from' => $date_from,
-		'date_to'   => $date_to,
-		's'         => $search,
-		'paged'     => $paged,
+		'status'       => $status,
+		'current_step' => $current_step,
+		'channel'      => $channel,
+		'date_from'    => $date_from,
+		'date_to'      => $date_to,
+		's'            => $search,
+		'paged'        => $paged,
 	)
 );
 
-$orders = $result['orders'];
-$total  = $result['total'];
-$pages  = $result['pages'];
-$paged  = $result['paged'];
+$orders     = $result['orders'];
+$total      = $result['total'];
+$pages      = $result['pages'];
+$paged      = $result['paged'];
+$step_names = SOM_Orders::step_name_options();
 
 $status_options = array(
 	''               => __( 'All statuses', 'order-machine' ),
@@ -55,6 +58,16 @@ $status_options = array(
 			<?php foreach ( $status_options as $value => $label ) : ?>
 				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $status, $value ); ?>>
 					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+
+		<label class="screen-reader-text" for="som-current-step"><?php echo esc_html__( 'Current step', 'order-machine' ); ?></label>
+		<select name="som_current_step" id="som-current-step">
+			<option value=""><?php echo esc_html__( 'All steps', 'order-machine' ); ?></option>
+			<?php foreach ( $step_names as $step_name ) : ?>
+				<option value="<?php echo esc_attr( $step_name ); ?>" <?php selected( $current_step, $step_name ); ?>>
+					<?php echo esc_html( $step_name ); ?>
 				</option>
 			<?php endforeach; ?>
 		</select>
@@ -86,7 +99,7 @@ $status_options = array(
 
 		<?php submit_button( __( 'Filter', 'order-machine' ), 'secondary', '', false ); ?>
 
-		<?php if ( $status || $channel || $date_from || $date_to || $search ) : ?>
+		<?php if ( $status || $current_step || $channel || $date_from || $date_to || $search ) : ?>
 			<a class="button button-link" href="<?php echo esc_url( SOM_Orders::list_url() ); ?>">
 				<?php echo esc_html__( 'Reset', 'order-machine' ); ?>
 			</a>
@@ -194,11 +207,12 @@ $status_options = array(
 				<span class="pagination-links">
 					<?php
 					$base_args = array(
-						'som_status'    => $status,
-						'som_channel'   => $channel,
-						'som_date_from' => $date_from,
-						'som_date_to'   => $date_to,
-						's'             => $search,
+						'som_status'       => $status,
+						'som_current_step' => $current_step,
+						'som_channel'      => $channel,
+						'som_date_from'    => $date_from,
+						'som_date_to'      => $date_to,
+						's'                => $search,
 					);
 					$base_args = array_filter(
 						$base_args,

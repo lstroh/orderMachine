@@ -103,22 +103,50 @@ class SOM_Orders {
 	}
 
 	/**
+	 * Distinct workflow step names for the orders list "Current step" filter.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function step_name_options() {
+		global $wpdb;
+
+		$steps_t = SOM_DB::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$names = $wpdb->get_col( "SELECT DISTINCT name FROM {$steps_t} WHERE name <> '' ORDER BY name ASC" );
+
+		if ( ! is_array( $names ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $names as $name ) {
+			$name = trim( (string) $name );
+			if ( '' !== $name ) {
+				$out[] = $name;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
 	 * Query orders for the admin list.
 	 *
-	 * @param array<string, mixed> $args Filters: status, channel, date_from, date_to, s, paged.
+	 * @param array<string, mixed> $args Filters: status, current_step, channel, date_from, date_to, s, paged.
 	 * @return array{orders: array<int, object>, total: int, pages: int, paged: int}
 	 */
 	public static function query( array $args = array() ) {
 		global $wpdb;
 
 		$defaults = array(
-			'status'    => '',
-			'channel'   => '',
-			'date_from' => '',
-			'date_to'   => '',
-			's'         => '',
-			'paged'     => 1,
-			'per_page'  => self::PER_PAGE,
+			'status'       => '',
+			'current_step' => '',
+			'channel'      => '',
+			'date_from'    => '',
+			'date_to'      => '',
+			's'            => '',
+			'paged'        => 1,
+			'per_page'     => self::PER_PAGE,
 		);
 		$args     = wp_parse_args( $args, $defaults );
 
@@ -126,6 +154,7 @@ class SOM_Orders {
 		$channels_t = SOM_DB::table( 'channels' );
 		$items_t    = SOM_DB::table( 'order_items' );
 		$products_t = SOM_DB::table( 'products' );
+		$steps_t    = SOM_DB::table( 'workflow_steps' );
 
 		$where  = array( '1=1' );
 		$params = array();
@@ -145,6 +174,15 @@ class SOM_Orders {
 				AND NOT {$cancelled}";
 		} elseif ( 'cancelled' === $status ) {
 			$where[] = self::cancelled_sql( 'o', 'c' );
+		}
+
+		$current_step = sanitize_text_field( (string) $args['current_step'] );
+		if ( '' !== $current_step ) {
+			$where[]  = "EXISTS (
+				SELECT 1 FROM {$steps_t} s_cur
+				WHERE s_cur.id = o.current_step_id AND s_cur.name = %s
+			)";
+			$params[] = $current_step;
 		}
 
 		$channel = sanitize_key( (string) $args['channel'] );
