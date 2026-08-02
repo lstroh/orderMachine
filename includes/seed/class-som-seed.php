@@ -26,6 +26,13 @@ class SOM_Seed {
 	const EBAY_VARIATION_LISTING_ID = '110000000002';
 
 	/**
+	 * One-shot bypass for maybe_seed_catalogue dummy gate (restore path).
+	 *
+	 * @var bool
+	 */
+	private static $force_seed = false;
+
+	/**
 	 * Ensure channel rows + dummy encrypted credentials (idempotent).
 	 *
 	 * @return void
@@ -76,7 +83,7 @@ class SOM_Seed {
 	 * @return void
 	 */
 	public static function maybe_seed_catalogue() {
-		if ( ! defined( 'SOM_USE_DUMMY_CREDENTIALS' ) || ! SOM_USE_DUMMY_CREDENTIALS ) {
+		if ( ! self::$force_seed && ( ! defined( 'SOM_USE_DUMMY_CREDENTIALS' ) || ! SOM_USE_DUMMY_CREDENTIALS ) ) {
 			return;
 		}
 
@@ -566,5 +573,408 @@ class SOM_Seed {
 			array( '%d', '%d', '%s', '%s', '%s', '%f', '%d', '%s', '%s', '%s', '%s' )
 		);
 		$wpdb->suppress_errors( false );
+	}
+
+	/**
+	 * Whether dummy credential mode is enabled in wp-config.
+	 *
+	 * @return bool
+	 */
+	public static function is_dummy_mode() {
+		return defined( 'SOM_USE_DUMMY_CREDENTIALS' ) && SOM_USE_DUMMY_CREDENTIALS;
+	}
+
+	/**
+	 * Resolve known seed entity IDs (product, workflow, materials, listings).
+	 *
+	 * @return array{
+	 *   product_id:int,
+	 *   workflow_id:int,
+	 *   material_ids:array<int,int>,
+	 *   listing_ids:array<int,int>,
+	 *   step_ids:array<int,int>
+	 * }
+	 */
+	public static function resolve_seed_ids() {
+		global $wpdb;
+
+		$product_id = (int) get_option( 'som_seed_product_id', 0 );
+		if ( $product_id < 1 ) {
+			$product_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'products' ) . ' WHERE sku = %s ORDER BY id ASC LIMIT 1',
+					self::SAMPLE_PRODUCT_SKU
+				)
+			);
+		}
+
+		$workflow_id = (int) get_option( 'som_seed_workflow_id', 0 );
+		if ( $workflow_id < 1 ) {
+			$workflow_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
+					self::WORKFLOW_NAME
+				)
+			);
+		}
+
+		$material_ids = array();
+		foreach ( array( self::MATERIAL_VINYL, self::MATERIAL_LAMINATE ) as $name ) {
+			$id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'materials' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
+					$name
+				)
+			);
+			if ( $id > 0 ) {
+				$material_ids[] = $id;
+			}
+		}
+
+		$listing_ids = array();
+		$externals   = array(
+			self::EBAY_LISTING_ID,
+			self::SAMPLE_PRODUCT_SKU,
+			self::EBAY_VARIATION_LISTING_ID,
+			self::ETSY_LISTING_ID,
+		);
+		foreach ( $externals as $ext ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'listings' ) . ' WHERE external_listing_id = %s',
+					$ext
+				)
+			);
+			if ( is_array( $rows ) ) {
+				foreach ( $rows as $lid ) {
+					$listing_ids[] = (int) $lid;
+				}
+			}
+		}
+		$listing_ids = array_values( array_unique( array_filter( $listing_ids ) ) );
+
+		$step_ids = array();
+		if ( $workflow_id > 0 ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = %d',
+					$workflow_id
+				)
+			);
+			if ( is_array( $rows ) ) {
+				$step_ids = array_map( 'intval', $rows );
+			}
+		}
+
+		return array(
+			'product_id'   => $product_id,
+			'workflow_id'  => $workflow_id,
+			'material_ids' => $material_ids,
+			'listing_ids'  => $listing_ids,
+			'step_ids'     => $step_ids,
+		);
+	}
+
+	/**
+	 * Remove demo seed catalogue, related orders/progress/stock, and dummy channel tokens.
+	 *
+	 * Does not delete user-created products, suppliers, or purchase orders.
+	 * Does not drop batch_groups.
+	 *
+	 * @return array<string,int|string> Summary counts + message.
+	 */
+	public static function remove_seed_data() {
+		global $wpdb;
+
+		$ids     = self::resolve_seed_ids();
+		$summary = array(
+			'orders'      => 0,
+			'listings'    => 0,
+			'products'    => 0,
+			'materials'   => 0,
+			'workflows'   => 0,
+			'disconnected'=> 0,
+		);
+
+		$order_ids = self::collect_seed_related_order_ids( $ids );
+		$summary['orders'] = self::delete_orders_cascade( $order_ids );
+
+		// Listings.
+		foreach ( $ids['listing_ids'] as $listing_id ) {
+			$wpdb->delete( SOM_DB::table( 'listings' ), array( 'id' => $listing_id ), array( '%d' ) );
+			++$summary['listings'];
+		}
+
+		// Goals on seed workflow.
+		if ( $ids['workflow_id'] > 0 ) {
+			$wpdb->delete(
+				SOM_DB::table( 'workflow_material_goals' ),
+				array( 'workflow_template_id' => $ids['workflow_id'] ),
+				array( '%d' )
+			);
+		}
+
+		// Recipe then product.
+		if ( $ids['product_id'] > 0 ) {
+			$wpdb->delete(
+				SOM_DB::table( 'product_materials' ),
+				array( 'product_id' => $ids['product_id'] ),
+				array( '%d' )
+			);
+			$wpdb->delete( SOM_DB::table( 'products' ), array( 'id' => $ids['product_id'] ), array( '%d' ) );
+			$summary['products'] = 1;
+		}
+
+		// Workflow steps then template (progress already cleared with orders).
+		if ( $ids['workflow_id'] > 0 ) {
+			if ( ! empty( $ids['step_ids'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$wpdb->query(
+					'DELETE FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = ' . (int) $ids['workflow_id']
+				);
+			}
+			$wpdb->delete(
+				SOM_DB::table( 'workflow_templates' ),
+				array( 'id' => $ids['workflow_id'] ),
+				array( '%d' )
+			);
+			$summary['workflows'] = 1;
+		}
+
+		// Materials (only if unused by other recipes / POs).
+		foreach ( $ids['material_ids'] as $material_id ) {
+			$in_recipe = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT COUNT(*) FROM ' . SOM_DB::table( 'product_materials' ) . ' WHERE material_id = %d',
+					$material_id
+				)
+			);
+			$in_po = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT COUNT(*) FROM ' . SOM_DB::table( 'purchase_order_items' ) . ' WHERE material_id = %d',
+					$material_id
+				)
+			);
+			if ( $in_recipe > 0 || $in_po > 0 ) {
+				continue;
+			}
+			$wpdb->delete(
+				SOM_DB::table( 'material_stock_log' ),
+				array( 'material_id' => $material_id ),
+				array( '%d' )
+			);
+			$wpdb->delete(
+				SOM_DB::table( 'workflow_material_goals' ),
+				array( 'material_id' => $material_id ),
+				array( '%d' )
+			);
+			$wpdb->delete( SOM_DB::table( 'materials' ), array( 'id' => $material_id ), array( '%d' ) );
+			++$summary['materials'];
+		}
+
+		// Clear dummy channel credentials only (leave real OAuth alone).
+		foreach ( array( 'ebay', 'etsy' ) as $slug ) {
+			$creds = SOM_Channels::get_credentials( $slug );
+			if ( ! empty( $creds['dummy'] ) ) {
+				SOM_Channels::disconnect( $slug );
+				++$summary['disconnected'];
+			}
+		}
+
+		delete_option( 'som_seed_product_id' );
+		delete_option( 'som_seed_workflow_id' );
+
+		$summary['message'] = sprintf(
+			/* translators: 1: orders, 2: listings, 3: products, 4: materials, 5: workflows */
+			__( 'Removed seed data: %1$d orders, %2$d listings, %3$d product(s), %4$d material(s), %5$d workflow(s). Dummy channel credentials disconnected where present.', 'order-machine' ),
+			(int) $summary['orders'],
+			(int) $summary['listings'],
+			(int) $summary['products'],
+			(int) $summary['materials'],
+			(int) $summary['workflows']
+		);
+
+		return $summary;
+	}
+
+	/**
+	 * Re-create dummy credentials + sample catalogue (requires SOM_USE_DUMMY_CREDENTIALS).
+	 *
+	 * @param bool $remove_first When true, run remove_seed_data() first for a clean reseed.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	public static function restore_seed_data( $remove_first = true ) {
+		if ( ! self::is_dummy_mode() ) {
+			return new WP_Error(
+				'som_seed_dummy_required',
+				__( 'Restore seed requires SOM_USE_DUMMY_CREDENTIALS in wp-config.php.', 'order-machine' )
+			);
+		}
+
+		$removed = null;
+		if ( $remove_first ) {
+			$removed = self::remove_seed_data();
+		}
+
+		// Force dummy credentials even if rows were disconnected.
+		SOM_Channels::ensure_rows();
+		foreach ( array( 'ebay', 'etsy' ) as $slug ) {
+			$payload = array(
+				'access_token'  => 'dummy-access-' . $slug,
+				'refresh_token' => 'dummy-refresh-' . $slug,
+				'token_type'    => 'Bearer',
+				'expires_at'    => gmdate( 'Y-m-d H:i:s', time() + YEAR_IN_SECONDS ),
+				'expires_in'    => YEAR_IN_SECONDS,
+				'dummy'         => true,
+			);
+			if ( 'etsy' === $slug ) {
+				$payload['shop_id'] = '0';
+			}
+			if ( 'ebay' === $slug ) {
+				$payload['environment'] = 'sandbox';
+			}
+			SOM_Channels::save_credentials( $slug, $payload );
+		}
+
+		self::seed_catalogue_now();
+		if ( class_exists( 'SOM_Batch_Groups' ) ) {
+			SOM_Batch_Groups::ensure_rows();
+			SOM_Batch_Groups::convert_thankyou_steps();
+		}
+
+		$ids = self::resolve_seed_ids();
+		return array(
+			'removed'     => $removed,
+			'product_id'  => $ids['product_id'],
+			'workflow_id' => $ids['workflow_id'],
+			'message'     => __( 'Seed catalogue and dummy channel credentials restored. Use Sync now to reload fixture orders.', 'order-machine' ),
+		);
+	}
+
+	/**
+	 * Seed catalogue without the dummy-mode gate (caller must check policy).
+	 *
+	 * @return void
+	 */
+	public static function seed_catalogue_now() {
+		self::$force_seed = true;
+		self::maybe_seed_catalogue();
+		self::$force_seed = false;
+	}
+
+	/**
+	 * Order IDs tied to seed product, seed workflow steps, or dummy ebay/etsy channels.
+	 *
+	 * @param array<string,mixed> $ids From resolve_seed_ids().
+	 * @return array<int,int>
+	 */
+	private static function collect_seed_related_order_ids( array $ids ) {
+		global $wpdb;
+
+		$order_ids = array();
+		$orders_t  = SOM_DB::table( 'orders' );
+		$items_t   = SOM_DB::table( 'order_items' );
+
+		if ( $ids['product_id'] > 0 ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT DISTINCT order_id FROM {$items_t} WHERE product_id = %d",
+					$ids['product_id']
+				)
+			);
+			if ( is_array( $rows ) ) {
+				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );
+			}
+		}
+
+		if ( ! empty( $ids['step_ids'] ) ) {
+			$in = implode( ',', array_map( 'intval', $ids['step_ids'] ) );
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_col(
+				"SELECT DISTINCT id FROM {$orders_t} WHERE current_step_id IN ({$in})"
+			);
+			if ( is_array( $rows ) ) {
+				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );
+			}
+			$progress_t = SOM_DB::table( 'order_step_progress' );
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_col(
+				"SELECT DISTINCT order_id FROM {$progress_t} WHERE workflow_step_id IN ({$in})"
+			);
+			if ( is_array( $rows ) ) {
+				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );
+			}
+		}
+
+		foreach ( array( 'ebay', 'etsy' ) as $slug ) {
+			$creds = SOM_Channels::get_credentials( $slug );
+			if ( empty( $creds['dummy'] ) ) {
+				continue;
+			}
+			$channel = SOM_Channels::get_by_slug( $slug );
+			if ( ! $channel ) {
+				continue;
+			}
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT id FROM {$orders_t} WHERE channel_id = %d",
+					(int) $channel->id
+				)
+			);
+			if ( is_array( $rows ) ) {
+				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );
+			}
+		}
+
+		return array_values( array_unique( array_filter( $order_ids ) ) );
+	}
+
+	/**
+	 * Delete orders and dependent rows.
+	 *
+	 * @param array<int,int> $order_ids Order PKs.
+	 * @return int Number of orders deleted.
+	 */
+	private static function delete_orders_cascade( array $order_ids ) {
+		global $wpdb;
+
+		$order_ids = array_values( array_unique( array_filter( array_map( 'intval', $order_ids ) ) ) );
+		if ( empty( $order_ids ) ) {
+			return 0;
+		}
+
+		$in = implode( ',', $order_ids );
+
+		$batch_items_t = SOM_DB::table( 'step_batch_items' );
+		$batches_t     = SOM_DB::table( 'step_batches' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$batch_ids = $wpdb->get_col( "SELECT DISTINCT batch_id FROM {$batch_items_t} WHERE order_id IN ({$in})" );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DELETE FROM {$batch_items_t} WHERE order_id IN ({$in})" );
+		if ( is_array( $batch_ids ) ) {
+			foreach ( $batch_ids as $batch_id ) {
+				$batch_id = (int) $batch_id;
+				$left     = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$batch_items_t} WHERE batch_id = %d",
+						$batch_id
+					)
+				);
+				if ( 0 === $left ) {
+					$wpdb->delete( $batches_t, array( 'id' => $batch_id ), array( '%d' ) );
+				}
+			}
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( 'DELETE FROM ' . SOM_DB::table( 'order_step_progress' ) . " WHERE order_id IN ({$in})" );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( 'DELETE FROM ' . SOM_DB::table( 'material_stock_log' ) . " WHERE order_id IN ({$in})" );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( 'DELETE FROM ' . SOM_DB::table( 'order_items' ) . " WHERE order_id IN ({$in})" );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( 'DELETE FROM ' . SOM_DB::table( 'orders' ) . " WHERE id IN ({$in})" );
+
+		return count( $order_ids );
 	}
 }

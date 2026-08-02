@@ -109,6 +109,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Toggle **MCP / Abilities** registration and manage the **REST API key**
 - **Sync now** — incremental pull (fixtures when credentials are dummy)
 - **Import history** — 30 or 90 days (history creates orders but skips workflow assignment and stock reservation)
+- **Remove seed data** / **Restore seed data** — clear or recreate the demo catalogue + dummy tokens (Settings → Seed data). Restore requires `SOM_USE_DUMMY_CREDENTIALS`. Does not delete your own products, suppliers, or POs.
 
 **Background jobs (WP-Cron):**
 

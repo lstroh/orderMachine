@@ -373,4 +373,35 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 
 		<?php submit_button( __( 'Save settings', 'order-machine' ) ); ?>
 	</form>
+
+	<hr />
+
+	<h2><?php echo esc_html__( 'Seed data (testing)', 'order-machine' ); ?></h2>
+	<p class="description">
+		<?php
+		echo esc_html__(
+			'Remove the demo catalogue, fixture listings, related orders/progress/stock logs, and dummy channel tokens — without deleting your own products, suppliers, or purchase orders. Restore recreates the sample catalogue (requires SOM_USE_DUMMY_CREDENTIALS in wp-config.php), then use Sync now for fixture orders.',
+			'order-machine'
+		);
+		?>
+	</p>
+	<?php if ( SOM_Seed::is_dummy_mode() ) : ?>
+		<p><span class="dashicons dashicons-yes-alt" style="color:#00a32a;"></span> <?php echo esc_html__( 'Dummy mode is ON — Restore seed is available.', 'order-machine' ); ?></p>
+	<?php else : ?>
+		<p><span class="dashicons dashicons-warning" style="color:#dba617;"></span> <?php echo esc_html__( 'Dummy mode is OFF — you can still Remove seed; Restore needs SOM_USE_DUMMY_CREDENTIALS enabled.', 'order-machine' ); ?></p>
+	<?php endif; ?>
+	<p>
+		<form method="post" action="" style="display:inline;" onsubmit="return confirm('<?php echo esc_js( __( 'Remove all demo seed data and related fixture orders? This cannot be undone.', 'order-machine' ) ); ?>');">
+			<?php wp_nonce_field( 'som_remove_seed', 'som_seed_nonce' ); ?>
+			<button type="submit" name="som_remove_seed" value="1" class="button button-secondary">
+				<?php echo esc_html__( 'Remove seed data', 'order-machine' ); ?>
+			</button>
+		</form>
+		<form method="post" action="" style="display:inline; margin-left:8px;" onsubmit="return confirm('<?php echo esc_js( __( 'Remove existing seed (if any) and restore the demo catalogue + dummy credentials?', 'order-machine' ) ); ?>');">
+			<?php wp_nonce_field( 'som_restore_seed', 'som_seed_nonce' ); ?>
+			<button type="submit" name="som_restore_seed" value="1" class="button" <?php disabled( ! SOM_Seed::is_dummy_mode() ); ?>>
+				<?php echo esc_html__( 'Restore seed data', 'order-machine' ); ?>
+			</button>
+		</form>
+	</p>
 </div>

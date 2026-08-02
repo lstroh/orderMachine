@@ -1185,10 +1185,52 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		// Seed remove / restore (dev helpers).
+		if ( isset( $_POST['som_remove_seed'] ) ) {
+			self::handle_remove_seed();
+			return;
+		}
+		if ( isset( $_POST['som_restore_seed'] ) ) {
+			self::handle_restore_seed();
+			return;
+		}
+
 		// Save settings form.
 		if ( isset( $_POST['som_settings_nonce'] ) ) {
 			self::handle_save_settings();
 		}
+	}
+
+	/**
+	 * Remove demo seed catalogue + related fixture orders.
+	 *
+	 * @return void
+	 */
+	private static function handle_remove_seed() {
+		check_admin_referer( 'som_remove_seed', 'som_seed_nonce' );
+		$result = SOM_Seed::remove_seed_data();
+		$message = isset( $result['message'] ) ? (string) $result['message'] : __( 'Seed data removed.', 'order-machine' );
+		self::flash_notice( $message, 'success', 'som_seed_removed' );
+		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Restore dummy credentials + seed catalogue.
+	 *
+	 * @return void
+	 */
+	private static function handle_restore_seed() {
+		check_admin_referer( 'som_restore_seed', 'som_seed_nonce' );
+		$result = SOM_Seed::restore_seed_data( true );
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_seed_restore_failed' );
+		} else {
+			$message = isset( $result['message'] ) ? (string) $result['message'] : __( 'Seed data restored.', 'order-machine' );
+			self::flash_notice( $message, 'success', 'som_seed_restored' );
+		}
+		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
 	}
 
 	/**
