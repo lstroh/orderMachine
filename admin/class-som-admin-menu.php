@@ -24,6 +24,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_products_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_budgets_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_suppliers_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_purchase_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_batches_actions' ) );
@@ -73,6 +74,15 @@ class SOM_Admin_Menu {
 			'manage_options',
 			'som-materials',
 			array( __CLASS__, 'render_materials' )
+		);
+
+		add_submenu_page(
+			'som-orders',
+			__( 'Budgets', 'order-machine' ),
+			__( 'Budgets', 'order-machine' ),
+			'manage_options',
+			'som-budgets',
+			array( __CLASS__, 'render_budgets' )
 		);
 
 		add_submenu_page(
@@ -142,7 +152,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
 			return;
 		}
 
@@ -324,6 +334,43 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/materials-list.php';
+	}
+
+	/**
+	 * Budgets list or edit.
+	 *
+	 * @return void
+	 */
+	public static function render_budgets() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$budget_id = isset( $_GET['budget_id'] ) ? sanitize_text_field( wp_unslash( $_GET['budget_id'] ) ) : '';
+
+		if ( 'new' === $budget_id ) {
+			$is_new = true;
+			$budget = null;
+			require SOM_PLUGIN_DIR . 'admin/views/budget-edit.php';
+			return;
+		}
+
+		if ( '' !== $budget_id && is_numeric( $budget_id ) && (int) $budget_id > 0 ) {
+			$budget = SOM_Budgets::get( (int) $budget_id );
+			if ( ! $budget ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Budget not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Budgets::list_url() ) . '">';
+				echo esc_html__( 'Back to budgets', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/budget-edit.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/budgets-list.php';
 	}
 
 	/**
@@ -899,6 +946,24 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_material_writeoff'] ) ) {
+			check_admin_referer( 'som_material_writeoff', 'som_material_writeoff_nonce' );
+
+			$material_id = isset( $_POST['material_id'] ) ? (int) $_POST['material_id'] : 0;
+			$qty         = isset( $_POST['som_writeoff_qty'] ) ? (float) wp_unslash( $_POST['som_writeoff_qty'] ) : 0.0;
+			$notes       = isset( $_POST['som_writeoff_notes'] ) ? wp_unslash( $_POST['som_writeoff_notes'] ) : '';
+
+			$result = SOM_Budgets::write_off_material( $material_id, $qty, $notes );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_writeoff_error' );
+			} else {
+				self::flash_notice( __( 'R&D write-off recorded.', 'order-machine' ), 'success', 'som_writeoff_ok' );
+			}
+
+			wp_safe_redirect( SOM_Materials::detail_url( $material_id ) );
+			exit;
+		}
+
 		if ( ! isset( $_POST['som_save_material'] ) ) {
 			return;
 		}
@@ -932,6 +997,178 @@ class SOM_Admin_Menu {
 
 		self::flash_notice( __( 'Material saved.', 'order-machine' ), 'success', 'som_material_saved' );
 		wp_safe_redirect( SOM_Materials::detail_url( $material_id ) );
+		exit;
+	}
+
+	/**
+	 * Save budgets, manual adjustments, and R&D write-offs from the Budgets screens.
+	 *
+	 * @return void
+	 */
+	public static function handle_budgets_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-budgets' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_budget_adjust'] ) ) {
+			check_admin_referer( 'som_budget_adjust', 'som_budget_adjust_nonce' );
+
+			$budget_id = isset( $_POST['budget_id'] ) ? (int) $_POST['budget_id'] : 0;
+			$amount    = isset( $_POST['som_budget_adjust_amount'] ) ? (float) wp_unslash( $_POST['som_budget_adjust_amount'] ) : 0.0;
+			$notes     = isset( $_POST['som_budget_adjust_notes'] ) ? trim( (string) wp_unslash( $_POST['som_budget_adjust_notes'] ) ) : '';
+
+			if ( '' === $notes ) {
+				self::flash_notice( __( 'Notes are required for a manual adjustment.', 'order-machine' ), 'error', 'som_budget_adjust_notes' );
+				wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
+				exit;
+			}
+			if ( 0.0 === $amount ) {
+				self::flash_notice( __( 'Adjustment amount cannot be zero.', 'order-machine' ), 'error', 'som_budget_adjust_amount' );
+				wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
+				exit;
+			}
+
+			$result = SOM_Budgets::insert_ledger(
+				$budget_id,
+				$amount,
+				array(
+					'reason' => SOM_Budgets::REASON_MANUAL_ADJUSTMENT,
+					'notes'  => $notes,
+				)
+			);
+
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_budget_adjust_error' );
+			} else {
+				self::flash_notice( __( 'Adjustment recorded.', 'order-machine' ), 'success', 'som_budget_adjusted' );
+			}
+
+			wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
+			exit;
+		}
+
+		if ( isset( $_POST['som_budget_writeoff'] ) ) {
+			check_admin_referer( 'som_budget_writeoff', 'som_budget_writeoff_nonce' );
+
+			$budget_id   = isset( $_POST['budget_id'] ) ? (int) $_POST['budget_id'] : 0;
+			$material_id = isset( $_POST['material_id'] ) ? (int) $_POST['material_id'] : 0;
+			$qty         = isset( $_POST['som_writeoff_qty'] ) ? (float) wp_unslash( $_POST['som_writeoff_qty'] ) : 0.0;
+			$notes       = isset( $_POST['som_writeoff_notes'] ) ? wp_unslash( $_POST['som_writeoff_notes'] ) : '';
+
+			$result = SOM_Budgets::write_off_material( $material_id, $qty, $notes );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_writeoff_error' );
+			} else {
+				self::flash_notice( __( 'R&D write-off recorded.', 'order-machine' ), 'success', 'som_writeoff_ok' );
+			}
+
+			wp_safe_redirect( SOM_Budgets::detail_url( $budget_id > 0 ? $budget_id : 'new' ) );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_budget'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_budget', 'som_budget_nonce' );
+
+		$budget_id = isset( $_POST['budget_id'] ) ? (int) $_POST['budget_id'] : 0;
+		$type      = isset( $_POST['som_budget_type'] ) ? sanitize_key( wp_unslash( $_POST['som_budget_type'] ) ) : '';
+
+		$data = array(
+			'name'                  => isset( $_POST['som_budget_name'] ) ? wp_unslash( $_POST['som_budget_name'] ) : '',
+			'notes'                 => isset( $_POST['som_budget_notes'] ) ? wp_unslash( $_POST['som_budget_notes'] ) : '',
+			'target_reserve_amount' => isset( $_POST['som_budget_target_reserve'] ) ? wp_unslash( $_POST['som_budget_target_reserve'] ) : '',
+			'is_active'             => ! empty( $_POST['som_budget_is_active'] ),
+		);
+
+		$product_ids = array();
+		if ( isset( $_POST['som_budget_product_ids'] ) && is_array( $_POST['som_budget_product_ids'] ) ) {
+			foreach ( wp_unslash( $_POST['som_budget_product_ids'] ) as $pid ) {
+				$pid = (int) $pid;
+				if ( $pid > 0 ) {
+					$product_ids[] = $pid;
+				}
+			}
+		}
+
+		$workflow_ids = array();
+		if ( isset( $_POST['som_budget_workflow_ids'] ) && is_array( $_POST['som_budget_workflow_ids'] ) ) {
+			foreach ( wp_unslash( $_POST['som_budget_workflow_ids'] ) as $wid ) {
+				$wid = (int) $wid;
+				if ( $wid > 0 ) {
+					$workflow_ids[] = $wid;
+				}
+			}
+		}
+
+		if ( $budget_id > 0 ) {
+			$existing = SOM_Budgets::get( $budget_id );
+			if ( ! $existing ) {
+				self::flash_notice( __( 'Budget not found.', 'order-machine' ), 'error', 'som_budget_missing' );
+				wp_safe_redirect( SOM_Budgets::list_url() );
+				exit;
+			}
+
+			if ( 'manual' === $existing->type ) {
+				$data['funding_method'] = isset( $_POST['som_budget_funding_method'] ) ? wp_unslash( $_POST['som_budget_funding_method'] ) : $existing->funding_method;
+				$data['funding_value']  = isset( $_POST['som_budget_funding_value'] ) ? wp_unslash( $_POST['som_budget_funding_value'] ) : $existing->funding_value;
+			}
+
+			$result = SOM_Budgets::update( $budget_id, $data );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_budget_error' );
+				wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
+				exit;
+			}
+
+			if ( 'manual' === $existing->type ) {
+				$link_result = SOM_Budgets::set_product_links( $budget_id, $product_ids );
+			} else {
+				$link_result = SOM_Budgets::set_workflow_links( $budget_id, $workflow_ids );
+			}
+			if ( is_wp_error( $link_result ) ) {
+				self::flash_notice( $link_result->get_error_message(), 'error', 'som_budget_links_error' );
+				wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
+				exit;
+			}
+		} else {
+			$data['type'] = $type;
+			if ( 'material' === $type ) {
+				$data['material_id'] = isset( $_POST['som_budget_material_id'] ) ? (int) $_POST['som_budget_material_id'] : 0;
+			} else {
+				$data['funding_method'] = isset( $_POST['som_budget_funding_method'] ) ? wp_unslash( $_POST['som_budget_funding_method'] ) : '';
+				$data['funding_value']  = isset( $_POST['som_budget_funding_value'] ) ? wp_unslash( $_POST['som_budget_funding_value'] ) : '';
+			}
+
+			$result = SOM_Budgets::create( $data );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_budget_error' );
+				wp_safe_redirect( SOM_Budgets::detail_url( 'new' ) );
+				exit;
+			}
+
+			$budget_id = (int) $result;
+
+			if ( 'manual' === $type ) {
+				$link_result = SOM_Budgets::set_product_links( $budget_id, $product_ids );
+			} else {
+				$link_result = SOM_Budgets::set_workflow_links( $budget_id, $workflow_ids );
+			}
+			if ( is_wp_error( $link_result ) ) {
+				self::flash_notice( $link_result->get_error_message(), 'error', 'som_budget_links_error' );
+				wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
+				exit;
+			}
+		}
+
+		self::flash_notice( __( 'Budget saved.', 'order-machine' ), 'success', 'som_budget_saved' );
+		wp_safe_redirect( SOM_Budgets::detail_url( $budget_id ) );
 		exit;
 	}
 

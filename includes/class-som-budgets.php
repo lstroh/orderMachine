@@ -821,6 +821,100 @@ class SOM_Budgets {
 	}
 
 	/**
+	 * @param string $type Budget type.
+	 * @return string
+	 */
+	public static function type_label( $type ) {
+		$labels = array(
+			'material' => __( 'Material', 'order-machine' ),
+			'manual'   => __( 'Manual', 'order-machine' ),
+		);
+		$type = sanitize_key( (string) $type );
+		return isset( $labels[ $type ] ) ? $labels[ $type ] : $type;
+	}
+
+	/**
+	 * @param string $method Funding method code.
+	 * @return string
+	 */
+	public static function funding_method_label( $method ) {
+		$labels = array(
+			'material_cost'     => __( 'Material cost (auto)', 'order-machine' ),
+			'percent_of_price'  => __( '% of sale price', 'order-machine' ),
+			'percent_of_profit' => __( '% of profit', 'order-machine' ),
+			'fixed_amount'      => __( 'Fixed amount per unit', 'order-machine' ),
+		);
+		$method = sanitize_key( (string) $method );
+		return isset( $labels[ $method ] ) ? $labels[ $method ] : $method;
+	}
+
+	/**
+	 * Active materials that do not yet have a material budget (optionally keep one selected).
+	 *
+	 * @param int $include_material_id Always include this material id if set.
+	 * @return array<int, object>
+	 */
+	public static function materials_available_for_budget( $include_material_id = 0 ) {
+		$include_material_id = (int) $include_material_id;
+		$active              = SOM_Materials::list_active();
+		$out                 = array();
+
+		foreach ( $active as $material ) {
+			$mid = (int) $material->id;
+			if ( $include_material_id > 0 && $mid === $include_material_id ) {
+				$out[] = $material;
+				continue;
+			}
+			if ( ! self::get_for_material( $mid, false ) ) {
+				$out[] = $material;
+			}
+		}
+
+		if ( $include_material_id > 0 ) {
+			$have = false;
+			foreach ( $out as $row ) {
+				if ( (int) $row->id === $include_material_id ) {
+					$have = true;
+					break;
+				}
+			}
+			if ( ! $have ) {
+				$extra = SOM_Materials::get( $include_material_id );
+				if ( $extra ) {
+					$out[] = (object) array(
+						'id'   => (int) $extra->id,
+						'name' => (string) $extra->name,
+						'unit' => (string) $extra->unit,
+					);
+				}
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Admin list URL.
+	 *
+	 * @param array<string, scalar> $args Query args.
+	 * @return string
+	 */
+	public static function list_url( array $args = array() ) {
+		$args = array_merge( array( 'page' => 'som-budgets' ), $args );
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
+
+	/**
+	 * Admin create/edit URL.
+	 *
+	 * @param int|string $budget_id Budget PK or "new".
+	 * @return string
+	 */
+	public static function detail_url( $budget_id ) {
+		return self::list_url( array( 'budget_id' => $budget_id ) );
+	}
+
+	/**
 	 * @param int $order_id Order PK.
 	 * @return bool
 	 */

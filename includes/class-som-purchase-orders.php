@@ -154,6 +154,28 @@ class SOM_Purchase_Orders {
 	}
 
 	/**
+	 * Single PO line item by PK.
+	 *
+	 * @param int $item_id purchase_order_items.id.
+	 * @return object|null
+	 */
+	public static function get_item( $item_id ) {
+		global $wpdb;
+
+		$item_id = (int) $item_id;
+		if ( $item_id < 1 ) {
+			return null;
+		}
+
+		$table = SOM_DB::table( 'purchase_order_items' );
+		$row   = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d LIMIT 1", $item_id )
+		);
+
+		return $row ? $row : null;
+	}
+
+	/**
 	 * @param int $purchase_order_id PO PK.
 	 * @return array<int, object>
 	 */

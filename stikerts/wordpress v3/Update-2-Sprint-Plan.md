@@ -124,17 +124,33 @@ Board DnD:
 | Draw-down ledger failure | Log and continue (do not abort remaining PO receive lines) |
 | Manual + workflow links | Ignore workflow links when funding manual budgets (product scope only) |
 
+### U2-3 Budgets admin UI (from U2-3 review)
+
+| Topic | Decision |
+|-------|----------|
+| R&D write-off UI location | **Both** — material budget detail **and** material edit page |
+| Plain Adjust stock | Keep existing material stock delta as-is (does not touch budgets); add a **separate** R&D write-off action; short note that Adjust stock does not debit the budget |
+| Manual adjustment notes | **Required** (same as write-off) |
+| Ledger depth | Recent **50** rows only (no full-history pagination in this sprint) |
+| Ledger row links | `sale_funding` → order detail; `purchase_spend` → PO detail (resolve via `purchase_order_item_id`) |
+| Menu placement | Budgets submenu **after Materials** |
+| List default filter | **Active** only (materials-style; allow All / Inactive) |
+| Material picker on create | **Hide** materials that already have a material budget |
+| Product / workflow scope UX | Multi-checkbox lists; UI only offers intended combinations (workflow on material, products on manual) |
+| Editable after create | As model already allows — name, notes, target reserve, `is_active`; manual funding method/value + product links; material workflow links. Type / `material_id` immutable. No further UI lock-down |
+| Ink (O1) | Short help text on create — ink as material recipe **or** manual `fixed_amount` budget |
+
 ### R&D / non-sale write-off (from U2-1 review Q5)
 
 **Answer: B — Linked write-off.**
 
-One operator action decrements material stock **and** posts a negative `manual_adjustment` on that material’s budget for `qty × WA unit_cost` (same cost basis as stock/WAC). Notes field required or strongly encouraged (e.g. “R&D”).
+One operator action decrements material stock **and** posts a negative `manual_adjustment` on that material’s budget for `qty × WA unit_cost` (same cost basis as stock/WAC). Notes **required** (e.g. “R&D”).
 
 | Layer | Where it lands |
 |-------|----------------|
-| Model helper | Prefer `SOM_Budgets` (or thin wrapper) that calls `SOM_Materials::adjust_stock` then ledger write — atomic as far as practical; no-op budget side if no active material budget for that material |
-| UI | U2-3 (budget and/or material edit) — not required for U2-1 schema done-when; helper can ship in U2-1 for testability |
-| Standalone budget adjustment | Still available for deposits/withdrawals that are not stock-linked |
+| Model helper | `SOM_Budgets::write_off_material` — stock then ledger; no-op budget side if no active material budget |
+| UI | U2-3 — **both** material budget detail and material edit (beside Adjust stock) |
+| Standalone budget adjustment | Still available; notes required |
 
 ---
 
@@ -202,10 +218,10 @@ Budgets and Order Board are independent (per `01-Update-Overview.md`). Sequence 
 | | |
 |--|--|
 | **Feature** | Budgets — admin pages |
-| **Create** | `admin/views/budgets-list.php`; `admin/views/budget-edit.php` (create/edit/detail + ledger + manual adjustment) |
-| **Modify** | `admin/class-som-admin-menu.php` (Budgets submenu + form handlers); `admin/assets/css/admin.css` (list badges, light layout) |
-| **Done when** | List shows balances + low/overspent badges; create/edit material (pick material + optional workflow scope) and manual (funding method/value + product scope); detail shows ledger (orders / purchases / adjustments); manual adjustment writes `manual_adjustment` ledger rows; linked R&D write-off (stock −qty + budget debit by qty × WA) available with notes |
-| **Open items first** | O1 — optional short help text that ink can be a material recipe or a manual fixed budget; R&D linked write-off (B) locked |
+| **Create** | `admin/views/budgets-list.php`; `admin/views/budget-edit.php` (create/edit/detail + ledger + manual adjustment + R&D write-off for material budgets) |
+| **Modify** | `admin/class-som-admin-menu.php` (Budgets submenu after Materials + form handlers; R&D write-off handler for materials too); `admin/views/material-edit.php` (R&D write-off form + note that Adjust stock skips budget); `admin/assets/css/admin.css` (list badges, light layout); `includes/class-som-budgets.php` (`list_url` / `detail_url` if missing) |
+| **Done when** | List (active default) shows balances + low/overspent badges; create/edit material (pick material without existing budget + optional workflow checkboxes) and manual (funding method/value + product checkboxes); ink help on create; detail ledger (recent 50, order/PO links); manual adjustment with required notes; R&D write-off on budget detail **and** material edit with required notes |
+| **Open items first** | O1 + R&D (B) locked — see §4 U2-3 table |
 
 ---
 

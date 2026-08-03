@@ -221,7 +221,7 @@ $lead_days        = $material && null !== $material->average_lead_time_days ? (f
 		<?php endif; ?>
 
 		<h2><?php echo esc_html__( 'Adjust stock', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Enter a positive or negative delta (e.g. +10 or -2.5). Stock can go negative.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Enter a positive or negative delta (e.g. +10 or -2.5). Stock can go negative. This does not debit a material budget — use R&D write-off below for linked stock + budget debit.', 'order-machine' ); ?></p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-materials' ) ); ?>" class="som-stock-adjust-form">
 			<?php wp_nonce_field( 'som_adjust_stock', 'som_adjust_stock_nonce' ); ?>
 			<input type="hidden" name="som_adjust_stock" value="1" />
@@ -229,6 +229,35 @@ $lead_days        = $material && null !== $material->average_lead_time_days ? (f
 			<label for="som_stock_delta" class="screen-reader-text"><?php echo esc_html__( 'Adjustment amount', 'order-machine' ); ?></label>
 			<input type="number" step="0.01" id="som_stock_delta" name="som_stock_delta" value="" class="small-text" required />
 			<button type="submit" class="button"><?php echo esc_html__( 'Apply adjustment', 'order-machine' ); ?></button>
+		</form>
+
+		<h2><?php echo esc_html__( 'R&amp;D / non-sale write-off', 'order-machine' ); ?></h2>
+		<p class="description">
+			<?php echo esc_html__( 'Decrements stock and, if an active material budget exists, debits it by qty × weighted-average unit cost. Notes are required.', 'order-machine' ); ?>
+		</p>
+		<?php
+		$linked_budget = SOM_Budgets::get_for_material( (int) $material->id, true );
+		if ( $linked_budget ) :
+			?>
+			<p class="description">
+				<?php echo esc_html__( 'Linked budget:', 'order-machine' ); ?>
+				<a href="<?php echo esc_url( SOM_Budgets::detail_url( (int) $linked_budget->id ) ); ?>">
+					<?php echo esc_html( (string) $linked_budget->name ); ?>
+				</a>
+			</p>
+		<?php else : ?>
+			<p class="description som-muted"><?php echo esc_html__( 'No active material budget — stock will still be reduced.', 'order-machine' ); ?></p>
+		<?php endif; ?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-materials' ) ); ?>" class="som-budget-writeoff-form">
+			<?php wp_nonce_field( 'som_material_writeoff', 'som_material_writeoff_nonce' ); ?>
+			<input type="hidden" name="som_material_writeoff" value="1" />
+			<input type="hidden" name="material_id" value="<?php echo esc_attr( (string) (int) $material->id ); ?>" />
+			<label for="som_writeoff_qty" class="screen-reader-text"><?php echo esc_html__( 'Quantity', 'order-machine' ); ?></label>
+			<input type="number" step="0.01" min="0.01" id="som_writeoff_qty" name="som_writeoff_qty" class="small-text" required />
+			<span class="som-muted"><?php echo esc_html( (string) $material->unit ); ?></span>
+			<label for="som_writeoff_notes" class="screen-reader-text"><?php echo esc_html__( 'Notes', 'order-machine' ); ?></label>
+			<input type="text" id="som_writeoff_notes" name="som_writeoff_notes" class="regular-text" placeholder="<?php echo esc_attr__( 'e.g. R&D (required)', 'order-machine' ); ?>" required />
+			<button type="submit" class="button"><?php echo esc_html__( 'Write off', 'order-machine' ); ?></button>
 		</form>
 
 		<h2><?php echo esc_html__( 'Recent stock log', 'order-machine' ); ?></h2>

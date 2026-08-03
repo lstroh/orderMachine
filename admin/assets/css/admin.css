@@ -224,6 +224,40 @@
 	color: #9a5b1a;
 }
 
+.som-badge-low-balance {
+	background: #fcf0e3;
+	color: #9a5b1a;
+}
+
+.som-badge-overspent {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.som-checkbox-list {
+	margin: 0.5em 0 0;
+	padding: 0;
+	list-style: none;
+	max-height: 220px;
+	overflow: auto;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 8px 12px;
+}
+
+.som-checkbox-list li {
+	margin: 0 0 6px;
+}
+
+.som-budget-adjust-form,
+.som-budget-writeoff-form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 0.5em 0 1.5em;
+}
+
 .som-badge-goal-approaching {
 	background: #fcf0e3;
 	color: #9a5b1a;

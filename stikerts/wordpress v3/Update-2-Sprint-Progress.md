@@ -12,7 +12,7 @@ Assumption: base plugin + Update Package 1 complete (`SOM_DB::DB_VERSION` was `1
 |---|---|---|---|
 | U2-1 | Budgets schema + model | **Done** | Code complete vs plan; migrate on next admin load / activate |
 | U2-2 | Funding + draw-down hooks | **Done** | Inline hooks in order-sync + PO receive; decisions locked in plan §4 |
-| U2-3 | Budgets admin UI | Pending | Includes R&D write-off UI |
+| U2-3 | Budgets admin UI | **Done** | List/edit, badges, adjustments, R&D on budget + material |
 | U2-4 | Order Board read UI | Pending | |
 | U2-5 | Order Board gated DnD | Pending | |
 
@@ -241,6 +241,123 @@ Private helpers: `has_sale_funding_for_order`, `order_workflow_template_id`, `fu
 
 ---
 
+## Sprint U2-3 — Budgets admin UI
+
+- **Status:** **Done** (re-confirmed 2026-08-03 vs `Update-2-Sprint-Plan.md` § Sprint U2-3 done-when, Create/Modify file list, and §4 U2-3 review table)
+- **Completed:** 2026-08-03
+- **Verified on:** Second-pass code review of views, admin menu handlers, material-edit R&D UI, CSS badges, and `SOM_Budgets` URL helpers against plan; `php -l` clean on all touched PHP. Live admin click-through not exercised in-session.
+- **Plugin version:** unchanged (`0.18.1`)
+- **DB version:** unchanged (`1.6.0` — no schema delta in U2-3)
+
+### Plan requirements review (`Update-2-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Create `admin/views/budgets-list.php` | **Done** | Active default; type filter; balance + target; low/overspent badges |
+| Create `admin/views/budget-edit.php` | **Done** | Create/edit/detail + ledger + manual adjustment + material R&D write-off |
+| Modify `admin/class-som-admin-menu.php` | **Done** | Budgets submenu after Materials; `render_budgets`; `handle_budgets_actions`; material write-off in `handle_materials_actions` |
+| Modify `admin/views/material-edit.php` | **Done** | R&D write-off form; Adjust stock note that it does not debit budget |
+| Modify `admin/assets/css/admin.css` | **Done** | `som-badge-low-balance`, `som-badge-overspent`, checkbox list, adjust/write-off form layout |
+| Modify `includes/class-som-budgets.php` | **Done** | `list_url` / `detail_url`; type/funding labels; `materials_available_for_budget` |
+| Extra (ledger PO resolve) | **Done** | `SOM_Purchase_Orders::get_item()` for purchase_spend → PO link |
+| **Done when:** list active default + balances + badges | **Pass** | |
+| **Done when:** create/edit material (no existing budget + workflow checkboxes) | **Pass** | |
+| **Done when:** create/edit manual (funding + product checkboxes) | **Pass** | |
+| **Done when:** ink help on create | **Pass** | |
+| **Done when:** ledger recent 50, order/PO links | **Pass** | |
+| **Done when:** manual adjustment with required notes | **Pass** | Handler + HTML `required` |
+| **Done when:** R&D write-off on budget detail **and** material edit | **Pass** | Notes required; calls `write_off_material` |
+| Open items first | Settled | O1 + R&D (B); §4 U2-3 table |
+
+### Locked U2-3 decisions applied (§4)
+
+| Topic | Applied? | How |
+|---|---|---|
+| R&D UI on both surfaces | Yes | Budget detail form + material edit form |
+| Adjust stock unchanged + skip-budget note | Yes | Existing delta handler; description updated |
+| Manual adjustment notes required | Yes | Empty notes rejected in handler |
+| Ledger recent 50 | Yes | `get_ledger( $id, 50 )` |
+| Ledger order / PO links | Yes | `SOM_Orders::detail_url`; PO via `get_item` → `detail_url` |
+| Menu after Materials | Yes | Submenu registration order |
+| List active default | Yes | `som_status` defaults to `active` |
+| Hide materials with existing budget | Yes | `materials_available_for_budget()` |
+| Multi-checkbox scopes; intended combinations | Yes | Workflow UI on material only; product UI on manual only |
+| Editable as model allows | Yes | Type/`material_id` fixed after create |
+| Ink help (O1) | Yes | Create-type description |
+
+### Behaviour summary
+
+```
+Budgets list (som-budgets):
+  · Default active; filters status + type + search
+  · Badges: overspent (balance < 0), else low balance (< target reserve)
+
+Budget create/edit:
+  · Material: pick unused material; optional workflow checkboxes; ink tip on create
+  · Manual: funding method/value; optional product checkboxes
+  · Save → create/update + set_*_links for the intended scope only
+
+Budget detail (existing):
+  · Manual adjustment → insert_ledger(manual_adjustment); notes required
+  · Material R&D write-off → write_off_material (stock + budget debit)
+  · Ledger: newest 50; sale_funding→order; purchase_spend→PO
+
+Material edit:
+  · Adjust stock unchanged (no budget)
+  · Separate R&D write-off → same write_off_material helper
+```
+
+### Files delivered / modified
+
+| File | Purpose |
+|---|---|
+| `admin/views/budgets-list.php` | List (new) |
+| `admin/views/budget-edit.php` | Create/edit/detail (new) |
+| `admin/views/material-edit.php` | R&D write-off + Adjust stock note |
+| `admin/class-som-admin-menu.php` | Submenu after Materials; render; budget + material write-off handlers |
+| `admin/assets/css/admin.css` | Badges + form layout |
+| `includes/class-som-budgets.php` | URL/label helpers; materials available for create |
+| `includes/class-som-purchase-orders.php` | `get_item()` for ledger PO links |
+| `stikerts/wordpress v3/Update-2-Sprint-Plan.md` | §4 U2-3 locks (pre-build) |
+| `stikerts/wordpress v3/Update-2-Sprint-Progress.md` | This record |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| List (active default) shows balances + low/overspent badges | **Pass** |
+| Create/edit material (pick material without existing budget + optional workflow checkboxes) | **Pass** |
+| Create/edit manual (funding method/value + product checkboxes) | **Pass** |
+| Ink help on create | **Pass** |
+| Detail ledger (recent 50, order/PO links) | **Pass** |
+| Manual adjustment with required notes | **Pass** |
+| R&D write-off on budget detail **and** material edit with required notes | **Pass** |
+
+### Explicitly out of scope for U2-3 (later sprints)
+
+| Item | Sprint |
+|---|---|
+| Order Board read UI | U2-4 |
+| Order Board gated DnD | U2-5 |
+
+### Suggested live smoke (operator)
+
+1. Open **Order Machine → Budgets** (directly under Materials). Create material budget (picker hides materials that already have one) + optional workflow checks; create manual with funding + product checks.
+2. Confirm list badges when balance &lt; reserve / negative.
+3. Record manual adjustment (notes required); confirm ledger row and balance change.
+4. R&D write-off from budget detail and from material edit; confirm stock ↓ and budget debit (or stock-only if no active budget).
+5. Confirm Adjust stock still works and does not touch budget.
+6. After a funded order / received PO: ledger `sale_funding` → order detail; `purchase_spend` → PO detail.
+
+### Gaps / residual risk
+
+| Risk | Severity | Notes |
+|---|---|---|
+| Product scope list capped at 500 active | Low | Linked inactive products appended when editing |
+| Live admin UI not clicked in-session | Info | Use smoke list above |
+
+---
+
 ## Verdict
 
-**U2-2 is complete** relative to `Update-2-Sprint-Plan.md`: both required methods, both inline hooks, reuse of stock-log / `recipe_costing`, all done-when criteria, and §4 locked U2-2 decisions are implemented. Next: **U2-3 — Budgets admin UI**.
+**U2-3 is complete** relative to `Update-2-Sprint-Plan.md`: all Create/Modify files, every done-when criterion, and all §4 U2-3 locked decisions are implemented. Next: **U2-4 — Order Board read UI**.
