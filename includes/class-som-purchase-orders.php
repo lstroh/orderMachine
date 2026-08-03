@@ -416,6 +416,8 @@ class SOM_Purchase_Orders {
 			if ( is_wp_error( $stock ) ) {
 				return $stock;
 			}
+
+			SOM_Budgets::drawdown_on_receive( $item_id, $delta, $landed );
 		}
 
 		$fresh_items = self::get_items( (int) $order->id );

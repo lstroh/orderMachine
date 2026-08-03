@@ -1,6 +1,6 @@
 <?php
 /**
- * Budgets CRUD, ledger balance updates, and scope helpers (Sprint U2-1).
+ * Budgets CRUD, ledger balance updates, scope helpers, and sale/purchase hooks (U2-1 / U2-2).
  *
  * @package OrderMachine
  */
@@ -611,6 +611,111 @@ class SOM_Budgets {
 	}
 
 	/**
+	 * Fund budgets when a new order is created (same `$apply_stock` gate as stock decrement).
+	 *
+	 * Material amounts come from `material_stock_log` (`new_order`). Manual amounts are
+	 * computed per order item. Skips cancelled orders, inactive budgets, and re-entry when
+	 * any `sale_funding` row already exists for the order.
+	 *
+	 * @param int $order_id Order PK.
+	 * @return true Always true (ledger failures are logged; sync must not abort).
+	 */
+	public static function fund_on_create( $order_id ) {
+		$order_id = (int) $order_id;
+		if ( $order_id < 1 ) {
+			return true;
+		}
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order ) {
+			return true;
+		}
+
+		if ( ! empty( $order->is_cancelled ) ) {
+			return true;
+		}
+
+		if ( self::has_sale_funding_for_order( $order_id ) ) {
+			return true;
+		}
+
+		$workflow_id = self::order_workflow_template_id( $order );
+
+		self::fund_material_from_stock_log( $order_id, $workflow_id );
+		self::fund_manual_from_order_items( $order, $order_id );
+
+		return true;
+	}
+
+	/**
+	 * Draw down a material budget after a successful PO line receive.
+	 *
+	 * No-op when no active material budget exists or amount rounds to zero.
+	 * Ledger failures are logged; caller should continue the receive loop.
+	 *
+	 * @param int   $purchase_order_item_id PO line PK.
+	 * @param float $qty_received           Positive qty just received.
+	 * @param float $landed_unit_cost       Landed unit cost for the line.
+	 * @return true|WP_Error True on success/no-op; WP_Error on ledger failure (already logged).
+	 */
+	public static function drawdown_on_receive( $purchase_order_item_id, $qty_received, $landed_unit_cost ) {
+		global $wpdb;
+
+		$purchase_order_item_id = (int) $purchase_order_item_id;
+		$qty_received           = (float) $qty_received;
+		$landed_unit_cost       = (float) $landed_unit_cost;
+
+		if ( $purchase_order_item_id < 1 || $qty_received <= 0 ) {
+			return true;
+		}
+
+		$items_t = SOM_DB::table( 'purchase_order_items' );
+		$material_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT material_id FROM {$items_t} WHERE id = %d LIMIT 1",
+				$purchase_order_item_id
+			)
+		);
+		if ( $material_id < 1 ) {
+			return true;
+		}
+
+		$budget = self::get_for_material( $material_id, true );
+		if ( ! $budget ) {
+			return true;
+		}
+
+		$amount = SOM_Material_Costing::round4( -( $qty_received * $landed_unit_cost ) );
+		if ( abs( $amount ) < 0.0000001 ) {
+			return true;
+		}
+
+		$result = self::insert_ledger(
+			(int) $budget->id,
+			$amount,
+			array(
+				'purchase_order_item_id' => $purchase_order_item_id,
+				'reason'                 => self::REASON_PURCHASE_SPEND,
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log(
+				sprintf(
+					'[Order Machine] Budget draw-down failed for PO item %d (budget %d): %s',
+					$purchase_order_item_id,
+					(int) $budget->id,
+					$result->get_error_message()
+				)
+			);
+			return $result;
+		}
+
+		return true;
+	}
+
+	/**
 	 * Linked R&D / non-sale write-off: decrement stock and debit material budget.
 	 *
 	 * Budget debit is skipped (stock still adjusted) when no active material budget exists.
@@ -713,6 +818,247 @@ class SOM_Budgets {
 
 		$reason = sanitize_key( (string) $reason );
 		return isset( $labels[ $reason ] ) ? $labels[ $reason ] : $reason;
+	}
+
+	/**
+	 * @param int $order_id Order PK.
+	 * @return bool
+	 */
+	private static function has_sale_funding_for_order( $order_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'budget_ledger' );
+		$found = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE order_id = %d AND reason = %s LIMIT 1",
+				(int) $order_id,
+				self::REASON_SALE_FUNDING
+			)
+		);
+
+		return ! empty( $found );
+	}
+
+	/**
+	 * Workflow template for the order’s primary product (0 if unassigned).
+	 *
+	 * @param object $order Order with items.
+	 * @return int
+	 */
+	private static function order_workflow_template_id( $order ) {
+		$product_id = SOM_Workflow_Engine::primary_product_id( $order );
+		if ( $product_id < 1 ) {
+			return 0;
+		}
+
+		$product = SOM_Products::get( $product_id );
+		if ( ! $product || empty( $product->workflow_template_id ) ) {
+			return 0;
+		}
+
+		return (int) $product->workflow_template_id;
+	}
+
+	/**
+	 * Material budgets: one sale_funding row per new_order stock-log line.
+	 *
+	 * @param int $order_id    Order PK.
+	 * @param int $workflow_id Primary-product workflow template ID (0 = none).
+	 * @return void
+	 */
+	private static function fund_material_from_stock_log( $order_id, $workflow_id ) {
+		global $wpdb;
+
+		$log_t = SOM_DB::table( 'material_stock_log' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT material_id, change_qty, unit_cost_at_time
+				FROM {$log_t}
+				WHERE order_id = %d AND reason = %s
+				ORDER BY id ASC",
+				(int) $order_id,
+				'new_order'
+			)
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return;
+		}
+
+		foreach ( $rows as $row ) {
+			$material_id = (int) $row->material_id;
+			$qty         = abs( (float) $row->change_qty );
+			$unit        = (float) $row->unit_cost_at_time;
+			$amount      = SOM_Material_Costing::round4( $qty * $unit );
+
+			if ( $material_id < 1 || abs( $amount ) < 0.0000001 ) {
+				continue;
+			}
+
+			$budget = self::get_for_material( $material_id, true );
+			if ( ! $budget ) {
+				continue;
+			}
+
+			if ( ! self::applies_to_workflow( (int) $budget->id, (int) $workflow_id ) ) {
+				continue;
+			}
+
+			$result = self::insert_ledger(
+				(int) $budget->id,
+				$amount,
+				array(
+					'order_id' => (int) $order_id,
+					'reason'   => self::REASON_SALE_FUNDING,
+				)
+			);
+
+			if ( is_wp_error( $result ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log(
+					sprintf(
+						'[Order Machine] Budget sale funding failed for order %d material %d (budget %d): %s',
+						(int) $order_id,
+						$material_id,
+						(int) $budget->id,
+						$result->get_error_message()
+					)
+				);
+			}
+		}
+	}
+
+	/**
+	 * Manual budgets: one sale_funding row per order item × matching budget.
+	 * Workflow links on manual budgets are ignored.
+	 *
+	 * @param object $order    Order with items.
+	 * @param int    $order_id Order PK.
+	 * @return void
+	 */
+	private static function fund_manual_from_order_items( $order, $order_id ) {
+		$items = ! empty( $order->items ) && is_array( $order->items ) ? $order->items : array();
+		if ( ! $items ) {
+			return;
+		}
+
+		$listed = self::query(
+			array(
+				'type'      => 'manual',
+				'is_active' => 1,
+				'paged'     => 1,
+				'per_page'  => 10000,
+			)
+		);
+		$budgets = $listed['budgets'];
+		if ( ! $budgets ) {
+			return;
+		}
+
+		foreach ( $items as $item ) {
+			$product_id = isset( $item->product_id ) ? (int) $item->product_id : 0;
+			if ( $product_id < 1 ) {
+				continue;
+			}
+
+			$qty = isset( $item->quantity ) ? max( 1, (int) $item->quantity ) : 1;
+			$product = SOM_Products::get( $product_id );
+			if ( ! $product ) {
+				continue;
+			}
+
+			$sold = self::effective_sold_price( $item, $product );
+			$costing = null;
+
+			foreach ( $budgets as $budget ) {
+				if ( ! self::applies_to_product( (int) $budget->id, $product_id ) ) {
+					continue;
+				}
+
+				$amount = self::manual_funding_amount( $budget, $sold, $qty, $product_id, $costing );
+				if ( null === $amount || abs( $amount ) < 0.0000001 ) {
+					continue;
+				}
+
+				$result = self::insert_ledger(
+					(int) $budget->id,
+					$amount,
+					array(
+						'order_id' => (int) $order_id,
+						'reason'   => self::REASON_SALE_FUNDING,
+					)
+				);
+
+				if ( is_wp_error( $result ) ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log(
+						sprintf(
+							'[Order Machine] Budget sale funding failed for order %d item product %d (budget %d): %s',
+							(int) $order_id,
+							$product_id,
+							(int) $budget->id,
+							$result->get_error_message()
+						)
+					);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Effective sold unit price: unit_price when set (including 0), else target_selling_price.
+	 *
+	 * @param object $item    Order item row.
+	 * @param object $product Product row.
+	 * @return float|null Null when neither is available.
+	 */
+	private static function effective_sold_price( $item, $product ) {
+		if ( isset( $item->unit_price ) && null !== $item->unit_price && '' !== $item->unit_price ) {
+			return (float) $item->unit_price;
+		}
+		if ( isset( $product->target_selling_price ) && null !== $product->target_selling_price && '' !== $product->target_selling_price ) {
+			return (float) $product->target_selling_price;
+		}
+		return null;
+	}
+
+	/**
+	 * @param object     $budget    Manual budget row.
+	 * @param float|null $sold      Effective sold unit price.
+	 * @param int        $qty       Line quantity.
+	 * @param int        $product_id Product PK.
+	 * @param array|null $costing   Cached recipe_costing result (by ref).
+	 * @return float|null Rounded amount, or null when not computable / zero-skip for missing price.
+	 */
+	private static function manual_funding_amount( $budget, $sold, $qty, $product_id, &$costing ) {
+		$method = (string) $budget->funding_method;
+		$value  = (float) $budget->funding_value;
+		$qty    = max( 1, (int) $qty );
+
+		if ( 'fixed_amount' === $method ) {
+			return SOM_Material_Costing::round4( $value * $qty );
+		}
+
+		if ( null === $sold ) {
+			return null;
+		}
+
+		if ( 'percent_of_price' === $method ) {
+			return SOM_Material_Costing::round4( $sold * $qty * ( $value / 100 ) );
+		}
+
+		if ( 'percent_of_profit' === $method ) {
+			if ( null === $costing ) {
+				$costing = SOM_Products::recipe_costing( (int) $product_id );
+			}
+			$material_cost = ( $costing && isset( $costing['material_cost'] ) )
+				? (float) $costing['material_cost']
+				: 0.0;
+			$profit = $sold - $material_cost;
+			return SOM_Material_Costing::round4( $profit * $qty * ( $value / 100 ) );
+		}
+
+		return null;
 	}
 
 	/**

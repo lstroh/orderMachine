@@ -423,6 +423,7 @@ class SOM_Order_Sync {
 
 		if ( $apply_stock ) {
 			SOM_Material_Stock::decrement_on_create( $order_id );
+			SOM_Budgets::fund_on_create( $order_id );
 		}
 
 		return 'created';

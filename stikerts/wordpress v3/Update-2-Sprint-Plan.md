@@ -97,7 +97,7 @@ Board DnD:
 | Board column order | Auto by lowest `step_order` seen across templates for that step name; **plus** per-user manual reorder (user meta, e.g. `som_board_column_order`). New columns not in saved order append via auto heuristic |
 | Ink | Ops-only; not implemented in this package |
 | Negative balances | Allowed; surface overspent / low-balance badges |
-| Effective sold price | `order_items.unit_price` if set, else `products.target_selling_price` |
+| Effective sold price | `order_items.unit_price` if set (**including 0**), else `products.target_selling_price` |
 | Board population | Incomplete orders only (`is_complete = 0`, not cancelled as appropriate to existing list filters) |
 | Narrow screen | Horizontal scroll |
 | One material budget per material | **Yes** — `UNIQUE` on `budgets.material_id` where used; model rejects a second `type=material` row for the same material |
@@ -108,6 +108,21 @@ Board DnD:
 | R&D / non-sale write-off | **B — Linked:** one action decrements stock and debits the material budget by `qty × WA unit_cost` (`manual_adjustment`); notes for reason. Standalone budget adjustments remain available |
 | Schema version | Bump `SOM_DB::DB_VERSION` / `som_db_version` to **`1.6.0`** |
 | Indexes | Add FK-style keys on budget tables (`budget_id`, `material_id`, `order_id`, `purchase_order_item_id`, etc.) |
+
+### U2-2 funding / draw-down (from U2-2 review)
+
+| Topic | Decision |
+|-------|----------|
+| Funding idempotency | Skip entire `fund_on_create` if any `sale_funding` ledger row already exists for that `order_id` |
+| Material funding cost | From `material_stock_log` where `reason = new_order`: `\|change_qty\| × unit_cost_at_time` (after stock decrement) |
+| Inactive budgets | Skip funding and draw-down when `is_active = 0` |
+| Cancelled / stock no-op | `fund_on_create` no-ops when order is cancelled; ledger idempotency covers re-entry after a prior fund |
+| Workflow scope (multi-line) | Order-level: primary product’s workflow gates **all** material funding on the order |
+| `percent_of_profit` when loss | Allow negative `sale_funding` (do not clamp profit to 0) |
+| `unit_price = 0` | Treated as set (effective sold price 0); only `NULL` falls back to `target_selling_price` |
+| Ledger grain | Manual: one `sale_funding` row per order item per matching budget. Material: one row per stock-log material line (aggregated consumption, matches stock) |
+| Draw-down ledger failure | Log and continue (do not abort remaining PO receive lines) |
+| Manual + workflow links | Ignore workflow links when funding manual budgets (product scope only) |
 
 ### R&D / non-sale write-off (from U2-1 review Q5)
 
@@ -220,7 +235,7 @@ Budgets and Order Board are independent (per `01-Update-Overview.md`). Sequence 
 ## 7. Implementation notes (for later build — not this planning task)
 
 - **Additive only** — do not rework stock, WAC, or workflow engine beyond the two inline hook calls and the new Board UI caller of advance-step.
-- **Idempotency:** decide during U2-2 whether funding should skip if ledger already has `sale_funding` for that order/budget (mirror stock’s “already logged” guard) — recommend yes.
+- **Idempotency:** locked — skip `fund_on_create` if any `sale_funding` row exists for that `order_id` (see §4 U2-2 table).
 - **Primary product / workflow for scope:** same rule as existing assignment — first `order_items` row with non-null `product_id` → product’s workflow template.
 - **Draw-down amount:** landed cost for the received delta (`delta × landed_unit_cost`), material budgets only, opt-in (no budget for that material → no-op). Workflow scope applies to **funding**; draw-down is by `material_id` on the PO line (any linked material budget for that material).
 - **Plain PHP admin** — no React/build step; SortableJS via CDN as specified.
