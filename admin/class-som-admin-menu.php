@@ -199,9 +199,16 @@ class SOM_Admin_Menu {
 
 		if ( 'som-orders-board' === $page ) {
 			wp_enqueue_script(
+				'sortablejs',
+				'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js',
+				array(),
+				'1.15.6',
+				true
+			);
+			wp_enqueue_script(
 				'som-orders-board',
 				SOM_PLUGIN_URL . 'admin/assets/js/orders-board.js',
-				array(),
+				array( 'sortablejs' ),
 				SOM_VERSION,
 				true
 			);
@@ -209,11 +216,27 @@ class SOM_Admin_Menu {
 				'som-orders-board',
 				'somBoard',
 				array(
-					'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-					'nonce'   => wp_create_nonce( 'som_orders_board' ),
-					'i18n'    => array(
-						'pin'   => __( 'Pin', 'order-machine' ),
-						'unpin' => __( 'Unpin', 'order-machine' ),
+					'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+					'nonce'         => wp_create_nonce( 'som_orders_board' ),
+					'restUrl'       => esc_url_raw( rest_url( 'som/v1/' ) ),
+					'restNonce'     => wp_create_nonce( 'wp_rest' ),
+					'completeKey'   => SOM_Orders::BOARD_COMPLETE_KEY,
+					'unassignedKey' => SOM_Orders::BOARD_UNASSIGNED_KEY,
+					'statusLabels'  => array(
+						'pending'        => __( 'Pending', 'order-machine' ),
+						'in_progress'    => __( 'In progress', 'order-machine' ),
+						'waiting_timer'  => __( 'Waiting (timer)', 'order-machine' ),
+						'waiting_script' => __( 'Waiting (script)', 'order-machine' ),
+						'waiting_batch'  => __( 'Waiting (batch)', 'order-machine' ),
+						'error'          => __( 'Error', 'order-machine' ),
+						'done'           => __( 'Done', 'order-machine' ),
+					),
+					'i18n'          => array(
+						'pin'           => __( 'Pin', 'order-machine' ),
+						'unpin'         => __( 'Unpin', 'order-machine' ),
+						'advanceError'  => __( 'Could not advance step.', 'order-machine' ),
+						'networkError'  => __( 'Could not advance step (network error).', 'order-machine' ),
+						'batchLabel'    => __( 'Batch #%3$d: %1$d of %2$d', 'order-machine' ),
 					),
 				)
 			);

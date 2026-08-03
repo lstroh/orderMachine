@@ -1010,6 +1010,47 @@ class SOM_Workflow_Engine {
 	}
 
 	/**
+	 * Board DnD metadata: whether Mark done / advance-step is allowed, and the next step name.
+	 *
+	 * @param int $order_id Order PK.
+	 * @return array{can_advance: bool, next_step_name: string, is_last_step: bool}
+	 */
+	public static function board_dnd_meta( $order_id ) {
+		$order_id = (int) $order_id;
+		$out      = array(
+			'can_advance'    => false,
+			'next_step_name' => '',
+			'is_last_step'   => false,
+		);
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order || ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ) {
+			return $out;
+		}
+
+		$current_step_id = (int) $order->current_step_id;
+		if ( $current_step_id < 1 ) {
+			return $out;
+		}
+
+		$progress = self::get_progress_for_step( $order_id, $current_step_id );
+		$step     = self::get_step( $current_step_id );
+		if ( ! $progress || ! $step ) {
+			return $out;
+		}
+
+		$next = self::next_step_after( $order_id, $current_step_id );
+		if ( $next ) {
+			$out['next_step_name'] = trim( (string) $next->name );
+		} else {
+			$out['is_last_step'] = true;
+		}
+
+		$out['can_advance'] = self::can_mark_done( $progress, $step );
+		return $out;
+	}
+
+	/**
 	 * Next step in this order's progress after the given step (by step_order).
 	 *
 	 * @param int $order_id        Order PK.

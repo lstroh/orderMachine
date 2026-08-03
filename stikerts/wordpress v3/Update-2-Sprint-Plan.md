@@ -166,7 +166,7 @@ Board DnD:
 | Last step / complete | **A — Ephemeral Complete drop zone** always available when any draggable card is on its final step; successful drop removes the card (`is_complete`) |
 | Next-step data on cards | **Yes** — server-rendered attrs (e.g. `data-next-step-name`, `data-can-advance`, `data-progress-status`, last-step flag); computed from workflow like detail “Mark done” |
 | Locked cards | **Disable drag entirely** when not advanceable: `waiting_*` / `error` / `pending`, Unassigned, and any card where `can_mark_done` would fail |
-| Post-drop status | **B — Extend** `advance-step` JSON with `progress_status` (and batch summary when `waiting_batch`) so the board can update badges without reload |
+| Post-drop status | **B — Extend** `advance-step` JSON with `progress_status`, batch summary when `waiting_batch`, plus `can_advance` / `next_step_name` / `is_last_step` so the board can update badges and keep chaining advances without reload |
 | Within-column reorder | **Disabled** — cross-column advance only; keep oldest-first visual order |
 | SortableJS CDN | **Pin `1.15.6`** via `wp_enqueue_script` from jsDelivr: `https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js` (dependency of `som-orders-board`) |
 | Zero-gate / multi-skip | **Trust API response** — place/remove card from `current_step_name` / `is_complete`, not from the drop-target column name |

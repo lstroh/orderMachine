@@ -14,7 +14,7 @@ Assumption: base plugin + Update Package 1 complete (`SOM_DB::DB_VERSION` was `1
 | U2-2 | Funding + draw-down hooks | **Done** | Inline hooks in order-sync + PO receive; decisions locked in plan §4 |
 | U2-3 | Budgets admin UI | **Done** | List/edit, badges, adjustments, R&D on budget + material |
 | U2-4 | Order Board read UI | **Done** | Re-confirmed vs plan Create/Modify + done-when + §4 locks; DnD → U2-5 |
-| U2-5 | Order Board gated DnD | Pending | Decisions locked in plan §4 U2-5; not built yet |
+| U2-5 | Order Board gated DnD | **Done** | SortableJS 1.15.6; gated advance-step; Complete zone; extended REST |
 
 ---
 
@@ -484,6 +484,108 @@ Orders Board (som-orders-board):
 
 ---
 
+## Sprint U2-5 — Order Board gated drag-and-drop
+
+- **Status:** **Done** (re-confirmed 2026-08-03 vs `Update-2-Sprint-Plan.md` § Sprint U2-5 Create/Modify/done-when + §4 U2-5 review table)
+- **Completed:** 2026-08-03
+- **Verified on:** Second-pass code review of Sortable enqueue, board view attrs/Complete zone, `orders-board.js` gating, REST `advance-step` extension, and DnD helpers against every plan criterion; `php -l` clean on touched PHP. Live admin DnD not exercised in-session.
+- **Plugin version:** unchanged (`0.18.1`)
+- **DB version:** unchanged (`1.6.0` — no schema delta)
+
+### Plan requirements review (`Update-2-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Modify `admin/assets/js/orders-board.js` + SortableJS **1.15.6** CDN | **Done** | Shared group `som-board`; `sort: false`; gated `onMove`; POST `advance-step` `{}`; snap-back |
+| Modify `admin/views/orders-board.php` | **Done** | Card DnD attrs; sortable lists; Complete zone when any final-step draggable card |
+| Modify `admin/class-som-admin-menu.php` | **Done** | Enqueue `sortablejs` + localize `restUrl` / `restNonce` / `completeKey` / status labels on `somBoard` |
+| Modify `includes/class-som-orders.php` | **Done** | `BOARD_COMPLETE_KEY`; `attach_board_dnd_meta`; next-step names prefilled in `board_columns` |
+| Modify `includes/class-som-rest-api.php` | **Done** | `advance-step` adds `progress_status`, `batch`, `can_advance`, `next_step_name`, `is_last_step` |
+| Light CSS in `admin/assets/css/admin.css` | **Done** | Grab cursor, locked/ghost/drag, Complete zone, board row layout |
+| Extra (engine helper) | **Done** | `SOM_Workflow_Engine::board_dnd_meta()` — mirrors detail `can_mark_done` + next step |
+| **Done when:** shared Sortable; within-column off | **Pass** | `group: 'som-board'`; `sort: false` |
+| **Done when:** only next-step / Complete valid | **Pass** | `validDropTarget` + `onMove` |
+| **Done when:** empty next-step columns prefilled | **Pass** | From `can_advance` cards’ `next_step_name` |
+| **Done when:** drop POSTs advance-step; snap-back | **Pass** | Invalid target or API/network error restores card |
+| **Done when:** non-advanceable not draggable | **Pass** | `draggable: …[data-som-can-advance="1"]` + `is-locked` |
+| **Done when:** success places/removes via response + badges | **Pass** | `placeCardAfterAdvance` / `applyDndMeta` |
+| Open items first | Settled | §4 U2-5 table |
+
+### Locked U2-5 decisions applied (§4)
+
+| Topic | Applied? | How |
+|---|---|---|
+| Prefill empty next-step columns (A) | Yes | `board_columns` merges next names for draggable cards |
+| Complete drop zone (A) | Yes | `BOARD_COMPLETE_KEY` zone outside reorderable columns; shown when any last-step `can_advance` |
+| Card next-step attrs | Yes | `data-som-can-advance`, `data-som-next-step-name`, `data-som-is-last-step`, `data-som-progress-status` |
+| Disable drag when locked | Yes | Only `can_mark_done`-equivalent cards; waiting/error/pending/Unassigned locked |
+| Extend advance-step (B) | Yes | `progress_status` + batch + DnD meta for chaining without reload |
+| No within-column reorder | Yes | Sortable `sort: false` |
+| SortableJS 1.15.6 jsDelivr | Yes | `wp_enqueue_script( 'sortablejs', …@1.15.6… )` |
+| Trust API over drop target | Yes | Placement from `current_step_name` / `is_complete` |
+| REST on `somBoard` | Yes | `restUrl` + `restNonce` |
+
+### Behaviour summary
+
+```
+Orders Board DnD (U2-5):
+  · Sortable shared group across column lists + Complete zone
+  · Drag only if data-som-can-advance=1 (engine can_mark_done)
+  · Valid drop: column key === next step name, or Complete if last step
+  · Drop → POST /som/v1/orders/{id}/advance-step body "{}"
+  · Fail / invalid → snap-back (+ alert on API/network error)
+  · Success + is_complete → remove card
+  · Success + new step → move to response step column; update badges/batch/DnD attrs
+  · Prefill: empty columns for reachable next steps of draggable cards
+  · Complete zone excluded from ←/→ column-order persistence
+```
+
+### Files delivered / modified
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-workflow-engine.php` | `board_dnd_meta()` |
+| `includes/class-som-orders.php` | Complete key; attach DnD meta; next-column prefill |
+| `includes/class-som-rest-api.php` | Extended `advance-step` payload |
+| `admin/views/orders-board.php` | Card attrs; Complete zone; sortable lists |
+| `admin/class-som-admin-menu.php` | Sortable enqueue + `somBoard` REST localize |
+| `admin/assets/js/orders-board.js` | Gated DnD + advance-step client |
+| `admin/assets/css/admin.css` | DnD / locked / Complete / board-row styles |
+| `stikerts/wordpress v3/Update-2-Sprint-Plan.md` | §4 U2-5 locks (pre-build) |
+| `stikerts/wordpress v3/Update-2-Sprint-Progress.md` | This record |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| Shared Sortable group across columns (within-column reorder off) | **Pass** |
+| Only next-step column (or Complete zone for final step) is a valid drop | **Pass** |
+| Empty next-step columns prefilled from draggable cards | **Pass** |
+| Drop POSTs `advance-step` `{}` | **Pass** |
+| Snap-back on invalid drop or API error | **Pass** |
+| Non-advanceable cards not draggable | **Pass** |
+| Success places/removes via `current_step_name` / `is_complete` and updates badges from extended `progress_status` | **Pass** |
+
+### Suggested live smoke (operator)
+
+1. Open **Orders Board**. Confirm advanceable (`In progress`) cards show grab cursor; waiting/error/Unassigned cards do not drag.
+2. Drag toward a wrong column — snap-back (no lasting move).
+3. Drag into the correct next-step column (including an empty prefilled column) — card moves; badges update from response.
+4. If the new step is timer/script/batch — card locks with waiting badge (batch link when applicable).
+5. Final-step card → **Complete** zone — card removed (`is_complete`).
+6. Force/API failure path — alert + snap-back.
+7. Column ←/→ still persist; Complete zone not written into `som_board_column_order`.
+
+### Gaps / residual risk
+
+| Risk | Severity | Notes |
+|---|---|---|
+| `board_dnd_meta` N+1 for `in_progress` cards | Low | Same class of cost as waiting_batch lookups |
+| CDN SortableJS requires network in admin | Info | Pinned 1.15.6; offline admin loses DnD only |
+| Live DnD not clicked in-session | Info | Use smoke list above |
+
+---
+
 ## Verdict
 
-**U2-4 is complete** relative to `Update-2-Sprint-Plan.md`: all Create/Modify files, every done-when criterion, and all §4 U2-4 locked decisions are implemented. Next: **U2-5 — Order Board gated drag-and-drop**.
+**U2-5 is complete** relative to `Update-2-Sprint-Plan.md`: all Modify files, every done-when criterion, and all §4 U2-5 locked decisions are implemented. **Update Package 2 (U2-1–U2-5) is complete** on code review (Budgets + Order Board with gated DnD); live smoke still recommended.

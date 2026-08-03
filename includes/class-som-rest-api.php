@@ -438,22 +438,58 @@ class SOM_REST_API {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public static function advance_step( $request ) {
+		global $wpdb;
+
 		$order_id = (int) $request['id'];
 		$result   = SOM_Workflow_Engine::mark_done( $order_id );
 		if ( is_wp_error( $result ) ) {
 			return self::error_response( $result );
 		}
 
-		$order = SOM_Orders::get( $order_id );
-		return rest_ensure_response(
-			array(
-				'ok'                => true,
-				'order_id'          => $order_id,
-				'current_step_id'   => $order ? (int) $order->current_step_id : 0,
-				'current_step_name' => $order ? (string) $order->current_step_name : '',
-				'is_complete'       => $order ? (int) $order->is_complete : 0,
-			)
+		$order   = SOM_Orders::get( $order_id );
+		$payload = array(
+			'ok'                => true,
+			'order_id'          => $order_id,
+			'current_step_id'   => $order ? (int) $order->current_step_id : 0,
+			'current_step_name' => $order ? (string) $order->current_step_name : '',
+			'is_complete'       => $order ? (int) $order->is_complete : 0,
+			'progress_status'   => '',
+			'batch'             => null,
+			'can_advance'       => false,
+			'next_step_name'    => '',
+			'is_last_step'      => false,
 		);
+
+		if ( $order && empty( $order->is_complete ) && ! empty( $order->current_step_id ) ) {
+			$progress_t = SOM_DB::table( 'order_step_progress' );
+			$status     = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT status FROM {$progress_t} WHERE order_id = %d AND workflow_step_id = %d LIMIT 1",
+					$order_id,
+					(int) $order->current_step_id
+				)
+			);
+			$payload['progress_status'] = is_string( $status ) ? $status : '';
+
+			if ( 'waiting_batch' === $payload['progress_status'] ) {
+				$batch = SOM_Batches::find_for_order( $order_id );
+				if ( $batch ) {
+					$payload['batch'] = array(
+						'id'               => (int) $batch->id,
+						'item_count'       => (int) $batch->item_count,
+						'group_batch_size' => (int) $batch->group_batch_size,
+						'url'              => SOM_Batches::batch_url( (int) $batch->id ),
+					);
+				}
+			}
+
+			$dnd = SOM_Workflow_Engine::board_dnd_meta( $order_id );
+			$payload['can_advance']    = ! empty( $dnd['can_advance'] );
+			$payload['next_step_name'] = (string) $dnd['next_step_name'];
+			$payload['is_last_step']   = ! empty( $dnd['is_last_step'] );
+		}
+
+		return rest_ensure_response( $payload );
 	}
 
 	/**

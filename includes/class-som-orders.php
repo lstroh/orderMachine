@@ -43,6 +43,11 @@ class SOM_Orders {
 	const BOARD_UNASSIGNED_KEY = '__unassigned__';
 
 	/**
+	 * Drop-zone key for completing the final workflow step (board DnD).
+	 */
+	const BOARD_COMPLETE_KEY = '__complete__';
+
+	/**
 	 * Whether a stored raw payload indicates cancellation.
 	 *
 	 * @param string|array|null $raw_payload JSON string or decoded array.
@@ -541,6 +546,7 @@ class SOM_Orders {
 			if ( 'waiting_batch' === (string) $order->progress_status ) {
 				$order->batch = SOM_Batches::find_for_order( (int) $order->id );
 			}
+			self::attach_board_dnd_meta( $order );
 		}
 
 		return array(
@@ -549,6 +555,32 @@ class SOM_Orders {
 			'capped' => $total > $cap,
 			'warn'   => $total >= self::BOARD_WARN,
 		);
+	}
+
+	/**
+	 * Attach DnD gating fields used by the Order Board (U2-5).
+	 *
+	 * @param object $order Board order row (mutated).
+	 * @return void
+	 */
+	public static function attach_board_dnd_meta( $order ) {
+		$order->can_advance    = false;
+		$order->next_step_name = '';
+		$order->is_last_step   = false;
+
+		if ( empty( $order->current_step_id ) ) {
+			return;
+		}
+
+		// Fast path: engine only allows mark-done when status is in_progress.
+		if ( 'in_progress' !== (string) $order->progress_status ) {
+			return;
+		}
+
+		$meta = SOM_Workflow_Engine::board_dnd_meta( (int) $order->id );
+		$order->can_advance    = ! empty( $meta['can_advance'] );
+		$order->next_step_name = (string) $meta['next_step_name'];
+		$order->is_last_step   = ! empty( $meta['is_last_step'] );
 	}
 
 	/**
@@ -592,6 +624,13 @@ class SOM_Orders {
 			$key = isset( $order->column_key ) ? (string) $order->column_key : self::BOARD_UNASSIGNED_KEY;
 			if ( ! isset( $present[ $key ] ) ) {
 				$present[ $key ] = true;
+			}
+			// Prefill empty next-step columns for draggable cards (U2-5).
+			if ( ! empty( $order->can_advance ) && empty( $order->is_last_step ) ) {
+				$next = trim( (string) ( $order->next_step_name ?? '' ) );
+				if ( '' !== $next ) {
+					$present[ $next ] = true;
+				}
 			}
 		}
 

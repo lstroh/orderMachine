@@ -704,12 +704,19 @@
 	margin: 0 -4px;
 }
 
-.som-board-columns {
+.som-board-row {
 	display: flex;
 	gap: 12px;
 	align-items: flex-start;
 	min-width: min-content;
 	padding: 4px;
+}
+
+.som-board-columns {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	min-width: min-content;
 }
 
 .som-board-column {
@@ -719,6 +726,18 @@
 	border: 1px solid #dcdcde;
 	border-radius: 4px;
 	min-height: 120px;
+}
+
+.som-board-complete-zone {
+	background: #f0f6fc;
+	border-color: #72aee6;
+	border-style: dashed;
+}
+
+.som-board-complete-hint {
+	margin: 12px 4px;
+	text-align: center;
+	pointer-events: none;
 }
 
 .som-board-column-header {
@@ -763,6 +782,7 @@
 	gap: 8px;
 	max-height: calc(100vh - 280px);
 	overflow-y: auto;
+	min-height: 48px;
 }
 
 .som-board-empty-col {
@@ -775,6 +795,34 @@
 	border-radius: 4px;
 	padding: 10px;
 	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.som-board-card[data-som-can-advance="1"] {
+	cursor: grab;
+}
+
+.som-board-card.is-locked {
+	opacity: 0.92;
+	cursor: default;
+}
+
+.som-board-card.is-advancing {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.som-board-card-ghost {
+	opacity: 0.45;
+	background: #eef5fb;
+	border-style: dashed;
+}
+
+.som-board-card-chosen {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.som-board-card-drag {
+	cursor: grabbing;
 }
 
 .som-board-card.is-pinned {
