@@ -140,6 +140,38 @@ Board DnD:
 | Editable after create | As model already allows — name, notes, target reserve, `is_active`; manual funding method/value + product links; material workflow links. Type / `material_id` immutable. No further UI lock-down |
 | Ink (O1) | Short help text on create — ink as material recipe **or** manual `fixed_amount` budget |
 
+### U2-4 Order Board read UI (from U2-4 review)
+
+| Topic | Decision |
+|-------|----------|
+| No current step | **Unassigned** column for incomplete orders with null `current_step_id` (needs mapping / needs workflow) |
+| Cancelled orders | **Exclude** always (even if incomplete) |
+| Product / workflow filter | **B — two dropdowns** (product and workflow template, independently) |
+| Column reorder UX | **B — ←/→ buttons** on column headers; persist per-user |
+| Pins + column order save | Instant AJAX to user meta; keys `som_board_pinned_orders`, `som_board_column_order` |
+| Within-column card sort | **Oldest order first** (`order_date` ASC, then `id` ASC) |
+| Volume | Load all incomplete open orders; **warn** ≥ **200**; hard **cap 500** (oldest kept when capped) |
+| Progress badges | **In U2-4** — show `waiting_timer` / `waiting_script` / `waiting_batch` / `error` (and batch link when applicable); not deferred to U2-5 |
+| Menu placement | **Orders Board** submenu immediately after **Orders** |
+| Card links | Only **order ID**, **product name(s)**, and explicit **View** → order detail; card body itself not a single click target |
+| Free-text search | Buyer, external order ID, **and** personalisation (extend beyond list query) |
+| Completed orders (O6) | Active/incomplete only; link to Orders list for history |
+| Narrow screen (O7) | Horizontal scroll |
+
+### U2-5 Order Board gated DnD (from U2-5 review)
+
+| Topic | Decision |
+|-------|----------|
+| Missing next-step column | **A — Prefill** empty columns for every reachable next step name among **draggable** (`in_progress` + can advance) cards on the board. Merge into column order via existing user-meta + auto heuristic. Avoids “nowhere to drop” when no order is in that step yet |
+| Last step / complete | **A — Ephemeral Complete drop zone** always available when any draggable card is on its final step; successful drop removes the card (`is_complete`) |
+| Next-step data on cards | **Yes** — server-rendered attrs (e.g. `data-next-step-name`, `data-can-advance`, `data-progress-status`, last-step flag); computed from workflow like detail “Mark done” |
+| Locked cards | **Disable drag entirely** when not advanceable: `waiting_*` / `error` / `pending`, Unassigned, and any card where `can_mark_done` would fail |
+| Post-drop status | **B — Extend** `advance-step` JSON with `progress_status` (and batch summary when `waiting_batch`) so the board can update badges without reload |
+| Within-column reorder | **Disabled** — cross-column advance only; keep oldest-first visual order |
+| SortableJS CDN | **Pin `1.15.6`** via `wp_enqueue_script` from jsDelivr: `https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js` (dependency of `som-orders-board`) |
+| Zero-gate / multi-skip | **Trust API response** — place/remove card from `current_step_name` / `is_complete`, not from the drop-target column name |
+| REST on board | Localize `restUrl` + `restNonce` on `somBoard` (same pattern as `somAdmin` on order detail) |
+
 ### R&D / non-sale write-off (from U2-1 review Q5)
 
 **Answer: B — Linked write-off.**
@@ -230,10 +262,10 @@ Budgets and Order Board are independent (per `01-Update-Overview.md`). Sequence 
 | | |
 |--|--|
 | **Feature** | Order Board — Kanban without drag-and-drop |
-| **Create** | `admin/views/orders-board.php`; `admin/assets/js/orders-board.js` (filters, pins, column reorder UI); board styles in `admin/assets/css/admin.css` or dedicated CSS enqueued with the board |
-| **Modify** | `admin/class-som-admin-menu.php` (Orders Board submenu beside Orders list); asset enqueue for board page |
-| **Done when** | Columns = distinct current step names among incomplete orders; column order = saved per-user manual order merged with auto lowest-`step_order` heuristic for unknowns; cards show order ref/external ID, channel badge, buyer, product, personalisation preview, step name, time in step, batch indicator linking to Batches when applicable; filters: channel, product/workflow template, free-text, pinned-only; pins in user meta; horizontal scroll; no completed-order columns; link to Orders list for history |
-| **Open items first** | O5, O6, O7 locked |
+| **Create** | `admin/views/orders-board.php`; `admin/assets/js/orders-board.js` (filters, pins, column ←/→ reorder, AJAX pin/order save); board styles in `admin/assets/css/admin.css` or dedicated CSS enqueued with the board |
+| **Modify** | `admin/class-som-admin-menu.php` (Orders Board submenu immediately after Orders; asset enqueue; AJAX handlers for pins + column order); extend order query helpers as needed for board filters / personalisation search / progress + batch fields |
+| **Done when** | Columns = distinct current step names among incomplete non-cancelled orders **plus Unassigned** when needed; column order = saved per-user order merged with auto lowest-`step_order` (←/→ buttons); cards show order ref/external ID (linked), channel badge, buyer, product (linked), personalisation preview, step name, time in step, progress status badges, batch indicator linking to Batches when applicable, View link; filters: channel, product, workflow template (two dropdowns), free-text (incl. personalisation), pinned-only; pins via AJAX user meta; oldest-first within columns; volume warn then hard cap; horizontal scroll; link to Orders list for history |
+| **Open items first** | O5, O6, O7 locked; see §4 U2-4 table |
 
 ---
 
@@ -242,15 +274,15 @@ Budgets and Order Board are independent (per `01-Update-Overview.md`). Sequence 
 | | |
 |--|--|
 | **Feature** | Order Board — SortableJS + existing advance-step |
-| **Modify** | `admin/assets/js/orders-board.js` (+ enqueue SortableJS via CDN); reuse REST nonce / `somAdmin`-style pattern from `admin/assets/js/admin.js` |
-| **Done when** | Shared Sortable group across columns; only the column matching the order’s eligible next step is a valid drop target (client-side); drop POSTs `advance-step` with `{}`; snap-back on invalid drop or API error; cards not in `in_progress` (timer/script/batch waiting) are not treated as fully advanced — pending/locked UX; success uses response `current_step_name` / `is_complete` to move or remove the card |
-| **Open items first** | None remaining |
+| **Modify** | `admin/assets/js/orders-board.js` (+ enqueue SortableJS **1.15.6** CDN); `admin/views/orders-board.php` (card DnD attrs; prefill empty next-step columns; Complete drop zone); `admin/class-som-admin-menu.php` (enqueue Sortable + localize `restUrl`/`restNonce` on `somBoard`); `includes/class-som-orders.php` (next-step / can-advance helpers for board cards + empty next columns); `includes/class-som-rest-api.php` (`advance-step` adds `progress_status` + batch when applicable); light CSS in `admin/assets/css/admin.css` |
+| **Done when** | Shared Sortable group across columns (within-column reorder off); only next-step column (or Complete zone for final step) is a valid drop; empty next-step columns prefilled from draggable cards; drop POSTs `advance-step` `{}`; snap-back on invalid/API error; non-advanceable cards not draggable; success places/removes via response `current_step_name` / `is_complete` and updates badges from extended `progress_status` |
+| **Open items first** | None — see §4 U2-5 table |
 
 ---
 
 ## 7. Implementation notes (for later build — not this planning task)
 
-- **Additive only** — do not rework stock, WAC, or workflow engine beyond the two inline hook calls and the new Board UI caller of advance-step.
+- **Additive only** — do not rework stock, WAC, or workflow engine beyond the two inline budget hook calls, the Board UI caller of advance-step, and the small additive `advance-step` response fields (`progress_status` / batch) for U2-5.
 - **Idempotency:** locked — skip `fund_on_create` if any `sale_funding` row exists for that `order_id` (see §4 U2-2 table).
 - **Primary product / workflow for scope:** same rule as existing assignment — first `order_items` row with non-null `product_id` → product’s workflow template.
 - **Draw-down amount:** landed cost for the received delta (`delta × landed_unit_cost`), material budgets only, opt-in (no budget for that material → no-op). Workflow scope applies to **funding**; draw-down is by `material_id` on the PO line (any linked material budget for that material).

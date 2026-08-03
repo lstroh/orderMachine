@@ -31,6 +31,8 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
 		add_action( 'wp_ajax_som_preview_po_impact', array( __CLASS__, 'ajax_preview_po_impact' ) );
+		add_action( 'wp_ajax_som_board_toggle_pin', array( __CLASS__, 'ajax_board_toggle_pin' ) );
+		add_action( 'wp_ajax_som_board_save_columns', array( __CLASS__, 'ajax_board_save_columns' ) );
 	}
 
 	/**
@@ -56,6 +58,15 @@ class SOM_Admin_Menu {
 			'manage_options',
 			'som-orders',
 			array( __CLASS__, 'render_orders' )
+		);
+
+		add_submenu_page(
+			'som-orders',
+			__( 'Orders Board', 'order-machine' ),
+			__( 'Orders Board', 'order-machine' ),
+			'manage_options',
+			'som-orders-board',
+			array( __CLASS__, 'render_orders_board' )
 		);
 
 		add_submenu_page(
@@ -152,7 +163,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
 			return;
 		}
 
@@ -185,6 +196,28 @@ class SOM_Admin_Menu {
 				wp_localize_script( 'som-admin', 'somAdmin', $localize );
 			}
 		}
+
+		if ( 'som-orders-board' === $page ) {
+			wp_enqueue_script(
+				'som-orders-board',
+				SOM_PLUGIN_URL . 'admin/assets/js/orders-board.js',
+				array(),
+				SOM_VERSION,
+				true
+			);
+			wp_localize_script(
+				'som-orders-board',
+				'somBoard',
+				array(
+					'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+					'nonce'   => wp_create_nonce( 'som_orders_board' ),
+					'i18n'    => array(
+						'pin'   => __( 'Pin', 'order-machine' ),
+						'unpin' => __( 'Unpin', 'order-machine' ),
+					),
+				)
+			);
+		}
 	}
 
 	/**
@@ -213,6 +246,19 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/orders-list.php';
+	}
+
+	/**
+	 * Order Board (Kanban read UI).
+	 *
+	 * @return void
+	 */
+	public static function render_orders_board() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/orders-board.php';
 	}
 
 	/**
@@ -1638,6 +1684,60 @@ class SOM_Admin_Menu {
 		}
 
 		wp_send_json_success( $preview );
+	}
+
+	/**
+	 * AJAX: toggle Order Board pin for current user.
+	 *
+	 * @return void
+	 */
+	public static function ajax_board_toggle_pin() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Forbidden.', 'order-machine' ) ), 403 );
+		}
+
+		check_ajax_referer( 'som_orders_board', 'nonce' );
+
+		$order_id = isset( $_POST['order_id'] ) ? (int) $_POST['order_id'] : 0;
+		if ( $order_id < 1 ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid order.', 'order-machine' ) ) );
+		}
+
+		$pinned = SOM_Orders::toggle_board_pin( $order_id );
+		wp_send_json_success( array( 'pinned' => $pinned ) );
+	}
+
+	/**
+	 * AJAX: save Order Board column order for current user.
+	 *
+	 * @return void
+	 */
+	public static function ajax_board_save_columns() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Forbidden.', 'order-machine' ) ), 403 );
+		}
+
+		check_ajax_referer( 'som_orders_board', 'nonce' );
+
+		$raw = isset( $_POST['columns'] ) ? wp_unslash( $_POST['columns'] ) : array();
+		if ( is_string( $raw ) ) {
+			$decoded = json_decode( $raw, true );
+			$raw     = is_array( $decoded ) ? $decoded : array();
+		}
+		if ( ! is_array( $raw ) ) {
+			$raw = array();
+		}
+
+		$keys = array();
+		foreach ( $raw as $key ) {
+			$key = sanitize_text_field( (string) $key );
+			if ( '' !== $key ) {
+				$keys[] = $key;
+			}
+		}
+
+		SOM_Orders::set_board_column_order( $keys );
+		wp_send_json_success( array( 'columns' => $keys ) );
 	}
 
 	/**

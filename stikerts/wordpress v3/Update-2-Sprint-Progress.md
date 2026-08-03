@@ -13,8 +13,8 @@ Assumption: base plugin + Update Package 1 complete (`SOM_DB::DB_VERSION` was `1
 | U2-1 | Budgets schema + model | **Done** | Code complete vs plan; migrate on next admin load / activate |
 | U2-2 | Funding + draw-down hooks | **Done** | Inline hooks in order-sync + PO receive; decisions locked in plan §4 |
 | U2-3 | Budgets admin UI | **Done** | List/edit, badges, adjustments, R&D on budget + material |
-| U2-4 | Order Board read UI | Pending | |
-| U2-5 | Order Board gated DnD | Pending | |
+| U2-4 | Order Board read UI | **Done** | Re-confirmed vs plan Create/Modify + done-when + §4 locks; DnD → U2-5 |
+| U2-5 | Order Board gated DnD | Pending | Decisions locked in plan §4 U2-5; not built yet |
 
 ---
 
@@ -358,6 +358,132 @@ Material edit:
 
 ---
 
+## Sprint U2-4 — Order Board read UI
+
+- **Status:** **Done** (re-confirmed 2026-08-03 vs `Update-2-Sprint-Plan.md` § Sprint U2-4 Create/Modify/done-when + §4 U2-4 review table)
+- **Completed:** 2026-08-03
+- **Verified on:** Second-pass code review of board view, JS (pins/column ←→), admin menu submenu + enqueue + AJAX, and `SOM_Orders` board helpers against every plan criterion; `php -l` clean. Live admin click-through not exercised in-session.
+- **Plugin version:** unchanged (`0.18.1`)
+- **DB version:** unchanged (`1.6.0` — no schema delta; pins + column order in user meta only)
+
+### Plan requirements review (`Update-2-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Create `admin/views/orders-board.php` | **Done** | Kanban columns/cards, filters form, volume notices, history link |
+| Create `admin/assets/js/orders-board.js` | **Done** | Pin toggle AJAX, pinned-only filter, column ←/→ + save AJAX |
+| Board styles in `admin.css` (or dedicated) | **Done** | Horizontal scroll board layout in `admin/assets/css/admin.css` |
+| Modify `admin/class-som-admin-menu.php` — submenu after Orders | **Done** | `som-orders-board` immediately after Orders |
+| Asset enqueue for board page | **Done** | `som-admin` CSS + `som-orders-board` JS + `somBoard` localize |
+| AJAX handlers for pins + column order | **Done** | `ajax_board_toggle_pin`, `ajax_board_save_columns` |
+| Extend order query helpers | **Done** | `query_board`, `board_columns`, pin/column meta, time/personalisation helpers |
+| **Done when:** columns = step names + Unassigned | **Pass** | From incomplete non-cancelled only |
+| **Done when:** column order = user meta + auto lowest-`step_order` | **Pass** | ←/→ buttons; unknowns append via heuristic |
+| **Done when:** card fields + badges + batch + View | **Pass** | Linked order ID + product + View only |
+| **Done when:** filters channel / product / workflow / free-text / pinned-only | **Pass** | Two dropdowns; search includes personalisation |
+| **Done when:** pins AJAX user meta | **Pass** | `som_board_pinned_orders` |
+| **Done when:** oldest-first; warn then hard cap | **Pass** | Warn ≥200; cap 500 |
+| **Done when:** horizontal scroll; Orders list history link | **Pass** | |
+| Open items first | Settled | O5, O6, O7 + §4 U2-4 table |
+
+### Locked U2-4 decisions applied (§4)
+
+| Topic | Applied? | How |
+|---|---|---|
+| Unassigned column | Yes | Null/`empty` current step → `BOARD_UNASSIGNED_KEY`; auto-sorted first |
+| Exclude cancelled | Yes | `NOT cancelled_sql` in `query_board` |
+| Two filter dropdowns | Yes | Independent product + workflow selects |
+| Column ←/→ | Yes | Header buttons; persist via `som_board_save_columns` |
+| Instant pin/column AJAX | Yes | Meta keys `som_board_pinned_orders`, `som_board_column_order` |
+| Oldest order first | Yes | `ORDER BY order_date ASC, id ASC` |
+| Warn 200 / cap 500 | Yes | `BOARD_WARN` / `BOARD_CAP`; notices in view |
+| Progress badges in U2-4 | Yes | `som-badge-step-*` for timer/script/batch/error/etc. |
+| Menu after Orders | Yes | Submenu registration order |
+| Card links: ID, product, View | Yes | Card body not a single click target |
+| Free-text incl. personalisation | Yes | Buyer + external ID + item personalisation LIKE |
+| Completed only via Orders list (O6) | Yes | `is_complete = 0`; “View history” → complete list filter |
+| Horizontal scroll (O7) | Yes | `.som-board-scroll { overflow-x: auto }` |
+
+### Behaviour summary
+
+```
+Orders Board (som-orders-board):
+  · Query incomplete + non-cancelled (oldest first, cap 500)
+  · Columns = distinct current step names + Unassigned when needed
+  · Column order = user meta then auto MIN(step_order) for new names
+  · Cards: channel, buyer, personalisation preview, step, time-in-step,
+    progress badges, batch link (waiting_batch), pin ★
+  · Links: external order ID → detail; product → product detail; View → detail
+  · Filters (GET): channel, product, workflow, free-text
+  · Client: pinned-only toggle; pin AJAX; column ←/→ AJAX
+  · Volume: info notice ≥200; warning + oldest-only when >500
+```
+
+### Files delivered / modified
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-orders.php` | `query_board`, columns, pins, time helpers, `board_url` |
+| `admin/views/orders-board.php` | Board page (new) |
+| `admin/assets/js/orders-board.js` | Pins + column reorder (new) |
+| `admin/assets/css/admin.css` | Board layout / horizontal scroll |
+| `admin/class-som-admin-menu.php` | Submenu after Orders; enqueue; AJAX |
+| `stikerts/wordpress v3/Update-2-Sprint-Plan.md` | §4 U2-4 locks (pre-build) |
+| `stikerts/wordpress v3/Update-2-Sprint-Progress.md` | This record |
+
+### API / helpers added (U2-4)
+
+| Method / constant | Role |
+|---|---|
+| `BOARD_WARN` / `BOARD_CAP` | 200 / 500 volume guards |
+| `BOARD_PINNED_META` / `BOARD_COLUMN_META` | User meta keys |
+| `BOARD_UNASSIGNED_KEY` | Column key for no current step |
+| `query_board` | Board dataset |
+| `board_columns` / `board_step_order_map` | Column list + auto order |
+| `get/set/toggle_board_pin*` | Pin persistence |
+| `get/set_board_column_order` | Column order persistence |
+| `format_time_in_step` / `truncate_personalisation` / `progress_status_label` | Card display |
+| `board_url` | Admin URL helper |
+
+### Done-when checklist (from plan)
+
+| Criterion | Result |
+|---|---|
+| Columns = distinct current step names among incomplete non-cancelled + Unassigned when needed | **Pass** |
+| Column order = saved per-user order merged with auto lowest-`step_order` (←/→) | **Pass** |
+| Cards: linked order ref, channel badge, buyer, linked product, personalisation, step, time in step, progress badges, batch→Batches, View | **Pass** |
+| Filters: channel, product, workflow (two dropdowns), free-text (incl. personalisation), pinned-only | **Pass** |
+| Pins via AJAX user meta | **Pass** |
+| Oldest-first within columns; volume warn then hard cap | **Pass** |
+| Horizontal scroll; link to Orders list for history | **Pass** |
+
+### Explicitly out of scope for U2-4
+
+| Item | Sprint |
+|---|---|
+| SortableJS gated drag-and-drop / `advance-step` | U2-5 |
+
+### Suggested live smoke (operator)
+
+1. Open **Order Machine → Orders Board** (directly under Orders).
+2. Confirm columns for current steps + Unassigned; ←/→ reorder persists after refresh.
+3. Pin a card; toggle **Pinned only**; unpin.
+4. Filter by channel, product, workflow, and personalisation search.
+5. Confirm progress badges and batch link when waiting on a batch.
+6. Confirm order ID / product / View links; card body itself is not one big link.
+7. Confirm cancelled/completed orders are absent; use Orders list / View history for history.
+8. (Optional) With many open orders: info notice at ≥200; hard cap notice above 500.
+
+### Gaps / residual risk
+
+| Risk | Severity | Notes |
+|---|---|---|
+| N+1 `find_for_order` for waiting_batch cards | Low | Only when progress status is `waiting_batch` |
+| Product/workflow filter dropdowns capped (500 / 200 active) | Low | Same pattern as other admin lists |
+| Live admin UI not clicked in-session | Info | Use smoke list above |
+
+---
+
 ## Verdict
 
-**U2-3 is complete** relative to `Update-2-Sprint-Plan.md`: all Create/Modify files, every done-when criterion, and all §4 U2-3 locked decisions are implemented. Next: **U2-4 — Order Board read UI**.
+**U2-4 is complete** relative to `Update-2-Sprint-Plan.md`: all Create/Modify files, every done-when criterion, and all §4 U2-4 locked decisions are implemented. Next: **U2-5 — Order Board gated drag-and-drop**.

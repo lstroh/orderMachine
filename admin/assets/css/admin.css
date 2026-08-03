@@ -684,4 +684,158 @@
 	margin: 16px 0 24px;
 }
 
+/* Order Board (U2-4) */
+
+.som-orders-board-wrap .description {
+	margin-top: 8px;
+}
+
+.som-board-filters .som-board-pinned-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: 8px;
+	white-space: nowrap;
+}
+
+.som-board-scroll {
+	overflow-x: auto;
+	padding-bottom: 12px;
+	margin: 0 -4px;
+}
+
+.som-board-columns {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	min-width: min-content;
+	padding: 4px;
+}
+
+.som-board-column {
+	flex: 0 0 280px;
+	width: 280px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	min-height: 120px;
+}
+
+.som-board-column-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 10px 10px 8px;
+	border-bottom: 1px solid #dcdcde;
+	background: #fff;
+	border-radius: 4px 4px 0 0;
+}
+
+.som-board-column-title {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	min-width: 0;
+}
+
+.som-board-column-title strong {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.som-board-column-count {
+	color: #646970;
+	font-size: 12px;
+}
+
+.som-board-column-actions {
+	display: flex;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+.som-board-cards {
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: calc(100vh - 280px);
+	overflow-y: auto;
+}
+
+.som-board-empty-col {
+	margin: 8px 4px;
+}
+
+.som-board-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 10px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.som-board-card.is-pinned {
+	border-color: #dba617;
+	box-shadow: inset 3px 0 0 #dba617;
+}
+
+.som-board-card-top {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 6px;
+}
+
+.som-board-pin {
+	border: 0;
+	background: transparent;
+	color: #c3c4c7;
+	cursor: pointer;
+	padding: 0;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.som-board-card.is-pinned .som-board-pin,
+.som-board-pin[aria-pressed="true"] {
+	color: #dba617;
+}
+
+.som-board-time {
+	margin-left: auto;
+	font-size: 12px;
+	color: #646970;
+	font-weight: 600;
+}
+
+.som-board-card-id {
+	margin-bottom: 4px;
+}
+
+.som-board-card-buyer {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.som-board-card-product {
+	font-size: 13px;
+	margin-bottom: 4px;
+	word-break: break-word;
+}
+
+.som-board-card-meta {
+	margin-top: 6px;
+}
+
+.som-board-card-batch {
+	margin-top: 6px;
+	font-size: 12px;
+}
+
+.som-board-card-actions {
+	margin-top: 8px;
+}
 
