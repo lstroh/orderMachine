@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.5.0';
+	const DB_VERSION = '1.6.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -290,6 +290,60 @@ class SOM_DB {
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY material_id (material_id),
+			KEY order_id (order_id),
+			KEY purchase_order_item_id (purchase_order_item_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_budgets (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			name varchar(100) NOT NULL,
+			type enum('material','manual') NOT NULL,
+			material_id bigint(20) unsigned NULL,
+			funding_method enum('material_cost','percent_of_price','percent_of_profit','fixed_amount') NOT NULL,
+			funding_value decimal(10,4) NULL,
+			target_reserve_amount decimal(10,2) NULL,
+			current_balance decimal(12,4) NOT NULL DEFAULT 0.0000,
+			notes text NULL,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY material_id (material_id),
+			KEY type (type),
+			KEY is_active (is_active)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_budget_product_links (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			budget_id bigint(20) unsigned NOT NULL,
+			product_id bigint(20) unsigned NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY budget_product (budget_id,product_id),
+			KEY product_id (product_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_budget_workflow_links (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			budget_id bigint(20) unsigned NOT NULL,
+			workflow_template_id bigint(20) unsigned NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY budget_workflow (budget_id,workflow_template_id),
+			KEY workflow_template_id (workflow_template_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_budget_ledger (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			budget_id bigint(20) unsigned NOT NULL,
+			order_id bigint(20) unsigned NULL,
+			purchase_order_item_id bigint(20) unsigned NULL,
+			change_amount decimal(12,4) NOT NULL,
+			reason varchar(50) NOT NULL,
+			notes text NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY budget_id (budget_id),
 			KEY order_id (order_id),
 			KEY purchase_order_item_id (purchase_order_item_id)
 		) {$charset_collate};";

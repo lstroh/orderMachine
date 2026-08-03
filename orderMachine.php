@@ -32,6 +32,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-batches.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-materials.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-costing.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-material-goals.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-budgets.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-products.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-stock.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflows.php';

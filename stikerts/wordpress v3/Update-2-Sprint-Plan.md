@@ -1,0 +1,232 @@
+# Update Package 2 — Sprint Plan
+
+*Planning only. No plugin implementation in this document’s delivery. Assumes the base plugin plus Update Package 1 (Raw Material Purchasing + Batch Processing) are already built and working.*
+
+**Source specs:** `01-Update-Overview.md` … `05-Update-Cursor-Prompt.md` in this folder.  
+**Code examined against:** live plugin (schema `SOM_DB::DB_VERSION = 1.5.0`).
+
+---
+
+## 1. Consolidated open items
+
+`02-Update-Data-Model.md` has **no** Open items section. Items below are from `03-Update-Budgets.md` and `04-Update-Order-Board.md`.
+
+| # | Source | Open item | What it blocks / affects |
+|---|--------|-----------|---------------------------|
+| O1 | Budgets §6.1 | **Ink tracking** — ink is not a discrete-unit material; auto `material_cost` funding needs an ink material + recipe rows, or use a manual `fixed_amount` budget instead | Ops / product setup; not schema for this package |
+| O2 | Budgets §6.2 | **Per-workflow scoping** — material budgets global vs scoped per workflow (like Update Package 1 goal costs) | Schema + funding eligibility + admin UI |
+| O3 | Budgets §6.3 | **Negative balances** — allow (recommended) vs block when overspent | Validation / UI messaging only |
+| O4 | Budgets §6.4 | **`percent_of_profit` basis** — actual sold price vs target selling price | Funding calculation |
+| O5 | Board §7.1 | **Column ordering** — lowest-step-order heuristic vs manual pin/reorder | Board UI + per-user persistence |
+| O6 | Board §7.2 | **Completed orders** — active-only (recommended) vs peek at recently completed | Board query / columns / UX |
+| O7 | Board §7.3 | **Narrow-screen behaviour** — horizontal scroll vs stacked/collapsed columns | CSS / layout only |
+
+---
+
+## 2. Clarifying questions (kept visible) and answers
+
+### Q1 — Material budget scoping (O2)
+
+Specs say material budgets are global (fund from any product using that material). Keep that for v1, or add per-workflow scoping now?
+
+**Answer:** **Both.** Default is global; optional per-workflow-template scope via links.
+
+### Q2 — Board column ordering (O5)
+
+Ship with “lowest step-order seen” only, or build manual column pinning/reordering from the start?
+
+**Answer:** **Both.** Auto-order by lowest `step_order` seen, **plus** manual reorder (persist per-user). Exact UX for reorder can be refined during Board sprints; plan for both modes.
+
+### Recommendations (confirmed)
+
+| Topic | Recommendation | Confirmed? |
+|-------|----------------|------------|
+| Ink (O1) | Out of scope for this package — ops note: add ink as a material in recipes, or use a manual `fixed_amount` budget | Yes |
+| Negative balances (O3) | Allow (same signal as negative `materials.current_stock`) | Yes |
+| `percent_of_profit` (O4) | Use actual `order_items.unit_price` when set, else `products.target_selling_price` | Yes |
+| Completed orders (O6) | Active / incomplete only; link to full Orders list for history | Yes |
+| Narrow screen (O7) | Horizontal scroll; no stacked mobile view in this package | Yes |
+
+---
+
+## 3. Spec vs code discrepancies
+
+Treat the existing codebase as ground truth. None of these invalidate the features; they refine hook points and naming.
+
+| Spec assumption | Reality in code |
+|-----------------|-----------------|
+| Budget funding / draw-down via WordPress actions | **No** `do_action` / `apply_filters` in plugin PHP — add **inline calls** |
+| “Purchase receipt” handler beside WAC | Receipt = `SOM_Purchase_Orders::receive()` on `purchase_orders` / `purchase_order_items`. WAC is inside `SOM_Materials::adjust_stock()` when receive passes `value_change` + `sync_unit_cost => true` — not a separate step |
+| `material_stock` / `purchase_receipt` tables | Stock on `materials` + audit `material_stock_log`. Purchases are `purchase_orders` / `purchase_order_items` |
+| Order create + stock decrement | `SOM_Order_Sync::upsert_order` → `SOM_Material_Stock::decrement_on_create` when `$apply_stock` is true (history import uses `false`) |
+| `products.target_selling_price` + sold price on items | **Exist:** `target_selling_price`; items have **`unit_price`** only (no `sold_price` / `line_total`) |
+| Budget tables already present | **Absent** — planning only until U2-1 |
+| Order Board / SortableJS | **Absent** — Orders list + detail only |
+| `advance-step` for drag-and-drop | `POST /wp-json/som/v1/orders/{id}/advance-step`, body `{}`, **no target step**. Marks current step done via `SOM_Workflow_Engine::mark_done`. Board must validate next column client-side. Only works when progress status is `in_progress` |
+| `02` Open items | Spec prompt said files 2–4 each have Open items; **02 has none** |
+
+### Confirmed hook points
+
+```
+Order create (funding):
+  SOM_Order_Sync::upsert_order
+    → SOM_Workflow_Engine::assign_on_create
+    → if $apply_stock:
+         SOM_Material_Stock::decrement_on_create( $order_id )
+         SOM_Budgets::fund_on_create( $order_id )   // add here
+
+PO receive (draw-down):
+  SOM_Purchase_Orders::receive( $id, $deltas )
+    → per line after successful adjust_stock(...):
+         SOM_Budgets::drawdown_on_receive( ... )   // add here
+  Do NOT hook mark_received() (shortfall close — no stock / no WAC)
+
+Board DnD:
+  SortableJS drop → POST .../orders/{id}/advance-step  body "{}"
+  Success: { ok, order_id, current_step_id, current_step_name, is_complete }
+```
+
+---
+
+## 4. Locked product decisions
+
+| Topic | Decision |
+|-------|----------|
+| Material budget scope | **Both:** empty `budget_workflow_links` = global; non-empty = fund only when the order’s assigned workflow template is linked |
+| Manual budget scope | Unchanged from spec: empty `budget_product_links` = all products; else product-scoped |
+| Board column order | Auto by lowest `step_order` seen across templates for that step name; **plus** per-user manual reorder (user meta, e.g. `som_board_column_order`). New columns not in saved order append via auto heuristic |
+| Ink | Ops-only; not implemented in this package |
+| Negative balances | Allowed; surface overspent / low-balance badges |
+| Effective sold price | `order_items.unit_price` if set, else `products.target_selling_price` |
+| Board population | Incomplete orders only (`is_complete = 0`, not cancelled as appropriate to existing list filters) |
+| Narrow screen | Horizontal scroll |
+| One material budget per material | **Yes** — `UNIQUE` on `budgets.material_id` where used; model rejects a second `type=material` row for the same material |
+| Link-row uniqueness | **Yes** — `UNIQUE (budget_id, product_id)` and `UNIQUE (budget_id, workflow_template_id)` |
+| Cross-type links in DB | **Allowed** — product links on material budgets / workflow links on manual budgets are not DB-rejected; UI (U2-3) only offers the intended combinations |
+| Budget lifecycle | **`is_active`** soft-deactivate (materials-style); no hard-delete of budgets with history for v1 |
+| Balance mutation | **`current_balance` only via ledger helper**; create starts at `0`; no direct balance edits |
+| R&D / non-sale write-off | **B — Linked:** one action decrements stock and debits the material budget by `qty × WA unit_cost` (`manual_adjustment`); notes for reason. Standalone budget adjustments remain available |
+| Schema version | Bump `SOM_DB::DB_VERSION` / `som_db_version` to **`1.6.0`** |
+| Indexes | Add FK-style keys on budget tables (`budget_id`, `material_id`, `order_id`, `purchase_order_item_id`, etc.) |
+
+### R&D / non-sale write-off (from U2-1 review Q5)
+
+**Answer: B — Linked write-off.**
+
+One operator action decrements material stock **and** posts a negative `manual_adjustment` on that material’s budget for `qty × WA unit_cost` (same cost basis as stock/WAC). Notes field required or strongly encouraged (e.g. “R&D”).
+
+| Layer | Where it lands |
+|-------|----------------|
+| Model helper | Prefer `SOM_Budgets` (or thin wrapper) that calls `SOM_Materials::adjust_stock` then ledger write — atomic as far as practical; no-op budget side if no active material budget for that material |
+| UI | U2-3 (budget and/or material edit) — not required for U2-1 schema done-when; helper can ship in U2-1 for testability |
+| Standalone budget adjustment | Still available for deposits/withdrawals that are not stock-linked |
+
+---
+
+## 5. Schema delta beyond `02-Update-Data-Model.md`
+
+Specs define three new tables. Locked scoping adds a **fourth**, plus columns/constraints from U2-1 review:
+
+### Spec tables (updated for locked decisions)
+
+1. **`wp_som_budgets`**
+   - As in `02`, plus **`is_active` TINYINT(1) NOT NULL DEFAULT 1**
+   - Types: `bigint(20) unsigned` PKs/FKs to match existing `SOM_DB` style
+   - **`UNIQUE KEY material_id (material_id)`** — enforces one material budget per material (MySQL allows multiple NULLs for manual budgets)
+   - Keys on `material_id`, `type`, `is_active` as useful
+2. **`wp_som_budget_product_links`** — as in `02`, plus **`UNIQUE KEY budget_product (budget_id, product_id)`**, KEY on `product_id`
+3. **`wp_som_budget_ledger`** — as in `02`, plus KEYS on `budget_id`, `order_id`, `purchase_order_item_id`
+
+### Added for “both” material / workflow scope
+
+4. **`wp_som_budget_workflow_links`**
+   - `id` bigint PK AI
+   - `budget_id` bigint FK → budgets.id
+   - `workflow_template_id` bigint FK → workflow_templates.id
+   - `created_at` DATETIME
+   - **`UNIQUE KEY budget_workflow (budget_id, workflow_template_id)`**, KEY on `workflow_template_id`
+   - **Semantics:** for a **material** budget, no rows = global (any order consuming that material funds it); one or more rows = fund only when the order’s workflow template (from primary-product assignment) is in the set.
+
+No modifications to existing tables. Bump to **`1.6.0`** via `dbDelta` as usual.
+
+---
+
+## 6. Sprint breakdown
+
+Budgets and Order Board are independent (per `01-Update-Overview.md`). Sequence below builds Budgets first (schema + hooks), then Board. They may be interleaved or reordered later without shared blockers beyond admin-menu registration.
+
+---
+
+### Sprint U2-1 — Budgets schema + model
+
+| | |
+|--|--|
+| **Feature** | Budgets — tables + domain helpers |
+| **Create** | `includes/class-som-budgets.php` (CRUD + deactivate via `is_active`; ledger write is sole balance mutator; product/workflow scope helpers; enforce one material budget per material) |
+| **Modify** | `includes/class-som-db.php` (dbDelta for all four budget tables + uniques/indexes/`is_active`; bump `DB_VERSION` to `1.6.0`); require/bootstrap in `orderMachine.php` |
+| **Done when** | After migrate, four tables exist with locked constraints; can create material (`funding_method = material_cost`) and manual budgets; can attach product links and workflow links (DB allows cross-type); inserting a ledger row updates `budgets.current_balance`; deactivate toggles `is_active` |
+| **Open items first** | O2 locked. R&D linked write-off (B) locked — include model helper here if practical; UI in U2-3 |
+
+---
+
+### Sprint U2-2 — Funding + draw-down hooks
+
+| | |
+|--|--|
+| **Feature** | Budgets — behavioural hooks |
+| **Create / extend** | `SOM_Budgets::fund_on_create`, `SOM_Budgets::drawdown_on_receive` in `includes/class-som-budgets.php` |
+| **Modify** | `includes/class-som-order-sync.php` (call fund after `decrement_on_create`, same `$apply_stock` gate); `includes/class-som-purchase-orders.php` (call draw-down after successful `adjust_stock` in `receive()` loop) |
+| **Reuse** | Material consumption / WA unit cost consistent with stock path; `SOM_Products::recipe_costing` for `percent_of_profit` material cost of product |
+| **Done when** | Sync/create with `$apply_stock=true` writes `sale_funding` ledger rows and balances for matching material + manual budgets (respecting product + workflow scope); history import (`$apply_stock=false`) does not fund; PO receive draws material budgets by landed line total (`purchase_spend`, negative, `purchase_order_item_id` set); `mark_received` shortfall does not draw down; negative balances allowed |
+| **Open items first** | O3, O4 locked |
+
+---
+
+### Sprint U2-3 — Budgets admin UI
+
+| | |
+|--|--|
+| **Feature** | Budgets — admin pages |
+| **Create** | `admin/views/budgets-list.php`; `admin/views/budget-edit.php` (create/edit/detail + ledger + manual adjustment) |
+| **Modify** | `admin/class-som-admin-menu.php` (Budgets submenu + form handlers); `admin/assets/css/admin.css` (list badges, light layout) |
+| **Done when** | List shows balances + low/overspent badges; create/edit material (pick material + optional workflow scope) and manual (funding method/value + product scope); detail shows ledger (orders / purchases / adjustments); manual adjustment writes `manual_adjustment` ledger rows; linked R&D write-off (stock −qty + budget debit by qty × WA) available with notes |
+| **Open items first** | O1 — optional short help text that ink can be a material recipe or a manual fixed budget; R&D linked write-off (B) locked |
+
+---
+
+### Sprint U2-4 — Order Board read UI
+
+| | |
+|--|--|
+| **Feature** | Order Board — Kanban without drag-and-drop |
+| **Create** | `admin/views/orders-board.php`; `admin/assets/js/orders-board.js` (filters, pins, column reorder UI); board styles in `admin/assets/css/admin.css` or dedicated CSS enqueued with the board |
+| **Modify** | `admin/class-som-admin-menu.php` (Orders Board submenu beside Orders list); asset enqueue for board page |
+| **Done when** | Columns = distinct current step names among incomplete orders; column order = saved per-user manual order merged with auto lowest-`step_order` heuristic for unknowns; cards show order ref/external ID, channel badge, buyer, product, personalisation preview, step name, time in step, batch indicator linking to Batches when applicable; filters: channel, product/workflow template, free-text, pinned-only; pins in user meta; horizontal scroll; no completed-order columns; link to Orders list for history |
+| **Open items first** | O5, O6, O7 locked |
+
+---
+
+### Sprint U2-5 — Order Board gated drag-and-drop
+
+| | |
+|--|--|
+| **Feature** | Order Board — SortableJS + existing advance-step |
+| **Modify** | `admin/assets/js/orders-board.js` (+ enqueue SortableJS via CDN); reuse REST nonce / `somAdmin`-style pattern from `admin/assets/js/admin.js` |
+| **Done when** | Shared Sortable group across columns; only the column matching the order’s eligible next step is a valid drop target (client-side); drop POSTs `advance-step` with `{}`; snap-back on invalid drop or API error; cards not in `in_progress` (timer/script/batch waiting) are not treated as fully advanced — pending/locked UX; success uses response `current_step_name` / `is_complete` to move or remove the card |
+| **Open items first** | None remaining |
+
+---
+
+## 7. Implementation notes (for later build — not this planning task)
+
+- **Additive only** — do not rework stock, WAC, or workflow engine beyond the two inline hook calls and the new Board UI caller of advance-step.
+- **Idempotency:** decide during U2-2 whether funding should skip if ledger already has `sale_funding` for that order/budget (mirror stock’s “already logged” guard) — recommend yes.
+- **Primary product / workflow for scope:** same rule as existing assignment — first `order_items` row with non-null `product_id` → product’s workflow template.
+- **Draw-down amount:** landed cost for the received delta (`delta × landed_unit_cost`), material budgets only, opt-in (no budget for that material → no-op). Workflow scope applies to **funding**; draw-down is by `material_id` on the PO line (any linked material budget for that material).
+- **Plain PHP admin** — no React/build step; SortableJS via CDN as specified.
+
+---
+
+## 8. Explicit scope of this document
+
+This file is the **planning deliverable** for Update Package 2. Plugin code, migrations, and UI implementation are **out of scope** until a separate implementation task is started from these sprints.
