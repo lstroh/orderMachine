@@ -1,20 +1,21 @@
 # Order Machine — Features & Testing Guide
 
-*Review guide for everything shipped through base Sprints 1–11 **and** Update Sprints U1–U7 (plugin **v0.18.0**, schema **1.5.0**).*  
-*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md).*
+*Review guide for everything shipped through base Sprints 1–11, Update Package 1 (U1–U7), **and** Update Package 2 (U2-1–U2-5) — plugin **v0.18.1**, schema **1.6.0**.*  
+*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md), [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md), [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md).*
 
 ---
 
 ## At a glance
 
-Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture data), matches them to your product catalogue, tracks production through a workflow (including batch gates), reserves materials when new orders arrive, and tracks raw-material purchasing with landed-cost / weighted-average costing.
+Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture data), matches them to your product catalogue, tracks production through a workflow (including batch gates and an Orders Board), reserves materials when new orders arrive, tracks raw-material purchasing with landed-cost / weighted-average costing, and maintains material / manual budgets funded from sales and drawn down on PO receive.
 
 | Area | Status |
 |---|---|
-| Database schema (18 `wp_som_*` tables) | Done |
+| Database schema (22 `wp_som_*` tables) | Done |
 | Channel settings + OAuth / dummy credentials | Done |
 | Order sync (incremental + history import) | Done |
 | Orders list + detail UI | Done |
+| Orders Board (Kanban + gated DnD) | Done (U2-4 / U2-5) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
 | Workflow engine (manual + timer + script + batch) | Done |
@@ -22,10 +23,11 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Script / n8n / local actions execution | Done (Sprint 9) |
 | Listings push | Done (Sprint 10) |
 | REST API + MCP Abilities | Done (Sprint 11; enriched in U7) |
-| Suppliers + purchase orders (receive / close) | Done (U2) |
-| Landed cost, WA, goals, product costing UI | Done (U3–U4) |
-| Batch processing engine + Batches admin | Done (U5–U6) |
-| Purchasing / batch REST + Abilities | Done (U7) |
+| Suppliers + purchase orders (receive / close) | Done (Package 1 U2) |
+| Landed cost, WA, goals, product costing UI | Done (Package 1 U3–U4) |
+| Batch processing engine + Batches admin | Done (Package 1 U5–U6) |
+| Purchasing / batch REST + Abilities | Done (Package 1 U7) |
+| Budgets (schema, funding/draw-down, admin UI) | Done (U2-1–U2-3) |
 
 **Recommended review path:** use **wp-env** for a clean, repeatable fixture walkthrough, then spot-check the same screens on your **Local** `ordermachine` site if you use that day-to-day.
 
@@ -81,8 +83,10 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 |---|---|---|
 | **Orders** | `som-orders` | List, filters, badges; open a row for detail |
 | Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
+| **Orders Board** | `som-orders-board` | Kanban of open orders by current step; pins, filters, gated drag-and-drop |
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, recipe, Product Costing |
-| **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history |
+| **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history, R&D write-off |
+| **Budgets** | `som-budgets` | Material + manual budgets; balances, ledger, adjustments, R&D write-off |
 | **Suppliers** | `som-suppliers` | Supplier CRUD (no delete) |
 | **Purchase Orders** | `som-purchase-orders` | Create/edit POs, Preview Impact, receive, mark-received / cancel |
 | **Batches** | `som-batches` | Open batches list; release / mark done / retry; edit batch groups |
@@ -133,7 +137,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Matches line items via `wp_som_listings` (`external_listing_id` ↔ `product_id`)
 - Unmatched lines keep `product_id = NULL` and are flagged in the UI
 - Best-effort personalisation text extraction into `personalisation_text`
-- On **new** incremental creates (not history import, not cancelled): assigns workflow + reserves materials
+- On **new** incremental creates (not history import, not cancelled): assigns workflow + reserves materials + funds matching budgets (`SOM_Budgets::fund_on_create`)
 
 **Fixture set (dummy mode):** ~6 orders across eBay/Etsy — mix of matched, unmatched, and cancelled.
 
@@ -199,7 +203,8 @@ Deactivate rather than hard-delete (soft inactive).
 - Set **preferred supplier**
 - See **weighted average (WA)** and **total value on hand** (read-only)
 - Edit **unit cost** as an explicit override — revalues `total_value_on_hand = current_stock × unit_cost` and writes a stock-log row
-- **Manual stock adjust** (positive or negative delta) → `material_stock_log` reason `manual_adjustment` (also maintains value fields)
+- **Manual stock adjust** (positive or negative delta) → `material_stock_log` reason `manual_adjustment` (also maintains value fields). Does **not** debit a material budget — use R&D write-off for linked stock + budget debit
+- **R&D / non-sale write-off** — separate action: decrements stock and, if an active material budget exists, debits it by `qty ×` WA unit cost (`manual_adjustment` ledger); notes required
 - Goal-alert **badges** on the list; full per-workflow breakdown on edit
 - Average **lead time** (overall, from past PO `received_date − order_date`)
 - Dedicated **purchase history** table on edit (date, supplier, qty, landed unit cost, link to PO)
@@ -213,6 +218,7 @@ Deactivate rather than hard-delete (soft inactive).
 - Stock may go negative (by design — signals shortage)
 - Skipped for: history import, cancelled orders, unmatched-only orders
 - Idempotent per order (won’t double-reserve on re-sync)
+- Same create path also funds budgets when stock is applied (see §3.13)
 
 **Not implemented yet:** stock reversal when an order is later cancelled (`order_cancelled`). Cancel status is stored/detected for display, but reversal is deferred until channel cancel fields are confirmed (open items D3 / A3).
 
@@ -305,6 +311,7 @@ Opt-in: assign **shipping_label** to a Ship (or other) step via the editor — n
 - Edit lock: full edit while `ordered` with no receipts; after first receive, lines/costs lock (notes still editable)
 - Duplicate materials on one PO OK
 - Stock rises with log reason `purchase_received` (+ `purchase_order_item_id`)
+- After a successful stock adjust on a receive line, matching **material budgets** are drawn down (`purchase_spend` = `−(delta × landed_unit_cost)`). `Mark received` shortfall does **not** draw down
 
 **Preview Impact (create/edit only):**
 
@@ -387,6 +394,66 @@ Admin UI stays on form POST / admin-ajax; REST is parallel for automation / MCP 
 
 ---
 
+### 3.13 Budgets
+
+**Where:** Order Machine → Budgets (submenu immediately after Materials)
+
+**Types:**
+
+| Type | Funding | Scope |
+|---|---|---|
+| **Material** | Always `material_cost` — funds from consumption cost on new orders (`\|change_qty\| × unit_cost_at_time` from `new_order` stock-log lines) | Empty workflow links = **global**; one or more workflow-template checkboxes = fund only when the order’s primary-product workflow is in the set. **One material budget per material** |
+| **Manual** | `percent_of_price`, `percent_of_profit`, or `fixed_amount` per unit | Empty product links = all products; else product-scoped. Workflow links ignored for funding |
+
+**Behaviour:**
+
+- Sale funding runs after stock decrement on incremental create (`$apply_stock=true`); skipped for history import, cancelled orders, inactive budgets, and when any `sale_funding` ledger row already exists for that order (idempotent)
+- Effective sold price for % methods: `order_items.unit_price` if set (**including 0**), else `products.target_selling_price`. `percent_of_profit` may fund a **negative** amount on loss (not clamped)
+- PO **receive** draws active material budgets by landed delta; ledger errors are logged and do not abort remaining receive lines
+- `current_balance` mutates **only** via ledger rows; create starts at `0`; negative balances allowed
+- Soft-deactivate via `is_active` (no hard-delete of budgets with history in v1)
+
+**Admin UI:**
+
+- List defaults to **active**; filters status / type / search; **low balance** (balance &lt; target reserve) and **overspent** (balance &lt; 0) badges
+- Create material: picker hides materials that already have a budget; optional workflow checkboxes; short ink tip (ops: track ink via recipe material or a manual `fixed_amount` budget)
+- Create/edit manual: funding method/value + product checkboxes
+- Detail: recent **50** ledger rows (`sale_funding` → order detail; `purchase_spend` → PO detail); **manual adjustment** with required notes; material budgets also offer **R&D write-off**
+- Same R&D write-off on material edit (beside Adjust stock)
+
+**Ink:** out of scope as a special type — use a recipe material or a manual fixed budget.
+
+---
+
+### 3.14 Orders Board
+
+**Where:** Order Machine → Orders Board (submenu immediately after Orders)
+
+**Population:** Incomplete, non-cancelled orders only. Completed history stays on the Orders list (**View history** link). Horizontal scroll on narrow screens (no stacked mobile layout).
+
+**Columns & cards:**
+
+- Columns = distinct current step names among loaded orders, plus **Unassigned** when any open order has no `current_step_id`
+- Empty columns are also **prefilled** for reachable next-step names of advanceable cards (so there is somewhere to drop)
+- Column order: per-user meta (`som_board_column_order`) merged with auto lowest-`step_order` heuristic; **←/→** on headers; new names append via heuristic
+- Cards (oldest `order_date` first): channel badge, buyer, personalisation preview, step, time in step, progress badges (`waiting_timer` / `waiting_script` / `waiting_batch` / `error` / etc.), batch link when waiting on a batch, pin ★
+- Links only on **order ID**, **product name(s)**, and **View** — card body is not one big click target
+
+**Filters:** channel, product, workflow template (two independent dropdowns), free-text (buyer / external order ID / personalisation), client **Pinned only**
+
+**Volume:** warn at ≥ **200** matching open orders; hard **cap 500** (oldest kept when capped)
+
+**Gated drag-and-drop (SortableJS 1.15.6 CDN):**
+
+- Only cards that could Mark done (`in_progress` + gates clear) are draggable; waiting / error / pending / Unassigned are locked
+- Valid drop = next-step column, or ephemeral **Complete** zone when the card is on its last step
+- Within-column reorder disabled; drop POSTs `POST /som/v1/orders/{id}/advance-step` with `{}`
+- Success places/removes the card from the API response (`current_step_name` / `is_complete`), not blindly from the drop-target name; badges update from extended `progress_status` (+ batch summary when applicable)
+- Invalid drop or API/network error → snap-back (+ alert on failure)
+- Complete zone is not persisted in column-order meta
+
+---
+
 ## 4. What is intentionally out of scope (for now)
 
 Use this so review time isn’t spent hunting missing screens:
@@ -402,6 +469,10 @@ Use this so review time isn’t spent hunting missing screens:
 | Rewriting thank-you PDF layout | Already 4-up; PHP wires batch into existing CLI |
 | Write Abilities / admin migrate to REST | Read-only Abilities; admin stays form POST |
 | Bulk `sync_for_workflow` REST endpoint | Editor uses domain sync |
+| Budget / Board REST + Abilities | Admin UI + existing `advance-step` only (Package 2) |
+| Dedicated ink material type | Ops: recipe material or manual `fixed_amount` budget |
+| Stacked / collapsed board on mobile | Horizontal scroll only |
+| Completed orders on the Board | Active/incomplete only; use Orders list |
 
 ---
 
@@ -421,7 +492,7 @@ Work top-to-bottom. Each section builds on the previous. Checkboxes are for your
 ### Test 1 — Foundation & menu
 
 1. Open **Order Machine** in the left admin menu.
-2. Confirm submenus: Orders, Products, Materials, Suppliers, Purchase Orders, Batches, Workflows, Listings, Settings.
+2. Confirm submenus: Orders, Orders Board, Products, Materials, Budgets, Suppliers, Purchase Orders, Batches, Workflows, Listings, Settings.
 
 - [ ] Menu present and all screens load without PHP errors
 
@@ -433,7 +504,7 @@ npx @wordpress/env run cli wp db query "SHOW TABLES LIKE 'wp_som_%';"
 npx @wordpress/env run cli wp plugin list --name=orderMachine
 ```
 
-Expect DB version `1.5.0`, plugin `0.18.0`, and **18** `wp_som_*` tables.
+Expect DB version `1.6.0`, plugin `0.18.1`, and **22** `wp_som_*` tables (includes `som_budgets`, `som_budget_product_links`, `som_budget_workflow_links`, `som_budget_ledger`).
 
 ---
 
@@ -530,14 +601,16 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 
 ---
 
-### Test 8 — Manual stock adjust & unit-cost override
+### Test 8 — Manual stock adjust, unit-cost override & R&D write-off
 
 1. Materials → edit vinyl → enter a delta (e.g. `+5` or `-2`) → save.
 2. Confirm `current_stock` updates and log shows `manual_adjustment`.
 3. Change **unit cost** override → confirm WA display stays distinct, value on hand revalues, and a log row records the value change.
+4. After a material budget exists (§16): use **R&D write-off** with notes → stock ↓ and budget debit; confirm Adjust stock note that it does not debit the budget.
 
 - [ ] Manual adjust + log entry work
 - [ ] Unit-cost override revalues value on hand
+- [ ] R&D write-off links stock + budget when a budget exists
 
 ---
 
@@ -590,12 +663,14 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 6. Create another PO, receive partially, then try **Mark received** (shortfall) and on a third PO try **Cancel** (no stock reverse of prior receives).
 7. After first receive on a PO, confirm line/cost fields lock; notes still editable.
 8. Confirm Materials list badges / material edit breakdown / post-receive notice when goals fire.
+9. If a material budget exists: confirm balance / `purchase_spend` ledger after receive (§16 / Budgets).
 
 - [ ] Supplier CRUD (no delete)
 - [ ] PO create → partial → full receive
 - [ ] Preview Impact (no DB write)
 - [ ] Mark received / cancel close behave as designed
 - [ ] Costing + alerts visible after receive
+- [ ] Material budget draw-down on receive when budget exists
 
 ---
 
@@ -640,9 +715,46 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 If you use the Local `ordermachine` site:
 
-- [ ] Plugin activates; menus load (incl. Suppliers, Purchase Orders, Batches)
+- [ ] Plugin activates; menus load (incl. Orders Board, Budgets, Suppliers, Purchase Orders, Batches)
+- [ ] After first admin load with Package 2 code, `som_db_version` is `1.6.0` and budget tables exist
 - [ ] With dummy constant: Sync now behaves like wp-env
 - [ ] Without dummy: Settings accepts app keys; Connect shows correct callback URLs (live OAuth only when apps exist)
+
+---
+
+### Test 16 — Budgets
+
+1. **Budgets** → create a **material** budget for vinyl (or laminate); optionally scope to **Bin Sticker Production**; set a target reserve.
+2. Create a **manual** budget (`percent_of_price` or `fixed_amount`); optionally scope to `BIN-SET-4PK`.
+3. Confirm list shows balances; force a low/overspent badge if useful (manual adjustment negative, or low reserve).
+4. On a clean incremental create of a matched order (or after reset + Sync): budget detail ledger shows `sale_funding`; balance increased. Re-sync → no duplicate funding.
+5. Receive a PO line for that material → ledger `purchase_spend` (negative) linked to the PO; `Mark received` shortfall alone does not add another draw-down.
+6. Manual adjustment with notes required; R&D write-off from budget detail **and** material edit → stock ↓ + budget debit (or stock-only if no active budget).
+7. Confirm plain **Adjust stock** still does not touch the budget.
+8. Deactivate a budget → further sync/receive skips it.
+
+- [ ] Material + manual create / scope / badges
+- [ ] Sale funding on create; idempotent re-sync; skipped on history import
+- [ ] PO receive draw-down; mark-received does not draw
+- [ ] Manual adjustment + R&D on both surfaces; Adjust stock skips budget
+
+---
+
+### Test 17 — Orders Board
+
+1. **Orders Board** (under Orders). Confirm open incomplete orders as cards in step columns (+ Unassigned if any need workflow/mapping).
+2. Reorder columns with ←/→; refresh → order persists. Pin a card; toggle **Pinned only**; unpin.
+3. Filter by channel, product, workflow, and personalisation search.
+4. Confirm progress badges / batch link when waiting; only order ID / product / View are links.
+5. Confirm cancelled/completed absent; use **View history** / Orders list for completed.
+6. Drag an **In progress** card toward a wrong column → snap-back. Drag to the correct next-step column (including an empty prefilled column) → advances; badges update.
+7. Waiting / error / Unassigned cards do not drag.
+8. Final-step advanceable card → **Complete** zone → card removed (`is_complete`).
+9. (Optional) Volume notices with many open orders (≥200 warn; &gt;500 hard cap).
+
+- [ ] Columns / Unassigned / filters / pins / column reorder
+- [ ] Gated DnD + Complete zone; locked cards stay put
+- [ ] History link; horizontal scroll works on a narrow window
 
 ---
 
@@ -660,6 +772,8 @@ Beyond “does it click,” please watch for:
 8. **Goal alerts** — useful on Materials / Product Costing, or noisy?
 9. **Batches list** — expandable rows + deep-link good enough vs a separate detail page?
 10. **Thank-you batching** — size 4 and cross-workflow pooling feel right?
+11. **Budgets** — material vs manual funding / scopes understandable? Low/overspent badges useful?
+12. **Orders Board** — column names / DnD gates / Complete zone feel natural for day-to-day production?
 
 ---
 
@@ -673,6 +787,12 @@ Beyond “does it click,” please watch for:
 | Mark done disabled on Dry | Timer still running; wait or force `som_engine_tick` after adjusting `timer_ends_at` |
 | Mark done missing on Thank-you | Expected while `waiting_batch` — use Batches page |
 | Stock didn’t move | History import, cancelled order, unmatched-only, or already reserved |
+| Budget didn’t fund on sync | History import (`$apply_stock=false`), cancelled, inactive budget, workflow/product scope miss, or already has `sale_funding` |
+| Budget didn’t draw on receive | No active material budget for that material; or used Mark received (shortfall) instead of Receive |
+| Adjust stock didn’t change budget | By design — use R&D write-off |
+| Board card won’t drag | Not `in_progress` / gates blocked / Unassigned — waiting badges mean batch/timer/script |
+| DnD missing entirely | SortableJS CDN blocked (offline admin); pins/filters still work |
+| Card snapped back after drop | Wrong column (not next step) or `advance-step` API error |
 | PO receive didn’t change WA | Zero total `item_cost` (no shipping/other allocation); or preview-only click |
 | Can’t edit PO lines | Already received once — lines/costs lock by design |
 | Batch stuck in `error` | Use Retry on Batches; check `last_error` / local CLI path |
@@ -680,6 +800,7 @@ Beyond “does it click,” please watch for:
 | OAuth Connect fails on wp-env | Expected without tunnel + real apps — use Local for live OAuth |
 | Ciphertext / decrypt weirdness | `SOM_ENCRYPTION_KEY` changed after credentials were saved — reconnect or re-seed |
 | Abilities missing | MCP toggle off in Settings |
+| Budget tables missing / DB still 1.5.0 | Load any Order Machine admin page so `maybe_upgrade` runs to `1.6.0` |
 
 ---
 
@@ -699,9 +820,15 @@ Beyond “does it click,” please watch for:
 | [`../wordpress v2/02-Update-Data-Model.md`](../wordpress%20v2/02-Update-Data-Model.md) | Update schema delta |
 | [`../wordpress v2/03-Update-Raw-Material-Purchasing.md`](../wordpress%20v2/03-Update-Raw-Material-Purchasing.md) | Costing / PO rules |
 | [`../wordpress v2/04-Update-Batch-Processing.md`](../wordpress%20v2/04-Update-Batch-Processing.md) | Batch state machine / UI |
-| [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md) | U1–U7 scope + settled decisions |
-| [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) | Update sprints verified |
+| [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md) | Package 1 U1–U7 scope + settled decisions |
+| [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) | Package 1 sprints verified |
+| [`../wordpress v3/01-Update-Overview.md`](../wordpress%20v3/01-Update-Overview.md) | Budgets + Order Board overview |
+| [`../wordpress v3/02-Update-Data-Model.md`](../wordpress%20v3/02-Update-Data-Model.md) | Budget tables |
+| [`../wordpress v3/03-Update-Budgets.md`](../wordpress%20v3/03-Update-Budgets.md) | Funding / draw-down rules |
+| [`../wordpress v3/04-Update-Order-Board.md`](../wordpress%20v3/04-Update-Order-Board.md) | Board UX / DnD |
+| [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md) | Package 2 U2-1–U2-5 scope + locked decisions |
+| [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md) | Package 2 sprints verified |
 
 ---
 
-*End of guide. Base Sprints 1–11 and Update Sprints U1–U7 are complete (plugin **0.18.0**, DB **1.5.0**).*
+*End of guide. Base Sprints 1–11, Update Package 1 (U1–U7), and Update Package 2 (U2-1–U2-5) are complete (plugin **0.18.1**, DB **1.6.0**).*

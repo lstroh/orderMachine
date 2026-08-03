@@ -1,12 +1,12 @@
 # Order Machine — User Acceptance Tests
 
 *Click-through checklist for an operator (or reviewer) in wp-admin.*  
-*Covers base Sprints 1–11 + Update U1–U7 · plugin **0.18.0** · DB **1.5.0**.*
+*Covers base Sprints 1–11 + Update Package 1 (U1–U7) + Update Package 2 (U2-1–U2-5) · plugin **0.18.1** · DB **1.6.0**.*
 
 Companions (feature explainers, not this pass/fail list):
 
 - [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) — what each feature does + troubleshooting  
-- [`Sprint-Progress.md`](Sprint-Progress.md) / [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) — what shipped  
+- [`Sprint-Progress.md`](Sprint-Progress.md) / [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) / [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md) — what shipped  
 
 Mark each item **Pass / Fail / Skip** (Skip = intentionally out of scope or blocked by missing live apps).
 
@@ -42,8 +42,9 @@ You can do the action in the UI, see the expected result, and there is no PHP fa
 | Admin | Your Local site URL + `/wp-admin` |
 
 - [ ] Site is running; wp-admin loads
-- [ ] **Plugins** → **Order Machine** is **Active** (v0.18.0)
+- [ ] **Plugins** → **Order Machine** is **Active** (v0.18.1)
 - [ ] Left menu shows **Order Machine**
+- [ ] After opening any Order Machine screen, schema is **1.6.0** (budget tables present — or confirm on next admin load after upgrade)
 
 ### 0.2 Enable dummy credentials (fixture path)
 
@@ -85,8 +86,10 @@ Open each submenu once and confirm the page title loads with no PHP error:
 | Screen | Expected |
 |---|---|
 | Orders | Orders list |
+| Orders Board | Kanban board of open orders |
 | Products | Products list |
 | Materials | Materials list |
+| Budgets | Budgets list |
 | Suppliers | Suppliers list |
 | Purchase Orders | Purchase orders list |
 | Batches | Batch groups + open batches |
@@ -94,7 +97,8 @@ Open each submenu once and confirm the page title loads with no PHP error:
 | Listings | Listings list |
 | Settings | Order Machine Settings |
 
-- [ ] All nine screens load
+- [ ] All eleven screens load
+- [ ] Orders Board sits directly under Orders; Budgets sits directly under Materials
 
 ### 1.2 Deactivate does not wipe data
 
@@ -172,6 +176,7 @@ Do this **before** first Sync now (or after a clean slate from §0.3). Seed appe
 - [ ] First run creates fixture orders (typically ~6 created if clean DB)
 - [ ] Second run: **created 0**, updates only (no duplicates)
 - [ ] Last sync timestamp / summary visible on Settings
+- [ ] After budgets exist (§18): matching budgets gained `sale_funding` on first create (not on second Sync)
 
 ### 3.3 Import history
 
@@ -260,6 +265,7 @@ Open a cancelled fixture.
 - [ ] `current_stock` updates
 - [ ] Log shows **`manual_adjustment`**
 - [ ] Negative stock allowed if you push below zero (by design)
+- [ ] Description notes Adjust stock does **not** debit a material budget
 
 ### 6.3 Unit-cost override / revalue
 
@@ -268,6 +274,14 @@ Open a cancelled fixture.
 - [ ] WA display stays distinct from the override control (copy makes sense)
 - [ ] Value on hand revalues (`stock × unit cost`)
 - [ ] A stock-log row records the value change
+
+### 6.4 R&D write-off (after a material budget exists — §18)
+
+1. Materials → edit vinyl → **R&D / non-sale write-off** with qty + required notes.
+
+- [ ] Stock decreases
+- [ ] Linked active budget is debited (or clear message that stock-only when no active budget)
+- [ ] Same write-off also available from the material budget detail (§18)
 
 ---
 
@@ -422,6 +436,7 @@ After Ship → Thank-you:
 - [ ] WA / value on hand update on Materials
 - [ ] `received_date` set / updated
 - [ ] Success notice; if goals fire, **alert summary** appears on the receive flow
+- [ ] If an active material budget exists for that material (§18): balance drops; ledger shows **`purchase_spend`** linked to the PO
 
 ### 12.4 Later receive → fully received
 
@@ -447,6 +462,7 @@ After Ship → Thank-you:
 - [ ] Mark received closes with shortfall accepted
 - [ ] Cancel closes; **already-received stock is kept** (no reverse)
 - [ ] Confirm dialogs appear before destructive closes
+- [ ] Mark received (shortfall alone) does **not** post an extra budget draw-down beyond prior Receive lines
 
 ### 12.7 Zero line-cost + shipping warning
 
@@ -568,9 +584,10 @@ Header: `X-SOM-API-Key: <key>`
 
 ### 16.1 Core (Sprint 11)
 
-- [ ] `POST /orders` creates an external order (workflow + stock side effects when matched)
+- [ ] `POST /orders` creates an external order (workflow + stock + budget funding side effects when matched / stock applied)
 - [ ] Duplicate same `external_order_id` → **409**
 - [ ] `POST /orders/{id}/advance-step` advances like Mark done
+- [ ] Response includes `progress_status` (and batch / DnD meta when applicable) for Board clients
 - [ ] Order detail **Mark done** still works (UI uses REST under the hood)
 
 ### 16.2 Purchasing / batches (U7) — spot checks
@@ -599,7 +616,113 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 
 ---
 
-## 18. Known deferred (expect Skip — do not Fail)
+## 18. Budgets
+
+*Requires schema **1.6.0**. Prefer after Sync (§3) and before or interleaved with PO receive (§12).*
+
+### 18.1 List & create
+
+1. **Budgets** (under Materials) → list loads (default **Active**).  
+2. **Add budget** → create a **material** budget for vinyl (or laminate).  
+3. Optionally tick one or more **workflow** templates for scope.  
+4. Set a **target reserve**; save.  
+5. **Add budget** → create a **manual** budget (`percent_of_price`, `percent_of_profit`, or `fixed_amount`); optionally tick product(s).
+
+- [ ] Menu placement under Materials; active default filter
+- [ ] Material picker hides materials that already have a material budget
+- [ ] Ink help text visible on create
+- [ ] Material: workflow checkboxes only (not product scope UI)
+- [ ] Manual: funding method/value + product checkboxes (not workflow scope UI)
+- [ ] List shows balances; low-balance / overspent badges when applicable
+
+### 18.2 Sale funding on Sync create
+
+*Best after a clean incremental create (§0.3 / §6.1) with budgets already active.*
+
+1. Note budget balances.  
+2. Sync / create a matched open order with stock applied.  
+3. Open budget detail → ledger.
+
+- [ ] Ledger shows **`sale_funding`** linked to the order
+- [ ] Balance increased for matching material + manual budgets (respecting scopes)
+- [ ] Second Sync does **not** add duplicate `sale_funding` for the same order
+- [ ] History import path does **not** fund (prefer Sync now for this check)
+- [ ] Inactive budget is skipped
+
+### 18.3 Draw-down on PO receive
+
+1. Receive a PO line for the material that has a material budget (§12.3).
+
+- [ ] Ledger **`purchase_spend`** (negative) with link to the PO
+- [ ] Balance decreased by `delta × landed_unit_cost`
+- [ ] Shortfall **Mark received** does not add an extra draw-down
+
+### 18.4 Manual adjustment & R&D
+
+1. Budget detail → **manual adjustment** with amount + **required** notes.  
+2. Material budget detail → **R&D write-off** with qty + notes.  
+3. Material edit → same R&D write-off.  
+4. Plain Adjust stock on the material.
+
+- [ ] Manual adjustment rejected without notes; accepted with notes; balance + ledger update
+- [ ] R&D on budget detail: stock ↓ + budget debit
+- [ ] R&D on material edit: same behaviour
+- [ ] Adjust stock still works and does **not** change budget balance
+- [ ] Ledger shows newest ~50 rows; `sale_funding` → order; `purchase_spend` → PO
+
+### 18.5 Deactivate
+
+1. Soft-deactivate a budget; try Sync / receive again.
+
+- [ ] Deactivated budget no longer funds or draws down
+- [ ] Can reactivate from edit
+
+---
+
+## 19. Orders Board
+
+### 19.1 Read UI
+
+1. **Orders Board** (directly under Orders).
+
+- [ ] Open incomplete non-cancelled orders appear as cards
+- [ ] Columns match current step names; **Unassigned** appears when needed
+- [ ] Cancelled / completed orders are absent
+- [ ] **View history** / Orders list link works for completed orders
+- [ ] Cards show channel, buyer, personalisation preview, step, time in step, progress badges
+- [ ] Batch link present when status is `waiting_batch`
+- [ ] Only order ID, product name(s), and **View** are links (card body not one big link)
+- [ ] Horizontal scroll works if columns overflow
+
+### 19.2 Filters, pins, column order
+
+1. Filter by channel, product, workflow, free-text (incl. a personalisation snippet).  
+2. Pin ★ a card; toggle **Pinned only**; unpin.  
+3. Use column header **←/→**; refresh the page.
+
+- [ ] Each filter changes the card set sensibly
+- [ ] Pin persists after refresh; pinned-only hides unpinned
+- [ ] Column order persists per user after refresh
+- [ ] Volume info notice if ≥200; warning + oldest-only if over 500 (optional / Skip if volume low)
+
+### 19.3 Gated drag-and-drop
+
+1. Find an **In progress** / advanceable card (grab cursor).  
+2. Drag toward a **wrong** column.  
+3. Drag into the **correct** next-step column (including an empty prefilled next-step column if shown).  
+4. Confirm waiting / error / Unassigned cards do not drag.  
+5. On a final-step advanceable card, drag into **Complete**.
+
+- [ ] Wrong-column drop snaps back (no lasting move)
+- [ ] Valid drop advances like Mark done; card moves to response step; badges update
+- [ ] Locked cards (`waiting_*` / error / Unassigned) are not draggable
+- [ ] Complete zone removes the card when the order becomes complete
+- [ ] API/network failure alerts and snaps back (optional force / Skip)
+- [ ] Column ←/→ still works; Complete zone is not saved into column order
+
+---
+
+## 20. Known deferred (expect Skip — do not Fail)
 
 | Item | Why |
 |---|---|
@@ -612,10 +735,14 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 | Write Abilities / admin rewritten onto REST | Admin stays form POST / ajax |
 | Thank-you PDF without Python/reportlab | Soft fail / retry until tooling installed |
 | Amazon-specific email automation | REST create groundwork only |
+| Budget / Board REST + MCP Abilities | Package 2 is admin UI + existing `advance-step` only |
+| Dedicated ink material type | Ops: recipe material or manual `fixed_amount` |
+| Completed orders on the Board | Active/incomplete only by design |
+| Stacked mobile board layout | Horizontal scroll only |
 
 ---
 
-## 19. Judgment checklist (not pass/fail binaries)
+## 21. Judgment checklist (not pass/fail binaries)
 
 Use while walking the UI; note free-text feedback:
 
@@ -628,11 +755,13 @@ Use while walking the UI; note free-text feedback:
 7. Are goal alerts useful or noisy?  
 8. Is the expandable Batches list good enough vs a separate detail page?  
 9. Does thank-you batch size 4 / cross-workflow pooling feel right?  
-10. Anything missing for your next live order week?
+10. Are material vs manual budgets / scopes understandable? Low/overspent badges useful?  
+11. Does the Orders Board (columns, pins, gated DnD, Complete) feel natural for production?  
+12. Anything missing for your next live order week?
 
 ---
 
-## Suggested minimal path (≈60–90 min)
+## Suggested minimal path (≈75–100 min)
 
 If you only have one sitting:
 
@@ -640,10 +769,12 @@ If you only have one sitting:
 2. §4–§5 Orders list + matched / unmatched / cancelled detail  
 3. §6 Stock decrement + manual adjust  
 4. §7 Mark done + timer + thank-you → waiting_batch  
-5. §11–§12 One supplier + one PO (preview → partial → full)  
-6. §13 Release / mark-done a batch  
-7. §14 One listing Refresh/Push  
-8. Skim §18 deferred so you don’t hunt ghosts  
+5. §18 Create one material + one manual budget; confirm funding after a fresh create if possible  
+6. §11–§12 One supplier + one PO (preview → partial → full); confirm budget draw-down  
+7. §13 Release / mark-done a batch  
+8. §19 Orders Board: pin/filter + one valid DnD advance (and Complete if convenient)  
+9. §14 One listing Refresh/Push  
+10. Skim §20 deferred so you don’t hunt ghosts  
 
 ---
 
@@ -665,4 +796,4 @@ wp eval-file wp-content/plugins/orderMachine/tests/sprint11-smoke.php
 
 ---
 
-*End of user acceptance tests. Aligns with shipped scope through plugin **0.18.0** / DB **1.5.0**.*
+*End of user acceptance tests. Aligns with shipped scope through plugin **0.18.1** / DB **1.6.0** (Packages 1 + 2).*
