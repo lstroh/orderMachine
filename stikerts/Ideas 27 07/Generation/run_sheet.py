@@ -12,10 +12,10 @@ orders = [
     #{"house_number": "4", "street_name": "Parkleigh Road", "style": "house_banner", "accent": "navy"},
     #{"house_number": "4", "street_name": "Parkleigh Road", "style": "p25_landscape_flourish", "accent": "black"},
     #{"house_number": "4", "street_name": "Parkleigh Road", "style": "p25b_landscape_flourish", "accent": "black"},
-    {"house_number": "4", "street_name": "Parkleigh Road", "style": "house_banner", "accent": "black"},
-    {"house_number": "4", "street_name": "Parkleigh Road", "style": "house_banner", "accent": "black"},
-    {"house_number": "4", "street_name": "Parkleigh Road", "style": "house_banner", "accent": "black"},
-    {"house_number": "4", "street_name": "Parkleigh Road", "style": "house_banner", "accent": "black"},
+    {"house_number": "4", "street_name": "Parkleigh Road", "style": "p27_landscape_house", "accent": "black"},
+    {"house_number": "4", "street_name": "Parkleigh Road", "style": "p27_landscape_house", "accent": "black"},
+    {"house_number": "4", "street_name": "Parkleigh Road", "style": "p27_landscape_house", "accent": "black"},
+    {"house_number": "4", "street_name": "Parkleigh Road", "style": "p27_landscape_house", "accent": "black"},
 ]
 
 out = "sheet.pdf"

@@ -2,8 +2,8 @@
 
 *Text-only companion to `bin_sticker_products_gallery.html` — same entries, no images, kept lightweight for reference/search. IDs match the HTML gallery exactly; open that file to see the actual proof thumbnails.*
 
-**Total entries:** 3
-**Status:** 3 proof approved · 0 pending
+**Total entries:** 4
+**Status:** 3 proof approved · 1 pending
 
 This file tracks **built, code-backed designs** — a different thing from
 `bin_sticker_idea_board_data.md`, which tracks unbuilt inspiration/research
@@ -94,6 +94,63 @@ rotate-one-copy shortcut again.
 of the three, thanks to the corner brackets — could pitch toward
 period-property or conservation-area customers specifically, distinct
 from D02's softer symmetrical look.
+
+---
+
+## D04 — Homestead Silhouette
+
+**Style key:** `p27_landscape_house`
+**Source idea:** P27 (landscape variant — P27's own idea-board entry has
+`fits_spec=Yes` for the standard 100×140mm PORTRAIT card; this is a
+deliberate landscape departure requested by the user, same as D02/D03's
+relationship to P25's portrait-spec entry, not "P27 built to spec")
+**Card shape:** 140×100mm landscape
+**Status:** Pending — proof rendered and structurally verified, not yet
+user-approved (see open issue below)
+
+**Layout:** Bold house-outline icon with a chimney (thick line, no fill),
+house number nested inside the hollow interior, street name printed
+below.
+
+**Assets required:** `assets/icons/p27_house_icon.png` — extracted via
+`icon-silhouette-extraction` from the Midjourney/Editor reference render
+(2624×1856px). The house+chimney was the only component kept; the
+placeholder "36" digits and "GROVE STREET" letters (11 components,
+exact match for G-R-O-V-E-S-T-R-E-E-T) were identified by connected-
+component analysis and erased to a hollow, then their own erased
+positions used as the real placement constants — same approach as D01.
+Per-accent recoloured copies (`p27_house_{accent}.png`) generated and
+cached automatically on first render, same pattern as D01/D02/D03.
+
+**Open issue — font/width mismatch:** the source mockup's typeface is
+narrower per unit of cap-height than Helvetica-Bold (this codebase's
+only available bold sans). For "GROVE STREET" (11 characters) this
+compounds enough that the width-safe auto-fit lands at ~34.5pt, well
+under the ~65pt the measured cap-height implies — the street name prints
+smaller/lighter than the mockup's proportions. The house number is
+affected less (~107.5pt vs. ~129pt implied). Kept the width-safe
+behaviour (consistent with every other `_fit_font_size` use in this
+file) rather than risk overflowing the border. Revisit with a real
+condensed bold TTF if matching the mockup's visual weight matters more
+than the safety margin — see `bin_sticker.py`'s `P27_STREET_MAX_WIDTH`
+comment for the full numbers.
+
+**Border style:** the source render came out with a double-line border
+despite the mockup prompt asking for a single line. Built with SINGLE
+here to match the original prompt intent rather than what the render
+happened to show — flag if double was actually wanted.
+
+**Cutting margin:** uses its own 3mm cut-to-border tolerance (`P27_PAD`)
+instead of the shared 2mm `PAD` every other style uses — scoped to this
+design only, not a global change. Safe as a pure border-inset shift with
+no icon/text rescaling needed, since the icon already sits 3.57–29mm
+clear of the card edges on every side.
+
+**Draft marketing angle:** the strongest real-world sales evidence of
+any design in the lineup — P27 is the 4th sighting of the house-outline-
+with-nested-number concept on the idea board (after P10/P19/P20), from
+the same trusted EDSG line as D02/D03's Amazon's Choice comparables, and
+the chimney detail differentiates it from the plainer versions.
 
 ---
 
