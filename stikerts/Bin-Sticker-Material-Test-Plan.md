@@ -93,7 +93,7 @@
 
 | Day | Date | Cricut — observations | Stickiply — observations |
 |---|---|---|---|
-| 0 (start) | | | |
+| 0 (start) | | Navy renders as near-black, blue tone largely lost — consistent across Premium Glossy, Matte, and Photo Quality Ink Jet settings (ruling out driver setting as the cause). Gold/red comparable to Stickiply. Premium Glossy also showed heavy glare in initial photos, a separate/confounded issue now resolved. | True navy blue tone retained at Premium Glossy. Gold/red comparable to Cricut. No glare issue observed. |
 | 3–4 | | | |
 | 7 | | | |
 | 10–11 | | | |
@@ -112,6 +112,7 @@ At the end of 2–3 weeks, compare both materials against:
 - [ ] Did either fail the submersion or hot water test?
 - [ ] Did either scratch significantly more easily than the other?
 - [ ] Which was easier to laminate/cut cleanly in practice (bubbles, wrinkles, cut precision)?
+- [x] **Colour rendering (Day 0 finding, see Addendum 5):** Cricut renders navy as near-black across all 3 print settings tested; Stickiply retains true navy. Not currently a blocker — only D01 is planned near-term, and it's printed in black, which both materials handle fine.
 - [ ] **Transit (Test 6):** of the four packaging types (flat wrap / envelope + backing card / padded mailer / box), which showed creasing, corner damage, or laminate lifting after the post-to-self and drop/flex tests, and which came through cleanest? Did this differ by material? Which candidates actually measured under 5mm (Letter-rate eligible) once packed?
 
 **If both pass comparably:** go with Stickiply for the cost saving.
@@ -209,4 +210,59 @@ Submersion, hot water, and adhesion (Tests 1, 2, 4) are **not** repeated here �
 - **If the winning colour(s) pass both tests at a level comparable to the white vinyl results:** confirmed safe to offer Technique F (clear vinyl + colour) as a genuine production path alongside the white-card method, not just a visually-plausible option.
 - **If UV fading is notably worse than the white vinyl result:** clear vinyl may need to be positioned as an indoor-leaning or shorter-guarantee option rather than a like-for-like alternative to the white-card method.
 - **If scratches show up more visibly than on the white stock:** worth flagging in the product listing (e.g. recommend the laminate finish more strongly, or avoid this technique for high-handling use cases like water bottles).
+
+---
+
+## Addendum 4 (Aug 2026) — Cut file format verification (SVG vs DXF)
+
+Added while evaluating a machine-driven kiss-cut upgrade to the guillotine + corner punch + Slice 00200 workflow (see Equipment Guide, "Kiss-Cut Upgrade Path"). Two small cutting machines are candidates — Cricut Joy Xtra and Silhouette Portrait 4 — and the deciding factor came down to file compatibility rather than the machines themselves:
+
+- The cut file for this product is a plain SVG or DXF (a fixed 100×140mm rectangle, not artwork needing tracing — no Print Then Cut/registration marks needed, see chat history for why).
+- **Cricut Design Space** imports SVG for free, no paid tier.
+- **Silhouette Studio's free Basic Edition cannot import SVG at all** — it needs the Designer Edition upgrade (~£40–50 one-time) to open SVG directly. Its free-tier fallback is DXF import, which works on Basic Edition but has a reputation for unit/scaling issues on import — worth verifying before buying either machine.
+
+**Purpose:** confirm whether the DXF path actually imports cleanly and at the correct size on Silhouette Studio's free tier, before spending money on either machine. If DXF works cleanly, the Portrait 4 is a no-compromise pick (cheaper, no subscription). If it doesn't, the Joy Xtra's free-SVG path is the safer bet.
+
+**Two cut files exist for this test:** `sticker_cut_lines.svg` and `sticker_cut_lines.dxf`, both generated to match `bin_sticker.py`'s exact 2×2 A4 grid (`generate_cut_lines_svg.py` / `generate_cut_lines_dxf.py` — see chat history; regenerate either any time the card size changes).
+
+### Part 1 — Software import check (free, no machine needed)
+- [ ] Install Cricut Design Space (free) and import `sticker_cut_lines.svg` — check the reported shape size
+- [ ] Install Silhouette Studio Basic Edition (free) and import `sticker_cut_lines.dxf` — check the reported shape size
+- [ ] For each: does the imported size read exactly 100×140mm? Do the paths look clean (four simple rectangles) or mangled/distorted?
+- **Record:** Y/N match, clean/mangled, notes for each
+
+### Part 2 — Printed comparison (regular paper only, not vinyl)
+- [ ] Print 2 copies of `bin_sticker.py`'s cut-guide sheet (`sheet.pdf`) on regular printer paper
+- [ ] Measure the printed cut-guide rectangle itself with a ruler first — confirms `bin_sticker.py`'s own output is accurate before blaming the cut file format for any mismatch
+- [ ] Compare that measurement against the on-screen imported shape size in each app
+- **Record:** measured vs expected (100×140mm) for the printed rectangle, the SVG import, and the DXF import
+
+### Decision criteria
+- **DXF imports clean and at the correct size:** Silhouette Portrait 4 becomes a no-compromise pick — cheaper than the Joy Xtra and no subscription ever required.
+- **DXF is off-size or visibly mangled:** proceed with the Cricut Joy Xtra and the free SVG path instead — don't spend the £40–50 on Designer Edition to work around a format that's already causing problems.
+- **Both import clean:** either machine works from a file-compatibility standpoint — fall back to the other trade-offs already discussed (price, subscription, cut width) to decide.
+
+---
+
+## Addendum 5 (Aug 2026) — Colour rendering check (dark/saturated colours)
+
+Added after a Day 0 print comparison surfaced an unplanned finding: Tests 1–5 in this plan focus on durability (fading, water, scratch, adhesion), not colour *accuracy* at the moment of printing — this addendum fills that gap for dark, saturated colours specifically, after Cricut's material showed an unexpected result on navy.
+
+**Finding:** printing the same navy design element on both materials, Cricut's output rendered as near-black with the blue tone largely lost, while Stickiply's rendered as a true, clearly visible navy. This was confirmed **consistent across all 3 print settings tested on the Cricut material** — Premium Glossy, Matte, and Photo Quality Ink Jet — which rules out driver/paper-type setting as the cause. Gold and red tones were comparable between the two materials; the issue appears specific to dark/saturated colours rendering on Cricut's coating, not a general colour accuracy problem.
+
+**Note on a separate, resolved issue:** the first Cricut sample tested (Premium Glossy) also showed heavy glare in photos that initially made it look worse than Stickiply on *all* colours, not just navy. Once photographed flat and glare-free, gold/red were actually comparable between materials — the glare was a photography artifact, not a print quality issue. This is a good example of why a same-conditions, side-by-side comparison matters before concluding a material is worse: glare and the genuine navy-rendering gap turned out to be two separate, independent findings, easy to conflate if judged from a single photo.
+
+**Note on red text sharpness (also investigated, resolved as non-issue):** a phone-photo comparison separately raised a concern that Stickiply's red text looked sharper than Cricut's. Re-tested with flatbed scans of both full sheets (eliminating lighting, glare, and camera focus as variables) — the sharpness difference did not hold up. Both materials render red text comparably crisp under a clean scan; the original impression was a camera-focus artifact, not a real print quality gap. No action needed on this one.
+
+**Confirmed a 4th time:** the navy finding above was also visible in these same flatbed scans — Cricut's navy still reads as near-black/dark purple-navy, Stickiply's as true navy, with lighting/glare/focus fully removed as possible causes. This is now the most solidly confirmed finding in this addendum (4 independent checks: 3 print settings + 1 scan), while the sharpness concern is the opposite — investigated and ruled out.
+
+### What to check
+- [x] ~~Check current designs for use of dark saturated colours~~ — checked: only D01 (Cottage Bloom Banner) is planned for near-term production, and it will be printed in **black**, not navy or any other dark saturated colour. Since black rendered fine on both materials in the samples so far, this finding doesn't currently affect any planned design.
+- [ ] Re-check this addendum if a future design deliberately uses navy, berry (dark burgundy, used by split_panel/corner_flourish), or forest (dark green, used by recycle) as its accent — those are the colours in this risk category based on the ACCENTS palette in `bin_sticker.py`
+- [ ] Not currently planned: confirming the gap holds after lamination, or for other dark colours — deprioritized given the above
+
+### Decision criteria
+- **Not a blocker for current production:** D01 in black is unaffected. No action needed before proceeding with D01.
+- **If a future design is planned in navy, berry, or forest:** re-open this check before committing that design to either material — particularly avoid **reverse_block** (accent fills the entire card) or **split_panel** (accent fills half the card) in navy/berry until tested, since those styles are the most exposed to this issue if it turns out to affect other dark colours too, not just navy.
+- **This does not override Tests 1–5's durability comparison** — a material can win on colour rendering and still lose on durability, or vice versa. Treat this addendum's result as one additional input to the Section 5 decision, not a replacement for it.
 
