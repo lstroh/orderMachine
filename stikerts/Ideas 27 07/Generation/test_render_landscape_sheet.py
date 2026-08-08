@@ -102,6 +102,24 @@ def test_discovery(r: SuiteResult) -> None:
     )
     r.check("discovery: every key has w > h", all_landscape)
 
+    accents = rls.accent_keys()
+    r.check(
+        "discovery: accent_keys includes ACCENTS",
+        all(k in accents for k in bs.ACCENTS),
+        f"got {accents}",
+    )
+    r.check(
+        "discovery: accent_keys includes CLEAR_VINYL",
+        all(k in accents for k in bs.CLEAR_VINYL_ACCENTS),
+        f"got {accents}",
+    )
+    r.check(
+        "discovery: accent_keys ACCENTS before clear-vinyl",
+        accents.index(next(iter(bs.ACCENTS)))
+        < accents.index(next(iter(bs.CLEAR_VINYL_ACCENTS))),
+        f"got {accents}",
+    )
+
 
 def test_order_wiring(r: SuiteResult) -> None:
     order = rls.build_order("36", "Grove Street", "terracotta", style="house_banner")
@@ -138,12 +156,92 @@ def test_order_wiring(r: SuiteResult) -> None:
         f"got {orders!r}",
     )
 
+    styles = rls.landscape_styles()
+    varied = rls.build_varied_landscape_orders(styles)
+    r.check(
+        "varied orders: one per landscape style",
+        len(varied) == len(styles),
+        f"got {len(varied)} for {len(styles)} styles",
+    )
+    r.check(
+        "varied orders: distinct styles",
+        {o["style"] for o in varied} == set(styles),
+        f"got {[o['style'] for o in varied]}",
+    )
+    r.check(
+        "varied orders: includes long street name",
+        any(o["street_name"] == rls.LONG_UK_STREET for o in varied),
+        f"streets={[o['street_name'] for o in varied]}",
+    )
+    r.check(
+        "varied orders: includes short street when 3+ styles",
+        len(styles) < 3
+        or any(o["street_name"] == rls.SHORT_UK_STREET for o in varied),
+        f"streets={[o['street_name'] for o in varied]}",
+    )
+    r.check(
+        "varied orders: 4-digit number on a common street",
+        any(
+            o["house_number"] == rls.LONG_UK_HOUSE_NUMBER
+            and o["street_name"] in rls.COMMON_UK_STREETS
+            for o in varied
+        ),
+        f"orders={[(o['house_number'], o['street_name']) for o in varied]}",
+    )
+    r.check(
+        "varied orders: default accent is black for all",
+        all(o["accent"] == "black" for o in varied) and len(varied) > 0,
+        f"accents={[o['accent'] for o in varied]}",
+    )
+    navy_orders = rls.build_varied_landscape_orders(styles, accent="navy")
+    r.check(
+        "varied orders: shared caller accent applied to all",
+        all(o["accent"] == "navy" for o in navy_orders) and len(navy_orders) > 0,
+        f"accents={[o['accent'] for o in navy_orders]}",
+    )
+
+
+def test_cli_order_flags(r: SuiteResult) -> None:
+    """CLI --house-number / --street-name / --accent map into build helpers."""
+    args = rls._parse_args(
+        [
+            "--style",
+            "house_banner",
+            "--house-number",
+            "128",
+            "--street-name",
+            "Kings Cross Ave",
+            "--accent",
+            "terracotta",
+        ]
+    )
+    r.check(
+        "CLI flags: house_number/street_name/accent parsed",
+        args.house_number == "128"
+        and args.street_name == "Kings Cross Ave"
+        and args.accent == "terracotta",
+        f"got house_number={args.house_number!r} street_name={args.street_name!r} accent={args.accent!r}",
+    )
+    # Short aliases still work
+    args2 = rls._parse_args(
+        ["--all", "--number", "7", "--street", "Rye", "--accent", "berry"]
+    )
+    r.check(
+        "CLI aliases: --number/--street still work",
+        args2.house_number == "7"
+        and args2.street_name == "Rye"
+        and args2.accent == "berry",
+        f"got house_number={args2.house_number!r} street_name={args2.street_name!r}",
+    )
+
 
 def test_cli_list(r: SuiteResult) -> None:
     code, out, err = _run_main(["--list"])
     r.check("CLI --list: exit 0", code == 0, f"code={code} err={err!r}")
     for key in rls.landscape_styles():
         r.check(f"CLI --list: stdout contains {key}", key in out, f"stdout={out!r}")
+    for key in rls.accent_keys():
+        r.check(f"CLI --list: stdout contains accent {key}", key in out, f"stdout={out!r}")
 
 
 def test_cli_validation(r: SuiteResult) -> None:
@@ -170,6 +268,22 @@ def test_cli_validation(r: SuiteResult) -> None:
         f"code={code} err={err!r}",
     )
 
+    code, out, err = _run_main(["--all", "--all-accents"])
+    r.check(
+        "CLI --all-accents without --style: non-zero exit",
+        code != 0,
+        f"code={code} err={err!r}",
+    )
+
+    code, out, err = _run_main(
+        ["--style", "house_banner", "--accent", "navy", "--all-accents"]
+    )
+    r.check(
+        "CLI --accent and --all-accents together: non-zero exit",
+        code != 0,
+        f"code={code} err={err!r}",
+    )
+
 
 def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
     os.makedirs(outdir, exist_ok=True)
@@ -182,9 +296,9 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
             [
                 "--style",
                 style,
-                "--number",
+                "--house-number",
                 "36",
-                "--street",
+                "--street-name",
                 "Grove Street",
                 "--accent",
                 "navy",
@@ -204,10 +318,6 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
         code, out, err = _run_main(
             [
                 "--all",
-                "--number",
-                "4",
-                "--street",
-                "Parkleigh Road",
                 "--out",
                 all_path,
             ]
@@ -215,8 +325,54 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
         if code != 0:
             raise AssertionError(f"exit {code}: {err or out}")
         _assert_pdf(all_path)
+        if "accent=black" not in out:
+            raise AssertionError(f"expected default accent=black, got: {out!r}")
+        if rls.LONG_UK_STREET not in out and "Twll" not in out:
+            raise AssertionError(f"expected long street in summary, got: {out!r}")
 
     r.run("PDF --all landscape gallery", _all)
+
+    all_accent_path = os.path.join(outdir, "cli_all_landscape_navy.pdf")
+
+    def _all_with_accent() -> None:
+        code, out, err = _run_main(
+            [
+                "--all",
+                "--accent",
+                "navy",
+                "--out",
+                all_accent_path,
+            ]
+        )
+        if code != 0:
+            raise AssertionError(f"exit {code}: {err or out}")
+        _assert_pdf(all_accent_path)
+        if "accent=navy" not in out:
+            raise AssertionError(f"expected accent=navy, got: {out!r}")
+
+    r.run("PDF --all with --accent navy", _all_with_accent)
+
+    accents_path = os.path.join(outdir, "cli_style_all_accents.pdf")
+
+    def _all_accents() -> None:
+        code, out, err = _run_main(
+            [
+                "--style",
+                style,
+                "--house-number",
+                "36",
+                "--street-name",
+                "Grove Street",
+                "--all-accents",
+                "--out",
+                accents_path,
+            ]
+        )
+        if code != 0:
+            raise AssertionError(f"exit {code}: {err or out}")
+        _assert_pdf(accents_path)
+
+    r.run(f"PDF --style {style} --all-accents", _all_accents)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -250,6 +406,7 @@ def main(argv: list[str] | None = None) -> int:
     print()
 
     print("== CLI ==")
+    test_cli_order_flags(r)
     test_cli_list(r)
     test_cli_validation(r)
     print()
