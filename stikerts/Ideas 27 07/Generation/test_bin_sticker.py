@@ -30,6 +30,7 @@ LANDSCAPE_STYLES = (
     "p25_landscape_flourish",
     "p25b_landscape_flourish",
     "p27_landscape_house",
+    "p47_house",
 )
 
 PORTRAIT_STYLES = tuple(s for s in bs.STYLES if s not in LANDSCAPE_STYLES)
@@ -44,6 +45,11 @@ REQUIRED_ASSETS = (
     bs.P25B_CORNER_BR,
     bs.P25B_CORNER_BL,
     bs.P27_ICON_MASTER,
+)
+
+# Present preferred; style has a vector fallback if missing.
+OPTIONAL_ASSETS = (
+    bs.P47_ICON_MASTER,
 )
 
 SAMPLE = {"house_number": "36", "street_name": "Grove Street", "accent": "navy"}
@@ -91,7 +97,7 @@ def _assert_pdf(path: str) -> None:
 
 
 def test_registry(r: SuiteResult) -> None:
-    r.check("registry: 14 styles", len(bs.STYLES) == 14, f"got {len(bs.STYLES)}")
+    r.check("registry: 15 styles", len(bs.STYLES) == 15, f"got {len(bs.STYLES)}")
 
     missing_labels = set(bs.STYLES) - set(bs.STYLE_LABELS)
     r.check(
@@ -194,6 +200,14 @@ def test_required_assets(r: SuiteResult) -> None:
             os.path.isfile(path),
             f"missing {path}",
         )
+    for rel in OPTIONAL_ASSETS:
+        path = bs._asset_path(rel)
+        if os.path.isfile(path):
+            r.ok(f"optional asset present: {rel}")
+        else:
+            # Still a pass: style falls back to a vector placeholder.
+            r.ok(f"optional asset missing (fallback OK): {rel}")
+            print(f"         WARN  {path} not found -- style will use vector fallback")
 
 
 def _render_single(style: str, outdir: str, order_base: dict) -> str:

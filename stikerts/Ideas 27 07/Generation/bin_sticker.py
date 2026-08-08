@@ -835,7 +835,7 @@ def _style_p02_house_banner(c, ox, oy, order):
         # really a substitution, not a degradation. Warn loudly so it's
         # never discovered only after looking at the printed output.
         print(
-            f"\u26a0 house_banner: master icon not found at "
+            f"WARNING: house_banner: master icon not found at "
             f"{_asset_path(P02_ICON_MASTER)!r} -- rendering plain house "
             f"fallback instead of the illustrated P02 design for "
             f"house_number={order.get('house_number')!r}."
@@ -1075,7 +1075,7 @@ def _style_p27_landscape_house(c, ox, oy, order):
         # substitution (there's no vector equivalent of the hollow
         # extracted outline), not a lesser version of the same design.
         print(
-            f"\u26a0 p27_landscape_house: master icon not found at "
+            f"WARNING: p27_landscape_house: master icon not found at "
             f"{_asset_path(P27_ICON_MASTER)!r} -- rendering plain house "
             f"fallback instead of the extracted P27 design for "
             f"house_number={order.get('house_number')!r}."
@@ -1109,6 +1109,143 @@ def _style_p27_landscape_house(c, ox, oy, order):
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=P27_PAD)
 
 
+# ---------------------------------------------------------------------------
+# P47 -- house-outline icon with the number nested inside, black-only line
+# art, LANDSCAPE (140x100mm, reuses P02_CARD_W/H). Numbers-only design (no
+# street-name field) -- gallery entry P47 is set="Numbers", not a house-
+# number+street combo like P02/P27.
+#
+# Source: Midjourney "Image 1" from the P47 mockup-prompt run (black-only,
+# flat/no-perspective variant). That source had a genuine ~2.618deg tilt on
+# the house's base wall -- NOT the ~0.44deg first estimated by averaging
+# the bottom-edge slope over the full icon width, which was distorted by
+# including the rounded corners' curvature in the fit. The real tilt was
+# only found by isolating the straight base-wall segment (away from both
+# corners) and re-fitting; residual after that fit was <0.6px, i.e. clean.
+# De-rotated (-2.618deg, bicubic, transparent fill) and re-cropped BEFORE
+# extraction/measurement -- every constant below is measured from that
+# already-leveled asset, not the original tilted mockup.
+#
+# Icon-silhouette-extraction: 3 connected components in the source (house
+# outline + the two placeholder digits '3'/'6' sitting side-by-side inside
+# it). Kept the house outline, erased both digits -- verified the saved
+# silhouette PNG has exactly 1 significant component (no leftover digit
+# fragments). Full workflow: icon-silhouette-extraction skill.
+#
+# NUMBER_CENTER_Y is the erased digits' own combined centroid (component
+# 2+3, in the ORIGINAL source image), carried through the same crop ->
+# de-rotate -> re-crop chain applied to the image itself (via a marker-
+# pixel transform, not hand-derived trig) -- this is ground truth for
+# where a human/AI actually centred the placeholder text, same reasoning
+# as P02/P27's number placement.
+#
+# NUMBER_MAX_WIDTH is the TRUE wall-to-wall clear gap between the house's
+# interior walls (measure_gap at the digit-centroid row, confirmed stable
+# within 1-2px across the whole body height -- the walls are near-
+# vertical), not the digits' own bounding-box span. 10% safety margin
+# applied, same convention as P02/P27.
+#
+# P47_ICON's box size is a DESIGN CHOICE (15mm side margins, vertically
+# centred), not a measurement -- unlike P02/P27 whose icon boxes were
+# constrained by needing room for a street-name band below. Since P47 has
+# no street name, the icon can be centred on the full card. One uniform
+# mm-per-px scale is used for both axes deliberately (this preserves the
+# source's true aspect ratio -- it's the *opposite* of the "one blended
+# scale distorts the image" mistake, which happens when x/y target
+# dimensions are independently constrained and DON'T match the source
+# aspect ratio; here the box's own aspect ratio IS the source's, by
+# construction, so one scale is correct, not a shortcut).
+#
+# Sanity-checked, not yet a real test render: interior vertical clearance
+# at the icon's horizontal centre is ~60mm (measure_gap, axis="col"),
+# comfortably more than a 140pt Helvetica-Bold cap-height (~49.4mm) even
+# before width-based auto-fit shrinks it further for longer numbers -- so
+# width, not height, is expected to be the binding constraint, same as
+# P02/P27. Icon sits 15mm clear of the card's left/right edges and
+# ~12.38mm clear top/bottom -- run su.check_edge_clearance() on a real
+# render before treating any of this as final (per the skill's step 9).
+# ---------------------------------------------------------------------------
+P47_ICON_MASTER = "assets/icons/p47_house_icon.png"
+
+P47_ICON = dict(x=15.0 * mm, y=12.3798 * mm, w=110.0 * mm, h=75.2404 * mm)
+
+P47_NUMBER_CENTER_Y = 43.0373 * mm  # RL y, from the erased digits' own centroid
+P47_NUMBER_MAX_WIDTH = 69.6595 * mm  # true wall-to-wall hollow width (77.40mm), 10% safety margin
+P47_NUMBER_MAX_SIZE = 140  # pt -- generous ceiling, auto-fit shrinks as needed (same as P27)
+P47_NUMBER_MIN_SIZE = 20
+
+
+def _p47_icon_path(accent_key):
+    """Same recolour-and-cache pattern as _p02_icon_path/_p27_icon_path --
+    generates the accent-coloured icon from the master silhouette on
+    first use, caches to disk. Returns None if the master art isn't
+    present (caller falls back to the plain vector house)."""
+    master = _asset_path(P47_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p47_house_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p47_house(c, ox, oy, order):
+    """15. P47 -- house-outline icon (black line art only, no colour
+    accents in the source) with the house number nested inside the
+    hollow interior. Numbers-only -- no street-name field, unlike
+    P02/P27's house+banner designs. LANDSCAPE (140x100mm, reuses
+    P02_CARD_W/H) per explicit request; P47's idea-board entry itself is
+    fits_spec=No against the standard 100x140mm portrait card (its
+    source was pinned at 140x150mm) -- this landscape build is a
+    deliberate departure to match the shared 140x100mm card, same
+    off-spec-vs-idea-board caveat as p25/p25b/p27's landscape variants.
+    Catalogued as D05 -- see STYLE_PRODUCT_ID and
+    bin_sticker_products_gallery_data.md. Status there is "pending", not
+    approved -- render_proof_thumbnail() measured real ink-to-card-edge
+    clearance under the 3mm minimum on all 4 sides (~1.7-2.0mm), same
+    border-stroke-vs-PAD issue as D01/D02 originally shipped with. This
+    comes from the shared global PAD, not something specific to this
+    style's own icon/number placement (those clear 14-18mm)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p47_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P47_ICON["x"], oy + P47_ICON["y"], P47_ICON["w"], P47_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # house, same reasoning as P02/P27's fallback: there's no vector
+        # equivalent of the hollow extracted outline, so this is a
+        # substitution, not a lesser version of the same design.
+        print(
+            f"WARNING: p47_house: master icon not found at "
+            f"{_asset_path(P47_ICON_MASTER)!r} -- rendering plain house "
+            f"fallback instead of the extracted P47 design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "house", draw_house_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Helvetica-Bold", 60)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.42, order["house_number"])
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
+                                  P47_NUMBER_MAX_SIZE, P47_NUMBER_MIN_SIZE, P47_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
+    number_baseline = P47_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Helvetica-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
 STYLES = {
     "classic": _style_classic,
     "minimal": _style_minimal,
@@ -1124,6 +1261,7 @@ STYLES = {
     "p25_landscape_flourish": _style_p25_landscape_flourish,
     "p25b_landscape_flourish": _style_p25b_landscape_flourish,
     "p27_landscape_house": _style_p27_landscape_house,
+    "p47_house": _style_p47_house,
 }
 
 STYLE_LABELS = {
@@ -1141,24 +1279,30 @@ STYLE_LABELS = {
     "p25_landscape_flourish": "12. D02 — Regency Double Flourish (landscape)",
     "p25b_landscape_flourish": "13. D03 — Manor Frame Classic (landscape)",
     "p27_landscape_house": "14. D04 — Homestead Silhouette (landscape)",
+    "p47_house": "15. P47 — House-outline + number, black-only (landscape)",
 }
 
 # Cross-reference from a style key to its internal product ID in
 # bin_sticker_products_gallery.html / bin_sticker_products_gallery_data.md
 # -- only styles that have actually shipped as a catalogued product get
-# an entry here (currently all 3 of the landscape styles; none of
+# an entry here (currently all 5 of the landscape styles; none of
 # styles 1-10 have been added to the products gallery yet). This is the
 # SAME direction of lookup products_io.py's next_product_id()/
 # insert_product_card() expect an entry dict to already know when
-# adding a new one -- if you build a 4th finished design, add it here
+# adding a new one -- if you build another finished design, add it here
 # too, or STYLE_LABELS and the products gallery will drift apart the
 # same way the idea board's HTML/.md drifted before insert_md_fields
-# existed.
+# existed (and the same way THIS dict and the products gallery had
+# already drifted by the time D05/p47_house was added -- the gallery's
+# live HTML had D04 registered but the only .md companion available
+# didn't, and had to be backfilled from the HTML's own content before
+# D05 could be added on top of a consistent pair).
 STYLE_PRODUCT_ID = {
     "house_banner": "D01",
     "p25_landscape_flourish": "D02",
     "p25b_landscape_flourish": "D03",
     "p27_landscape_house": "D04",
+    "p47_house": "D05",
 }
 
 # Card size per style. Every style defaults to the shared portrait
@@ -1173,6 +1317,7 @@ STYLE_CARD_SIZE["house_banner"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p25_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p25b_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p27_landscape_house"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p47_house"] = (P02_CARD_W, P02_CARD_H)
 
 
 def draw_sticker(c, ox, oy, order):

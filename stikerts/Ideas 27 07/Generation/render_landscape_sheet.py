@@ -16,6 +16,7 @@ so newly registered landscape designs appear automatically.
 
 Examples:
   python render_landscape_sheet.py --list
+  python render_landscape_sheet.py --style p47_house
   python render_landscape_sheet.py --style p27_landscape_house
   python render_landscape_sheet.py --style house_banner --house-number 36 --street-name "Grove Street" --accent navy
   python render_landscape_sheet.py --style house_banner --all-accents
@@ -59,6 +60,10 @@ SHORT_UK_STREET = "Ash"
 # Highest continuously numbered house commonly cited in UK address research.
 LONG_UK_HOUSE_NUMBER = "2679"
 TYPICAL_UK_HOUSE_NUMBERS = ("1", "4", "7", "12", "28", "36", "128")
+
+# Landscape styles that draw house number only (street_name is unused on-card).
+# Keep in sync when adding similar designs in bin_sticker.py.
+NUMBER_ONLY_STYLES = frozenset({"p47_house"})
 
 
 def landscape_styles() -> list[str]:
@@ -110,10 +115,10 @@ def build_varied_landscape_orders(
 ) -> list[dict[str, Any]]:
     """One order per landscape style with varied UK sample text.
 
-    - Streets cycle the top-10 common UK names
-    - Exactly one card uses the long bilingual street name
-    - When there are 3+ styles, one card uses the short street name
-    - Some common-street cards use a 4-digit house number (2679)
+    - Streets cycle the top-10 common UK names (skipped on NUMBER_ONLY_STYLES)
+    - Exactly one street-capable card uses the long bilingual street name
+    - When there are 2+ street-capable styles, one uses the short street name
+    - Some cards use a 4-digit house number (2679); prefer number-only styles
     - Every card uses the same accent (caller-provided; default black)
     """
     if not styles:
@@ -121,24 +126,40 @@ def build_varied_landscape_orders(
 
     n = len(styles)
     streets: list[str] = [COMMON_UK_STREETS[i % len(COMMON_UK_STREETS)] for i in range(n)]
+    street_idxs = [i for i, s in enumerate(styles) if s not in NUMBER_ONLY_STYLES]
 
-    long_idx = 1 if n > 1 else 0
-    streets[long_idx] = LONG_UK_STREET
-    if n >= 3:
-        short_idx = n - 1
-        if short_idx == long_idx:
-            short_idx = 0
-        streets[short_idx] = SHORT_UK_STREET
+    if street_idxs:
+        long_idx = street_idxs[1] if len(street_idxs) > 1 else street_idxs[0]
+        streets[long_idx] = LONG_UK_STREET
+        if len(street_idxs) >= 2:
+            short_idx = street_idxs[-1]
+            if short_idx == long_idx:
+                short_idx = street_idxs[0]
+            streets[short_idx] = SHORT_UK_STREET
+
+    # Number-only styles don't print street text; keep a blank for the order dict.
+    for i, style in enumerate(styles):
+        if style in NUMBER_ONLY_STYLES:
+            streets[i] = ""
 
     orders: list[dict[str, Any]] = []
     four_digit_assigned = False
+    number_only_idxs = [i for i, s in enumerate(styles) if s in NUMBER_ONLY_STYLES]
+    # Prefer stressing auto-fit on number-only designs (e.g. p47_house).
+    preferred_four_idx = number_only_idxs[0] if number_only_idxs else None
+
     for i, style in enumerate(styles):
         street = streets[i]
-        if street == LONG_UK_STREET:
+        if preferred_four_idx is not None and i == preferred_four_idx:
+            number = LONG_UK_HOUSE_NUMBER
+            four_digit_assigned = True
+        elif street == LONG_UK_STREET:
             number = "36"
         elif street == SHORT_UK_STREET:
             number = "1"
-        elif not four_digit_assigned or i % 2 == 0:
+        elif not four_digit_assigned or (
+            preferred_four_idx is None and i % 2 == 0
+        ):
             number = LONG_UK_HOUSE_NUMBER
             four_digit_assigned = True
         else:
@@ -146,16 +167,10 @@ def build_varied_landscape_orders(
 
         orders.append(build_order(number, street, accent, style=style))
 
-    # Guarantee at least one 4-digit number on a common street when possible
-    if not any(
-        o["house_number"] == LONG_UK_HOUSE_NUMBER
-        and o["street_name"] in COMMON_UK_STREETS
-        for o in orders
-    ):
-        for o in orders:
-            if o["street_name"] in COMMON_UK_STREETS:
-                o["house_number"] = LONG_UK_HOUSE_NUMBER
-                break
+    # Guarantee at least one 4-digit number when possible
+    if orders and not any(o["house_number"] == LONG_UK_HOUSE_NUMBER for o in orders):
+        target = preferred_four_idx if preferred_four_idx is not None else 0
+        orders[target]["house_number"] = LONG_UK_HOUSE_NUMBER
 
     return orders
 

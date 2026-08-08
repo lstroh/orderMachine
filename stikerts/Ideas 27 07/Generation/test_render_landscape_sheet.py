@@ -27,6 +27,7 @@ KNOWN_LANDSCAPE = (
     "p25_landscape_flourish",
     "p25b_landscape_flourish",
     "p27_landscape_house",
+    "p47_house",
 )
 
 
@@ -174,20 +175,28 @@ def test_order_wiring(r: SuiteResult) -> None:
         f"streets={[o['street_name'] for o in varied]}",
     )
     r.check(
-        "varied orders: includes short street when 3+ styles",
-        len(styles) < 3
+        "varied orders: includes short street when 2+ street-capable styles",
+        sum(1 for s in styles if s not in rls.NUMBER_ONLY_STYLES) < 2
         or any(o["street_name"] == rls.SHORT_UK_STREET for o in varied),
         f"streets={[o['street_name'] for o in varied]}",
     )
     r.check(
-        "varied orders: 4-digit number on a common street",
-        any(
-            o["house_number"] == rls.LONG_UK_HOUSE_NUMBER
-            and o["street_name"] in rls.COMMON_UK_STREETS
-            for o in varied
-        ),
+        "varied orders: 4-digit number present",
+        any(o["house_number"] == rls.LONG_UK_HOUSE_NUMBER for o in varied),
         f"orders={[(o['house_number'], o['street_name']) for o in varied]}",
     )
+    if "p47_house" in styles:
+        p47 = next(o for o in varied if o["style"] == "p47_house")
+        r.check(
+            "varied orders: p47_house has blank street (number-only)",
+            p47["street_name"] == "",
+            f"got {p47!r}",
+        )
+        r.check(
+            "varied orders: p47_house gets 4-digit number preference",
+            p47["house_number"] == rls.LONG_UK_HOUSE_NUMBER,
+            f"got {p47['house_number']!r}",
+        )
     r.check(
         "varied orders: default accent is black for all",
         all(o["accent"] == "black" for o in varied) and len(varied) > 0,

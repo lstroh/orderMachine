@@ -2,8 +2,8 @@
 
 *Text-only companion to `bin_sticker_products_gallery.html` — same entries, no images, kept lightweight for reference/search. IDs match the HTML gallery exactly; open that file to see the actual proof thumbnails.*
 
-**Total entries:** 4
-**Status:** 3 proof approved · 1 pending
+**Total entries:** 5
+**Status:** 3 proof approved · 2 pending
 
 This file tracks **built, code-backed designs** — a different thing from
 `bin_sticker_idea_board_data.md`, which tracks unbuilt inspiration/research
@@ -100,57 +100,30 @@ from D02's softer symmetrical look.
 ## D04 — Homestead Silhouette
 
 **Style key:** `p27_landscape_house`
-**Source idea:** P27 (landscape variant — P27's own idea-board entry has
-`fits_spec=Yes` for the standard 100×140mm PORTRAIT card; this is a
-deliberate landscape departure requested by the user, same as D02/D03's
-relationship to P25's portrait-spec entry, not "P27 built to spec")
+**Source idea:** P27 (landscape variant, deliberately off-spec per user request -- P27's own idea-board entry has fits_spec=Yes for the standard 100x140mm portrait card)
 **Card shape:** 140×100mm landscape
-**Status:** Pending — proof rendered and structurally verified, not yet
-user-approved (see open issue below)
+**Status:** Needs proof
 
-**Layout:** Bold house-outline icon with a chimney (thick line, no fill),
-house number nested inside the hollow interior, street name printed
-below.
+**Layout:** Bold house-outline icon with a chimney, house number nested inside the hollow interior, street name printed below. Icon extracted (not hand-drawn) via icon-silhouette-extraction from the Midjourney/Editor reference render, same approach as D01.
 
-**Assets required:** `assets/icons/p27_house_icon.png` — extracted via
-`icon-silhouette-extraction` from the Midjourney/Editor reference render
-(2624×1856px). The house+chimney was the only component kept; the
-placeholder "36" digits and "GROVE STREET" letters (11 components,
-exact match for G-R-O-V-E-S-T-R-E-E-T) were identified by connected-
-component analysis and erased to a hollow, then their own erased
-positions used as the real placement constants — same approach as D01.
-Per-accent recoloured copies (`p27_house_{accent}.png`) generated and
-cached automatically on first render, same pattern as D01/D02/D03.
+**Assets required:** `assets/icons/p27_house_icon.png` (transparent hollow house-outline silhouette -- number nested inside the interior, street name printed below it). Per-accent recoloured copies (`p27_house_{accent}.png`) are generated and cached automatically on first render.
 
-**Open issue — font/width mismatch:** the source mockup's typeface is
-narrower per unit of cap-height than Helvetica-Bold (this codebase's
-only available bold sans). For "GROVE STREET" (11 characters) this
-compounds enough that the width-safe auto-fit lands at ~34.5pt, well
-under the ~65pt the measured cap-height implies — the street name prints
-smaller/lighter than the mockup's proportions. The house number is
-affected less (~107.5pt vs. ~129pt implied). Kept the width-safe
-behaviour (consistent with every other `_fit_font_size` use in this
-file) rather than risk overflowing the border. Revisit with a real
-condensed bold TTF if matching the mockup's visual weight matters more
-than the safety margin — see `bin_sticker.py`'s `P27_STREET_MAX_WIDTH`
-comment for the full numbers.
+**Draft marketing angle:** the strongest real-world sales evidence of any design in the lineup -- 4th sighting of the house-outline-with-nested-number concept on the idea board, same trusted EDSG line as D02/D03's Amazon's Choice comparables, chimney detail as a differentiator. Pending: street-name auto-fit renders smaller than the source mockup's proportions imply (font-width mismatch, Helvetica-Bold vs. the mockup's narrower typeface) -- see this file for the full numbers before approving.
 
-**Border style:** the source render came out with a double-line border
-despite the mockup prompt asking for a single line. Built with SINGLE
-here to match the original prompt intent rather than what the render
-happened to show — flag if double was actually wanted.
+---
 
-**Cutting margin:** uses its own 3mm cut-to-border tolerance (`P27_PAD`)
-instead of the shared 2mm `PAD` every other style uses — scoped to this
-design only, not a global change. Safe as a pure border-inset shift with
-no icon/text rescaling needed, since the icon already sits 3.57–29mm
-clear of the card edges on every side.
+## D05 — Threshold Numeral
 
-**Draft marketing angle:** the strongest real-world sales evidence of
-any design in the lineup — P27 is the 4th sighting of the house-outline-
-with-nested-number concept on the idea board (after P10/P19/P20), from
-the same trusted EDSG line as D02/D03's Amazon's Choice comparables, and
-the chimney detail differentiates it from the plainer versions.
+**Style key:** `p47_house`
+**Source idea:** P47
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** House-outline icon (black line art only, no colour) with the house number nested inside the hollow interior. Numbers-only -- no street-name field, unlike D01/D04's house+banner designs. Icon extracted via icon-silhouette-extraction from the Midjourney 'Image 1' mockup, which had to be de-rotated (~2.618deg) before extraction/measurement -- the tilt was initially under-measured (~0.44deg) because the first fit averaged over the house's rounded corners; isolating the straight base-wall segment found the real angle.
+
+**Assets required:** `assets/icons/p47_house_icon.png` (transparent hollow house-outline silhouette, no street band). Per-accent recoloured copies (`p47_house_{accent}.png`) are generated and cached automatically on first render.
+
+**Draft marketing angle:** the cleanest/most minimal of the house-outline family -- black-only line art with no street name to fit, so it reads well small and suits a 'just the number' customer who finds D01/D04's street-name band unnecessary.
 
 ---
 
