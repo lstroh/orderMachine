@@ -3,6 +3,9 @@ CLI for landscape bin-sticker sheets.
 
 Modes:
   --style KEY   4-up A4 sheet with four copies of one landscape style
+  --style KEY --varied
+                4-up of one style with generated UK sample numbers/streets,
+                accent black
   --all         one of each landscape style with generated UK sample
                 house numbers / street names; shared --accent (default: black)
   --list        print available landscape style keys + accent keys
@@ -10,6 +13,7 @@ Modes:
 Flags:
   --all-accents  with --style: one sticker per accent (both ACCENTS and
                  CLEAR_VINYL_ACCENTS), paginated 4-up with accent captions
+  --varied       with --style: four generated UK samples, black accent
 
 Landscape styles are discovered from bin_sticker.STYLE_CARD_SIZE (w > h),
 so newly registered landscape designs appear automatically.
@@ -17,6 +21,8 @@ so newly registered landscape designs appear automatically.
 Examples:
   python render_landscape_sheet.py --list
   python render_landscape_sheet.py --style p47_house
+  python render_landscape_sheet.py --style p47_house --varied
+  python render_landscape_sheet.py --style house_banner --varied
   python render_landscape_sheet.py --style p27_landscape_house
   python render_landscape_sheet.py --style house_banner --house-number 36 --street-name "Grove Street" --accent navy
   python render_landscape_sheet.py --style house_banner --all-accents
@@ -175,6 +181,15 @@ def build_varied_landscape_orders(
     return orders
 
 
+def build_varied_same_style_orders(
+    style: str,
+    count: int = 4,
+    accent: str = "black",
+) -> list[dict[str, Any]]:
+    """Four (or count) varied UK samples for one landscape style, same accent."""
+    return build_varied_landscape_orders([style] * count, accent=accent)
+
+
 def render_orders_paginated(orders: list[dict[str, Any]], out_path: str) -> None:
     """Paginate full orders 4-up (same card size required), captioned."""
     if not orders:
@@ -294,13 +309,22 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="KEY",
         help=(
             "Accent colour key (ACCENTS or CLEAR_VINYL_ACCENTS). "
-            "Used by --style (default: navy) and --all (default: black)"
+            "Used by --style (default: navy) and --all (default: black); "
+            "ignored by --varied (always black)"
         ),
     )
     accent_group.add_argument(
         "--all-accents",
         action="store_true",
         help="With --style: one sticker per accent (ACCENTS + CLEAR_VINYL_ACCENTS)",
+    )
+    accent_group.add_argument(
+        "--varied",
+        action="store_true",
+        help=(
+            "With --style: 4-up sheet with generated UK sample numbers/streets, "
+            "always black accent"
+        ),
     )
     parser.add_argument(
         "--out",
@@ -340,6 +364,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    if args.varied and not args.style:
+        print(
+            "--varied requires --style KEY (one style, generated UK samples, black).",
+            file=sys.stderr,
+        )
+        return 1
+
     if args.style:
         if args.style not in styles:
             print(
@@ -365,6 +396,22 @@ def main(argv: list[str] | None = None) -> int:
             written = _write_with_lock_fallback(_render, out)
             if written == out:
                 print(f"Wrote {written} ({len(accents)} accents)")
+            return 0
+
+        if args.varied:
+            out = args.out or f"sheet_{args.style}_varied.pdf"
+            orders = build_varied_same_style_orders(args.style, count=4, accent="black")
+
+            def _render_varied(path: str) -> None:
+                render_orders_paginated(orders, path)
+
+            written = _write_with_lock_fallback(_render_varied, out)
+            if written == out:
+                print(f"Wrote {written} (4 varied samples, accent=black)")
+                for o in orders:
+                    print(
+                        f"  {o['house_number']} {o['street_name'] or '(no street)'}"
+                    )
             return 0
 
         out = args.out or "sheet.pdf"

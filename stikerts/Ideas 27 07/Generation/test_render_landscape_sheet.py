@@ -209,6 +209,23 @@ def test_order_wiring(r: SuiteResult) -> None:
         f"accents={[o['accent'] for o in navy_orders]}",
     )
 
+    same = rls.build_varied_same_style_orders("house_banner", count=4, accent="black")
+    r.check(
+        "varied same-style: 4 orders",
+        len(same) == 4,
+        f"got {len(same)}",
+    )
+    r.check(
+        "varied same-style: all house_banner + black",
+        all(o["style"] == "house_banner" and o["accent"] == "black" for o in same),
+        f"got {same!r}",
+    )
+    r.check(
+        "varied same-style: mixed sample text",
+        len({(o["house_number"], o["street_name"]) for o in same}) > 1,
+        f"got {[(o['house_number'], o['street_name']) for o in same]}",
+    )
+
 
 def test_cli_order_flags(r: SuiteResult) -> None:
     """CLI --house-number / --street-name / --accent map into build helpers."""
@@ -289,6 +306,22 @@ def test_cli_validation(r: SuiteResult) -> None:
     )
     r.check(
         "CLI --accent and --all-accents together: non-zero exit",
+        code != 0,
+        f"code={code} err={err!r}",
+    )
+
+    code, out, err = _run_main(["--varied"])
+    r.check(
+        "CLI --varied without --style: non-zero exit",
+        code != 0,
+        f"code={code} err={err!r}",
+    )
+
+    code, out, err = _run_main(
+        ["--style", "house_banner", "--varied", "--all-accents"]
+    )
+    r.check(
+        "CLI --varied and --all-accents together: non-zero exit",
         code != 0,
         f"code={code} err={err!r}",
     )
@@ -382,6 +415,26 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
         _assert_pdf(accents_path)
 
     r.run(f"PDF --style {style} --all-accents", _all_accents)
+
+    varied_path = os.path.join(outdir, "cli_style_varied.pdf")
+
+    def _varied() -> None:
+        code, out, err = _run_main(
+            [
+                "--style",
+                style,
+                "--varied",
+                "--out",
+                varied_path,
+            ]
+        )
+        if code != 0:
+            raise AssertionError(f"exit {code}: {err or out}")
+        _assert_pdf(varied_path)
+        if "accent=black" not in out:
+            raise AssertionError(f"expected accent=black, got: {out!r}")
+
+    r.run(f"PDF --style {style} --varied", _varied)
 
 
 def main(argv: list[str] | None = None) -> int:
