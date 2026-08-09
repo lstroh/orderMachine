@@ -30,6 +30,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_batches_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_channel_fee_estimates_actions' ) );
 		add_action( 'wp_ajax_som_preview_po_impact', array( __CLASS__, 'ajax_preview_po_impact' ) );
 		add_action( 'wp_ajax_som_board_toggle_pin', array( __CLASS__, 'ajax_board_toggle_pin' ) );
 		add_action( 'wp_ajax_som_board_save_columns', array( __CLASS__, 'ajax_board_save_columns' ) );
@@ -143,6 +144,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Channel Fee Estimates', 'order-machine' ),
+			__( 'Channel Fee Estimates', 'order-machine' ),
+			'manage_options',
+			'som-channel-fee-estimates',
+			array( __CLASS__, 'render_channel_fee_estimates' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Settings', 'order-machine' ),
 			__( 'Settings', 'order-machine' ),
 			'manage_options',
@@ -163,7 +173,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-channel-fee-estimates' ), true ) ) {
 			return;
 		}
 
@@ -747,6 +757,115 @@ class SOM_Admin_Menu {
 		}
 
 		wp_safe_redirect( SOM_Listings::detail_url( $listing_id ) );
+		exit;
+	}
+
+	/**
+	 * Channel fee estimates list or edit.
+	 *
+	 * @return void
+	 */
+	public static function render_channel_fee_estimates() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$estimate_id = isset( $_GET['estimate_id'] ) ? sanitize_text_field( wp_unslash( $_GET['estimate_id'] ) ) : '';
+
+		if ( 'new' === $estimate_id ) {
+			$is_new   = true;
+			$estimate = null;
+			require SOM_PLUGIN_DIR . 'admin/views/channel-fee-estimates.php';
+			return;
+		}
+
+		if ( '' !== $estimate_id && is_numeric( $estimate_id ) && (int) $estimate_id > 0 ) {
+			$estimate = SOM_Channel_Fee_Estimates::get( (int) $estimate_id );
+			if ( ! $estimate ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Fee estimate not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Channel_Fee_Estimates::list_url() ) . '">';
+				echo esc_html__( 'Back to channel fee estimates', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/channel-fee-estimates.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/channel-fee-estimates.php';
+	}
+
+	/**
+	 * Save / delete channel fee estimates.
+	 *
+	 * @return void
+	 */
+	public static function handle_channel_fee_estimates_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-channel-fee-estimates' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_GET['som_delete_fee_estimate'] ) ) {
+			$estimate_id = (int) $_GET['som_delete_fee_estimate'];
+			check_admin_referer( 'som_delete_fee_estimate_' . $estimate_id );
+
+			$result = SOM_Channel_Fee_Estimates::delete( $estimate_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_fee_estimate_error' );
+			} else {
+				self::flash_notice( __( 'Fee estimate deleted.', 'order-machine' ), 'success', 'som_fee_estimate_deleted' );
+			}
+
+			wp_safe_redirect( SOM_Channel_Fee_Estimates::list_url() );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_fee_estimate'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_fee_estimate', 'som_fee_estimate_nonce' );
+
+		$estimate_id = isset( $_POST['estimate_id'] ) ? (int) $_POST['estimate_id'] : 0;
+		$data        = array(
+			'channel_id'      => isset( $_POST['som_fee_channel_id'] ) ? (int) $_POST['som_fee_channel_id'] : 0,
+			'fee_component'   => isset( $_POST['som_fee_component'] ) ? wp_unslash( $_POST['som_fee_component'] ) : '',
+			'rate_type'       => isset( $_POST['som_fee_rate_type'] ) ? wp_unslash( $_POST['som_fee_rate_type'] ) : '',
+			'rate_value'      => isset( $_POST['som_fee_rate_value'] ) ? wp_unslash( $_POST['som_fee_rate_value'] ) : '',
+			'order_value_min' => isset( $_POST['som_fee_order_value_min'] ) ? wp_unslash( $_POST['som_fee_order_value_min'] ) : '',
+			'order_value_max' => isset( $_POST['som_fee_order_value_max'] ) ? wp_unslash( $_POST['som_fee_order_value_max'] ) : '',
+			'is_enabled'      => ! empty( $_POST['som_fee_is_enabled'] ),
+			'notes'           => isset( $_POST['som_fee_notes'] ) ? wp_unslash( $_POST['som_fee_notes'] ) : '',
+		);
+
+		if ( $estimate_id > 0 ) {
+			$result = SOM_Channel_Fee_Estimates::update( $estimate_id, $data );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_fee_estimate_error' );
+				wp_safe_redirect( SOM_Channel_Fee_Estimates::detail_url( $estimate_id ) );
+				exit;
+			}
+			self::flash_notice( __( 'Fee estimate saved.', 'order-machine' ), 'success', 'som_fee_estimate_saved' );
+			wp_safe_redirect( SOM_Channel_Fee_Estimates::detail_url( $estimate_id ) );
+			exit;
+		}
+
+		$result = SOM_Channel_Fee_Estimates::create( $data );
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_fee_estimate_error' );
+			wp_safe_redirect( SOM_Channel_Fee_Estimates::detail_url( 'new' ) );
+			exit;
+		}
+
+		self::flash_notice( __( 'Fee estimate created.', 'order-machine' ), 'success', 'som_fee_estimate_saved' );
+		wp_safe_redirect( SOM_Channel_Fee_Estimates::detail_url( (int) $result ) );
 		exit;
 	}
 

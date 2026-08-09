@@ -33,9 +33,18 @@ $out( 'api_key_set', '' !== $api_key ? 'yes' : 'no' );
 $ext = SOM_Channels::get_by_slug( 'external' );
 $out( 'external_channel', $ext ? ( 'id=' . (int) $ext->id . ' active=' . (int) $ext->is_active ) : 'MISSING' );
 
-$product_id = (int) $GLOBALS['wpdb']->get_var(
-	'SELECT id FROM ' . SOM_DB::table( 'products' ) . ' WHERE is_active = 1 ORDER BY id ASC LIMIT 1'
-);
+$product_id = (int) get_option( 'som_seed_product_id', 0 );
+if ( $product_id > 0 ) {
+	$seed_row = SOM_Products::get( $product_id );
+	if ( ! $seed_row || empty( $seed_row->is_active ) || empty( $seed_row->workflow_template_id ) ) {
+		$product_id = 0;
+	}
+}
+if ( $product_id < 1 ) {
+	$product_id = (int) $GLOBALS['wpdb']->get_var(
+		'SELECT id FROM ' . SOM_DB::table( 'products' ) . ' WHERE is_active = 1 AND workflow_template_id IS NOT NULL ORDER BY id ASC LIMIT 1'
+	);
+}
 $out( 'seed_product_id', $product_id );
 
 $external_id = 'ext-smoke-' . gmdate( 'YmdHis' );

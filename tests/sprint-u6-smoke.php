@@ -33,7 +33,7 @@ $out( 'plugin', SOM_VERSION );
 $out( 'db_version', (string) get_option( 'som_db_version', '' ) );
 
 $assert( version_compare( SOM_VERSION, '0.17.0', '>=' ), 'SOM_VERSION_gte_0.17.0' );
-$assert( get_option( 'som_db_version' ) === '1.5.0', 'som_db_version_1.5.0' );
+$assert( version_compare( (string) get_option( 'som_db_version', '' ), '1.5.0', '>=' ), 'som_db_version_gte_1.5.0' );
 $assert( is_readable( SOM_PLUGIN_DIR . 'admin/views/batches.php' ), 'batches_view_exists' );
 
 $ship_group = SOM_Batch_Groups::get_by_key( 'shipping_label' );

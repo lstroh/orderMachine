@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.6.0';
+	const DB_VERSION = '1.7.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -348,6 +348,54 @@ class SOM_DB {
 			KEY purchase_order_item_id (purchase_order_item_id)
 		) {$charset_collate};";
 
+		$sql[] = "CREATE TABLE {$p}som_channel_fee_estimates (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			channel_id bigint(20) unsigned NOT NULL,
+			fee_component varchar(50) NOT NULL,
+			rate_type enum('percent','fixed') NOT NULL,
+			rate_value decimal(10,4) NOT NULL,
+			order_value_min decimal(10,2) NULL,
+			order_value_max decimal(10,2) NULL,
+			is_enabled tinyint(1) NOT NULL DEFAULT 1,
+			notes text NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY channel_id (channel_id),
+			KEY fee_component (fee_component)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_order_platform_fees (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			order_id bigint(20) unsigned NOT NULL,
+			channel_id bigint(20) unsigned NOT NULL,
+			fee_type varchar(50) NOT NULL,
+			amount decimal(10,4) NOT NULL,
+			currency char(3) NOT NULL DEFAULT 'GBP',
+			raw_payload text NULL,
+			synced_at datetime NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY order_id (order_id),
+			KEY channel_id (channel_id),
+			KEY fee_type (fee_type)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_recurring_platform_expenses (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			channel_id bigint(20) unsigned NOT NULL,
+			listing_id bigint(20) unsigned NULL,
+			fee_type varchar(50) NOT NULL DEFAULT 'listing_fee',
+			amount decimal(10,4) NOT NULL,
+			incurred_date date NOT NULL,
+			notes text NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY channel_id (channel_id),
+			KEY listing_id (listing_id),
+			KEY incurred_date (incurred_date)
+		) {$charset_collate};";
+
 		// Migrate reserved `key` → group_key before dbDelta so UNIQUE is not applied to empty placeholders.
 		self::upgrade_batch_groups_key_column();
 
@@ -360,6 +408,10 @@ class SOM_DB {
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
+
+		if ( class_exists( 'SOM_Channel_Fee_Estimates' ) ) {
+			SOM_Channel_Fee_Estimates::ensure_defaults();
+		}
 	}
 
 	/**

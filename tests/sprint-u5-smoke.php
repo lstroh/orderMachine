@@ -35,7 +35,7 @@ $out( 'plugin', SOM_VERSION );
 $out( 'db_version', (string) get_option( 'som_db_version', '' ) );
 
 $assert( version_compare( SOM_VERSION, '0.16.0', '>=' ), 'SOM_VERSION_gte_0.16.0' );
-$assert( get_option( 'som_db_version' ) === '1.5.0', 'som_db_version_1.5.0' );
+$assert( version_compare( (string) get_option( 'som_db_version', '' ), '1.5.0', '>=' ), 'som_db_version_gte_1.5.0' );
 
 $batches_t = SOM_DB::table( 'step_batches' );
 // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
