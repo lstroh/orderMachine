@@ -5,6 +5,7 @@
 
 Companions (feature explainers, not this pass/fail list):
 
+- [`USER-GUIDE.md`](USER-GUIDE.md) / [`USER-WORKFLOWS.md`](USER-WORKFLOWS.md) / [`USER-REFERENCE.md`](USER-REFERENCE.md) — operator how-to (not this pass/fail list)
 - [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) — what each feature does + troubleshooting  
 - [`Sprint-Progress.md`](Sprint-Progress.md) / [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) / [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md) / [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md) — what shipped  
 
