@@ -124,7 +124,7 @@ function som_admin_notices() {
 	}
 
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-	if ( ! in_array( $page, array( 'som-settings', 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
+	if ( ! in_array( $page, array( 'som-settings', 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
 		return;
 	}
 

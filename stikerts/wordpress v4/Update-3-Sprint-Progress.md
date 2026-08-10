@@ -474,7 +474,7 @@ Covered: eBay/Etsy estimate maths (tiers, VAT, listing fee), `recipe_costing` fe
 | `admin/assets/js/analytics.js` | Chart.js wiring (new) |
 | `admin/assets/css/admin.css` | Analytics layout |
 | `admin/class-som-admin-menu.php` | Submenu + page-gated CDN enqueue + `render_analytics` |
-| `orderMachine.php` | Require class; `0.22.0` |
+| `orderMachine.php` | Require class; `0.22.0`; admin-notices allowlist includes `som-analytics` |
 | `tests/sprint-up3-s4-smoke.php` | Sprint 4 smoke (new) |
 | `stikerts/wordpress v4/Update-3-Sprint-Progress.md` | This progress record |
 
@@ -527,4 +527,10 @@ Covered: custom bounds/labels, stock reconstruction, cancelled exclusion, null `
 ## Update Package 3 — complete
 
 All four sprints done and smoke-verified. Plan source of truth remains [`Update-3-Sprint-Plan.md`](Update-3-Sprint-Plan.md).
+
+### Post-sprint follow-up (2026-08-10)
+
+| Item | Status | Notes |
+|---|---|---|
+| Admin notices on Analytics | **Fixed** | Added `som-analytics` to `som_admin_notices()` page allowlist in `orderMachine.php` so stored notices render on that page like other OM screens |
 
