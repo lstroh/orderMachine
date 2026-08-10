@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Unexpected tag format: $TAG (expected vX.Y.Z)" >&2
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify plugin version matches tag
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          HEADER="$(sed -nE 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*(\S+).*/\1/p' orderMachine.php | head -n1)"
+          CONST="$(sed -nE "s/.*define\([[:space:]]*'SOM_VERSION'[[:space:]]*,[[:space:]]*'([^']+)'[[:space:]]*\).*/\1/p" orderMachine.php | head -n1)"
+          echo "tag=$VERSION header=$HEADER const=$CONST"
+          if [[ "$HEADER" != "$VERSION" ]]; then
+            echo "Tag version $VERSION does not match plugin header Version: $HEADER" >&2
+            exit 1
+          fi
+          if [[ "$CONST" != "$VERSION" ]]; then
+            echo "Tag version $VERSION does not match SOM_VERSION $CONST" >&2
+            exit 1
+          fi
+
+      - name: Build plugin zip
+        run: bash bin/build-plugin-zip.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          ZIP="dist/orderMachine-${VERSION}.zip"
+          NOTES="$(printf '%s\n' \
+            "Order Machine **${VERSION}** (0.x = alpha)." \
+            "" \
+            "Install: WordPress Admin → Plugins → Add New → Upload Plugin → choose \`orderMachine-${VERSION}.zip\`." \
+            "" \
+            "Do not unzip into the plugins folder manually unless you keep the top-level \`orderMachine/\` directory.")"
+          gh release create "$TAG" "$ZIP" \
+            --title "Order Machine ${VERSION}" \
+            --notes "$NOTES"

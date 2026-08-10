@@ -35,3 +35,8 @@ __pycache__/
 # Local archives / temp exports
 *.tmp
 *.temp
+
+# Release / packaging output
+dist/
+*.zip
+!stikerts/**/*.zip

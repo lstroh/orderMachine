@@ -1,0 +1,54 @@
+# Reference exclude list for distributable plugin packages.
+# The build scripts (bin/build-plugin-zip.*) use an explicit allowlist of runtime
+# paths (orderMachine.php, uninstall.php, admin/, includes/) so this file is
+# documentation + a safety net if packaging is extended later.
+
+# VCS / editor
+.git
+.gitattributes
+.gitignore
+.cursor
+.vscode
+.idea
+.editorconfig
+
+# Docs / planning
+stikerts
+MCP.md
+WP-ENV.md
+RELEASE.md
+*.md
+
+# Dev / test tooling
+tests
+.wp-env.json
+phpcs.xml.dist
+wp-env-debug.log
+
+# Dependencies (none shipped today)
+node_modules
+vendor
+package.json
+package-lock.json
+composer.json
+composer.lock
+
+# Build / release artifacts
+dist
+bin
+.github
+.distignore
+
+# Secrets / local noise
+.env
+.env.*
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+__pycache__
+*.py[cod]
+.phpunit.result.cache
+coverage
+.cache

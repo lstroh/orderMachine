@@ -36,3 +36,9 @@ One workflow per order: primary product = first `order_items` row with non-null 
 - Plain PHP admin UI for v1 (no React/build step) unless the user changes that.
 - Honor roadmap order; **pause after Phase 4** (orders list/detail) before workflow engine work unless the user waives it.
 - Planning-only / tooling files are fine; do not invent product behaviour that contradicts the design docs.
+
+## Versioning / releases (alpha)
+
+- Plugin SemVer stays on **`0.x.y`** during alpha; do not reset to `0.1.0`.
+- Keep header `Version:` and `SOM_VERSION` in sync; release tags are `vX.Y.Z`.
+- Installable zips come from GitHub Releases (CI on tag). Process: `RELEASE.md`. Agent release workflow: `.cursor/skills/release-order-machine/`.
