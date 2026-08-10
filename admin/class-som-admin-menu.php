@@ -144,6 +144,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Analytics', 'order-machine' ),
+			__( 'Analytics', 'order-machine' ),
+			'manage_options',
+			'som-analytics',
+			array( __CLASS__, 'render_analytics' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Channel Fee Estimates', 'order-machine' ),
 			__( 'Channel Fee Estimates', 'order-machine' ),
 			'manage_options',
@@ -182,7 +191,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
 			return;
 		}
 
@@ -214,6 +223,23 @@ class SOM_Admin_Menu {
 			if ( $localize ) {
 				wp_localize_script( 'som-admin', 'somAdmin', $localize );
 			}
+		}
+
+		if ( 'som-analytics' === $page ) {
+			wp_enqueue_script(
+				'chartjs',
+				'https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js',
+				array(),
+				'4.4.8',
+				true
+			);
+			wp_enqueue_script(
+				'som-analytics',
+				SOM_PLUGIN_URL . 'admin/assets/js/analytics.js',
+				array( 'chartjs' ),
+				SOM_VERSION,
+				true
+			);
 		}
 
 		if ( 'som-orders-board' === $page ) {
@@ -767,6 +793,18 @@ class SOM_Admin_Menu {
 
 		wp_safe_redirect( SOM_Listings::detail_url( $listing_id ) );
 		exit;
+	}
+
+	/**
+	 * Analytics dashboard.
+	 *
+	 * @return void
+	 */
+	public static function render_analytics() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		require SOM_PLUGIN_DIR . 'admin/views/analytics.php';
 	}
 
 	/**

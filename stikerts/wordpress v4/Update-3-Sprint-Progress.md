@@ -15,7 +15,7 @@ Assumption: base plugin + Update Package 1 (materials/costing) + Update Package 
 | 1 | Fee schema + Channel Fee Estimates UI | **Done** | Verified on wp-env 2026-08-09 |
 | 2 | Platform fee sync + order/recurring UI | **Done** | Verified on wp-env 2026-08-10 |
 | 3 | Product Costing + budgets fee-aware | **Done** | Verified on wp-env 2026-08-10 |
-| 4 | Analytics Dashboard | Not started | |
+| 4 | Analytics Dashboard | **Done** | Verified on wp-env 2026-08-10 |
 
 ---
 
@@ -386,6 +386,145 @@ Covered: eBay/Etsy estimate maths (tiers, VAT, listing fee), `recipe_costing` fe
 
 ---
 
-## Sprint 4+
+## Sprint 4 — Analytics Dashboard
 
-Not started. Follow `Update-3-Sprint-Plan.md` §5 in order; do not re-open settled open items in plan §1–§2 without confirmation.
+- **Status:** **Done** — confirmed complete vs `Update-3-Sprint-Plan.md` §5 Sprint 4 Create/Modify/Charts/Filters/**Done when**, settled O5/O6/O10 (+ O7 from Sprint 3), and Sprint 4 Q&A locks
+- **Completed:** 2026-08-10
+- **Verified on:** wp-env via `tests/sprint-up3-s4-smoke.php` (`PASS — Update Package 3 Sprint 4 smoke`)
+- **Plugin version:** `0.22.0`
+- **DB version:** `1.8.0` (unchanged — no schema migration)
+
+### Plan Create / Modify checklist
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Create `admin/views/analytics.php` | **Done** | Single page; shared GET filters; JSON embed `#som-analytics-data` |
+| Create `admin/assets/js/analytics.js` | **Done** | Chart.js wiring for all five charts |
+| Query/helper methods (sales, profit, stock, channel, AOV) | **Done** | `includes/class-som-analytics.php` |
+| Modify `admin/class-som-admin-menu.php` — register + enqueue | **Done** | Submenu **Analytics** (`som-analytics`); Chart.js 4.4.8 jsDelivr + `analytics.js` only on that page |
+| Shared profit aggregator from Sprint 3 (reuse) | **Done** | `SOM_Platform_Fees::fees_for_order`; order-level `SOM_Analytics::order_profit` (not sum of `line_profit`) |
+| Modify `orderMachine.php` | **Done** | Require analytics class; `SOM_VERSION` → `0.22.0` |
+
+### Charts (plan §5)
+
+| Chart | Type | Status | Notes |
+|---|---|---|---|
+| Sales over time | Line | **Done** | Revenue from `order_items.unit_price` × qty only |
+| Profit over time | Line | **Done** | Order-level: revenue − stock-log COGS − fees once (estimate→actual) |
+| Material stock over time | Line | **Done** | Multi-select materials; backward from `current_stock` |
+| Orders by channel | Bar | **Done** | Order counts for the selected range |
+| Average order value | Line | **Done** | Revenue ÷ priced-order count per bucket |
+
+\*Plan text said sales fallback to `target_selling_price`; Sprint 4 lock superseded that — **sold price (`unit_price`) only**; drop lines with null/empty price from sales/profit/AOV.
+
+### Filters (plan §5)
+
+| Filter | Status | Notes |
+|---|---|---|
+| Date range 7 / 30 / 90 / this year / custom | **Done** | Site timezone bounds → UTC SQL window |
+| Granularity daily / weekly / monthly | **Done** | Sales, profit, AOV, stock series |
+| Channel where relevant | **Done** | Applies to order-backed charts |
+| Material selector for stock | **Done** | Multi-select; chart empty until selection + Apply |
+
+### Plan “Done when” checklist
+
+| Criterion (plan wording) | Result | Evidence |
+|---|---|---|
+| One admin Analytics page; shared filter state across charts | **Pass** | One GET form drives all series |
+| All five charts render with live aggregation | **Pass** | No summary tables; `dashboard_payload` |
+| Profit uses estimate→actual fees | **Pass** | `fees_for_order` |
+| Stock series matches walking backward from current stock | **Pass** | Smoke 100 → 90 → 70 |
+| No build step; Chart.js via CDN like SortableJS | **Pass** | jsDelivr Chart.js 4.4.8 |
+
+### Settled open items (plan §1) for this sprint
+
+| Item | Decision | Applied? |
+|---|---|---|
+| O5 Companion charts | Both orders-by-channel + AOV | Yes |
+| O6 Live vs summary tables | Live queries only | Yes |
+| O10 Stock reconstruction | Walk backward from `current_stock` | Yes |
+| O7 Profit without actual fees | Estimate until actual | Yes (Sprint 3 path reused) |
+
+### Locked decisions applied (Sprint 4 planning chat)
+
+| Topic | Decision | Applied? |
+|---|---|---|
+| Profit aggregation | **Order-level** once (industry practice for contribution charts; avoids double-counting fees) | Yes |
+| Exclude statuses | Cancelled + refunded | Yes — `cancelled_sql` + best-effort `refunded_sql` on payload |
+| Revenue | `unit_price` (sold) only — no target fallback | Yes |
+| Null sold price | Drop that line from sales / profit / AOV | Yes |
+| Orders by channel | Order counts; one bar per channel for the range | Yes |
+| Stock default | Empty until user picks material(s) | Yes |
+| Recurring platform expenses | Out of profit chart (same as Costing/budgets) | Yes |
+| Data load | Embed JSON + form GET reload | Yes |
+| Material COGS | Stock log `reason = new_order` × `unit_cost_at_time` | Yes |
+
+### What shipped (behaviour)
+
+1. **Analytics admin page** — shared filters (range, custom dates, granularity, channel, materials) reload via GET; summary totals for sales / profit / priced-order count.
+2. **Five Chart.js charts** — sales, profit, AOV (line); orders by channel (bar); material stock (line when materials selected).
+3. **`SOM_Analytics`** — live queries; exclude cancelled/refunded; eligible sold lines only; order-level fee-aware profit; stock reconstruction from `current_stock`.
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-analytics.php` | Aggregations (new) |
+| `admin/views/analytics.php` | Dashboard UI (new) |
+| `admin/assets/js/analytics.js` | Chart.js wiring (new) |
+| `admin/assets/css/admin.css` | Analytics layout |
+| `admin/class-som-admin-menu.php` | Submenu + page-gated CDN enqueue + `render_analytics` |
+| `orderMachine.php` | Require class; `0.22.0` |
+| `tests/sprint-up3-s4-smoke.php` | Sprint 4 smoke (new) |
+| `stikerts/wordpress v4/Update-3-Sprint-Progress.md` | This progress record |
+
+### `SOM_Analytics` API surface (Sprint 4)
+
+| Method | Role |
+|---|---|
+| `parse_filters` / `resolve_date_bounds` | Shared GET filters |
+| `excluded_orders_sql` / `refunded_sql` | Cancelled + refunded exclusion |
+| `bucket_key` / `bucket_labels` / `bucket_end_utc` | Granularity series |
+| `load_orders_with_items` | Live order + items query |
+| `eligible_lines` / `order_material_cogs` / `order_profit` | Order-level fee-aware profit |
+| `aggregate_sales_profit_aov` / `aggregate_orders_by_channel` / `aggregate_stock_series` | Chart series |
+| `dashboard_payload` | Full embed for the view |
+
+### Verification (wp-env, 2026-08-10)
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s4-smoke.php
+```
+
+**Result:** `PASS — Update Package 3 Sprint 4 smoke`  
+Covered: custom bounds/labels, stock reconstruction, cancelled exclusion, null `unit_price` drop, order-level fees + material COGS from log, sales totals (£42 across 3 priced orders), channel bars, empty stock until selected, payload keys + view/js presence.
+
+### Suggested live check (Local / operator)
+
+1. Open **Order Machine → Analytics**.
+2. Apply Last 30 days / daily — sales, profit, AOV, orders-by-channel render.
+3. Select a material → stock chart appears after Apply.
+4. Confirm cancelled orders do not inflate sales; lines without sold price are omitted.
+
+### Gaps / residual risk (not blocking Sprint 4)
+
+| Item | Notes |
+|---|---|
+| Refunded detection | Best-effort on `raw_payload` (no order-level refund column) |
+| Multi-item COGS vs dropped lines | Material COGS still from full-order `new_order` stock log |
+| Pre-existing orders in range | Charts include all eligible orders in the selected window |
+
+### Explicitly out of scope (package complete)
+
+| Item | Notes |
+|---|---|
+| Pre-computed analytics summary tables | Plan §7 / O6 — live only for v1 |
+| Amazon / SP-API Financials | Plan §7 |
+| Further Update Package 3 sprints | None — Sprint 4 was the last |
+
+---
+
+## Update Package 3 — complete
+
+All four sprints done and smoke-verified. Plan source of truth remains [`Update-3-Sprint-Plan.md`](Update-3-Sprint-Plan.md).
+

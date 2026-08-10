@@ -209,6 +209,59 @@
 	margin: 0 0 8px;
 }
 
+/* Analytics (Update Package 3 Sprint 4) */
+
+.som-analytics-filters label {
+	font-weight: 600;
+}
+
+.som-analytics-filters select[multiple] {
+	min-width: 220px;
+	max-width: 280px;
+	height: auto;
+}
+
+.som-analytics-custom-dates {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.som-analytics-summary {
+	margin: 8px 0 16px;
+	color: #50575e;
+}
+
+.som-analytics-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 20px;
+}
+
+.som-analytics-chart-block {
+	margin: 0;
+	padding: 12px 16px 16px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.som-analytics-chart-block h2 {
+	margin: 0 0 12px;
+	font-size: 14px;
+}
+
+.som-analytics-chart-block--wide {
+	grid-column: 1 / -1;
+}
+
+@media screen and (max-width: 960px) {
+	.som-analytics-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
 .som-badge-active {
 	background: #edfaef;
 	color: #1e6e34;
