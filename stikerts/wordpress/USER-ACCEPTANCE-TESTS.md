@@ -1,12 +1,12 @@
 # Order Machine — User Acceptance Tests
 
 *Click-through checklist for an operator (or reviewer) in wp-admin.*  
-*Covers base Sprints 1–11 + Update Package 1 (U1–U7) + Update Package 2 (U2-1–U2-5) · plugin **0.18.1** · DB **1.6.0**.*
+*Covers base Sprints 1–11 + Update Package 1 (U1–U7) + Update Package 2 (U2-1–U2-5) + Update Package 3 (UP3-S1–S4) · plugin **0.22.0** · DB **1.8.0**.*
 
 Companions (feature explainers, not this pass/fail list):
 
 - [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) — what each feature does + troubleshooting  
-- [`Sprint-Progress.md`](Sprint-Progress.md) / [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) / [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md) — what shipped  
+- [`Sprint-Progress.md`](Sprint-Progress.md) / [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md) / [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md) / [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md) — what shipped  
 
 Mark each item **Pass / Fail / Skip** (Skip = intentionally out of scope or blocked by missing live apps).
 
@@ -42,9 +42,9 @@ You can do the action in the UI, see the expected result, and there is no PHP fa
 | Admin | Your Local site URL + `/wp-admin` |
 
 - [ ] Site is running; wp-admin loads
-- [ ] **Plugins** → **Order Machine** is **Active** (v0.18.1)
+- [ ] **Plugins** → **Order Machine** is **Active** (v0.22.0)
 - [ ] Left menu shows **Order Machine**
-- [ ] After opening any Order Machine screen, schema is **1.6.0** (budget tables present — or confirm on next admin load after upgrade)
+- [ ] After opening any Order Machine screen, schema is **1.8.0** (fee + budget tables present — or confirm on next admin load after upgrade)
 
 ### 0.2 Enable dummy credentials (fixture path)
 
@@ -95,10 +95,14 @@ Open each submenu once and confirm the page title loads with no PHP error:
 | Batches | Batch groups + open batches |
 | Workflows | Workflow templates list |
 | Listings | Listings list |
+| Analytics | Analytics dashboard (charts) |
+| Channel Fee Estimates | Fee estimate components by channel |
+| Recurring Platform Expenses | Non-order-linked platform fees |
 | Settings | Order Machine Settings |
 
-- [ ] All eleven screens load
+- [ ] All fourteen screens load
 - [ ] Orders Board sits directly under Orders; Budgets sits directly under Materials
+- [ ] Analytics / Channel Fee Estimates / Recurring Platform Expenses sit before Settings
 
 ### 1.2 Deactivate does not wipe data
 
@@ -121,7 +125,7 @@ Do this **before** first Sync now (or after a clean slate from §0.3). Seed appe
 - [ ] Product exists without manual create
 - [ ] Workflow **Bin Sticker Production** is assigned
 - [ ] Recipe has vinyl + laminate (~1 each)
-- [ ] **Product Costing** panel shows target / material cost / margin fields (may be empty target until you set one)
+- [ ] **Product Costing** panel shows target / material cost / margin fields (and platform fee £/% when estimates exist — §20–§21)
 - [ ] Linked listings section is present (links toward Listings)
 
 ### 2.2 Materials
@@ -161,7 +165,8 @@ Do this **before** first Sync now (or after a clean slate from §0.3). Seed appe
 
 - [ ] eBay / Etsy show connected in dummy mode (or Connect / Disconnect buttons visible)
 - [ ] OAuth callback URLs shown for each channel
-- [ ] Fields for n8n base URL, order poll interval, engine tick interval, token refresh
+- [ ] Fields for n8n base URL, order poll interval, engine tick interval, token refresh, **fee poll interval**
+- [ ] **Platform fee sync** section: last-run / cursor status, **Sync fees now** button
 - [ ] REST API key field + MCP / Abilities toggle
 - [ ] Python binary field (thank-you script)
 - [ ] Saving settings shows a success notice and values persist on reload
@@ -222,6 +227,7 @@ Open a matched open order (line tied to `BIN-SET-4PK`).
 - [ ] **Workflow** panel lists steps; current step highlighted
 - [ ] **Mark done** available on first manual step (Print) when not blocked
 - [ ] **Material stock** shows reserved materials / “Stock reserved” when reservation ran
+- [ ] **Platform fees** panel appears when fees have been synced for this order (§21); otherwise absent / empty as designed
 - [ ] **Raw payload (debug)** expands and shows JSON
 
 ### 5.2 Unmatched order
@@ -333,9 +339,10 @@ After Ship → Thank-you:
 
 ### 8.2 Product Costing surfaces
 
-- [ ] Products **list** shows target / material cost / margin columns (and badges when goals fire)
-- [ ] Product **edit** Costing panel shows recipe cost, profit/margin, listing prices side by side when listings exist
-- [ ] Changing target price updates margin display after save
+- [ ] Products **list** shows target / material cost / margin columns (and Est. fees / Actual fees badge when Package 3 fee math applies)
+- [ ] Product **edit** Costing panel shows recipe cost, fee-aware profit/margin, per-channel estimated £ + %, actual £ + % with n= when synced, listing prices side by side when listings exist
+- [ ] Changing target price updates margin / fee % display after save
+- [ ] Variance highlight appears when estimate vs actual differs by ≥2 percentage points (after §20–§21)
 
 ---
 
@@ -609,7 +616,7 @@ Header: `X-SOM-API-Key: <key>`
 - [ ] MCP Adapter active on Local (or Skip this whole section)
 - [ ] With toggle **off**, abilities are not registered / not queryable
 - [ ] With toggle **on**, can list/read orders, products, materials, listings, suppliers, POs, batches, batch groups, goals
-- [ ] Materials/products responses include costing enrichments (WA, value, target, margin, alerts)
+- [ ] Materials/products responses include costing enrichments (WA, value, target, fee-aware margin/profit, `platform_fees`, `fee_source`, alerts)
 - [ ] **No channel credentials** appear in any ability payload
 
 Interactive Cursor / Claude connector setup is a **manual** one-time config — document Pass only if you completed it.
@@ -618,7 +625,7 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 
 ## 18. Budgets
 
-*Requires schema **1.6.0**. Prefer after Sync (§3) and before or interleaved with PO receive (§12).*
+*Requires schema ≥ **1.6.0** (full Package 3 stack is **1.8.0**). Prefer after Sync (§3) and before or interleaved with PO receive (§12). Fee-aware `percent_of_profit` needs estimates / fee sync (§20–§21).*
 
 ### 18.1 List & create
 
@@ -645,6 +652,7 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 
 - [ ] Ledger shows **`sale_funding`** linked to the order
 - [ ] Balance increased for matching material + manual budgets (respecting scopes)
+- [ ] For `percent_of_profit`: funding uses revenue − materials − platform fees (estimate until actuals synced) — amount is lower than material-only profit would imply when fees apply
 - [ ] Second Sync does **not** add duplicate `sale_funding` for the same order
 - [ ] History import path does **not** fund (prefer Sync now for this check)
 - [ ] Inactive budget is skipped
@@ -722,27 +730,117 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 
 ---
 
-## 20. Known deferred (expect Skip — do not Fail)
+## 20. Channel Fee Estimates
+
+1. **Channel Fee Estimates** (before Settings).
+
+### 20.1 Seeded defaults
+
+- [ ] eBay and Etsy rows exist without manual create
+- [ ] eBay has tiered `per_order_fee` (£0.30 under £10 / £0.40 at or above) and Promoted Listings **enabled**
+- [ ] Etsy has listing fee, transaction %, payment processing % + fixed £, Offsite Ads **enabled**, VAT-on-fees row present
+- [ ] Rate display shows % or £ sensibly; tier min/max visible where set
+
+### 20.2 CRUD
+
+1. Edit a rate / toggle Enabled → save → reload.  
+2. Add a custom component → save.  
+3. Delete the custom component.
+
+- [ ] Edit + enable/disable persist
+- [ ] Create / delete work without PHP errors
+- [ ] Re-loading admin / re-activate does **not** overwrite your edited seeded rate (idempotent seed)
+
+---
+
+## 21. Platform fee sync, order fees & recurring expenses
+
+### 21.1 Sync fees now
+
+1. **Settings** → Platform fee sync → note fee poll interval (default 30).  
+2. Click **Sync fees now**.
+
+- [ ] Success / summary notice (inserted / skipped / unmatched as applicable)
+- [ ] Last-run / cursor status updates
+- [ ] Second Sync fees now does **not** duplicate the same external fee entry IDs
+
+### 21.2 Order detail fees
+
+1. Open a fixture / synced order that should have fee lines.
+
+- [ ] **Platform fees** panel lists itemized amounts / components
+- [ ] Orders without synced fees do not break the detail page
+
+### 21.3 Recurring Platform Expenses
+
+1. **Recurring Platform Expenses**.
+
+- [ ] At least one listing-style / unmatched fee row appears after dummy Sync fees now
+- [ ] Channel filter and listing filter narrow the list
+- [ ] Page loads with no PHP errors when empty filters yield zero rows
+
+### 21.4 Live reconnect (optional / Skip without live eBay)
+
+- [ ] Live eBay connected before Finances scope → Settings shows reconnect warning
+- [ ] Etsy does **not** require a new scope solely for ledger (existing `transactions_r`)
+
+---
+
+## 22. Analytics Dashboard
+
+1. **Analytics**.
+
+### 22.1 Shared filters & charts
+
+1. Apply **Last 30 days** / **daily** (leave channel All).  
+2. Confirm summary totals (sales / profit / priced-order count).  
+3. Confirm five chart areas: sales, profit, AOV, orders by channel, material stock.
+
+- [ ] Page loads; Chart.js canvases render (no blank white / console fatal)
+- [ ] Sales / profit / AOV lines and orders-by-channel bar show data when fixture orders have sold prices
+- [ ] Changing granularity / range / channel reloads via Apply (GET) without PHP error
+- [ ] Custom date range fields appear when range = custom
+
+### 22.2 Stock series
+
+1. Select one or more materials → Apply.
+
+- [ ] Stock chart empty / placeholder until materials selected
+- [ ] After Apply with selection, series appears (backward from current stock)
+- [ ] Clearing selection + Apply returns to empty stock chart
+
+### 22.3 Exclusions
+
+- [ ] Cancelled orders do not inflate sales / profit / AOV / channel counts
+- [ ] Lines without sold `unit_price` are omitted from sales / profit / AOV (not zero-filled from target)
+
+---
+
+## 23. Known deferred (expect Skip — do not Fail)
 
 | Item | Why |
 |---|---|
 | Cancel → stock reversal (`order_cancelled`) | D3/A3 — UI may say reversal not applied yet |
-| Live eBay/Etsy OAuth + live Sync/Push | Needs developer apps; use dummy path for this checklist unless apps are ready |
+| Live eBay/Etsy OAuth + live Sync/Push / live Finances | Needs developer apps; use dummy path for this checklist unless apps are ready |
 | Dashboard cost-alerts widget | Explicitly out of update (P4) |
-| Multi-currency | GBP only |
+| Multi-currency / FX on fee sync | GBP only; store fee amounts as returned |
 | Edit received PO costs to rewrite WA | Corrections via adjustment / unit-cost override only |
 | Batch + timer/script/manual on **same** step | Batch-only steps in v1 |
 | Write Abilities / admin rewritten onto REST | Admin stays form POST / ajax |
 | Thank-you PDF without Python/reportlab | Soft fail / retry until tooling installed |
 | Amazon-specific email automation | REST create groundwork only |
+| Amazon / SP-API Financials | Package 3 is eBay/Etsy only |
 | Budget / Board REST + MCP Abilities | Package 2 is admin UI + existing `advance-step` only |
 | Dedicated ink material type | Ops: recipe material or manual `fixed_amount` |
 | Completed orders on the Board | Active/incomplete only by design |
 | Stacked mobile board layout | Horizontal scroll only |
+| Pre-computed analytics summary tables | Live queries only for v1 |
+| Opaque blended “effective fee rate” product | £ + % of representative price only |
+| Recurring expenses inside profit charts | Order fees only (same as Costing / budgets) |
 
 ---
 
-## 21. Judgment checklist (not pass/fail binaries)
+## 24. Judgment checklist (not pass/fail binaries)
 
 Use while walking the UI; note free-text feedback:
 
@@ -757,24 +855,31 @@ Use while walking the UI; note free-text feedback:
 9. Does thank-you batch size 4 / cross-workflow pooling feel right?  
 10. Are material vs manual budgets / scopes understandable? Low/overspent badges useful?  
 11. Does the Orders Board (columns, pins, gated DnD, Complete) feel natural for production?  
-12. Anything missing for your next live order week?
+12. Are seeded fee estimates / tiers / optional ads defaults sensible?  
+13. Is Costing estimate vs actual (£ + %) clear enough for pricing decisions?  
+14. Are Analytics filters + five charts enough for weekly ops review?  
+15. Anything missing for your next live order week?
 
 ---
 
-## Suggested minimal path (≈75–100 min)
+## Suggested minimal path (≈90–120 min)
 
 If you only have one sitting:
 
-1. §0 Prep → §1 Menu → §2 Seed → §3 Sync  
+1. §0 Prep → §1 Menu (all 14 screens) → §2 Seed → §3 Sync  
 2. §4–§5 Orders list + matched / unmatched / cancelled detail  
 3. §6 Stock decrement + manual adjust  
 4. §7 Mark done + timer + thank-you → waiting_batch  
-5. §18 Create one material + one manual budget; confirm funding after a fresh create if possible  
-6. §11–§12 One supplier + one PO (preview → partial → full); confirm budget draw-down  
-7. §13 Release / mark-done a batch  
-8. §19 Orders Board: pin/filter + one valid DnD advance (and Complete if convenient)  
-9. §14 One listing Refresh/Push  
-10. Skim §20 deferred so you don’t hunt ghosts  
+5. §20 Channel Fee Estimates seed + one edit  
+6. §21 Sync fees now → order Platform fees + Recurring expenses  
+7. §8.2 / product Costing fee £/% + list badge  
+8. §18 Create one material + one manual (`percent_of_profit`) budget; confirm funding after a fresh create if possible  
+9. §11–§12 One supplier + one PO (preview → partial → full); confirm budget draw-down  
+10. §13 Release / mark-done a batch  
+11. §19 Orders Board: pin/filter + one valid DnD advance (and Complete if convenient)  
+12. §22 Analytics: Last 30 days + one material on stock chart  
+13. §14 One listing Refresh/Push  
+14. Skim §23 deferred so you don’t hunt ghosts  
 
 ---
 
@@ -783,17 +888,21 @@ If you only have one sitting:
 These scripts were written for **wp-env** CLI. On Local you can **Skip**, or run them only if you have WP-CLI against this site (Local’s site shell / `wp` pointing at `app/public`):
 
 ```bash
+wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s4-smoke.php
+wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s3-smoke.php
+wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s2-smoke.php
+wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s1-smoke.php
+# Optional earlier packages:
 wp eval-file wp-content/plugins/orderMachine/tests/sprint-u7-smoke.php
-# Optional regression:
 wp eval-file wp-content/plugins/orderMachine/tests/sprint-u4-smoke.php
 wp eval-file wp-content/plugins/orderMachine/tests/sprint-u5-smoke.php
 wp eval-file wp-content/plugins/orderMachine/tests/sprint-u6-smoke.php
 wp eval-file wp-content/plugins/orderMachine/tests/sprint11-smoke.php
 ```
 
-- [ ] U7 smoke PASS (optional / Skip on Local)
-- [ ] Other smokes PASS (optional / Skip on Local)
+- [ ] UP3 S1–S4 smokes PASS (optional / Skip on Local)
+- [ ] U7 / other smokes PASS (optional / Skip on Local)
 
 ---
 
-*End of user acceptance tests. Aligns with shipped scope through plugin **0.18.1** / DB **1.6.0** (Packages 1 + 2).*
+*End of user acceptance tests. Aligns with shipped scope through plugin **0.22.0** / DB **1.8.0** (Packages 1–3).*
