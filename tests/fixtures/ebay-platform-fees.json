@@ -1,0 +1,52 @@
+{
+  "transactions": [
+    {
+      "transactionId": "txn-ebay-sale-001",
+      "orderId": "12-34567-89012",
+      "transactionType": "SALE",
+      "transactionDate": "2026-07-27T15:00:00.000Z",
+      "orderLineItems": [
+        {
+          "lineItemId": "1001",
+          "marketplaceFees": [
+            {
+              "feeType": "FINAL_VALUE_FEE",
+              "amount": { "value": "-1.66", "currency": "GBP" }
+            },
+            {
+              "feeType": "FINAL_VALUE_FEE_FIXED_PER_ORDER",
+              "amount": { "value": "-0.40", "currency": "GBP" }
+            },
+            {
+              "feeType": "REGULATORY_OPERATING_FEE",
+              "amount": { "value": "-0.05", "currency": "GBP" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "transactionId": "txn-ebay-unmatched-001",
+      "orderId": "99-99999-99999",
+      "transactionType": "SALE",
+      "transactionDate": "2026-07-27T16:00:00.000Z",
+      "orderLineItems": [
+        {
+          "lineItemId": "9001",
+          "marketplaceFees": [
+            {
+              "feeType": "FINAL_VALUE_FEE",
+              "amount": { "value": "-1.00", "currency": "GBP" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "transactionId": "txn-ebay-payout-001",
+      "transactionType": "TRANSFER",
+      "transactionDate": "2026-07-28T10:00:00.000Z",
+      "amount": { "value": "50.00", "currency": "GBP" }
+    }
+  ]
+}

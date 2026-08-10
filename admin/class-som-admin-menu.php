@@ -153,6 +153,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Recurring Platform Expenses', 'order-machine' ),
+			__( 'Recurring Platform Expenses', 'order-machine' ),
+			'manage_options',
+			'som-recurring-platform-expenses',
+			array( __CLASS__, 'render_recurring_platform_expenses' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Settings', 'order-machine' ),
 			__( 'Settings', 'order-machine' ),
 			'manage_options',
@@ -173,7 +182,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-channel-fee-estimates' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
 			return;
 		}
 
@@ -795,6 +804,18 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/channel-fee-estimates.php';
+	}
+
+	/**
+	 * Recurring platform expenses list.
+	 *
+	 * @return void
+	 */
+	public static function render_recurring_platform_expenses() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		require SOM_PLUGIN_DIR . 'admin/views/recurring-platform-expenses.php';
 	}
 
 	/**
@@ -1604,6 +1625,12 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		// Sync fees now.
+		if ( isset( $_GET['som_sync_fees_now'] ) ) {
+			self::handle_sync_fees_now();
+			return;
+		}
+
 		// Import history backfill.
 		if ( isset( $_POST['som_import_history'] ) ) {
 			self::handle_import_history();
@@ -1686,6 +1713,7 @@ class SOM_Admin_Menu {
 			array(
 				'n8n_base_url'                   => isset( $_POST['som_n8n_base_url'] ) ? wp_unslash( $_POST['som_n8n_base_url'] ) : '',
 				'poll_interval_minutes'          => isset( $_POST['som_poll_interval'] ) ? (int) $_POST['som_poll_interval'] : 15,
+				'fee_poll_interval_minutes'      => isset( $_POST['som_fee_poll_interval'] ) ? (int) $_POST['som_fee_poll_interval'] : 30,
 				'engine_tick_interval_minutes'   => isset( $_POST['som_engine_tick_interval'] ) ? (int) $_POST['som_engine_tick_interval'] : 60,
 				'token_refresh_interval_minutes' => isset( $_POST['som_token_refresh_interval'] ) ? (int) $_POST['som_token_refresh_interval'] : 30,
 				'api_key'                        => $api_key,
@@ -1708,6 +1736,7 @@ class SOM_Admin_Menu {
 		if (
 			(int) $prev['token_refresh_interval_minutes'] !== (int) $next['token_refresh_interval_minutes']
 			|| (int) $prev['poll_interval_minutes'] !== (int) $next['poll_interval_minutes']
+			|| (int) $prev['fee_poll_interval_minutes'] !== (int) $next['fee_poll_interval_minutes']
 			|| (int) $prev['engine_tick_interval_minutes'] !== (int) $next['engine_tick_interval_minutes']
 		) {
 			SOM_Cron::reschedule_events();
@@ -1732,6 +1761,25 @@ class SOM_Admin_Menu {
 			isset( $result['message'] ) ? (string) $result['message'] : __( 'Sync finished.', 'order-machine' ),
 			$type,
 			'som_sync_now'
+		);
+		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Manual platform fee sync.
+	 *
+	 * @return void
+	 */
+	private static function handle_sync_fees_now() {
+		check_admin_referer( 'som_sync_fees_now' );
+
+		$result = SOM_Platform_Fee_Sync::sync_incremental();
+		$type   = ! empty( $result['ok'] ) ? 'success' : 'warning';
+		self::flash_notice(
+			isset( $result['message'] ) ? (string) $result['message'] : __( 'Fee sync finished.', 'order-machine' ),
+			$type,
+			'som_sync_fees_now'
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
 		exit;

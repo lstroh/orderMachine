@@ -26,7 +26,21 @@ class SOM_Channel_Ebay {
 			'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
 			'https://api.ebay.com/oauth/api_scope/sell.inventory',
 			'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+			'https://api.ebay.com/oauth/api_scope/sell.finances',
 		);
+	}
+
+	/**
+	 * True when a live eBay connection predates the sell.finances scope (must reconnect).
+	 *
+	 * @return bool
+	 */
+	public static function needs_finances_reconnect() {
+		if ( ! SOM_Channels::is_connected( self::SLUG ) || SOM_Channels::is_dummy( self::SLUG ) ) {
+			return false;
+		}
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		return empty( $creds['finances_scope'] );
 	}
 
 	/**
@@ -201,6 +215,8 @@ class SOM_Channel_Ebay {
 		}
 
 		$credentials = self::normalize_token_response( $body );
+		// Refresh does not expand scopes — preserve finances flag from prior consent.
+		$credentials['finances_scope'] = ! empty( $creds['finances_scope'] );
 		if ( ! empty( $creds['environment'] ) ) {
 			$credentials['environment'] = $creds['environment'];
 		} else {
@@ -300,6 +316,215 @@ class SOM_Channel_Ebay {
 		} while ( $offset < $total && $safety < 40 );
 
 		return $orders;
+	}
+
+	/**
+	 * Pull platform fee lines from Finances API (or fixtures when dummy).
+	 *
+	 * Normalized entries: kind order|ignore, external_entry_id, external_order_id, fee_type, amount, currency, raw.
+	 *
+	 * @param string $from_utc Y-m-d H:i:s UTC.
+	 * @param string $to_utc   Y-m-d H:i:s UTC.
+	 * @return array<int, array<string, mixed>>|\WP_Error
+	 */
+	public static function fetch_platform_fees( $from_utc, $to_utc ) {
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::load_fixture_platform_fees();
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_ebay_fees', __( 'eBay is not connected.', 'order-machine' ) );
+		}
+		if ( empty( $creds['finances_scope'] ) ) {
+			return new WP_Error(
+				'som_ebay_fees_scope',
+				__( 'Reconnect eBay to grant the Finances (sell.finances) scope before syncing fees.', 'order-machine' )
+			);
+		}
+
+		$base     = self::finances_api_base( $creds );
+		$token    = (string) $creds['access_token'];
+		$from_iso = gmdate( 'Y-m-d\TH:i:s.000\Z', strtotime( $from_utc . ' UTC' ) ?: time() );
+		$to_iso   = gmdate( 'Y-m-d\TH:i:s.000\Z', strtotime( $to_utc . ' UTC' ) ?: time() );
+		$filter   = 'transactionDate:[' . $from_iso . '..' . $to_iso . ']';
+
+		$entries = array();
+		$offset  = 0;
+		$limit   = 100;
+		$safety  = 0;
+
+		do {
+			$url = add_query_arg(
+				array(
+					'filter' => $filter,
+					'limit'  => $limit,
+					'offset' => $offset,
+				),
+				$base . '/sell/finances/v1/transaction'
+			);
+
+			$body = self::api_get_json( $url, $token );
+			if ( is_wp_error( $body ) ) {
+				return $body;
+			}
+
+			$batch = isset( $body['transactions'] ) && is_array( $body['transactions'] ) ? $body['transactions'] : array();
+			foreach ( $batch as $raw ) {
+				if ( is_array( $raw ) ) {
+					foreach ( self::normalize_fee_transactions( $raw ) as $entry ) {
+						$entries[] = $entry;
+					}
+				}
+			}
+
+			$total   = isset( $body['total'] ) ? (int) $body['total'] : count( $batch );
+			$offset += $limit;
+			++$safety;
+		} while ( $offset < $total && $safety < 40 );
+
+		return $entries;
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>|\WP_Error
+	 */
+	private static function load_fixture_platform_fees() {
+		$path = SOM_PLUGIN_DIR . 'tests/fixtures/ebay-platform-fees.json';
+		if ( ! is_readable( $path ) ) {
+			return new WP_Error( 'som_ebay_fee_fixture', __( 'eBay platform fee fixture file missing.', 'order-machine' ) );
+		}
+
+		$data = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local fixture
+		if ( ! is_array( $data ) || empty( $data['transactions'] ) || ! is_array( $data['transactions'] ) ) {
+			return new WP_Error( 'som_ebay_fee_fixture', __( 'eBay platform fee fixture is invalid.', 'order-machine' ) );
+		}
+
+		$entries = array();
+		foreach ( $data['transactions'] as $raw ) {
+			if ( is_array( $raw ) ) {
+				foreach ( self::normalize_fee_transactions( $raw ) as $entry ) {
+					$entries[] = $entry;
+				}
+			}
+		}
+
+		return $entries;
+	}
+
+	/**
+	 * Extract includable fee lines from one Finances transaction; other types → ignore.
+	 *
+	 * @param array<string, mixed> $txn Raw transaction.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function normalize_fee_transactions( array $txn ) {
+		$allow = array(
+			'FINAL_VALUE_FEE'                 => true,
+			'FINAL_VALUE_FEE_FIXED_PER_ORDER' => true,
+			'INTERNATIONAL_FEE'               => true,
+			'REGULATORY_OPERATING_FEE'        => true,
+			'AD_FEE'                          => true,
+			'PROMOTED_LISTINGS_FEE'           => true,
+		);
+
+		$type = isset( $txn['transactionType'] ) ? strtoupper( (string) $txn['transactionType'] ) : '';
+		$out  = array();
+
+		if ( 'SALE' === $type ) {
+			$order_id = isset( $txn['orderId'] ) ? (string) $txn['orderId'] : '';
+			$txn_id   = isset( $txn['transactionId'] ) ? (string) $txn['transactionId'] : '';
+			$lines    = isset( $txn['orderLineItems'] ) && is_array( $txn['orderLineItems'] ) ? $txn['orderLineItems'] : array();
+
+			foreach ( $lines as $line ) {
+				if ( ! is_array( $line ) ) {
+					continue;
+				}
+				$line_id = isset( $line['lineItemId'] ) ? (string) $line['lineItemId'] : '0';
+				$fees    = isset( $line['marketplaceFees'] ) && is_array( $line['marketplaceFees'] ) ? $line['marketplaceFees'] : array();
+				foreach ( $fees as $fee ) {
+					if ( ! is_array( $fee ) ) {
+						continue;
+					}
+					$fee_type = isset( $fee['feeType'] ) ? strtoupper( (string) $fee['feeType'] ) : '';
+					if ( empty( $allow[ $fee_type ] ) ) {
+						$out[] = array(
+							'kind'              => 'ignore',
+							'external_entry_id' => $txn_id . ':' . $line_id . ':' . $fee_type,
+							'raw'               => $fee,
+						);
+						continue;
+					}
+					$amount   = isset( $fee['amount']['value'] ) ? (float) $fee['amount']['value'] : 0.0;
+					$currency = isset( $fee['amount']['currency'] ) ? (string) $fee['amount']['currency'] : 'GBP';
+					$out[]    = array(
+						'kind'               => '' !== $order_id ? 'order' : 'ignore',
+						'external_entry_id'  => $txn_id . ':' . $line_id . ':' . $fee_type,
+						'external_order_id'  => $order_id,
+						'fee_type'           => strtolower( $fee_type ),
+						'amount'             => $amount,
+						'currency'           => $currency,
+						'raw'                => $fee,
+					);
+				}
+			}
+
+			return $out;
+		}
+
+		if ( 'NON_SALE_CHARGE' === $type ) {
+			$fee_type = isset( $txn['feeType'] ) ? strtoupper( (string) $txn['feeType'] ) : '';
+			$txn_id   = isset( $txn['transactionId'] ) ? (string) $txn['transactionId'] : '';
+			if ( empty( $allow[ $fee_type ] ) ) {
+				return array(
+					array(
+						'kind'              => 'ignore',
+						'external_entry_id' => $txn_id ?: ( 'nsc:' . md5( wp_json_encode( $txn ) ) ),
+						'raw'               => $txn,
+					),
+				);
+			}
+			$amount   = isset( $txn['amount']['value'] ) ? (float) $txn['amount']['value'] : 0.0;
+			$currency = isset( $txn['amount']['currency'] ) ? (string) $txn['amount']['currency'] : 'GBP';
+			$order_id = isset( $txn['orderId'] ) ? (string) $txn['orderId'] : '';
+			return array(
+				array(
+					'kind'              => '' !== $order_id ? 'order' : 'ignore',
+					'external_entry_id' => $txn_id . ':' . $fee_type,
+					'external_order_id' => $order_id,
+					'fee_type'          => strtolower( $fee_type ),
+					'amount'            => $amount,
+					'currency'          => $currency,
+					'raw'               => $txn,
+				),
+			);
+		}
+
+		$txn_id = isset( $txn['transactionId'] ) ? (string) $txn['transactionId'] : ( 'txn:' . md5( wp_json_encode( $txn ) ) );
+		return array(
+			array(
+				'kind'              => 'ignore',
+				'external_entry_id' => $txn_id,
+				'raw'               => $txn,
+			),
+		);
+	}
+
+	/**
+	 * Finances API host (apiz.*).
+	 *
+	 * @param array<string, mixed> $creds Credentials.
+	 * @return string
+	 */
+	private static function finances_api_base( array $creds ) {
+		$settings = SOM_Settings::get();
+		$env      = $creds['environment'] ?? $settings['ebay']['environment'];
+		return ( 'production' === $env ) ? 'https://apiz.ebay.com' : 'https://apiz.sandbox.ebay.com';
 	}
 
 	/**
@@ -908,13 +1133,14 @@ class SOM_Channel_Ebay {
 		$settings   = SOM_Settings::get();
 
 		return array(
-			'access_token'  => (string) $body['access_token'],
-			'refresh_token' => isset( $body['refresh_token'] ) ? (string) $body['refresh_token'] : '',
-			'token_type'    => isset( $body['token_type'] ) ? (string) $body['token_type'] : 'Bearer',
-			'expires_at'    => gmdate( 'Y-m-d H:i:s', time() + max( 60, $expires_in ) ),
-			'expires_in'    => $expires_in,
-			'environment'   => $settings['ebay']['environment'],
-			'dummy'         => ! empty( $body['dummy'] ),
+			'access_token'   => (string) $body['access_token'],
+			'refresh_token'  => isset( $body['refresh_token'] ) ? (string) $body['refresh_token'] : '',
+			'token_type'     => isset( $body['token_type'] ) ? (string) $body['token_type'] : 'Bearer',
+			'expires_at'     => gmdate( 'Y-m-d H:i:s', time() + max( 60, $expires_in ) ),
+			'expires_in'     => $expires_in,
+			'environment'    => $settings['ebay']['environment'],
+			'dummy'          => ! empty( $body['dummy'] ),
+			'finances_scope' => true,
 		);
 	}
 

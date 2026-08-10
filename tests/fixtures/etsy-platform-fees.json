@@ -1,0 +1,47 @@
+{
+  "entries": [
+    {
+      "kind": "order",
+      "external_entry_id": "8001",
+      "external_order_id": "9001001",
+      "fee_type": "transaction_fee",
+      "amount": -0.97,
+      "currency": "GBP",
+      "raw": { "entry_id": 8001, "description": "Transaction fee" }
+    },
+    {
+      "kind": "order",
+      "external_entry_id": "8002",
+      "external_order_id": "9001001",
+      "fee_type": "payment_processing",
+      "amount": -0.80,
+      "currency": "GBP",
+      "raw": { "entry_id": 8002, "description": "Processing fee" }
+    },
+    {
+      "kind": "recurring",
+      "external_entry_id": "8003",
+      "external_listing_id": "220000000001",
+      "fee_type": "listing_fee",
+      "amount": -0.16,
+      "currency": "GBP",
+      "incurred_date": "2026-07-20",
+      "notes": "Listing fee",
+      "raw": { "entry_id": 8003, "description": "Listing fee" }
+    },
+    {
+      "kind": "ignore",
+      "external_entry_id": "8004",
+      "raw": { "entry_id": 8004, "description": "Shipping label" }
+    },
+    {
+      "kind": "order",
+      "external_entry_id": "8005",
+      "external_order_id": "9099999",
+      "fee_type": "transaction_fee",
+      "amount": -0.50,
+      "currency": "GBP",
+      "raw": { "entry_id": 8005, "description": "Transaction fee for missing receipt" }
+    }
+  ]
+}

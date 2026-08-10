@@ -13,7 +13,7 @@ Assumption: base plugin + Update Package 1 (materials/costing) + Update Package 
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
 | 1 | Fee schema + Channel Fee Estimates UI | **Done** | Verified on wp-env 2026-08-09 |
-| 2 | Platform fee sync + order/recurring UI | Not started | |
+| 2 | Platform fee sync + order/recurring UI | **Done** | Verified on wp-env 2026-08-10 |
 | 3 | Product Costing + budgets fee-aware | Not started | |
 | 4 | Analytics Dashboard | Not started | |
 
@@ -146,10 +146,133 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 |---|---|
 | `dbDelta` “table already exists” noise | Seen on wp-env when re-running upgrade path for some tables (including pre-existing budgets); tables present and version set — monitor on Local upgrade |
 | Estimate → £/% application | Intentionally Sprint 3; `vat_on_fees` is stored only |
-| Fee sync tables empty | Expected until Sprint 2 |
+| Fee sync tables empty | Expected until Sprint 2 (now filled by Sprint 2) |
 
 ---
 
-## Sprint 2+ 
+## Sprint 2 — Platform fee sync + order/recurring UI
+
+- **Status:** **Done** — confirmed complete vs `Update-3-Sprint-Plan.md` §5 Sprint 2 Create/Modify/**Done when**, plus settled O4/O8 and Sprint 2 Q&A locks
+- **Completed:** 2026-08-10
+- **Verified on:** wp-env via `tests/sprint-up3-s2-smoke.php` (`PASS — Update Package 3 Sprint 2 smoke`)
+- **Plugin version:** `0.20.0`
+- **DB version:** `1.8.0` (from `1.7.0`; additive `external_entry_id` + unique keys)
+
+### Plan Create / Modify checklist
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Create `includes/class-som-platform-fee-sync.php` | **Done** | Separate from `SOM_Order_Sync`; own cursor `som_fee_sync_cursor` + status `som_fee_sync_status` |
+| Fee fixtures under `tests/fixtures/` | **Done** | `ebay-platform-fees.json`, `etsy-platform-fees.json` |
+| Create `admin/views/recurring-platform-expenses.php` | **Done** | Dedicated submenu **Recurring Platform Expenses** |
+| Modify `class-som-channel-ebay.php` — Finances + scopes | **Done** | `fetch_platform_fees()`; added `sell.finances`; `needs_finances_reconnect()` |
+| Modify `class-som-channel-etsy.php` — Ledger / payments | **Done** | Ledger list + payment→receipt map; **no new scope** (existing `transactions_r` covers ledger) |
+| Modify `class-som-cron.php` — `HOOK_SYNC_PLATFORM_FEES` | **Done** | init / schedules / schedule / clear / reschedule / `sync_platform_fees()` |
+| Modify `class-som-settings.php` — fee poll interval | **Done** | `fee_poll_interval_minutes` default **30** (min 5) |
+| Modify admin menu — recurring page + reconnect | **Done** | Submenu + Settings reconnect notice (eBay only) |
+| Modify `order-detail.php` — itemized fees | **Done** | Platform fees panel when synced |
+| Modify `settings.php` — reconnect + Sync fees now | **Done** | Fee sync section + **Sync fees now** button |
+| Modify `orderMachine.php` — require + version | **Done** | Require sync class; `SOM_VERSION` `0.20.0` |
+| Schema support for idempotency (locked Q1) | **Done** | Both fee tables: `external_entry_id` + `UNIQUE KEY channel_entry` |
+
+### Plan “Done when” checklist
+
+| Criterion (plan wording) | Result | Evidence |
+|---|---|---|
+| `som_sync_platform_fees` runs separately from `som_sync_orders` | **Pass** | Fourth cron hook; own orchestrator/cursor |
+| Matched fees in `order_platform_fees` without duplicates on re-run | **Pass** | Smoke: 6 inserted → re-run 0 insert / 6 skipped |
+| Unmatched Etsy listing-style → `recurring_platform_expenses` | **Pass** | Fixture listing fee → recurring; smoke `recurring_gte_1` |
+| Order detail shows fee lines when synced | **Pass** | `SOM_Orders::get` attaches `platform_fees`; detail panel |
+| Recurring expenses list filterable by listing | **Pass** | Channel + listing filters on recurring view |
+| Dummy mode does not break on missing live credentials | **Pass** | Dummy fixtures path; smoke on wp-env dummy channels |
+| Settings tell user to **reconnect** after scope change | **Pass*** | *eBay only* (locked: Etsy needs no new scope) |
+
+\* Plan text said “eBay/Etsy”; locked answer was force reconnect on **eBay only** because Etsy ledger already uses `transactions_r`.
+
+### Settled open items (plan §1) for this sprint
+
+| Item | Decision | Applied? |
+|---|---|---|
+| O4 Currency / FX | Store as returned; treat as GBP; no FX | Yes |
+| O8 OAuth scopes | Expand + reconnect messaging | Yes — eBay `sell.finances` + reconnect UI; Etsy unchanged |
+
+### Locked decisions applied (Sprint 2 planning chat)
+
+| Topic | Decision | Applied? |
+|---|---|---|
+| Idempotency | `external_entry_id` + unique index | Yes |
+| Fees before order exists | Skip / retry later (unmatched) | Yes |
+| Non-fee ledger/finance lines | Ignore (payouts, refunds, labels, taxes) | Yes |
+| Amount sign | As returned (often negative) | Yes |
+| Scopes / reconnect | eBay `sell.finances` only; reconnect eBay only | Yes |
+| Sync fees now | Include | Yes |
+| Recurring UI | Dedicated submenu | Yes |
+| Dummy fixtures | Yes — fees on fixture orders | Yes |
+| First-run lookback | **7 days** | Yes |
+
+### What shipped (behaviour)
+
+1. **Sync:** Cron + Settings **Sync fees now** pull eBay Finances / Etsy Ledger (or fixtures in dummy), classify order vs recurring vs ignore, match orders by `channel_id` + `external_order_id`, write idempotently.
+2. **UI:** Order detail **Platform fees** panel; **Recurring Platform Expenses** list with channel/listing filters; Settings fee poll interval + last-run/cursor status + eBay reconnect warning when `finances_scope` missing on a live token.
+3. **Schema:** `1.7.0` → `1.8.0` for unique external entry IDs on both actual-fee tables.
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-db.php` | `external_entry_id` + unique keys; `DB_VERSION` → `1.8.0` |
+| `includes/class-som-platform-fee-sync.php` | Orchestrator + list helpers (new) |
+| `includes/class-som-channel-ebay.php` | Finances fetch, `sell.finances`, reconnect helper |
+| `includes/class-som-channel-etsy.php` | Ledger fetch + fee/ignore/recurring classification |
+| `includes/class-som-cron.php` | `som_sync_platform_fees` job |
+| `includes/class-som-settings.php` | `fee_poll_interval_minutes` |
+| `includes/class-som-orders.php` | Attach `platform_fees` on detail get |
+| `includes/seed/class-som-seed.php` | Dummy creds include `finances_scope` |
+| `admin/class-som-admin-menu.php` | Recurring submenu; Sync fees now handler |
+| `admin/views/settings.php` | Fee sync UI + eBay reconnect notice |
+| `admin/views/order-detail.php` | Platform fees panel |
+| `admin/views/recurring-platform-expenses.php` | List + filters (new) |
+| `tests/fixtures/ebay-platform-fees.json` | Dummy Finances payload |
+| `tests/fixtures/etsy-platform-fees.json` | Dummy ledger entries |
+| `tests/sprint-up3-s2-smoke.php` | Sprint 2 smoke (new) |
+| `orderMachine.php` | Require sync class; `0.20.0`; notices allowlist |
+| `stikerts/wordpress v4/Update-3-Sprint-Progress.md` | This progress record |
+
+### Verification (wp-env, 2026-08-10)
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s2-smoke.php
+```
+
+**Result:** `PASS — Update Package 3 Sprint 2 smoke`  
+Smoke covered: schema columns/unique indexes, cron registration, fee poll setting, fixture insert (6) / unmatched (2) / ignored (2), idempotent re-run, eBay+Etsy order fee rows, recurring row, order detail `platform_fees` attachment, eBay finances scope present.
+
+### Suggested live check (Local / operator)
+
+1. Load WP admin → `som_db_version` = `1.8.0`.
+2. Settings → Platform fee sync section, **Sync fees now**, fee poll interval.
+3. Live eBay connected before this sprint → reconnect warning for Finances scope.
+4. After Sync fees now (dummy): fixture order **Platform fees** panel; **Recurring Platform Expenses**.
+
+### Gaps / residual risk (not blocking Sprint 2)
+
+| Item | Notes |
+|---|---|
+| Live Finances/Ledger field mapping | Confirm against real payloads if shapes differ from fixtures/normalizers (plan kickoff note) |
+| Existing live eBay tokens | Must reconnect once; token refresh does not grant `sell.finances` |
+| Etsy amount units | Live divides ledger `amount` by 100; fixtures use major units in normalized entries |
+| Estimate → Costing £/% / budgets | Sprint 3 |
+
+### Explicitly out of scope for Sprint 2 (later sprints)
+
+| Item | Sprint |
+|---|---|
+| Product Costing estimate vs actual £/% | 3 |
+| Budgets `percent_of_profit` fee-aware | 3 |
+| Analytics Dashboard / Chart.js | 4 |
+
+---
+
+## Sprint 3+
 
 Not started. Follow `Update-3-Sprint-Plan.md` §5 in order; do not re-open settled open items in plan §1–§2 without confirmation.

@@ -307,6 +307,333 @@ class SOM_Channel_Etsy {
 	}
 
 	/**
+	 * Pull fee / listing ledger entries (or fixtures when dummy).
+	 *
+	 * @param string $from_utc Y-m-d H:i:s UTC.
+	 * @param string $to_utc   Y-m-d H:i:s UTC.
+	 * @return array<int, array<string, mixed>>|\WP_Error
+	 */
+	public static function fetch_platform_fees( $from_utc, $to_utc ) {
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			return self::load_fixture_platform_fees();
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_etsy_fees', __( 'Etsy is not connected.', 'order-machine' ) );
+		}
+
+		$settings = SOM_Settings::get();
+		$api_key  = $settings['etsy']['client_id'];
+		$token    = (string) $creds['access_token'];
+		$shop_id  = ! empty( $creds['shop_id'] ) ? (string) $creds['shop_id'] : '';
+
+		if ( '' === $shop_id ) {
+			$shop_id = self::fetch_shop_id( $token, $api_key );
+			if ( is_wp_error( $shop_id ) ) {
+				return $shop_id;
+			}
+			if ( '' === $shop_id ) {
+				return new WP_Error( 'som_etsy_shop', __( 'Could not resolve Etsy shop ID.', 'order-machine' ) );
+			}
+		}
+
+		$min_created = strtotime( $from_utc . ' UTC' ) ?: ( time() - 7 * DAY_IN_SECONDS );
+		$max_created = strtotime( $to_utc . ' UTC' ) ?: time();
+
+		$raw_entries = array();
+		$offset      = 0;
+		$limit       = 100;
+		$safety      = 0;
+
+		do {
+			$url = add_query_arg(
+				array(
+					'min_created' => $min_created,
+					'max_created' => $max_created,
+					'limit'       => $limit,
+					'offset'      => $offset,
+				),
+				'https://openapi.etsy.com/v3/application/shops/' . rawurlencode( $shop_id ) . '/payment-account/ledger-entries'
+			);
+
+			$body = self::etsy_get_json( $url, $token, $api_key );
+			if ( is_wp_error( $body ) ) {
+				return $body;
+			}
+
+			$batch = isset( $body['results'] ) && is_array( $body['results'] ) ? $body['results'] : array();
+			foreach ( $batch as $row ) {
+				if ( is_array( $row ) ) {
+					$raw_entries[] = $row;
+				}
+			}
+
+			$count   = isset( $body['count'] ) ? (int) $body['count'] : count( $batch );
+			$offset += $limit;
+			++$safety;
+		} while ( $offset < $count && $safety < 40 );
+
+		$receipt_map = self::map_ledger_entry_receipts( $shop_id, $token, $api_key, $raw_entries );
+		if ( is_wp_error( $receipt_map ) ) {
+			return $receipt_map;
+		}
+
+		$entries = array();
+		foreach ( $raw_entries as $raw ) {
+			$entry_id = isset( $raw['entry_id'] ) ? (string) $raw['entry_id'] : '';
+			$receipt  = ( $entry_id && isset( $receipt_map[ $entry_id ] ) ) ? $receipt_map[ $entry_id ] : null;
+			$entries[] = self::normalize_ledger_entry( $raw, $receipt );
+		}
+
+		return $entries;
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>|\WP_Error
+	 */
+	private static function load_fixture_platform_fees() {
+		$path = SOM_PLUGIN_DIR . 'tests/fixtures/etsy-platform-fees.json';
+		if ( ! is_readable( $path ) ) {
+			return new WP_Error( 'som_etsy_fee_fixture', __( 'Etsy platform fee fixture file missing.', 'order-machine' ) );
+		}
+
+		$data = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local fixture
+		if ( ! is_array( $data ) || empty( $data['entries'] ) || ! is_array( $data['entries'] ) ) {
+			return new WP_Error( 'som_etsy_fee_fixture', __( 'Etsy platform fee fixture is invalid.', 'order-machine' ) );
+		}
+
+		$out = array();
+		foreach ( $data['entries'] as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			// Fixture may already be normalized.
+			if ( isset( $row['kind'], $row['external_entry_id'] ) ) {
+				$out[] = $row;
+				continue;
+			}
+			$receipt = null;
+			if ( ! empty( $row['receipt_id'] ) ) {
+				$receipt = array( 'receipt_id' => $row['receipt_id'] );
+			}
+			$out[] = self::normalize_ledger_entry( $row, $receipt );
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Batch-resolve ledger entry → receipt_id via Payments API.
+	 *
+	 * @param string                     $shop_id Shop ID.
+	 * @param string                     $token   Access token.
+	 * @param string                     $api_key API key.
+	 * @param array<int, array<string, mixed>> $entries Ledger rows.
+	 * @return array<string, array<string, mixed>>|WP_Error Map entry_id => payment fragment.
+	 */
+	private static function map_ledger_entry_receipts( $shop_id, $token, $api_key, array $entries ) {
+		$ids = array();
+		foreach ( $entries as $row ) {
+			if ( ! empty( $row['entry_id'] ) ) {
+				$ids[] = (string) $row['entry_id'];
+			}
+		}
+		$ids = array_values( array_unique( $ids ) );
+		$map = array();
+
+		foreach ( array_chunk( $ids, 50 ) as $chunk ) {
+			$url = add_query_arg(
+				array(
+					'ledger_entry_ids' => implode( ',', $chunk ),
+				),
+				'https://openapi.etsy.com/v3/application/shops/' . rawurlencode( $shop_id ) . '/payment-account/ledger-entries/payments'
+			);
+
+			$body = self::etsy_get_json( $url, $token, $api_key );
+			if ( is_wp_error( $body ) ) {
+				return $body;
+			}
+
+			$results = isset( $body['results'] ) && is_array( $body['results'] ) ? $body['results'] : ( is_array( $body ) ? $body : array() );
+			foreach ( $results as $payment ) {
+				if ( ! is_array( $payment ) ) {
+					continue;
+				}
+				$receipt_id = isset( $payment['receipt_id'] ) ? (string) $payment['receipt_id'] : '';
+				$ledger_ids = array();
+				if ( ! empty( $payment['ledger_entry_id'] ) ) {
+					$ledger_ids[] = (string) $payment['ledger_entry_id'];
+				}
+				if ( ! empty( $payment['ledger_entry_ids'] ) && is_array( $payment['ledger_entry_ids'] ) ) {
+					foreach ( $payment['ledger_entry_ids'] as $lid ) {
+						$ledger_ids[] = (string) $lid;
+					}
+				}
+				foreach ( $ledger_ids as $lid ) {
+					$map[ $lid ] = array(
+						'receipt_id' => $receipt_id,
+						'payment'    => $payment,
+					);
+				}
+			}
+		}
+
+		return $map;
+	}
+
+	/**
+	 * Classify a ledger row: order fee, recurring listing fee, or ignore.
+	 *
+	 * @param array<string, mixed>      $raw     Ledger entry.
+	 * @param array<string, mixed>|null $receipt Linked payment info.
+	 * @return array<string, mixed>
+	 */
+	private static function normalize_ledger_entry( array $raw, $receipt ) {
+		$entry_id = isset( $raw['entry_id'] ) ? (string) $raw['entry_id'] : ( 'etsy:' . md5( wp_json_encode( $raw ) ) );
+		$desc     = strtolower( (string) ( $raw['description'] ?? '' ) );
+
+		if ( isset( $raw['amount_as_returned'] ) ) {
+			$amount = (float) $raw['amount_as_returned'];
+		} else {
+			// Live ledger entries use minor currency units (cents).
+			$amount = isset( $raw['amount'] ) ? ( (float) $raw['amount'] / 100 ) : 0.0;
+		}
+
+		$currency = isset( $raw['currency'] ) ? (string) $raw['currency'] : 'GBP';
+		$created  = isset( $raw['create_date'] ) ? (int) $raw['create_date'] : time();
+		$incurred = gmdate( 'Y-m-d', $created );
+
+		$receipt_id = '';
+		if ( is_array( $receipt ) && ! empty( $receipt['receipt_id'] ) ) {
+			$receipt_id = (string) $receipt['receipt_id'];
+		} elseif ( ! empty( $raw['receipt_id'] ) ) {
+			$receipt_id = (string) $raw['receipt_id'];
+		}
+
+		$listing_id = isset( $raw['listing_id'] ) ? (string) $raw['listing_id'] : '';
+
+		// Ignore payouts, refunds, shipping labels, taxes.
+		if ( self::etsy_ledger_is_ignored( $desc ) ) {
+			return array(
+				'kind'              => 'ignore',
+				'external_entry_id' => $entry_id,
+				'raw'               => $raw,
+			);
+		}
+
+		$fee_type = self::etsy_fee_type_from_description( $desc );
+		if ( null === $fee_type ) {
+			return array(
+				'kind'              => 'ignore',
+				'external_entry_id' => $entry_id,
+				'raw'               => $raw,
+			);
+		}
+
+		if ( '' !== $receipt_id && 'listing_fee' !== $fee_type ) {
+			return array(
+				'kind'               => 'order',
+				'external_entry_id'  => $entry_id,
+				'external_order_id'  => $receipt_id,
+				'fee_type'           => $fee_type,
+				'amount'             => $amount,
+				'currency'           => $currency,
+				'raw'                => $raw,
+			);
+		}
+
+		if ( 'listing_fee' === $fee_type ) {
+			return array(
+				'kind'                 => 'recurring',
+				'external_entry_id'    => $entry_id,
+				'external_listing_id'  => $listing_id,
+				'fee_type'             => 'listing_fee',
+				'amount'               => $amount,
+				'currency'             => $currency,
+				'incurred_date'        => $incurred,
+				'notes'                => isset( $raw['description'] ) ? (string) $raw['description'] : null,
+				'raw'                  => $raw,
+			);
+		}
+
+		// Fee-like but no receipt yet — leave unmatched via order path with empty id → unmatched retry.
+		if ( '' === $receipt_id ) {
+			return array(
+				'kind'              => 'order',
+				'external_entry_id' => $entry_id,
+				'external_order_id' => '',
+				'fee_type'          => $fee_type,
+				'amount'            => $amount,
+				'currency'          => $currency,
+				'raw'               => $raw,
+			);
+		}
+
+		return array(
+			'kind'               => 'order',
+			'external_entry_id'  => $entry_id,
+			'external_order_id'  => $receipt_id,
+			'fee_type'           => $fee_type,
+			'amount'             => $amount,
+			'currency'           => $currency,
+			'raw'                => $raw,
+		);
+	}
+
+	/**
+	 * @param string $desc Lowercased description.
+	 * @return bool
+	 */
+	private static function etsy_ledger_is_ignored( $desc ) {
+		$needles = array(
+			'payout',
+			'deposit',
+			'refund',
+			'shipping label',
+			'postage',
+			'sales tax',
+			'vat on',
+			'tax on sale',
+			'gift wrap',
+		);
+		foreach ( $needles as $n ) {
+			if ( false !== strpos( $desc, $n ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @param string $desc Lowercased description.
+	 * @return string|null Fee type key or null if not a tracked fee.
+	 */
+	private static function etsy_fee_type_from_description( $desc ) {
+		if ( false !== strpos( $desc, 'listing' ) ) {
+			return 'listing_fee';
+		}
+		if ( false !== strpos( $desc, 'transaction' ) || false !== strpos( $desc, 'commission' ) ) {
+			return 'transaction_fee';
+		}
+		if ( false !== strpos( $desc, 'processing' ) || false !== strpos( $desc, 'payment fee' ) ) {
+			return 'payment_processing';
+		}
+		if ( false !== strpos( $desc, 'regulatory' ) ) {
+			return 'regulatory_fee';
+		}
+		if ( false !== strpos( $desc, 'offsite' ) || false !== strpos( $desc, 'ads' ) ) {
+			return 'offsite_ads';
+		}
+		return null;
+	}
+
+	/**
 	 * @return array<int, array<string, mixed>>|\WP_Error
 	 */
 	private static function load_fixture_orders() {

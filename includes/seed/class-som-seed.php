@@ -55,12 +55,13 @@ class SOM_Seed {
 			}
 
 			$payload = array(
-				'access_token'  => 'dummy-access-' . $slug,
-				'refresh_token' => 'dummy-refresh-' . $slug,
-				'token_type'    => 'Bearer',
-				'expires_at'    => gmdate( 'Y-m-d H:i:s', time() + YEAR_IN_SECONDS ),
-				'expires_in'    => YEAR_IN_SECONDS,
-				'dummy'         => true,
+				'access_token'   => 'dummy-access-' . $slug,
+				'refresh_token'  => 'dummy-refresh-' . $slug,
+				'token_type'     => 'Bearer',
+				'expires_at'     => gmdate( 'Y-m-d H:i:s', time() + YEAR_IN_SECONDS ),
+				'expires_in'     => YEAR_IN_SECONDS,
+				'dummy'          => true,
+				'finances_scope' => true,
 			);
 
 			if ( 'etsy' === $slug ) {
@@ -820,12 +821,13 @@ class SOM_Seed {
 		SOM_Channels::ensure_rows();
 		foreach ( array( 'ebay', 'etsy' ) as $slug ) {
 			$payload = array(
-				'access_token'  => 'dummy-access-' . $slug,
-				'refresh_token' => 'dummy-refresh-' . $slug,
-				'token_type'    => 'Bearer',
-				'expires_at'    => gmdate( 'Y-m-d H:i:s', time() + YEAR_IN_SECONDS ),
-				'expires_in'    => YEAR_IN_SECONDS,
-				'dummy'         => true,
+				'access_token'   => 'dummy-access-' . $slug,
+				'refresh_token'  => 'dummy-refresh-' . $slug,
+				'token_type'     => 'Bearer',
+				'expires_at'     => gmdate( 'Y-m-d H:i:s', time() + YEAR_IN_SECONDS ),
+				'expires_in'     => YEAR_IN_SECONDS,
+				'dummy'          => true,
+				'finances_scope' => true,
 			);
 			if ( 'etsy' === $slug ) {
 				$payload['shop_id'] = '0';

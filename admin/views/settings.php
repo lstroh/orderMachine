@@ -74,12 +74,37 @@ $sync_now_url = wp_nonce_url(
 	'som_sync_now'
 );
 
-$sync_status  = SOM_Order_Sync::get_status();
-$ebay_channel = SOM_Channels::get_by_slug( 'ebay' );
-$etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
+$sync_fees_now_url = wp_nonce_url(
+	add_query_arg(
+		array(
+			'page'              => 'som-settings',
+			'som_sync_fees_now' => '1',
+		),
+		admin_url( 'admin.php' )
+	),
+	'som_sync_fees_now'
+);
+
+$sync_status      = SOM_Order_Sync::get_status();
+$fee_sync_status  = SOM_Platform_Fee_Sync::get_status();
+$fee_cursors      = SOM_Platform_Fee_Sync::get_cursors();
+$ebay_channel     = SOM_Channels::get_by_slug( 'ebay' );
+$etsy_channel     = SOM_Channels::get_by_slug( 'etsy' );
+$ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 ?>
 <div class="wrap">
 	<h1><?php echo esc_html__( 'Order Machine Settings', 'order-machine' ); ?></h1>
+
+	<?php if ( $ebay_needs_fees ) : ?>
+		<div class="notice notice-warning">
+			<p>
+				<?php echo esc_html__( 'eBay fee sync needs the Finances scope. Disconnect and Connect eBay again so Order Machine can read platform fees.', 'order-machine' ); ?>
+				<a class="button button-secondary" href="<?php echo esc_url( $connect_ebay_url ); ?>" style="margin-left:8px;">
+					<?php echo esc_html__( 'Reconnect eBay', 'order-machine' ); ?>
+				</a>
+			</p>
+		</div>
+	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Order sync', 'order-machine' ); ?></h2>
 	<table class="form-table" role="presentation">
@@ -133,6 +158,61 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 			<td>
 				<a class="button button-primary" href="<?php echo esc_url( $sync_now_url ); ?>"><?php echo esc_html__( 'Sync now', 'order-machine' ); ?></a>
 				<p class="description"><?php echo esc_html__( 'Incremental poll: since last sync, or last 7 days on first run. Dummy credentials load fixtures instead of live APIs.', 'order-machine' ); ?></p>
+			</td>
+		</tr>
+	</table>
+
+	<h2><?php echo esc_html__( 'Platform fee sync', 'order-machine' ); ?></h2>
+	<table class="form-table" role="presentation">
+		<tr>
+			<th scope="row"><?php echo esc_html__( 'Last fee sync', 'order-machine' ); ?></th>
+			<td>
+				<?php if ( ! empty( $fee_sync_status['last_run_at'] ) ) : ?>
+					<?php
+					printf(
+						/* translators: %s: UTC datetime */
+						esc_html__( '%s UTC', 'order-machine' ),
+						esc_html( (string) $fee_sync_status['last_run_at'] )
+					);
+					?>
+					<?php if ( ! empty( $fee_sync_status['last_summary'] ) ) : ?>
+						<p class="description"><?php echo esc_html( (string) $fee_sync_status['last_summary'] ); ?></p>
+					<?php endif; ?>
+					<?php if ( ! empty( $fee_sync_status['last_error'] ) ) : ?>
+						<p class="description" style="color:#b32d2e;"><?php echo esc_html( (string) $fee_sync_status['last_error'] ); ?></p>
+					<?php endif; ?>
+				<?php else : ?>
+					<?php echo esc_html__( 'Not run yet.', 'order-machine' ); ?>
+				<?php endif; ?>
+				<?php if ( ! empty( $fee_cursors['ebay'] ) ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s: UTC datetime */
+							esc_html__( 'eBay fee cursor: %s UTC', 'order-machine' ),
+							esc_html( (string) $fee_cursors['ebay'] )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+				<?php if ( ! empty( $fee_cursors['etsy'] ) ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s: UTC datetime */
+							esc_html__( 'Etsy fee cursor: %s UTC', 'order-machine' ),
+							esc_html( (string) $fee_cursors['etsy'] )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php echo esc_html__( 'Sync fees now', 'order-machine' ); ?></th>
+			<td>
+				<a class="button button-primary" href="<?php echo esc_url( $sync_fees_now_url ); ?>"><?php echo esc_html__( 'Sync fees now', 'order-machine' ); ?></a>
+				<p class="description"><?php echo esc_html__( 'Separate from order sync. First run looks back 7 days; later runs use the fee cursor. Dummy mode loads fee fixtures.', 'order-machine' ); ?></p>
 			</td>
 		</tr>
 	</table>
@@ -214,6 +294,13 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 				<td>
 					<input name="som_poll_interval" id="som_poll_interval" type="number" min="1" step="1" value="<?php echo esc_attr( (string) $settings['poll_interval_minutes'] ); ?>" class="small-text" />
 					<p class="description"><?php echo esc_html__( 'Suggested 10–15. Schedules som_sync_orders via WP-Cron.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="som_fee_poll_interval"><?php echo esc_html__( 'Fee polling interval (minutes)', 'order-machine' ); ?></label></th>
+				<td>
+					<input name="som_fee_poll_interval" id="som_fee_poll_interval" type="number" min="5" step="1" value="<?php echo esc_attr( (string) $settings['fee_poll_interval_minutes'] ); ?>" class="small-text" />
+					<p class="description"><?php echo esc_html__( 'Suggested 30–60. Schedules som_sync_platform_fees via WP-Cron.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -301,7 +388,7 @@ $etsy_channel = SOM_Channels::get_by_slug( 'etsy' );
 				<th scope="row"><?php echo esc_html__( 'Connect', 'order-machine' ); ?></th>
 				<td>
 					<a class="button button-secondary" href="<?php echo esc_url( $connect_ebay_url ); ?>"><?php echo esc_html__( 'Connect eBay', 'order-machine' ); ?></a>
-					<p class="description"><?php echo esc_html__( 'Save settings first, then click Connect. Real OAuth works on Local; wp-env uses dummy credentials.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Save settings first, then click Connect. Includes Finances scope for platform fee sync. Real OAuth works on Local; wp-env uses dummy credentials.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 		</table>

@@ -426,6 +426,37 @@ if ( ! empty( $order->raw_payload ) ) {
 		</table>
 	</section>
 
+	<?php
+	$platform_fees = isset( $order->platform_fees ) && is_array( $order->platform_fees ) ? $order->platform_fees : array();
+	?>
+	<section class="som-panel som-panel-fees">
+		<h2><?php echo esc_html__( 'Platform fees', 'order-machine' ); ?></h2>
+		<?php if ( empty( $platform_fees ) ) : ?>
+			<p class="description"><?php echo esc_html__( 'No synced platform fees for this order yet.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<table class="widefat striped">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Type', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Amount', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Currency', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Synced', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $platform_fees as $fee ) : ?>
+						<tr>
+							<td><code><?php echo esc_html( (string) $fee->fee_type ); ?></code></td>
+							<td><?php echo esc_html( number_format_i18n( (float) $fee->amount, 4 ) ); ?></td>
+							<td><?php echo esc_html( (string) $fee->currency ); ?></td>
+							<td><?php echo esc_html( (string) $fee->synced_at ); ?> UTC</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+	</section>
+
 	<?php if ( '' !== $raw_pretty ) : ?>
 		<details class="som-panel som-raw-payload">
 			<summary><?php echo esc_html__( 'Raw payload (debug)', 'order-machine' ); ?></summary>

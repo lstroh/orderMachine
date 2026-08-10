@@ -8,13 +8,14 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers cron schedules and handlers (token refresh, order sync, engine tick).
+ * Registers cron schedules and handlers (token refresh, order sync, fee sync, engine tick).
  */
 class SOM_Cron {
 
-	const HOOK_REFRESH_TOKENS = 'som_refresh_tokens';
-	const HOOK_SYNC_ORDERS    = 'som_sync_orders';
-	const HOOK_ENGINE_TICK    = 'som_engine_tick';
+	const HOOK_REFRESH_TOKENS      = 'som_refresh_tokens';
+	const HOOK_SYNC_ORDERS         = 'som_sync_orders';
+	const HOOK_SYNC_PLATFORM_FEES  = 'som_sync_platform_fees';
+	const HOOK_ENGINE_TICK         = 'som_engine_tick';
 
 	/**
 	 * Wire hooks (call on every request after plugins_loaded).
@@ -25,13 +26,14 @@ class SOM_Cron {
 		add_filter( 'cron_schedules', array( __CLASS__, 'add_schedules' ) );
 		add_action( self::HOOK_REFRESH_TOKENS, array( __CLASS__, 'refresh_tokens' ) );
 		add_action( self::HOOK_SYNC_ORDERS, array( __CLASS__, 'sync_orders' ) );
+		add_action( self::HOOK_SYNC_PLATFORM_FEES, array( __CLASS__, 'sync_platform_fees' ) );
 		add_action( self::HOOK_ENGINE_TICK, array( __CLASS__, 'engine_tick' ) );
 		add_action( SOM_Workflow_Engine::HOOK_SCRIPT_ATTEMPT, array( 'SOM_Workflow_Engine', 'attempt_script_by_progress_id' ) );
 		add_action( SOM_Batches::HOOK_BATCH_ATTEMPT, array( 'SOM_Batches', 'attempt_by_id' ) );
 	}
 
 	/**
-	 * Custom intervals from settings (token refresh + order poll + engine tick).
+	 * Custom intervals from settings.
 	 *
 	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
 	 * @return array<string, array<string, mixed>>
@@ -56,6 +58,16 @@ class SOM_Cron {
 				/* translators: %d: minutes */
 				__( 'Order Machine order poll (%d min)', 'order-machine' ),
 				$poll
+			),
+		);
+
+		$fee_poll = max( 5, (int) $settings['fee_poll_interval_minutes'] );
+		$schedules['som_fee_poll'] = array(
+			'interval' => $fee_poll * MINUTE_IN_SECONDS,
+			'display'  => sprintf(
+				/* translators: %d: minutes */
+				__( 'Order Machine platform fee poll (%d min)', 'order-machine' ),
+				$fee_poll
 			),
 		);
 
@@ -84,6 +96,9 @@ class SOM_Cron {
 		if ( ! wp_next_scheduled( self::HOOK_SYNC_ORDERS ) ) {
 			wp_schedule_event( time() + ( 2 * MINUTE_IN_SECONDS ), 'som_order_poll', self::HOOK_SYNC_ORDERS );
 		}
+		if ( ! wp_next_scheduled( self::HOOK_SYNC_PLATFORM_FEES ) ) {
+			wp_schedule_event( time() + ( 4 * MINUTE_IN_SECONDS ), 'som_fee_poll', self::HOOK_SYNC_PLATFORM_FEES );
+		}
 		if ( ! wp_next_scheduled( self::HOOK_ENGINE_TICK ) ) {
 			wp_schedule_event( time() + ( 3 * MINUTE_IN_SECONDS ), 'som_engine_tick', self::HOOK_ENGINE_TICK );
 		}
@@ -95,7 +110,7 @@ class SOM_Cron {
 	 * @return void
 	 */
 	public static function clear_events() {
-		foreach ( array( self::HOOK_REFRESH_TOKENS, self::HOOK_SYNC_ORDERS, self::HOOK_ENGINE_TICK ) as $hook ) {
+		foreach ( array( self::HOOK_REFRESH_TOKENS, self::HOOK_SYNC_ORDERS, self::HOOK_SYNC_PLATFORM_FEES, self::HOOK_ENGINE_TICK ) as $hook ) {
 			$timestamp = wp_next_scheduled( $hook );
 			while ( $timestamp ) {
 				wp_unschedule_event( $timestamp, $hook );
@@ -115,7 +130,7 @@ class SOM_Cron {
 	}
 
 	/**
-	 * Back-compat alias used by settings save in Sprint 2.
+	 * Back-compat alias used by settings save.
 	 *
 	 * @return void
 	 */
@@ -162,6 +177,19 @@ class SOM_Cron {
 		if ( empty( $result['ok'] ) && ! empty( $result['message'] ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional ops signal
 			error_log( 'Order Machine sync: ' . $result['message'] );
+		}
+	}
+
+	/**
+	 * Platform fee sync (Finances / Ledger).
+	 *
+	 * @return void
+	 */
+	public static function sync_platform_fees() {
+		$result = SOM_Platform_Fee_Sync::sync_incremental();
+		if ( empty( $result['ok'] ) && ! empty( $result['message'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional ops signal
+			error_log( 'Order Machine fee sync: ' . $result['message'] );
 		}
 	}
 

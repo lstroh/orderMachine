@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.7.0';
+	const DB_VERSION = '1.8.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -369,6 +369,7 @@ class SOM_DB {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			order_id bigint(20) unsigned NOT NULL,
 			channel_id bigint(20) unsigned NOT NULL,
+			external_entry_id varchar(191) NOT NULL,
 			fee_type varchar(50) NOT NULL,
 			amount decimal(10,4) NOT NULL,
 			currency char(3) NOT NULL DEFAULT 'GBP',
@@ -376,6 +377,7 @@ class SOM_DB {
 			synced_at datetime NOT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
+			UNIQUE KEY channel_entry (channel_id,external_entry_id),
 			KEY order_id (order_id),
 			KEY channel_id (channel_id),
 			KEY fee_type (fee_type)
@@ -385,12 +387,14 @@ class SOM_DB {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			channel_id bigint(20) unsigned NOT NULL,
 			listing_id bigint(20) unsigned NULL,
+			external_entry_id varchar(191) NOT NULL,
 			fee_type varchar(50) NOT NULL DEFAULT 'listing_fee',
 			amount decimal(10,4) NOT NULL,
 			incurred_date date NOT NULL,
 			notes text NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
+			UNIQUE KEY channel_entry (channel_id,external_entry_id),
 			KEY channel_id (channel_id),
 			KEY listing_id (listing_id),
 			KEY incurred_date (incurred_date)

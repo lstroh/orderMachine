@@ -23,6 +23,7 @@ class SOM_Settings {
 		return array(
 			'n8n_base_url'                   => '',
 			'poll_interval_minutes'          => 15,
+			'fee_poll_interval_minutes'      => 30,
 			'engine_tick_interval_minutes'   => 60,
 			'token_refresh_interval_minutes' => 30,
 			'api_key'                        => '',
@@ -58,6 +59,7 @@ class SOM_Settings {
 		$settings['etsy']['client_secret'] = self::maybe_decrypt_secret( $settings['etsy']['client_secret'] );
 
 		$settings['poll_interval_minutes']          = max( 1, (int) $settings['poll_interval_minutes'] );
+		$settings['fee_poll_interval_minutes']      = max( 5, (int) $settings['fee_poll_interval_minutes'] );
 		$settings['engine_tick_interval_minutes']   = max( 1, (int) $settings['engine_tick_interval_minutes'] );
 		$settings['token_refresh_interval_minutes'] = max( 5, (int) $settings['token_refresh_interval_minutes'] );
 
@@ -80,6 +82,7 @@ class SOM_Settings {
 
 		$next['n8n_base_url']                   = esc_url_raw( (string) ( $next['n8n_base_url'] ?? '' ) );
 		$next['poll_interval_minutes']          = max( 1, (int) ( $next['poll_interval_minutes'] ?? 15 ) );
+		$next['fee_poll_interval_minutes']      = max( 5, (int) ( $next['fee_poll_interval_minutes'] ?? 30 ) );
 		$next['engine_tick_interval_minutes']   = max( 1, (int) ( $next['engine_tick_interval_minutes'] ?? 60 ) );
 		$next['token_refresh_interval_minutes'] = max( 5, (int) ( $next['token_refresh_interval_minutes'] ?? 30 ) );
 		$next['api_key']                        = sanitize_text_field( (string) ( $next['api_key'] ?? '' ) );
