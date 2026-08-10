@@ -4,6 +4,9 @@ Private **alpha** distribution: Semantic Versioning on **`0.x.y`**, installable 
 
 Current version lives in `orderMachine.php` (`Version:` header and `SOM_VERSION`).
 
+- **Release notes:** [CHANGELOG.md](CHANGELOG.md)
+- **Release catalog (three links each):** [RELEASES.md](RELEASES.md)
+
 ---
 
 ## Versioning policy
@@ -81,15 +84,27 @@ define( 'SOM_VERSION', '0.23.0' );
 
 Bump `SOM_DB::DB_VERSION` in the same commit **only** if the schema changed.
 
-### 3. Commit
+### 3. Write release notes and catalog entry
+
+The release skill (or you) should:
+
+1. Draft notes in [CHANGELOG.md](CHANGELOG.md) under `## [X.Y.Z] - YYYY-MM-DD`
+2. Add a top row in [RELEASES.md](RELEASES.md) with:
+   - Release page URL
+   - Zip download URL
+   - Actions run URL (fill after CI; use `TBD` until then)
+
+GitHub Release body stays the short CI install blurb; detailed notes stay in the repo.
+
+### 4. Commit
 
 ```bash
-git add orderMachine.php
+git add orderMachine.php CHANGELOG.md RELEASES.md
 # plus any other release-related files
 git commit -m "Release 0.23.0"
 ```
 
-### 4. Tag and push
+### 5. Tag and push
 
 ```bash
 git tag v0.23.0
@@ -97,10 +112,11 @@ git push origin HEAD
 git push origin v0.23.0
 ```
 
-### 5. Confirm on GitHub
+### 6. Confirm on GitHub and finish RELEASES.md
 
 1. Actions → workflow **Release** for tag `v0.23.0` (must be green)
 2. Releases → **Order Machine 0.23.0** with `orderMachine-0.23.0.zip` attached
+3. Paste the Actions run URL into [RELEASES.md](RELEASES.md) if it was still `TBD`
 
 If the version in the tag does not match `orderMachine.php`, CI fails on purpose and does **not** create a release.
 
@@ -140,8 +156,10 @@ Say something like: **“Release 0.23.0”** or **“Cut a plugin release”**.
 The project skill [`.cursor/skills/release-order-machine/`](.cursor/skills/release-order-machine/) tells the agent to:
 
 - Keep `0.x` SemVer and synced version fields
+- **Draft release notes** into `CHANGELOG.md` and add the three-link row in `RELEASES.md`
 - Commit / tag / push **only** when you explicitly ask
 - Rely on CI for the zip + GitHub Release (do not hand-upload the asset if Actions can do it)
+- After CI succeeds, fill the Actions run link in `RELEASES.md`
 
 ---
 
@@ -162,10 +180,12 @@ The project skill [`.cursor/skills/release-order-machine/`](.cursor/skills/relea
 | File | Role |
 |------|------|
 | [`orderMachine.php`](orderMachine.php) | Canonical plugin version |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release notes |
+| [`RELEASES.md`](RELEASES.md) | Version catalog + Release / Zip / Actions links |
 | [`RELEASE.md`](RELEASE.md) | This document |
 | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Tag → zip → GitHub Release |
 | [`bin/build-plugin-zip.ps1`](bin/build-plugin-zip.ps1) | Local Windows zip |
 | [`bin/build-plugin-zip.sh`](bin/build-plugin-zip.sh) | Local/CI Unix zip |
 | [`.distignore`](.distignore) | Documented non-runtime paths |
-| [`.cursor/skills/release-order-machine/`](.cursor/skills/release-order-machine/) | Agent release checklist |
+| [`.cursor/skills/release-order-machine/`](.cursor/skills/release-order-machine/) | Agent release checklist (writes notes + catalog) |
 | [`.cursor/rules/order-machine-architecture.mdc`](.cursor/rules/order-machine-architecture.mdc) | Short versioning note for agents |

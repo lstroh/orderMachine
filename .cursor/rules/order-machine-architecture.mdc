@@ -41,4 +41,6 @@ One workflow per order: primary product = first `order_items` row with non-null 
 
 - Plugin SemVer stays on **`0.x.y`** during alpha; do not reset to `0.1.0`.
 - Keep header `Version:` and `SOM_VERSION` in sync; release tags are `vX.Y.Z`.
-- Installable zips come from GitHub Releases (CI on tag). Process: `RELEASE.md`. Agent release workflow: `.cursor/skills/release-order-machine/`.
+- Installable zips come from GitHub Releases (CI on tag). Process: `RELEASE.md`.
+- Notes: `CHANGELOG.md`. Link catalog (Release / Zip / Actions): `RELEASES.md`.
+- Agent release workflow (drafts notes + updates catalog): `.cursor/skills/release-order-machine/`.
