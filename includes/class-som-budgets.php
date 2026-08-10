@@ -1069,7 +1069,7 @@ class SOM_Budgets {
 					continue;
 				}
 
-				$amount = self::manual_funding_amount( $budget, $sold, $qty, $product_id, $costing );
+				$amount = self::manual_funding_amount( $budget, $sold, $qty, $product_id, $costing, $order );
 				if ( null === $amount || abs( $amount ) < 0.0000001 ) {
 					continue;
 				}
@@ -1117,14 +1117,15 @@ class SOM_Budgets {
 	}
 
 	/**
-	 * @param object     $budget    Manual budget row.
-	 * @param float|null $sold      Effective sold unit price.
-	 * @param int        $qty       Line quantity.
-	 * @param int        $product_id Product PK.
-	 * @param array|null $costing   Cached recipe_costing result (by ref).
+	 * @param object      $budget     Manual budget row.
+	 * @param float|null  $sold       Effective sold unit price.
+	 * @param int         $qty        Line quantity.
+	 * @param int         $product_id Product PK.
+	 * @param array|null  $costing    Cached recipe_costing result (by ref).
+	 * @param object|null $order      Order row (channel_id + id) for fee-aware profit.
 	 * @return float|null Rounded amount, or null when not computable / zero-skip for missing price.
 	 */
-	private static function manual_funding_amount( $budget, $sold, $qty, $product_id, &$costing ) {
+	private static function manual_funding_amount( $budget, $sold, $qty, $product_id, &$costing, $order = null ) {
 		$method = (string) $budget->funding_method;
 		$value  = (float) $budget->funding_value;
 		$qty    = max( 1, (int) $qty );
@@ -1148,6 +1149,18 @@ class SOM_Budgets {
 			$material_cost = ( $costing && isset( $costing['material_cost'] ) )
 				? (float) $costing['material_cost']
 				: 0.0;
+
+			if ( $order && ! empty( $order->id ) && ! empty( $order->channel_id ) ) {
+				$line = SOM_Platform_Fees::line_profit(
+					(float) $sold,
+					$qty,
+					$material_cost,
+					(int) $order->id,
+					(int) $order->channel_id
+				);
+				return SOM_Material_Costing::round4( (float) $line['profit'] * ( $value / 100 ) );
+			}
+
 			$profit = $sold - $material_cost;
 			return SOM_Material_Costing::round4( $profit * $qty * ( $value / 100 ) );
 		}

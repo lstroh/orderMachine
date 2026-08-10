@@ -14,7 +14,7 @@ Assumption: base plugin + Update Package 1 (materials/costing) + Update Package 
 |---|---|---|---|
 | 1 | Fee schema + Channel Fee Estimates UI | **Done** | Verified on wp-env 2026-08-09 |
 | 2 | Platform fee sync + order/recurring UI | **Done** | Verified on wp-env 2026-08-10 |
-| 3 | Product Costing + budgets fee-aware | Not started | |
+| 3 | Product Costing + budgets fee-aware | **Done** | Verified on wp-env 2026-08-10 |
 | 4 | Analytics Dashboard | Not started | |
 
 ---
@@ -273,6 +273,119 @@ Smoke covered: schema columns/unique indexes, cron registration, fee poll settin
 
 ---
 
-## Sprint 3+
+## Sprint 3 — Product Costing + budgets fee-aware
+
+- **Status:** **Done** (confirmed complete vs `Update-3-Sprint-Plan.md` §5 Sprint 3 Create/Modify/**Done when**, plus settled O2/O7/O9 and Sprint 3 Q&A locks)
+- **Completed:** 2026-08-10
+- **Verified on:** wp-env via `tests/sprint-up3-s3-smoke.php` (`PASS — Update Package 3 Sprint 3 smoke`)
+- **Plugin version:** `0.21.0`
+- **DB version:** `1.8.0` (unchanged — no schema migration this sprint)
+
+### Plan requirements review (`Update-3-Sprint-Plan.md`)
+
+| Plan item | Status | Notes |
+|---|---|---|
+| Create shared helpers e.g. `includes/class-som-platform-fees.php` | **Done** | Estimate application, actual totals, £/% math, product + order/line profit |
+| Modify `includes/class-som-products.php` — extend `recipe_costing()` | **Done** | Fee-aware `profit`/`margin_percent`; keeps `material_only_profit`; adds `fee_channels` / `fee_source` / `platform_fees` |
+| Modify `admin/views/product-edit.php` — Costing panel | **Done** | Per-channel estimated £+%, actual £+% with n=, variance highlight, source badges |
+| Modify `admin/views/products-list.php` | **Done** | Fee-aware margin + Est./Actual badge (locked: update list, not material-only) |
+| Modify `includes/class-som-budgets.php` — `percent_of_profit` | **Done** | Shared `SOM_Platform_Fees::line_profit` (estimate→actual); other funding methods untouched |
+| Possibly MCP/abilities product costing fields | **Done** | `get_products` adds `platform_fees` + `fee_source`; profit/margin fee-aware |
+| Modify `orderMachine.php` | **Done** | Require `class-som-platform-fees.php`; `SOM_VERSION` → `0.21.0` |
+| **Done when:** Costing per-channel estimate vs actual £+% (n=) + variance | **Pass** | Product edit table; ≥2 pp highlight class |
+| **Done when:** Profit = price − material − fees (estimate until actuals) | **Pass** | One fee-aware profit; UI labels estimate vs actual |
+| **Done when:** Budgets `percent_of_profit` same fee rule | **Pass** | Per-order actual if synced, else estimate |
+| **Done when:** No blended effective-rate object | **Pass** | Totals in £ and % only |
+| Open items first | Settled | O2 (rep price pinned), O7, O9 |
+
+### Settled open items (plan §1) for this sprint
+
+| Item | Decision | Applied? |
+|---|---|---|
+| O2 Representative price / no opaque effective rate | Show £ + % of rep price; pin target vs listing | Yes — target for estimates; listing price when linked |
+| O7 Profit without actual fees | Use estimated fees, not material-only | Yes — Costing + budgets + shared helpers |
+| O9 Budgets `percent_of_profit` | Fee-aware same as Costing; do not change other methods | Yes |
+
+### Locked decisions applied (Sprint 3 planning chat)
+
+| Topic | Decision | Applied? |
+|---|---|---|
+| Representative price | **A** target for estimates; **B** live listing when channel has a linked listing | Yes |
+| Profit display | One fee-aware profit (estimate→actual); UI must state source clearly | Yes |
+| Actual fee attribution (Costing) | **B** — full order fee total when product appears on the order | Yes |
+| Estimate→actual granularity | Per order: synced fee rows if present, else channel estimate | Yes |
+| `vat_on_fees` | 20% of other estimated fee £ totals (`is_enabled` respected) | Yes |
+| Etsy `listing_fee` in estimate | Include in per-sale estimate | Yes |
+| Variance threshold | Absolute gap ≥ **2** percentage points | Yes |
+| Products list + MCP | Update fee-aware profit/margin (not Costing-only) | Yes |
+| Fee amount sign | Use **abs(amount)** of fee lines | Yes |
+
+### What shipped (behaviour)
+
+1. **`SOM_Platform_Fees`:** estimate stack (tiers, optional ads, listing fee, VAT-on-fees); order actual abs totals; product/channel actual aggregates (rule B); preferred-channel summary for list/MCP; duplicate component guard after tier match.
+2. **Costing UI:** summary platform fees + source badge; per-channel table (rep price source, estimate £/%, actual £/% with n=, variance pp, fee-aware profit).
+3. **Budgets:** `percent_of_profit` = `(revenue − materials − fees) × %` via `line_profit` / `fees_for_order`.
+4. **List + MCP:** fee-aware margin/profit; MCP exposes `platform_fees` and `fee_source`.
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-platform-fees.php` | Shared fee math (new) |
+| `includes/class-som-products.php` | Fee-aware `recipe_costing` |
+| `includes/class-som-budgets.php` | Fee-aware `percent_of_profit` |
+| `includes/class-som-abilities.php` | MCP fee fields |
+| `admin/views/product-edit.php` | Costing fee panel |
+| `admin/views/products-list.php` | Margin + fee source badge |
+| `admin/assets/css/admin.css` | Fee badges + variance row |
+| `orderMachine.php` | Require helpers; `0.21.0` |
+| `tests/sprint-up3-s3-smoke.php` | Sprint 3 smoke (new) |
+| `stikerts/wordpress v4/Update-3-Sprint-Progress.md` | This progress record |
+
+### `SOM_Platform_Fees` API surface (Sprint 3)
+
+| Method | Role |
+|---|---|
+| `estimate_total` | Apply enabled estimate components (+ VAT on fee totals) |
+| `order_actual_fee_total` / `fees_for_order` | Actual abs sum or estimate fallback |
+| `line_profit` | Order-line fee-aware profit (budgets) |
+| `product_channel_actuals` | Rule B aggregates + n= / avg fee per unit |
+| `product_fee_costing` / `prefer_channel_row` | Per-channel Costing rows + preferred summary |
+| `fee_source_label` | UI labels for estimate / actual / none |
+
+### Verification (wp-env, 2026-08-10)
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up3-s3-smoke.php
+```
+
+**Result:** `PASS — Update Package 3 Sprint 3 smoke`  
+Covered: eBay/Etsy estimate maths (tiers, VAT, listing fee), `recipe_costing` fee fields, actual path after fixture sync + product on fee order, line profit actual vs estimate, listing as representative price.
+
+### Suggested live check (Local / operator)
+
+1. Open a product with target price → Costing shows estimated fees per channel and fee-aware profit labeled **Estimated fees**.
+2. After fee sync on orders linked to that product → channel switches to **Actual fees** with n= and variance if ≥2 pp off.
+3. Link a listing → rep. price shows **(listing)** for that channel.
+4. Confirm a `percent_of_profit` manual budget funds less after fees than material-only profit would.
+5. Products list margin badge shows Est. fees / Actual fees; MCP product payload includes `platform_fees` / `fee_source`.
+
+### Gaps / residual risk (not blocking Sprint 3)
+
+| Item | Notes |
+|---|---|
+| Duplicate estimate seed rows | Env had duplicate eBay `final_value_fee`; estimate math dedupes by component after tier match |
+| Multi-item orders + rule B | Full order fees attributed to each product that appears — can overstate on multi-product orders (accepted lock) |
+| Analytics reuse | Sprint 4 should call `SOM_Platform_Fees` / order profit helpers — do not duplicate |
+
+### Explicitly out of scope for Sprint 3 (later)
+
+| Item | Sprint |
+|---|---|
+| Analytics Dashboard / Chart.js | 4 |
+
+---
+
+## Sprint 4+
 
 Not started. Follow `Update-3-Sprint-Plan.md` §5 in order; do not re-open settled open items in plan §1–§2 without confirmation.

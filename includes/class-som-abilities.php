@@ -484,6 +484,8 @@ class SOM_Abilities {
 				'workflow_template_id' => $row->workflow_template_id ? (int) $row->workflow_template_id : null,
 				'target_selling_price' => isset( $costing['target_selling_price'] ) ? $costing['target_selling_price'] : null,
 				'material_cost'        => isset( $costing['material_cost'] ) ? $costing['material_cost'] : null,
+				'platform_fees'        => isset( $costing['platform_fees'] ) ? $costing['platform_fees'] : null,
+				'fee_source'           => isset( $costing['fee_source'] ) ? (string) $costing['fee_source'] : 'none',
 				'profit'               => isset( $costing['profit'] ) ? $costing['profit'] : null,
 				'margin_percent'       => isset( $costing['margin_percent'] ) ? $costing['margin_percent'] : null,
 				'recipe'               => $lines,

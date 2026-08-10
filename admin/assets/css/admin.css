@@ -273,6 +273,29 @@
 	padding-left: 1.2em;
 }
 
+.som-fee-costing-table .som-badge {
+	margin-left: 0.35em;
+}
+
+.som-fee-variance-off td {
+	background: #fcf0f1;
+}
+
+.som-badge-fee-estimate {
+	background: #f0f6fc;
+	color: #135e96;
+}
+
+.som-badge-fee-actual {
+	background: #edfaef;
+	color: #1e6e34;
+}
+
+.som-badge-fee-none {
+	background: #f0f0f1;
+	color: #646970;
+}
+
 .som-po-preview-results {
 	margin-top: 1.5em;
 }

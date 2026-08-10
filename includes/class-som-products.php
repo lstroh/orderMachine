@@ -350,13 +350,24 @@ class SOM_Products {
 		$target        = null !== $product->target_selling_price && '' !== $product->target_selling_price
 			? (float) $product->target_selling_price
 			: null;
-		$profit        = null;
-		$margin_pct    = null;
+
+		$material_profit = null;
+		$material_margin = null;
 		if ( null !== $target ) {
-			$profit = SOM_Material_Costing::round4( $target - $material_cost );
+			$material_profit = SOM_Material_Costing::round4( $target - $material_cost );
 			if ( $target > 0 ) {
-				$margin_pct = round( ( $profit / $target ) * 100, 2 );
+				$material_margin = round( ( $material_profit / $target ) * 100, 2 );
 			}
+		}
+
+		$fee_costing = SOM_Platform_Fees::product_fee_costing( (int) $product->id, $material_cost, $target );
+
+		$profit     = $material_profit;
+		$margin_pct = $material_margin;
+		$fee_source = isset( $fee_costing['fee_source'] ) ? (string) $fee_costing['fee_source'] : 'none';
+		if ( null !== $fee_costing['fee_aware_profit'] ) {
+			$profit     = $fee_costing['fee_aware_profit'];
+			$margin_pct = $fee_costing['fee_aware_margin'];
 		}
 
 		$goal_alerts = array();
@@ -376,15 +387,22 @@ class SOM_Products {
 		}
 
 		return array(
-			'product_id'            => (int) $product->id,
-			'product_name'          => (string) $product->name,
-			'workflow_template_id'  => $product->workflow_template_id ? (int) $product->workflow_template_id : null,
-			'target_selling_price'  => $target,
-			'material_cost'         => $material_cost,
-			'profit'                => $profit,
-			'margin_percent'        => $margin_pct,
-			'lines'                 => $lines,
-			'goal_alerts'           => $goal_alerts,
+			'product_id'              => (int) $product->id,
+			'product_name'            => (string) $product->name,
+			'workflow_template_id'    => $product->workflow_template_id ? (int) $product->workflow_template_id : null,
+			'target_selling_price'    => $target,
+			'material_cost'           => $material_cost,
+			'material_only_profit'    => $material_profit,
+			'material_only_margin'    => $material_margin,
+			'platform_fees'           => $fee_costing['platform_fees'],
+			'fee_source'              => $fee_source,
+			'fee_channels'            => $fee_costing['channels'],
+			'preferred_fee_channel'   => $fee_costing['preferred_channel'],
+			'representative_price'    => $fee_costing['representative_price'],
+			'profit'                  => $profit,
+			'margin_percent'          => $margin_pct,
+			'lines'                   => $lines,
+			'goal_alerts'             => $goal_alerts,
 		);
 	}
 

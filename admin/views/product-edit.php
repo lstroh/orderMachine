@@ -95,7 +95,7 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 				<td>
 					<input type="number" step="0.01" min="0" class="small-text" id="som_target_selling_price" name="som_target_selling_price" value="<?php echo esc_attr( $product && null !== $product->target_selling_price && '' !== $product->target_selling_price ? (string) $product->target_selling_price : '' ); ?>" />
 					<span class="som-muted">GBP</span>
-					<p class="description"><?php echo esc_html__( 'Competition-driven target price. Profit and margin are calculated from live recipe material cost.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Competition-driven target price. Profit and margin use live material cost plus platform fees (estimate until actuals sync).', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -222,12 +222,31 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 						£<?php echo esc_html( number_format_i18n( (float) $costing['material_cost'], 4 ) ); ?>
 					</li>
 					<li>
+						<strong><?php echo esc_html__( 'Platform fees', 'order-machine' ); ?>:</strong>
+						<?php if ( null !== $costing['platform_fees'] ) : ?>
+							£<?php echo esc_html( number_format_i18n( (float) $costing['platform_fees'], 4 ) ); ?>
+							<span class="som-badge som-badge-fee-<?php echo esc_attr( sanitize_html_class( (string) $costing['fee_source'] ) ); ?>">
+								<?php echo esc_html( SOM_Platform_Fees::fee_source_label( (string) $costing['fee_source'] ) ); ?>
+							</span>
+							<?php if ( ! empty( $costing['preferred_fee_channel']['channel_name'] ) ) : ?>
+								<span class="som-muted">
+									(<?php echo esc_html( (string) $costing['preferred_fee_channel']['channel_name'] ); ?>)
+								</span>
+							<?php endif; ?>
+						<?php else : ?>
+							<span class="som-muted">—</span>
+						<?php endif; ?>
+					</li>
+					<li>
 						<strong><?php echo esc_html__( 'Profit', 'order-machine' ); ?>:</strong>
 						<?php
 						echo null !== $costing['profit']
 							? '£' . esc_html( number_format_i18n( (float) $costing['profit'], 4 ) )
 							: '<span class="som-muted">—</span>';
 						?>
+						<?php if ( null !== $costing['platform_fees'] ) : ?>
+							<span class="som-muted"><?php echo esc_html__( '(after fees)', 'order-machine' ); ?></span>
+						<?php endif; ?>
 					</li>
 					<li>
 						<strong><?php echo esc_html__( 'Margin', 'order-machine' ); ?>:</strong>
@@ -238,6 +257,94 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 						?>
 					</li>
 				</ul>
+
+				<?php if ( ! empty( $costing['fee_channels'] ) ) : ?>
+					<h3><?php echo esc_html__( 'Platform fees by channel', 'order-machine' ); ?></h3>
+					<table class="widefat striped som-fee-costing-table">
+						<thead>
+							<tr>
+								<th scope="col"><?php echo esc_html__( 'Channel', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Rep. price', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Estimated', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Actual', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Variance', 'order-machine' ); ?></th>
+								<th scope="col"><?php echo esc_html__( 'Fee-aware profit', 'order-machine' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $costing['fee_channels'] as $fee_row ) : ?>
+								<tr class="<?php echo ! empty( $fee_row['variance_highlight'] ) ? 'som-fee-variance-off' : ''; ?>">
+									<td>
+										<span class="som-badge som-badge-channel"><?php echo esc_html( (string) $fee_row['channel_name'] ); ?></span>
+										<span class="som-badge som-badge-fee-<?php echo esc_attr( sanitize_html_class( (string) $fee_row['fee_source'] ) ); ?>">
+											<?php echo esc_html( SOM_Platform_Fees::fee_source_label( (string) $fee_row['fee_source'] ) ); ?>
+										</span>
+									</td>
+									<td>
+										<?php if ( null !== $fee_row['representative_price'] ) : ?>
+											£<?php echo esc_html( number_format_i18n( (float) $fee_row['representative_price'], 2 ) ); ?>
+											<span class="som-muted">
+												<?php
+												echo 'listing' === $fee_row['representative_source']
+													? esc_html__( '(listing)', 'order-machine' )
+													: esc_html__( '(target)', 'order-machine' );
+												?>
+											</span>
+										<?php else : ?>
+											<span class="som-muted">—</span>
+										<?php endif; ?>
+									</td>
+									<td>
+										<?php if ( null !== $fee_row['estimated_total'] ) : ?>
+											£<?php echo esc_html( number_format_i18n( (float) $fee_row['estimated_total'], 4 ) ); ?>
+											<?php if ( null !== $fee_row['estimated_percent'] ) : ?>
+												<span class="som-muted">(<?php echo esc_html( number_format_i18n( (float) $fee_row['estimated_percent'], 1 ) ); ?>%)</span>
+											<?php endif; ?>
+										<?php else : ?>
+											<span class="som-muted">—</span>
+										<?php endif; ?>
+									</td>
+									<td>
+										<?php if ( (int) $fee_row['actual_order_count'] > 0 && null !== $fee_row['actual_percent'] ) : ?>
+											<?php if ( null !== $fee_row['actual_avg_fee_unit'] ) : ?>
+												£<?php echo esc_html( number_format_i18n( (float) $fee_row['actual_avg_fee_unit'], 4 ) ); ?>/unit
+											<?php endif; ?>
+											<span class="som-muted">
+												(<?php echo esc_html( number_format_i18n( (float) $fee_row['actual_percent'], 1 ) ); ?>%
+												· n=<?php echo esc_html( (string) (int) $fee_row['actual_order_count'] ); ?>)
+											</span>
+										<?php else : ?>
+											<span class="som-muted"><?php echo esc_html__( 'No synced fees yet', 'order-machine' ); ?></span>
+										<?php endif; ?>
+									</td>
+									<td>
+										<?php if ( null !== $fee_row['variance_pp'] ) : ?>
+											<?php
+											$vsign = (float) $fee_row['variance_pp'] > 0 ? '+' : '';
+											echo esc_html( $vsign . number_format_i18n( (float) $fee_row['variance_pp'], 1 ) ) . ' pp';
+											?>
+										<?php else : ?>
+											<span class="som-muted">—</span>
+										<?php endif; ?>
+									</td>
+									<td>
+										<?php if ( null !== $fee_row['profit'] ) : ?>
+											£<?php echo esc_html( number_format_i18n( (float) $fee_row['profit'], 4 ) ); ?>
+											<?php if ( null !== $fee_row['margin_percent'] ) : ?>
+												<span class="som-muted">(<?php echo esc_html( number_format_i18n( (float) $fee_row['margin_percent'], 1 ) ); ?>%)</span>
+											<?php endif; ?>
+										<?php else : ?>
+											<span class="som-muted">—</span>
+										<?php endif; ?>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+					<p class="description">
+						<?php echo esc_html__( 'Profit uses actual average fees per unit when synced orders exist for that channel; otherwise the estimate. Variance highlights when actual % is at least 2 percentage points off the estimate.', 'order-machine' ); ?>
+					</p>
+				<?php endif; ?>
 
 				<?php if ( ! empty( $costing['lines'] ) ) : ?>
 					<table class="widefat striped">

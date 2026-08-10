@@ -139,6 +139,11 @@ $status_options = array(
 							<?php
 							if ( $costing && null !== $costing['margin_percent'] ) {
 								echo esc_html( number_format_i18n( (float) $costing['margin_percent'], 1 ) ) . '%';
+								if ( ! empty( $costing['fee_source'] ) && 'none' !== $costing['fee_source'] ) {
+									echo ' <span class="som-badge som-badge-fee-' . esc_attr( sanitize_html_class( (string) $costing['fee_source'] ) ) . '">';
+									echo esc_html( 'actual' === $costing['fee_source'] ? __( 'Actual fees', 'order-machine' ) : __( 'Est. fees', 'order-machine' ) );
+									echo '</span>';
+								}
 							} else {
 								echo '<span class="som-muted">—</span>';
 							}
