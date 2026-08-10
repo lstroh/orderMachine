@@ -633,14 +633,17 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 2. **Add budget** → create a **material** budget for vinyl (or laminate).  
 3. Optionally tick one or more **workflow** templates for scope.  
 4. Set a **target reserve**; save.  
-5. **Add budget** → create a **manual** budget (`percent_of_price`, `percent_of_profit`, or `fixed_amount`); optionally tick product(s).
+5. Re-open the material budget → confirm **type** and linked **material** cannot be changed.  
+6. **Add budget** → create a **manual** budget (`percent_of_price`, `percent_of_profit`, or `fixed_amount`); optionally tick product(s).  
+7. Re-open the manual budget → type is fixed; funding method/value and product links remain editable.
 
 - [ ] Menu placement under Materials; active default filter
 - [ ] Material picker hides materials that already have a material budget
 - [ ] Ink help text visible on create
 - [ ] Material: workflow checkboxes only (not product scope UI)
 - [ ] Manual: funding method/value + product checkboxes (not workflow scope UI)
-- [ ] List shows balances; low-balance / overspent badges when applicable
+- [ ] After create, type / `material_id` are immutable; other allowed fields stay editable
+- [ ] List shows balances; low-balance / overspent badges when applicable (negative balances allowed)
 
 ### 18.2 Sale funding on Sync create
 
@@ -652,18 +655,25 @@ Interactive Cursor / Claude connector setup is a **manual** one-time config — 
 
 - [ ] Ledger shows **`sale_funding`** linked to the order
 - [ ] Balance increased for matching material + manual budgets (respecting scopes)
+- [ ] Ledger grain: material budget → one `sale_funding` row per consumed `new_order` stock-log material line; manual → one row per order item × matching budget
 - [ ] For `percent_of_profit`: funding uses revenue − materials − platform fees (estimate until actuals synced) — amount is lower than material-only profit would imply when fees apply
+- [ ] (Optional) Line with **`unit_price = 0`**: % funding uses sold price 0 (does **not** fall back to `target_selling_price`)
+- [ ] (Optional) Loss-making `percent_of_profit` may post a **negative** `sale_funding` (not clamped to 0)
 - [ ] Second Sync does **not** add duplicate `sale_funding` for the same order
 - [ ] History import path does **not** fund (prefer Sync now for this check)
 - [ ] Inactive budget is skipped
+- [ ] (Optional) Material budget scoped to a workflow the order does **not** use → that material budget is not funded; global / matching scopes still are
 
 ### 18.3 Draw-down on PO receive
 
-1. Receive a PO line for the material that has a material budget (§12.3).
+1. Receive a PO line for the material that has a material budget (§12.3).  
+2. On a multi-line receive, confirm other lines still complete even if you only care about budget behaviour on one material.
 
 - [ ] Ledger **`purchase_spend`** (negative) with link to the PO
 - [ ] Balance decreased by `delta × landed_unit_cost`
 - [ ] Shortfall **Mark received** does not add an extra draw-down
+- [ ] Draw-down is by PO-line material (workflow scope does not block receive draw-down)
+- [ ] If a budget ledger write failed after stock, remaining receive lines would still complete (Skip unless you force a failure) — stock is kept; repair via manual adjustment if needed
 
 ### 18.4 Manual adjustment & R&D
 

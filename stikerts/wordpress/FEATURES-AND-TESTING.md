@@ -407,21 +407,35 @@ Admin UI stays on form POST / admin-ajax; REST is parallel for automation / MCP 
 
 **Where:** Order Machine → Budgets (submenu immediately after Materials)
 
+**Schema (Package 2 → `1.6.0`; still present under current `1.8.0`):**
+
+| Table | Role / constraints |
+|---|---|
+| `wp_som_budgets` | Material or manual; `is_active`; **`UNIQUE` on `material_id`** (one material budget per material; MySQL allows multiple NULLs for manuals) |
+| `wp_som_budget_product_links` | Manual product scope; **`UNIQUE (budget_id, product_id)`** |
+| `wp_som_budget_workflow_links` | Material workflow scope; **`UNIQUE (budget_id, workflow_template_id)`** |
+| `wp_som_budget_ledger` | Sole balance mutator; keys on `budget_id`, `order_id`, `purchase_order_item_id` |
+
+Cross-type link rows are **allowed in the DB**; the admin UI only offers the intended combinations (workflow on material, products on manual).
+
 **Types:**
 
 | Type | Funding | Scope |
 |---|---|---|
-| **Material** | Always `material_cost` — funds from consumption cost on new orders (`\|change_qty\| × unit_cost_at_time` from `new_order` stock-log lines) | Empty workflow links = **global**; one or more workflow-template checkboxes = fund only when the order’s primary-product workflow is in the set. **One material budget per material** |
-| **Manual** | `percent_of_price`, `percent_of_profit`, or `fixed_amount` per unit | Empty product links = all products; else product-scoped. Workflow links ignored for funding |
+| **Material** | Always `material_cost` — funds from consumption cost on new orders (`\|change_qty\| × unit_cost_at_time` from `new_order` stock-log lines) | Empty workflow links = **global**; one or more workflow-template checkboxes = fund only when the order’s primary-product workflow is in the set. **One material budget per material**. Scope is **order-level**: the primary product’s workflow gates **all** material funding on that order |
+| **Manual** | `percent_of_price`, `percent_of_profit`, or `fixed_amount` per unit | Empty product links = all products; else product-scoped. **Workflow links ignored** for funding |
 
 **Behaviour:**
 
 - Sale funding runs after stock decrement on incremental create (`$apply_stock=true`); skipped for history import, cancelled orders, inactive budgets, and when any `sale_funding` ledger row already exists for that order (idempotent)
-- Effective sold price for % methods: `order_items.unit_price` if set (**including 0**), else `products.target_selling_price`
-- **`percent_of_profit`** uses the same **estimate → actual** platform-fee rule as Costing / Analytics (`SOM_Platform_Fees::line_profit`): revenue − materials − fees. May fund a **negative** amount on loss (not clamped). Other funding methods (`percent_of_price`, `fixed_amount`, material `material_cost`) are unchanged
-- PO **receive** draws active material budgets by landed delta; ledger errors are logged and do not abort remaining receive lines
-- `current_balance` mutates **only** via ledger rows; create starts at `0`; negative balances allowed
+- Effective sold price for % methods: `order_items.unit_price` if set (**including 0** — treated as sold price 0), else `products.target_selling_price` (only `NULL`/empty falls back)
+- **`percent_of_profit`** uses the same **estimate → actual** platform-fee rule as Costing / Analytics (`SOM_Platform_Fees::line_profit`): revenue − materials − fees. May fund a **negative** amount on loss (not clamped to 0). Other funding methods (`percent_of_price`, `fixed_amount`, material `material_cost`) are unchanged
+- **Ledger grain:** material → one `sale_funding` row per `new_order` stock-log material line; manual → one `sale_funding` row per order item × matching budget
+- PO **receive** draws active material budgets by landed delta (`purchase_spend` = `−(delta × landed_unit_cost)`); draw-down is by PO-line `material_id` (workflow scope applies to **funding only**). If a ledger write fails after stock succeeded, the error is **logged and receive continues** on remaining lines (stock is kept; fix budget via manual adjustment if needed)
+- `Mark received` shortfall close does **not** draw down
+- `current_balance` mutates **only** via ledger rows; create starts at `0`; negative balances allowed (same signal style as negative stock)
 - Soft-deactivate via `is_active` (no hard-delete of budgets with history in v1)
+- After create, **type** and **`material_id`** are immutable; name, notes, target reserve, `is_active`, manual funding method/value + product links, and material workflow links remain editable
 
 **Admin UI:**
 
@@ -799,17 +813,19 @@ If you use the Local `ordermachine` site:
 
 1. **Budgets** → create a **material** budget for vinyl (or laminate); optionally scope to **Bin Sticker Production**; set a target reserve.
 2. Create a **manual** budget (`percent_of_price` or `fixed_amount`); optionally scope to `BIN-SET-4PK`. Also create (or reuse) a `percent_of_profit` budget once fees exist (§18–§19) and confirm funding is lower than material-only profit would imply.
-3. Confirm list shows balances; force a low/overspent badge if useful (manual adjustment negative, or low reserve).
-4. On a clean incremental create of a matched order (or after reset + Sync): budget detail ledger shows `sale_funding`; balance increased. Re-sync → no duplicate funding.
-5. Receive a PO line for that material → ledger `purchase_spend` (negative) linked to the PO; `Mark received` shortfall alone does not add another draw-down.
-6. Manual adjustment with notes required; R&D write-off from budget detail **and** material edit → stock ↓ + budget debit (or stock-only if no active budget).
-7. Confirm plain **Adjust stock** still does not touch the budget.
-8. Deactivate a budget → further sync/receive skips it.
+3. Confirm list shows balances; force a low/overspent badge if useful (manual adjustment negative, or low reserve). Confirm type / linked material cannot be changed after create.
+4. On a clean incremental create of a matched order (or after reset + Sync): budget detail ledger shows `sale_funding`; balance increased. Material budgets: one ledger row per consumed material stock-log line; manual: one row per matching order item. Re-sync → no duplicate funding.
+5. (Optional edge) Manual `%` budget on a line with `unit_price = 0` → funds from sold price 0 (does **not** fall back to target). Loss-making `percent_of_profit` may post a **negative** `sale_funding` (not clamped).
+6. Receive a PO line for that material → ledger `purchase_spend` (negative) linked to the PO; `Mark received` shortfall alone does not add another draw-down. (If a ledger write ever failed after stock, remaining receive lines should still complete — stock kept.)
+7. Manual adjustment with notes required; R&D write-off from budget detail **and** material edit → stock ↓ + budget debit (or stock-only if no active budget).
+8. Confirm plain **Adjust stock** still does not touch the budget.
+9. Deactivate a budget → further sync/receive skips it.
 
-- [ ] Material + manual create / scope / badges
-- [ ] Sale funding on create; idempotent re-sync; skipped on history import
+- [ ] Material + manual create / scope / badges; type/`material_id` fixed after create
+- [ ] Sale funding on create; correct ledger grain; idempotent re-sync; skipped on history import
+- [ ] `unit_price = 0` treated as set; loss may fund negative `percent_of_profit`
 - [ ] `percent_of_profit` uses estimate→actual fees (after §18–§19)
-- [ ] PO receive draw-down; mark-received does not draw
+- [ ] PO receive draw-down; mark-received does not draw; receive continues if a draw-down ledger write fails
 - [ ] Manual adjustment + R&D on both surfaces; Adjust stock skips budget
 
 ---
@@ -937,6 +953,8 @@ Beyond “does it click,” please watch for:
 | Stock didn’t move | History import, cancelled order, unmatched-only, or already reserved |
 | Budget didn’t fund on sync | History import (`$apply_stock=false`), cancelled, inactive budget, workflow/product scope miss, or already has `sale_funding` |
 | Budget didn’t draw on receive | No active material budget for that material; or used Mark received (shortfall) instead of Receive |
+| Stock rose on receive but budget unchanged / partial | Ledger write may have failed after stock — receive continues other lines; repair with manual adjustment; check PHP error log |
+| `%` funding used target price when line shows £0 | Unexpected — `unit_price = 0` is treated as set; only NULL/empty should fall back to target |
 | Adjust stock didn’t change budget | By design — use R&D write-off |
 | Board card won’t drag | Not `in_progress` / gates blocked / Unassigned — waiting badges mean batch/timer/script |
 | DnD missing entirely | SortableJS CDN blocked (offline admin); pins/filters still work |
