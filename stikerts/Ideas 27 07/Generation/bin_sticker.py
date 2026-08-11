@@ -1246,6 +1246,728 @@ def _style_p47_house(c, ox, oy, order):
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
 
 
+# ---------------------------------------------------------------------------
+# Duck family, scene 1 of 4 (father duck + duckling) -- first of a planned
+# "animal family" series (see chat history): 4 related scenes (father+young,
+# mother+young, 2x young playing) sold as a matching set, same underlying
+# concept as the illustrated-pet pattern already validated on the idea board
+# (P03/P14/P22 in Idea-Board-Solutions-Reference.md) but built as an
+# intentional set rather than one standalone icon. No P## precursor -- this
+# is an original concept developed directly in chat, not a catalogued
+# competitor pin. LANDSCAPE 140x100mm (P02_CARD_W/H), matching the shared
+# landscape card size used by the other full-scene/D0x designs.
+#
+# Unlike every other silhouette icon in this file, this asset is
+# deliberately NOT accent-recolourable: extracted as solid black
+# (fill_rgb=(0,0,0) at extraction time, via icon-silhouette-extraction) and
+# always rendered black, matching the black-on-white convention of the
+# bestselling silhouette-pet designs it's modelled on, rather than this
+# file's usual accent-tinted-silhouette pattern (P02/P27/P47). The "accent"
+# order field still controls the border colour only, same as every style.
+#
+# Dad vs. mum is signalled by a real anatomical cue, not an invented
+# accessory: a small curled tail feather, present on drakes (male mallards)
+# and absent on hens -- reads clearly even in flat black silhouette. Scene 2
+# (mother duck, no tail feather) should reuse this same layout/placement,
+# just swapping the icon asset, once built.
+# ---------------------------------------------------------------------------
+DUCK_FATHER_ICON_MASTER = "assets/icons/duck_family_father_icon.png"
+
+# Icon placement box: generous width so preserveAspectRatio's height
+# constraint binds and the image auto-centres horizontally -- real
+# extracted aspect ratio is 647:390 px (~1.66:1 w:h), so at box
+# height=58mm the rendered width comes out ~96.3mm, comfortably inside
+# the 120mm box width given here.
+DUCK_FATHER_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+DUCK_FATHER_NUMBER_CENTER_Y = 22 * mm  # RL y, baseline (not true centre --
+# same simple convention as style 10/paw, not P27/P47's asc/desc centring,
+# since there's no hollow interior to centre precisely against)
+DUCK_FATHER_STREET_CENTER_Y = 10 * mm  # RL y, baseline
+
+# Same fix as D04/P27_PAD: the shared global PAD (2mm) puts the border
+# stroke itself under the 3mm minimum ink-to-card-edge clearance
+# render_proof_thumbnail checks for -- this is what actually bound
+# clearance on all 4 sides on the first render here (1.71-1.96mm,
+# uniform regardless of icon/text placement), not this style's own
+# icon/number/street placement. Scoped to this style only, not a global
+# PAD change.
+DUCK_FATHER_PAD = 3.4 * mm
+
+
+def _style_duck_family_father(c, ox, oy, order):
+    """16. Duck family, scene 1 of 4 -- father mallard (identifiable by a
+    small curled tail feather, the real anatomical dad cue used instead of
+    an invented accessory -- see chat history) walking with one duckling
+    trailing behind. Number + street name printed below the scene, same
+    layout convention as style 10 (paw) rather than P27/P47's nested-in-
+    icon approach, since this icon has no interior hollow to nest text
+    into. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid black, not
+    accent-recolourable -- see DUCK_FATHER_ICON_MASTER comment above.
+    Scenes 2-4 (mother duck, ducklings playing x2) planned as a matching
+    set, same style/seed, not yet built."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DUCK_FATHER_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DUCK_FATHER_ICON["x"], oy + DUCK_FATHER_ICON["y"],
+            DUCK_FATHER_ICON["w"], DUCK_FATHER_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- same reasoning
+        # as P02/P27/P47's fallback: there's no vector equivalent of this
+        # illustrated scene, so this is a substitution, not a lesser
+        # version of the same design.
+        print(
+            f"WARNING: duck_family_father: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted duck design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Duck family, scene 2 of 4 (mother duck + duckling) -- same set as
+# duck_family_father above, see that style's comment for the full concept
+# writeup. Reuses the SAME icon placement box, PAD, and number/street
+# positions as scene 1 so the 4-scene set shares one consistent footprint
+# -- only the icon asset and the fallback vector call differ.
+#
+# Dad/mum distinction: no curled tail feather here (the mother's tail is a
+# plain layered/jagged shape, not the small curl on the father's), same
+# real anatomical drake-vs-hen cue used instead of an invented accessory.
+# Duckling is positioned close beside her rather than trailing behind, per
+# the source render chosen for extraction (source image 2 of 4 generated
+# -- see chat history).
+# ---------------------------------------------------------------------------
+DUCK_MOTHER_ICON_MASTER = "assets/icons/duck_family_mother_icon.png"
+
+# Same box as DUCK_FATHER_ICON -- deliberately shared so the 4-scene set
+# has one consistent icon footprint; preserveAspectRatio centres each
+# scene's own (slightly different) real aspect ratio within it. This
+# scene's extracted aspect is ~1.45:1 w:h (vs. father's ~1.66:1, narrower
+# because the duckling sits tucked close rather than trailing further
+# out), so it renders a bit less wide within the same box -- expected,
+# not a bug.
+DUCK_MOTHER_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_duck_family_mother(c, ox, oy, order):
+    """17. Duck family, scene 2 of 4 -- mother mallard (no curled tail
+    feather, unlike scene 1's father) with one duckling close beside her.
+    Same layout convention and placement constants as
+    duck_family_father (style 16) -- see that style's docstring for the
+    full set concept. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid
+    black, not accent-recolourable, same as scene 1."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DUCK_MOTHER_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DUCK_MOTHER_ICON["x"], oy + DUCK_MOTHER_ICON["y"],
+            DUCK_MOTHER_ICON["w"], DUCK_MOTHER_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- same reasoning
+        # as scene 1's fallback.
+        print(
+            f"WARNING: duck_family_mother: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted duck design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Duck family, scene 3 of 4 (ducklings playing, no adult) -- same set as
+# duck_family_father/mother above. Three ducklings splashing/playing near
+# a wavy water line, no parent duck present. Source render has visible fur
+# texture on the ducklings' backs (unlike scenes 1-2's plain flat fill) --
+# a deliberate user choice (image 4 of 4 generated, picked over 3 flatter
+# alternatives) that's a style departure from D06/D07, flagged in chat at
+# selection time. Splash droplets under the feet are kept as part of the
+# icon (real artwork, not baked-in text) -- see chat history for the
+# component-keep list.
+# ---------------------------------------------------------------------------
+DUCK_PLAYING1_ICON_MASTER = "assets/icons/duck_family_playing1_icon.png"
+
+# Same box as DUCK_FATHER_ICON/DUCK_MOTHER_ICON. This scene's extracted
+# aspect is ~2.82:1 w:h (much wider/flatter than scenes 1-2, since 3
+# ducklings side-by-side span more width than a parent+duckling pair) --
+# box WIDTH binds here rather than height, so the rendered icon comes out
+# ~120mm wide x ~42.6mm tall, shorter than scenes 1-2's ~58mm. Expected,
+# not a bug -- preserveAspectRatio centres it within the same box either way.
+DUCK_PLAYING1_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_duck_family_playing1(c, ox, oy, order):
+    """18. Duck family, scene 3 of 4 -- three ducklings playing/splashing
+    near a wavy water line, no adult duck present. Same layout convention
+    and placement constants as duck_family_father/mother (styles 16-17)
+    -- see duck_family_father's docstring for the full set concept.
+    LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid black, not
+    accent-recolourable, same as scenes 1-2. NOTE: source art has visible
+    fur texture, a style departure from scenes 1-2's flat fill -- see
+    DUCK_PLAYING1_ICON_MASTER comment above."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DUCK_PLAYING1_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DUCK_PLAYING1_ICON["x"], oy + DUCK_PLAYING1_ICON["y"],
+            DUCK_PLAYING1_ICON["w"], DUCK_PLAYING1_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: duck_family_playing1: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted duck design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Duck family, scene 4 of 4 (ducklings playing, more energetic variant) --
+# final scene of the set started with duck_family_father. Three ducklings
+# mid-hop/tumbling, wings flared, bigger splashes than duck_family_playing1
+# -- deliberately more dynamic per user request, distinct enough from
+# scene 3 that the two "ducklings only" scenes don't read as near-
+# duplicates sitting side by side. Same fur-texture style as
+# duck_family_playing1 (both scenes share that departure from scenes 1-2's
+# flat fill, so the "ducklings only" pair reads as its own matched look).
+# ---------------------------------------------------------------------------
+DUCK_PLAYING2_ICON_MASTER = "assets/icons/duck_family_playing2_icon.png"
+
+# Same box as the other 3 duck-family scenes. Extracted aspect ~2.61:1
+# w:h (wide/flat like scene 3, width binds within the shared box) --
+# renders ~120mm wide x ~46mm tall.
+DUCK_PLAYING2_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_duck_family_playing2(c, ox, oy, order):
+    """19. Duck family, scene 4 of 4 (final) -- three ducklings mid-hop/
+    tumbling with bigger splashes, more energetic than duck_family_playing1
+    (style 18). Same layout convention and placement constants as the
+    other 3 duck-family scenes (16-18) -- see duck_family_father's
+    docstring for the full set concept. LANDSCAPE 140x100mm (P02_CARD_W/H).
+    Icon is solid black, not accent-recolourable. Fur-texture style,
+    matching scene 3 not scenes 1-2."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DUCK_PLAYING2_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DUCK_PLAYING2_ICON["x"], oy + DUCK_PLAYING2_ICON["y"],
+            DUCK_PLAYING2_ICON["w"], DUCK_PLAYING2_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: duck_family_playing2: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted duck design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Dog family, scene 1 of 4 (adult dog + puppy, walking together) -- second
+# animal-family line after ducks (D06-D09), same underlying concept. Unlike
+# the ducks, dogs have no reliable visual dad/mum cue in silhouette, so per
+# explicit user decision this set skips gendering entirely: 2 adult+pup
+# scenes (differentiated by composition, not implied parentage) + 2
+# pups-playing scenes, mirroring the ducks' 4-scene structure without the
+# father/mother framing. FLAT SILHOUETTE, no fur texture -- the duck
+# texture question (see Animal-Family-Texture-Test-Plan.md) hadn't been
+# physically tested yet when this line started, so flat was used as the
+# proven-safe default (matches P03/P14/P22 bestseller evidence) rather than
+# repeating an untested print risk on a second animal line.
+# ---------------------------------------------------------------------------
+DOG_FAMILY_1_ICON_MASTER = "assets/icons/dog_family_1_icon.png"
+
+# Same box convention as the duck family scenes. Extracted aspect ~2.63:1
+# w:h -- width binds within the shared box, renders ~120mm wide x ~45.6mm
+# tall.
+DOG_FAMILY_1_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_dog_family_1(c, ox, oy, order):
+    """20. Dog family, scene 1 of 4 -- adult dog with a puppy trailing
+    behind, both walking in the same direction. No gendering (see module
+    comment above) -- differentiated from scene 2 by composition only.
+    Same layout convention and placement constants as the duck family set
+    (styles 16-19). LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid
+    black, not accent-recolourable, flat silhouette (no fur texture)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DOG_FAMILY_1_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DOG_FAMILY_1_ICON["x"], oy + DOG_FAMILY_1_ICON["y"],
+            DOG_FAMILY_1_ICON["w"], DOG_FAMILY_1_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: dog_family_1: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted dog design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Dog family, scene 2 of 4 (adult dog + puppy, close beside) -- see
+# dog_family_1's module comment for the full set concept (no gendering,
+# flat silhouette). Differentiated from scene 1 by composition (puppy
+# tucked close beside the adult, not trailing at a distance) rather than
+# implied parentage.
+# ---------------------------------------------------------------------------
+DOG_FAMILY_2_ICON_MASTER = "assets/icons/dog_family_2_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~1.76:1 w:h -- height binds within the shared box, renders
+# ~58mm tall x ~102mm... wait, box width caps at 120mm, so width binds
+# instead: renders ~120mm wide x ~68mm tall would exceed box height (58mm)
+# -- preserveAspectRatio's height constraint actually binds here since
+# 120/58=2.07 > 1.76, so real output is ~58mm tall x ~102mm wide,
+# comfortably inside the 120mm box width.
+DOG_FAMILY_2_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_dog_family_2(c, ox, oy, order):
+    """21. Dog family, scene 2 of 4 -- adult dog with a puppy close
+    beside it (not trailing, unlike scene 1). No gendering, same layout
+    convention and placement constants as the rest of the animal-family
+    set. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid black, not
+    accent-recolourable, flat silhouette (no fur texture)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DOG_FAMILY_2_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DOG_FAMILY_2_ICON["x"], oy + DOG_FAMILY_2_ICON["y"],
+            DOG_FAMILY_2_ICON["w"], DOG_FAMILY_2_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: dog_family_2: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted dog design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Dog family, scene 3 of 4 (puppies playing, calmer -- nose-to-nose nuzzle,
+# no adult) -- see dog_family_1's module comment for the full set concept.
+# Companion to duck_family_playing1 (D08): same "calmer" energy level
+# within its own animal-family set.
+# ---------------------------------------------------------------------------
+DOG_PLAYING1_ICON_MASTER = "assets/icons/dog_family_playing1_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~2.52:1 w:h -- width binds within the shared box, renders
+# ~120mm wide x ~47.6mm tall.
+DOG_PLAYING1_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_dog_family_playing1(c, ox, oy, order):
+    """22. Dog family, scene 3 of 4 -- two puppies nose-to-nose, calmer
+    energy (companion to duck_family_playing1/D08), no adult dog. Same
+    layout convention and placement constants as the rest of the
+    animal-family set. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid
+    black, not accent-recolourable, flat silhouette (no fur texture)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DOG_PLAYING1_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DOG_PLAYING1_ICON["x"], oy + DOG_PLAYING1_ICON["y"],
+            DOG_PLAYING1_ICON["w"], DOG_PLAYING1_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: dog_family_playing1: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted dog design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Dog family, scene 4 of 4 (final) -- puppies playing, more energetic:
+# a low crouch/pounce, a puppy rolled onto its back, and one mid-leap. No
+# adult dog. Companion to duck_family_playing2 (D09) at the more energetic
+# end, matching dog_family_playing1 (D12) as the calmer scene. See
+# dog_family_1's module comment for the full set concept.
+# ---------------------------------------------------------------------------
+DOG_PLAYING2_ICON_MASTER = "assets/icons/dog_family_playing2_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~2.37:1 w:h -- width binds within the shared box, renders
+# ~120mm wide x ~50.6mm tall.
+DOG_PLAYING2_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_dog_family_playing2(c, ox, oy, order):
+    """23. Dog family, scene 4 of 4 (final) -- three puppies playing: a
+    low crouch/pounce, one rolled onto its back, one mid-leap. More
+    energetic than dog_family_playing1 (style 22), same pairing as
+    duck_family_playing1/playing2 (D08/D09). No adult dog. Same layout
+    convention and placement constants as the rest of the animal-family
+    set. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid black, not
+    accent-recolourable, flat silhouette (no fur texture)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(DOG_PLAYING2_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + DOG_PLAYING2_ICON["x"], oy + DOG_PLAYING2_ICON["y"],
+            DOG_PLAYING2_ICON["w"], DOG_PLAYING2_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: dog_family_playing2: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted dog design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Cat family, scene 1 of 4 (adult cat + kitten, walking together) -- third
+# animal-family line after ducks (D06-D09) and dogs (D10-D13), same
+# underlying concept. Like dogs, cats have no reliable visual dad/mum cue
+# in silhouette, so this set also skips gendering (per the precedent set
+# for dogs): 2 adult+kitten scenes (differentiated by composition) + 2
+# kittens-playing scenes. FLAT SILHOUETTE, no fur texture -- same
+# proven-safe default as the dog set, pending the duck texture test
+# (Animal-Family-Texture-Test-Plan.md).
+# ---------------------------------------------------------------------------
+CAT_FAMILY_1_ICON_MASTER = "assets/icons/cat_family_1_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~1.88:1 w:h -- height binds within the shared box, renders
+# ~58mm tall x ~109mm wide, comfortably inside the 120mm box width.
+CAT_FAMILY_1_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_cat_family_1(c, ox, oy, order):
+    """24. Cat family, scene 1 of 4 -- adult cat with a kitten trailing
+    behind, both walking, tails naturally curved. No gendering, same
+    layout convention and placement constants as the duck/dog family
+    sets (styles 16-23). LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is
+    solid black, not accent-recolourable, flat silhouette (no fur
+    texture)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(CAT_FAMILY_1_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + CAT_FAMILY_1_ICON["x"], oy + CAT_FAMILY_1_ICON["y"],
+            CAT_FAMILY_1_ICON["w"], CAT_FAMILY_1_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: cat_family_1: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted cat design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Cat family, scene 2 of 4 (adult cat + kitten, close beside) -- see
+# cat_family_1's module comment for the full set concept (no gendering,
+# flat silhouette). Differentiated from scene 1 by composition (kitten
+# tucked close beside the adult, not trailing at a distance) rather than
+# implied parentage, same pattern as the dog set's scene 1/2 split.
+# ---------------------------------------------------------------------------
+CAT_FAMILY_2_ICON_MASTER = "assets/icons/cat_family_2_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~1.63:1 w:h -- height binds within the shared box, renders
+# ~58mm tall x ~94.6mm wide, comfortably inside the 120mm box width.
+CAT_FAMILY_2_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_cat_family_2(c, ox, oy, order):
+    """25. Cat family, scene 2 of 4 -- adult cat with a kitten close
+    beside it (not trailing, unlike scene 1). No gendering, same layout
+    convention and placement constants as the rest of the animal-family
+    set. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid black, not
+    accent-recolourable, flat silhouette (no fur texture, no whiskers --
+    kept consistent with scene 1 rather than the whiskered alternative
+    generated in the same batch)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(CAT_FAMILY_2_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + CAT_FAMILY_2_ICON["x"], oy + CAT_FAMILY_2_ICON["y"],
+            CAT_FAMILY_2_ICON["w"], CAT_FAMILY_2_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: cat_family_2: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted cat design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Cat family, scene 3 of 4 (kittens playing, calmer -- gentle nuzzle, no
+# adult) -- see cat_family_1's module comment for the full set concept.
+# Companion to duck_family_playing1 (D08) and dog_family_playing1 (D12):
+# same "calmer" energy level within its own animal-family set.
+#
+# NOTE -- genuine style departures from the rest of the set, both flagged
+# to the user at selection time and kept anyway (explicit choice):
+# 1. REAR/THREE-QUARTER VIEW, not the strict side profile every other
+#    design in this file (and every idea-board reference) uses. This is
+#    the first composition break in the whole catalogue. Several
+#    generation attempts only produced this angle for the "kittens
+#    nuzzling" pose; a side-on version was not achieved.
+# 2. Flat fill, no fur texture -- this one IS consistent with D14/D15.
+# Do not treat this rear-view angle as the new default for future
+# animal-family "calm playing" scenes -- it was accepted here as the best
+# of a limited batch, not chosen as a style direction.
+# ---------------------------------------------------------------------------
+CAT_PLAYING1_ICON_MASTER = "assets/icons/cat_family_playing1_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~1.97:1 w:h -- height binds within the shared box, renders
+# ~58mm tall x ~114.4mm wide, comfortably inside the 120mm box width.
+CAT_PLAYING1_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_cat_family_playing1(c, ox, oy, order):
+    """26. Cat family, scene 3 of 4 -- two kittens nuzzling gently, no
+    adult cat. REAR/THREE-QUARTER VIEW, not side profile -- a deliberate
+    exception to this file's usual convention, see
+    CAT_PLAYING1_ICON_MASTER comment above for why. Flat silhouette (no
+    fur texture), consistent with cat_family_1/2. Same layout convention
+    and placement constants as the rest of the animal-family set.
+    LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid black, not
+    accent-recolourable."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(CAT_PLAYING1_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + CAT_PLAYING1_ICON["x"], oy + CAT_PLAYING1_ICON["y"],
+            CAT_PLAYING1_ICON["w"], CAT_PLAYING1_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: cat_family_playing1: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted cat design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
+# ---------------------------------------------------------------------------
+# Cat family, scene 4 of 4 (final) -- kittens playing, more energetic:
+# one pouncing low, two batting paws mid-leap. No adult cat. Companion to
+# duck_family_playing2 (D09) and dog_family_playing2 (D13) at the more
+# energetic end, matching cat_family_playing1 (D16) as the calmer scene
+# -- though note D16 is a rear-view exception while this one is genuine
+# side profile throughout (the side-profile prompt fix that failed for
+# D16's batch worked cleanly here). See cat_family_1's module comment for
+# the full set concept.
+# ---------------------------------------------------------------------------
+CAT_PLAYING2_ICON_MASTER = "assets/icons/cat_family_playing2_icon.png"
+
+# Same box convention as the rest of the animal-family scenes. Extracted
+# aspect ~2.49:1 w:h -- width binds within the shared box, renders
+# ~120mm wide x ~48.2mm tall.
+CAT_PLAYING2_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
+
+
+def _style_cat_family_playing2(c, ox, oy, order):
+    """27. Cat family, scene 4 of 4 (final) -- three kittens playing: one
+    pouncing low, two batting paws mid-leap. More energetic than
+    cat_family_playing1 (style 26), same pairing as
+    duck_family_playing1/2 and dog_family_playing1/2. No adult cat.
+    Genuine side profile (unlike style 26's rear-view exception). Same
+    layout convention and placement constants as the rest of the
+    animal-family set. LANDSCAPE 140x100mm (P02_CARD_W/H). Icon is solid
+    black, not accent-recolourable, flat silhouette (no fur texture)."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _asset_path(CAT_PLAYING2_ICON_MASTER)
+    if os.path.exists(icon_path):
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + CAT_PLAYING2_ICON["x"], oy + CAT_PLAYING2_ICON["y"],
+            CAT_PLAYING2_ICON["w"], CAT_PLAYING2_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        print(
+            f"WARNING: cat_family_playing2: master icon not found at "
+            f"{icon_path!r} -- rendering plain paw fallback instead of "
+            f"the extracted cat design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
+
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", 50)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
+
+
 STYLES = {
     "classic": _style_classic,
     "minimal": _style_minimal,
@@ -1262,6 +1984,18 @@ STYLES = {
     "p25b_landscape_flourish": _style_p25b_landscape_flourish,
     "p27_landscape_house": _style_p27_landscape_house,
     "p47_house": _style_p47_house,
+    "duck_family_father": _style_duck_family_father,
+    "duck_family_mother": _style_duck_family_mother,
+    "duck_family_playing1": _style_duck_family_playing1,
+    "duck_family_playing2": _style_duck_family_playing2,
+    "dog_family_1": _style_dog_family_1,
+    "dog_family_2": _style_dog_family_2,
+    "dog_family_playing1": _style_dog_family_playing1,
+    "dog_family_playing2": _style_dog_family_playing2,
+    "cat_family_1": _style_cat_family_1,
+    "cat_family_2": _style_cat_family_2,
+    "cat_family_playing1": _style_cat_family_playing1,
+    "cat_family_playing2": _style_cat_family_playing2,
 }
 
 STYLE_LABELS = {
@@ -1280,6 +2014,18 @@ STYLE_LABELS = {
     "p25b_landscape_flourish": "13. D03 — Manor Frame Classic (landscape)",
     "p27_landscape_house": "14. D04 — Homestead Silhouette (landscape)",
     "p47_house": "15. P47 — House-outline + number, black-only (landscape)",
+    "duck_family_father": "16. Duck Family, Scene 1 — Father Duck & Duckling (landscape)",
+    "duck_family_mother": "17. Duck Family, Scene 2 — Mother Duck & Duckling (landscape)",
+    "duck_family_playing1": "18. Duck Family, Scene 3 — Ducklings Playing (landscape)",
+    "duck_family_playing2": "19. Duck Family, Scene 4 — Ducklings Playing, Energetic (landscape)",
+    "dog_family_1": "20. Dog Family, Scene 1 — Adult Dog & Puppy, Walking (landscape)",
+    "dog_family_2": "21. Dog Family, Scene 2 — Adult Dog & Puppy, Close Beside (landscape)",
+    "dog_family_playing1": "22. Dog Family, Scene 3 — Puppies Playing (landscape)",
+    "dog_family_playing2": "23. Dog Family, Scene 4 — Puppies Playing, Energetic (landscape)",
+    "cat_family_1": "24. Cat Family, Scene 1 — Adult Cat & Kitten, Walking (landscape)",
+    "cat_family_2": "25. Cat Family, Scene 2 — Adult Cat & Kitten, Close Beside (landscape)",
+    "cat_family_playing1": "26. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
+    "cat_family_playing2": "27. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
 }
 
 # Cross-reference from a style key to its internal product ID in
@@ -1303,6 +2049,18 @@ STYLE_PRODUCT_ID = {
     "p25b_landscape_flourish": "D03",
     "p27_landscape_house": "D04",
     "p47_house": "D05",
+    "duck_family_father": "D06",
+    "duck_family_mother": "D07",
+    "duck_family_playing1": "D08",
+    "duck_family_playing2": "D09",
+    "dog_family_1": "D10",
+    "dog_family_2": "D11",
+    "dog_family_playing1": "D12",
+    "dog_family_playing2": "D13",
+    "cat_family_1": "D14",
+    "cat_family_2": "D15",
+    "cat_family_playing1": "D16",
+    "cat_family_playing2": "D17",
 }
 
 # Card size per style. Every style defaults to the shared portrait
@@ -1318,6 +2076,18 @@ STYLE_CARD_SIZE["p25_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p25b_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p27_landscape_house"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p47_house"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["duck_family_father"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["duck_family_mother"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["duck_family_playing1"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["duck_family_playing2"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["dog_family_1"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["dog_family_2"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["dog_family_playing1"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["dog_family_playing2"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["cat_family_1"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["cat_family_2"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["cat_family_playing1"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["cat_family_playing2"] = (P02_CARD_W, P02_CARD_H)
 
 
 def draw_sticker(c, ox, oy, order):
