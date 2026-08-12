@@ -777,16 +777,25 @@ def _p02_banner_mid_px(x_px):
 
 
 def _draw_curved_text(c, text, cx, baseline, font, size, color,
-                       icon_x_left, icon_scale, curve_fn):
+                       icon_x_left, icon_scale, curve_fn, curve_coeffs):
     """Draws `text` centred on cx, following curve_fn (an icon-local-px
     -> icon-local-px function). `baseline` is where the centre character
     sits; curvature is a per-character offset relative to that, so this
-    degrades gracefully to flat text if curve_fn is ~constant."""
+    degrades gracefully to flat text if curve_fn is ~constant.
+
+    `curve_coeffs` (a, b, c of the same quadratic curve_fn implements) is
+    used ONLY for the per-character rotation angle (the fit's slope at
+    that x). Passed explicitly rather than read from a module-level
+    constant -- this used to hardcode P02_BANNER_CURVE_COEFFS here
+    regardless of which curve_fn was passed in, which would have made
+    any second caller (e.g. P06's own wreath curve) silently rotate its
+    letters to match P02's curve shape instead of its own. Bug found and
+    fixed while adding the first non-P02 caller of this function."""
     total_w = stringWidth(text, font, size)
     x_cursor = cx - total_w / 2
     x_img_at_cx = (cx - icon_x_left) / (icon_scale * mm)
     ref_mid_px = curve_fn(x_img_at_cx)
-    a, b, _ = P02_BANNER_CURVE_COEFFS
+    a, b, _ = curve_coeffs
 
     c.setFillColor(HexColor(color))
     c.setFont(font, size)
@@ -862,7 +871,7 @@ def _style_p02_house_banner(c, ox, oy, order):
     street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
     _draw_curved_text(
         c, street_text, cx, oy + street_baseline, "Helvetica-Bold", street_size, accent_hex,
-        ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px,
+        ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px, P02_BANNER_CURVE_COEFFS,
     )
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
@@ -1242,6 +1251,868 @@ def _style_p47_house(c, ox, oy, order):
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Helvetica-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
+# ---------------------------------------------------------------------------
+# P06 -- floral vine wreath with the house number nested inside and the
+# street name curved along the wreath's own lower-inner arc. LANDSCAPE
+# (140x100mm, reuses P02_CARD_W/H) -- adapted from the idea board's pinned
+# 15/20/30cm CIRCULAR die-cut sizes to fit the standard card by printing
+# the wreath as ink inside the rectangle rather than cutting it as a
+# separate circular shape (Technique A, Idea-Board-Solutions-Reference.md).
+#
+# Source: Midjourney "Image 1" from the P06 mockup-prompt run (black-only,
+# thin vine-and-flower line art, chosen over 3 alternatives specifically
+# for being true line art rather than filled/painterly silhouettes -- see
+# chat). Extracted via icon-silhouette-extraction.
+#
+# The source PNG had a dark vignette photo-frame border baked in around
+# the actual card -- that was cropped off BEFORE ink separation (33,29)-
+# (1280,906) of the 1312x928px original, leaving a clean 1247x877px card
+# region with no border-line touching the crop edge. That 1247x877px
+# region is what all the px/mm constants below are measured against, on
+# the assumption it represents the full 140x100mm target card.
+#
+# separate_ink()'s automatic alpha/luminance choice did NOT work here --
+# alpha was uniformly 255 (a mockup, not a real cutout) and the auto
+# bimodality check found no valley because ink is a thin fraction of
+# total pixels (fine line art, not a bold filled shape) -- it defaulted
+# to treating the WHOLE image as ink. Used a manually-chosen luminance
+# threshold (<220) instead, confirmed by checking the histogram directly
+# and verifying the resulting mask cleared the crop boundary by a wide
+# margin (nearest ink pixel to any edge: 119px / ~13mm).
+#
+# 15 connected components total: the wreath (vine + all flowers, one
+# fused blob since the vine physically connects them) + one detached
+# flower bud + one 22px stray speck -- all 3 kept as icon artwork; 2
+# components for "36"; 10 components for "GROVE STREET" (11 letters, one
+# adjacent pair fused by the tight curve). Kept={1,3,21}, both text
+# fields erased back to transparent. verify() reports 2 "significant"
+# components because its own min_size=200 filter drops the 22px speck
+# from the printed report -- pixel-count cross-check (kept-label pixel
+# sum vs. saved file's nonzero-alpha count) confirms all 3 are actually
+# in the file; this is not a lost fragment.
+#
+# NUMBER/STREET_CENTER_Y are the erased text's own combined centroid
+# (ground truth for where the mockup actually placed it), same
+# convention as P02/P27/P47. MAX_WIDTH values are the TRUE minimum clear
+# gap between wreath strokes, sampled every 4px across each field's full
+# glyph-height range (not just the centroid row) since the wreath is a
+# circular ring -- unlike P47's near-vertical house walls, the interior
+# width here genuinely varies with height, so a single centroid-row
+# sample would understate the real constraint. 10% safety margin applied
+# on top of the true minimum, same convention as every other style.
+#
+# Street curve: quadratic fit to the 10 erased letters' own centroids
+# (can't trace a continuous band midline here -- there's no continuous
+# ink band, just discrete letter shapes). residual_std ~6.1px -- NOT a
+# clean sub-1px fit like P02's banner curve; letter centroids are a
+# noisier proxy than a traced continuous edge. Treat this curve as a
+# reasonable starting point, not a precise fit -- worth re-deriving
+# against a real test render (step 9 of icon-silhouette-extraction)
+# before treating it as final.
+#
+# Icon box position/size is NOT a design choice like P47's -- it's the
+# measured position of the extracted wreath's own crop_to_content bbox
+# (720x695px incl. 3% padding) placed at the SAME scale/offset it had in
+# the source card, which is why it comes out symmetric (29.86mm left
+# margin vs. 140-29.86-80.83=29.31mm right; 9.35mm bottom vs.
+# 100-9.35-79.25=11.40mm top -- both pairs close but not identical,
+# reflecting that the wreath itself isn't perfectly centred in the
+# source render either).
+#
+# ---------------------------------------------------------------------------
+P06_ICON_MASTER = "assets/icons/p06_wreath_icon.png"
+
+P06_ICON = dict(x=29.8637 * mm, y=9.3501 * mm, w=80.8340 * mm, h=79.2474 * mm)
+
+P06_NUMBER_CENTER_Y = 52.0798 * mm  # RL y, erased "36" centroid
+P06_NUMBER_MAX_WIDTH = 50.8581 * 0.90 * mm  # true min wreath-interior gap across digit height, 10% margin
+# MAX_SIZE is a MEASURED ceiling, not a generous one -- unlike P47 (whose
+# number sits alone with no other field close by, so an oversized
+# ceiling only ever gets trimmed by width), P06 has the street name
+# sitting close beneath the number, so leaving width as the only
+# constraint let the first test render auto-fit "36" up past 100pt and
+# visually collide with "GROVE STREET" below (P06_NUMBER_CENTER_Y and
+# P06_STREET_CENTER_Y are only 18.5mm apart). Ceiling derived from the
+# erased digits' own bbox height (22.12mm, ~62.7pt cap-height) divided
+# by Times-Bold's ~0.662 cap-height-to-nominal-size ratio -> ~94.7pt,
+# rounded down slightly for a small safety margin against the same
+# collision recurring for a 1-digit or unusually tall house number.
+P06_NUMBER_MAX_SIZE = 92  # pt -- measured from source glyph height, see comment above
+P06_NUMBER_MIN_SIZE = 20
+
+P06_STREET_CENTER_Y = 33.6152 * mm  # RL y, erased "GROVE STREET" centroid
+P06_STREET_MAX_WIDTH = 36.8244 * 0.90 * mm  # true min wreath-interior gap across street-text height, 10% margin
+P06_STREET_MAX_SIZE = 60  # pt -- below the ~75.7pt measured ceiling; width constraint dominates anyway
+# MIN_SIZE=14 (the original value) turned out to be a BROKEN floor, not a
+# style choice -- _fit_font_size's loop only decrements while size is
+# still above min_size, so once it reaches the floor it stops even if
+# the text is STILL wider than max_width at that size. Checked directly:
+# "GROVE STREET" needs ~10pt to actually fit inside P06_STREET_MAX_WIDTH,
+# and "12 CENTRAL AVENUE" needs ~8pt -- both below the old 14pt floor, so
+# both were silently rendering oversized and overlapping the wreath's
+# flowers (caught on a real test render with "FLAT B" / "12 Central
+# Avenue", not visible with the shorter names tested earlier). Lowered
+# to 8pt so auto-fit can actually reach a size that fits for realistic
+# street-name lengths; very long names will render small as a result --
+# that's the honest trade-off for this wreath's narrow interior, not a
+# bug to hide by raising the floor back up.
+P06_STREET_MIN_SIZE = 8
+
+# Quadratic fit (icon-local px, y-down) to the 10 erased street-letter
+# centroids -- (-3.34512697e-03, 2.38274801e+00, 1.08664515e+02),
+# residual_std ~6.1px. NOT USED for rendering (see below) -- kept here
+# only as a reference for revisiting curved text later.
+#
+# TRIED AND REJECTED: applying this curve via _draw_curved_text produced
+# a visibly broken test render -- letters near the ends of "GROVE
+# STREET" were rotated up to ~50deg and shifted up to ~12mm off their
+# baseline, overlapping the house number above. This isn't just fit
+# noise: the wreath is a full circle (unlike P02's shallow banner arc),
+# so the true vertical rise across an 11-character span this close to
+# the ring's sides is genuinely large relative to the ~18.5mm gap
+# between P06_NUMBER_CENTER_Y and P06_STREET_CENTER_Y. Went with FLAT
+# (straight) street text instead -- same choice P27 already made for a
+# similarly round icon in this file. Revisit only with a curve re-fit
+# against a real test render (icon-silhouette-extraction skill's step 9),
+# not by re-applying these coefficients as-is.
+
+
+def _p06_icon_path(accent_key):
+    """Same recolour-and-cache pattern as _p02_icon_path/_p27_icon_path/
+    _p47_icon_path -- generates the accent-coloured icon from the master
+    silhouette on first use, caches to disk. Returns None if the master
+    art isn't present (caller falls back to the plain vector house as a
+    substitution, same reasoning as the other hollow-icon styles)."""
+    master = _asset_path(P06_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p06_wreath_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p06_wreath(c, ox, oy, order):
+    """16. P06 -- floral vine wreath, black line art, house number
+    nested in the wreath's upper interior with the street name curved
+    along its lower-inner arc, matching the source mockup's own layout.
+    LANDSCAPE (140x100mm, reuses P02_CARD_W/H) -- P06's idea-board entry
+    itself is fits_spec=No against BOTH the standard 100x140mm portrait
+    card and this landscape card (it was pinned as a circular die-cut at
+    15/20/30cm); this build adapts it per Technique A (printed ink inside
+    a rectangle, not a physical circular cut) rather than building it to
+    any of the pinned sizes. See the P06_* constants block above for the
+    full extraction/derivation writeup."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p06_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P06_ICON["x"], oy + P06_ICON["y"], P06_ICON["w"], P06_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # floral icon, flat (uncurved) text. Not a lesser version of the
+        # same design -- there's no vector equivalent of "number+street
+        # nested in a hollow extracted wreath," so this is a
+        # substitution, same reasoning as P02/P27/P47's fallbacks. Warn
+        # loudly so it's never discovered only after looking at printed
+        # output.
+        print(
+            f"WARNING: p06_wreath: master icon not found at "
+            f"{_asset_path(P06_ICON_MASTER)!r} -- rendering plain floral "
+            f"fallback instead of the extracted P06 wreath design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "floral", draw_flower_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", 44)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.52, order["house_number"])
+        c.setFont("Times-Bold", 14)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.32, order["street_name"].upper())
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P06_NUMBER_MAX_SIZE, P06_NUMBER_MIN_SIZE, P06_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", number_size)
+    number_baseline = P06_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Times-Bold",
+                                  P06_STREET_MAX_SIZE, P06_STREET_MIN_SIZE, P06_STREET_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", street_size)
+    street_baseline = P06_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", street_size)
+    c.drawCentredString(cx, oy + street_baseline, street_text)
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
+# ---------------------------------------------------------------------------
+# P06 numbers-only variant -- same extracted wreath asset as p06_wreath,
+# no street-name field, number recentred to sit in the wreath's true
+# geometric middle rather than the upper half. Direct response to real
+# market evidence (Etsy's own "Circle Design ... House Number" bestseller
+# listing, multiple shops advertising "number only" as a standard
+# checkout option, and the idea board's own P30a/P30b -- "56"/"64" in a
+# leaf wreath, no street) rather than a guess.
+#
+# NOT a free "leave street_name blank" toggle -- checked before building
+# this: every style in this file except p47_house reads
+# order["street_name"] unconditionally, so an empty string would leave
+# an awkward gap rather than a properly recentred number. This is a
+# dedicated style function for that reason, same pattern as p47_house.
+#
+# Placement re-measured from the SAME wreath_mask as p06_wreath (not
+# reusing p06_wreath's number constants, which were deliberately
+# constrained to the upper half to leave room for street text below):
+# - Vertical centre = the wreath's own bbox vertical midpoint (card_crop2
+#   y=447px of 877, i.e. RL y=49.03mm) -- the intuitive "dead centre"
+#   placement matching how P30a/P30b's real photos are composed.
+# - Max width = TRUE min interior gap sampled every 2px from y=390-508
+#   (card_crop2 coords), the band actually surrounding that centre point.
+#   One value in that band (577px, a flat 8px-wide plateau at y=402-416)
+#   was excluded as a measurement artifact -- it breaks discontinuously
+#   from the smooth 500->533 trend on either side of it, consistent with
+#   the "biggest gap" scan picking up a gap BETWEEN two flower clusters
+#   rather than the true vine-to-vine interior span at those rows. True
+#   min after excluding it: 473px (y=476) -> 53.11mm raw, 47.80mm with
+#   the usual 10% margin.
+# - Vertical room is NOT the binding constraint here (62mm clear at the
+#   card's own centre column, measured separately) -- width dominates,
+#   same as every other hollow-wreath/house style in this file.
+# ---------------------------------------------------------------------------
+P06_NUM_ONLY_CENTER_Y = 49.0308 * mm  # RL y, wreath's own bbox vertical midpoint
+P06_NUM_ONLY_MAX_WIDTH = 53.1067 * 0.90 * mm  # true min gap in the surrounding band, 10% margin
+P06_NUM_ONLY_MAX_SIZE = 150  # pt -- generous; width is the real constraint (vertical room is ~62mm clear)
+P06_NUM_ONLY_MIN_SIZE = 24
+
+
+def _style_p06_wreath_numbers(c, ox, oy, order):
+    """17. P06 numbers-only -- same wreath asset as p06_wreath (16), no
+    street-name field, a single larger number centred in the wreath's
+    true middle. See the P06_NUM_ONLY_* constants above for how the
+    placement differs from p06_wreath's own (deliberately upper-half)
+    number position. LANDSCAPE (140x100mm, reuses P02_CARD_W/H), same
+    card shape as p06_wreath -- these two styles are meant to be offered
+    as a pair (with/without street name) on the same wreath artwork, not
+    as unrelated designs."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p06_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P06_ICON["x"], oy + P06_ICON["y"], P06_ICON["w"], P06_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- same
+        # reasoning as p06_wreath's fallback, just without the street
+        # line.
+        print(
+            f"WARNING: p06_wreath_numbers: master icon not found at "
+            f"{_asset_path(P06_ICON_MASTER)!r} -- rendering plain floral "
+            f"fallback instead of the extracted P06 wreath design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "floral", draw_flower_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", 70)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.46, order["house_number"])
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P06_NUM_ONLY_MAX_SIZE, P06_NUM_ONLY_MIN_SIZE, P06_NUM_ONLY_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", number_size)
+    number_baseline = P06_NUM_ONLY_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
+# ---------------------------------------------------------------------------
+# P30 -- laurel leaf wreath (open at top, two symmetrical branches meeting
+# at a small stem at the bottom), numbers only, no street name. LANDSCAPE
+# (140x100mm, reuses P02_CARD_W/H). Distinct asset from p06_wreath -- this
+# is a genuinely different source image (simple leaf-only linework, open
+# top), not a numbers-only crop of the closed floral vine ring used by
+# p06_wreath/p06_wreath_numbers. Source idea: P30a/P30b ("56"/"64" in a
+# small floral leaf wreath, number only) -- real reference photo used as
+# a Midjourney image-prompt (--iw 1.5) alongside the text prompt, not
+# text-only like p06's source.
+#
+# Source: Midjourney "Image 3" from this run (5a933fd7-..._3.png) -- chosen
+# over 7 alternatives for matching the reference photo's straight-stem
+# bottom join (not the crossing-branch or curved-join variants some of the
+# other outputs had) and for being true black ink on white (several others
+# came out in dark navy on an off-white/grey tint, drifting from the
+# black-only brief).
+#
+# The source PNG had a DOUBLE-line border baked in, not a single line like
+# P06's -- caught only after the first crop still had a thin unbroken
+# vertical line of "ink" spanning the full canvas height (col=4 of a first
+# attempt), which is what a leftover border sliver looks like structurally
+# (real artwork doesn't run edge-to-edge as an unbroken line). Re-cropped
+# inside BOTH border lines (70,65)-(1245,865) of the 1312x928px original
+# before ink separation.
+#
+# 5 connected components: main wreath body (both branches + stem, fused
+# into one blob) + 2 detached leaf tips (the topmost leaf on each branch
+# has a small linework gap from the branch below it) + the '5'/'6' digits.
+# Kept={main body, both leaf tips}, digits erased. verify() confirms 3/3,
+# no leftover fragments.
+#
+# check_symmetry_assumption() run on the two branches (mirrored across the
+# vertical centreline): 7.6% pixel mismatch -- confirms the source is NOT
+# symmetric enough to build from one mirrored half, consistent with every
+# other symmetry check done on AI-generated art in this file. Both
+# branches were already being extracted as their own real pixels (not
+# built by mirroring), so no rework was needed -- this check just
+# confirmed that was the right call rather than catching a mistake.
+#
+# Vertical margin: initially looked alarmingly tight (~2.1-2.75mm) when
+# computed from the padded icon FILE's own bounding box -- that's just
+# crop_to_content()'s automatic 3% transparent padding baked into the
+# file, not real print clearance. The actual raw ink sits 4.75mm clear of
+# the card top and 5.5mm clear of the bottom, both comfortably over the
+# 3mm minimum -- don't re-flag this as a problem without re-checking the
+# raw (unpadded) ink position first.
+#
+# NUMBER_MAX_WIDTH: true min interior gap sampled every 2px across the
+# full digit height (300-456px of the source) -- unlike P06's wreath,
+# this one was very stable throughout (403-417px, no anomalous jumps),
+# consistent with the leaf edges being straighter/less densely detailed
+# than the floral version.
+#
+# Vertical room is NOT a binding constraint -- the wreath is open at the
+# top, so there's no wreath ink bounding the number's height at all in
+# the upper portion (measure_gap on that column returns a near-zero
+# result, since there's nothing to find a gap between); the number's
+# actual ceiling is the card/border, not the artwork. Width dominates,
+# same conclusion as every other wreath/house style in this file.
+# ---------------------------------------------------------------------------
+P30_LAUREL_ICON_MASTER = "assets/icons/p30_laurel_icon.png"
+
+P30_LAUREL_ICON = dict(x=26.4511 * mm, y=2.7500 * mm, w=86.6213 * mm, h=95.1250 * mm)
+
+P30_LAUREL_NUMBER_CENTER_Y = 52.6565 * mm  # RL y, erased "56" centroid
+P30_LAUREL_NUMBER_MAX_WIDTH = 48.02 * 0.90 * mm  # true min interior gap, 10% margin
+P30_LAUREL_NUMBER_MAX_SIZE = 150  # pt -- generous; width is the real constraint, vertical room is open
+P30_LAUREL_NUMBER_MIN_SIZE = 24
+
+
+def _p30_laurel_icon_path(accent_key):
+    """Same recolour-and-cache pattern as _p06_icon_path/_p47_icon_path --
+    generates the accent-coloured icon from the master silhouette on
+    first use, caches to disk. Returns None if the master art isn't
+    present (caller falls back to the plain vector floral icon)."""
+    master = _asset_path(P30_LAUREL_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p30_laurel_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p30_laurel_numbers(c, ox, oy, order):
+    """18. P30 laurel wreath, numbers only -- open-top laurel leaf wreath
+    (two symmetrical branches meeting at a small stem at the bottom), a
+    single large number centred inside. No street-name field, matching
+    the P30a/P30b source pins. LANDSCAPE (140x100mm, reuses
+    P02_CARD_W/H) -- see the P30_LAUREL_* constants block above for the
+    full extraction/derivation writeup, including the border-cropping
+    and symmetry-check findings specific to this source image."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p30_laurel_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P30_LAUREL_ICON["x"], oy + P30_LAUREL_ICON["y"],
+            P30_LAUREL_ICON["w"], P30_LAUREL_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # floral icon, same reasoning as every other hollow-icon style's
+        # fallback in this file: a substitution, not a lesser version of
+        # the same design (there's no vector equivalent of the extracted
+        # laurel outline).
+        print(
+            f"WARNING: p30_laurel_numbers: master icon not found at "
+            f"{_asset_path(P30_LAUREL_ICON_MASTER)!r} -- rendering plain "
+            f"floral fallback instead of the extracted laurel wreath "
+            f"design for house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "floral", draw_flower_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", 70)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.46, order["house_number"])
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P30_LAUREL_NUMBER_MAX_SIZE, P30_LAUREL_NUMBER_MIN_SIZE,
+                                  P30_LAUREL_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", number_size)
+    number_baseline = P30_LAUREL_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
+# ---------------------------------------------------------------------------
+# P15 -- heart-vine wreath (thin vine ring with small heart-shaped leaves),
+# house number + FLAT street name (not curved -- see below for why),
+# LANDSCAPE (140x100mm, reuses P02_CARD_W/H). Source idea: P15 (the blue
+# bin's heart-vine badge, "46 Fishpond Lane", one of 3 designs in that
+# pin -- the other two, laurel-adjacent butterfly wreath and hexagon+bee,
+# aren't built from this source).
+#
+# Source: Midjourney "Image 3" from this run (bddc4e62-..._1.png), chosen
+# from 8 alternatives across 2 seeds. Seed 2 (Images 5-8) was rejected
+# outright -- came back in navy ink on an off-white/grey tint despite the
+# "black line art only, plain white background" text instruction, most
+# likely --iw pulling too hard on the blue-bin reference photo's colour.
+# Of seed 1's 4 usable black-on-white options, 3 had CURVED street text
+# (matching the reference photo's own curved layout) -- deliberately
+# passed over in favour of this one's FLAT text, because curved text on a
+# wreath this size already broke once (see P06_WREATH_CURVE_COEFFS'S
+# "TRIED AND REJECTED" comment -- ~12mm baseline shift, letters colliding
+# with the number). Rather than re-attempt curved text on a second wreath
+# and risk the same failure, went with the one source image that already
+# matches what P27/P06/P30 all settled on: flat text.
+#
+# The source PNG had a soft drop-shadow vignette AND a double-line card
+# border baked in (same combination as P06's original source) -- cropped
+# past both in two passes: first past the vignette down to the border
+# rectangle, then a second pass after a leftover border sliver was still
+# visible as a thin unbroken line at the crop edges (same tell as P30's
+# extraction: a real design's linework doesn't run edge-to-edge as an
+# unbroken straight line).
+#
+# 19 connected components: wreath body (fused vine+hearts) + 4 detached
+# heart fragments (small linework gaps, same pattern as P06's detached
+# bud and P30's detached leaf tips) + 2 digits ("46") + 12 letter
+# components ("FISHPOND LANE" -- F,I,S,H,P,O,N,D,L,A,N,E, no fusions this
+# time, unlike P06's "GROVE STREET" which had one). Kept={wreath body +
+# 4 fragments}, digits+letters erased. verify() reports 4 (its own
+# min_size=200 filter drops the smallest 112px fragment from the printed
+# report) -- pixel-count cross-check confirms all 5 kept components are
+# actually in the saved file, same non-issue as P06/P30's extractions.
+#
+# NUMBER/STREET_CENTER_Y are the erased text's own combined centroids,
+# same ground-truth convention as every other hollow-icon style. Widths
+# are the true min interior gap sampled across each field's full
+# glyph-height range -- this wreath's ring is more open than P06's dense
+# floral version (single thin vine vs. a packed flower cluster at every
+# node), so both budgets came out noticeably more generous (62mm number,
+# 56mm street vs. P06's 51mm/37mm).
+#
+# NUMBER_MAX_SIZE is a MEASURED ceiling (from the erased digits' own
+# bbox height, ~92pt implied), not a generous guess -- learned directly
+# from D18's number-oversizing bug (a permissive ceiling let auto-fit
+# balloon "36" up past 100pt and collide with the street text 18.5mm
+# below; this wreath has the same ~19mm number-to-street gap, so the
+# same risk applies here without a measured cap).
+#
+# STREET_MAX_SIZE is ALSO a measured ceiling (~19pt implied from the
+# erased letters' own bbox height, notably smaller relative to the
+# number than P06's proportions -- this source image's street text really
+# is rendered small and delicate under a much bigger number, not a
+# measurement error). MIN_SIZE=8 (not 14) from the start, applying the
+# same fix D18 needed after the fact rather than reintroducing the same
+# broken-floor bug on a second style.
+# ---------------------------------------------------------------------------
+P15_HEART_ICON_MASTER = "assets/icons/p15_heart_icon.png"
+
+P15_HEART_ICON = dict(x=23.3133 * mm, y=2.2500 * mm, w=92.5322 * mm, h=95.6250 * mm)
+
+P15_HEART_NUMBER_CENTER_Y = 53.7744 * mm  # RL y, erased "46" centroid
+P15_HEART_NUMBER_MAX_WIDTH = 69.10 * 0.90 * mm  # true min interior gap, 10% margin
+P15_HEART_NUMBER_MAX_SIZE = 88  # pt -- measured from source digit height (~92pt implied), small trim for safety
+P15_HEART_NUMBER_MIN_SIZE = 20
+
+P15_HEART_STREET_CENTER_Y = 34.5850 * mm  # RL y, erased "FISHPOND LANE" centroid
+P15_HEART_STREET_MAX_WIDTH = 62.85 * 0.90 * mm  # true min interior gap, 10% margin
+P15_HEART_STREET_MAX_SIZE = 20  # pt -- measured from source letter height (~19pt implied)
+P15_HEART_STREET_MIN_SIZE = 8  # not 14 -- see D18's broken-floor bug in the block comment above
+
+
+def _p15_heart_icon_path(accent_key):
+    """Same recolour-and-cache pattern as every other hollow-icon style
+    in this file. Returns None if the master art isn't present (caller
+    falls back to the plain vector floral icon)."""
+    master = _asset_path(P15_HEART_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p15_heart_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p15_heart_wreath(c, ox, oy, order):
+    """19. P15 heart-vine wreath -- thin vine ring with small heart-
+    shaped leaves, house number nested in the upper interior with the
+    street name in FLAT (not curved) text below it -- see the P15_HEART_*
+    constants block above for why flat text was chosen over the source's
+    own curved layout. LANDSCAPE (140x100mm, reuses P02_CARD_W/H)."""
+    accent_key = order.get("accent", "berry")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p15_heart_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P15_HEART_ICON["x"], oy + P15_HEART_ICON["y"],
+            P15_HEART_ICON["w"], P15_HEART_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # floral icon, flat text. Same reasoning as every other
+        # hollow-icon style's fallback: a substitution, not a lesser
+        # version of the same design.
+        print(
+            f"WARNING: p15_heart_wreath: master icon not found at "
+            f"{_asset_path(P15_HEART_ICON_MASTER)!r} -- rendering plain "
+            f"floral fallback instead of the extracted heart-vine wreath "
+            f"design for house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "floral", draw_flower_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", 44)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.52, order["house_number"])
+        c.setFont("Times-Bold", 14)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.32, order["street_name"].upper())
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P15_HEART_NUMBER_MAX_SIZE, P15_HEART_NUMBER_MIN_SIZE,
+                                  P15_HEART_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", number_size)
+    number_baseline = P15_HEART_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Times-Bold",
+                                  P15_HEART_STREET_MAX_SIZE, P15_HEART_STREET_MIN_SIZE,
+                                  P15_HEART_STREET_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", street_size)
+    street_baseline = P15_HEART_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", street_size)
+    c.drawCentredString(cx, oy + street_baseline, street_text)
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
+# ---------------------------------------------------------------------------
+# P28 -- arrow/fletching wreath (alternating arrowhead and hatched-fletching
+# shapes forming a ring), house number + FLAT street name. LANDSCAPE
+# (140x100mm, reuses P02_CARD_W/H). Source idea: P28 (TheVinylStudioGB's
+# "36 Central Avenue" listing, real pricing on record: £2.95+, 4.5 stars,
+# "Various Colours, Various Sizes").
+#
+# REGENERATED (v2) -- the original source (07ef6d68-..._1.png, see prior
+# git history/chat for that derivation) had one arrowhead node that came
+# out visibly pinched/asymmetric compared to the other three -- not a
+# tangled glitch, but a real, user-caught inconsistency. Tried a manual
+# raster splice first (copy a clean arrowhead, rotate/flip it onto the
+# bad one's position) -- didn't work: tested both a 90-degree rotation
+# and a horizontal-flip pairing, neither produced a seamless join, and a
+# forced splice would've left a visible kink where the pasted vine met
+# the original. Raster copy/rotate can't substitute for redrawing a
+# matching vector stroke. Re-ran Midjourney instead with explicit
+# uniformity language added to the prompt ("all arrowheads and fletching
+# clusters drawn consistently the same size and shape as each other") --
+# this source is the result, and every node was individually checked
+# (same 4-quadrant zoom sweep as the original glitch-catch) before
+# accepting it: all 9 arrow/fletching nodes measured within ~10% of each
+# other by pixel area (4448-4906px), no pinching, no glitches.
+#
+# The source card border was a single line (not double like P06/P30's),
+# and separate_ink's automatic method worked cleanly with no manual
+# threshold needed -- a much easier extraction than the original.
+#
+# 24 connected components: 9 arrow/fletching nodes (each its OWN
+# component this time, not one fused blob like v1 -- this source's vine
+# has small dashed gaps between segments rather than one continuous
+# line) + 2 digits ("36") + 13 street letters ("CENTRAL AVENUE", no
+# fusions). Kept={all 9 arrow/fletching nodes}.
+#
+# This source's "CENTRAL AVENUE" was FLAT already (not curved like v1's
+# and every other wreath's source) -- all 13 letters share the same
+# bbox_y range, confirmed directly rather than assumed, so no
+# curve-amplitude trap here: the erased letters' own bbox height is a
+# valid cap-height reference this time.
+#
+# Interior-gap measurement needed a different approach than every prior
+# wreath: the dashed vine produced spurious ~1px "gaps" on plain
+# row-by-row measure_gap() scans (a row crossing a dash-gap in the vine
+# reads as a tiny artefact, not the true interior span). Used a
+# left-half/right-half split instead -- take the rightmost ink point in
+# the left half of the row and the leftmost ink point in the right half,
+# the gap between them -- which is robust to small dash gaps within
+# either half. Re-verify this approach (not the plain measure_gap) if
+# re-deriving constants for any future dashed-vine source.
+#
+# Edge clearance: raw ink margin 5.8mm top / 6.2mm bottom, comfortably
+# over the 3mm minimum -- no safety scale-down needed this time (v1's
+# was a real, source-specific problem, not a recurring one).
+# ---------------------------------------------------------------------------
+P28_ARROW_ICON_MASTER = "assets/icons/p28_arrow_icon.png"
+
+P28_ARROW_ICON = dict(x=22.9268 * mm, y=3.1683 * mm, w=94.0488 * mm, h=93.1683 * mm)
+
+P28_ARROW_NUMBER_CENTER_Y = 54.1521 * mm  # RL y, erased "36" centroid
+P28_ARROW_NUMBER_MAX_WIDTH = 60.5854 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
+P28_ARROW_NUMBER_MAX_SIZE = 120  # pt -- measured from source digit height (~126pt implied), small trim for safety
+P28_ARROW_NUMBER_MIN_SIZE = 20
+
+P28_ARROW_STREET_CENTER_Y = 34.6100 * mm  # RL y, erased "CENTRAL AVENUE" centroid
+P28_ARROW_STREET_MAX_WIDTH = 69.3659 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
+P28_ARROW_STREET_MAX_SIZE = 19  # pt -- measured from the (this time genuinely flat) erased letters' own bbox height
+P28_ARROW_STREET_MIN_SIZE = 8  # established floor (see D18's broken-14pt-floor bug), not 14
+
+
+def _p28_arrow_icon_path(accent_key):
+    """Same recolour-and-cache pattern as every other hollow-icon style
+    in this file. Returns None if the master art isn't present (caller
+    falls back to the plain vector floral icon)."""
+    master = _asset_path(P28_ARROW_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p28_arrow_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p28_arrow_wreath(c, ox, oy, order):
+    """20. P28 arrow/fletching wreath -- alternating arrowhead and
+    hatched-fletching shapes forming a ring, house number nested in the
+    upper interior with the street name in FLAT (not curved) text below
+    it. LANDSCAPE (140x100mm, reuses P02_CARD_W/H). v2 source (see the
+    P28_* constants block above) -- regenerated after the original had
+    one visibly inconsistent arrowhead node; no safety scale-down needed
+    this time, raw margins were already comfortably clear."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p28_arrow_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P28_ARROW_ICON["x"], oy + P28_ARROW_ICON["y"],
+            P28_ARROW_ICON["w"], P28_ARROW_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # floral icon, flat text. Same reasoning as every other
+        # hollow-icon style's fallback: a substitution, not a lesser
+        # version of the same design.
+        print(
+            f"WARNING: p28_arrow_wreath: master icon not found at "
+            f"{_asset_path(P28_ARROW_ICON_MASTER)!r} -- rendering plain "
+            f"floral fallback instead of the extracted arrow-wreath "
+            f"design for house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "floral", draw_flower_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", 44)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.52, order["house_number"])
+        c.setFont("Times-Bold", 14)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.32, order["street_name"].upper())
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P28_ARROW_NUMBER_MAX_SIZE, P28_ARROW_NUMBER_MIN_SIZE,
+                                  P28_ARROW_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", number_size)
+    number_baseline = P28_ARROW_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Times-Bold",
+                                  P28_ARROW_STREET_MAX_SIZE, P28_ARROW_STREET_MIN_SIZE,
+                                  P28_ARROW_STREET_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", street_size)
+    street_baseline = P28_ARROW_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", street_size)
+    c.drawCentredString(cx, oy + street_baseline, street_text)
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+
+
+# ---------------------------------------------------------------------------
+# P31 -- olive branch wreath (loose, rounded leaves in irregular alternating
+# pairs, not the tight symmetrical laurel style), house number + FLAT
+# street name. LANDSCAPE (140x100mm, reuses P02_CARD_W/H). No P## precursor
+# -- unlike every other wreath in this file, this one has NO catalogued
+# competitor bin-sticker sighting behind it. Searched directly for olive/
+# eucalyptus/wheat bin stickers before building this; found only general
+# home-decor door wreaths (Michaels, West Elm, Etsy's general wreath
+# category), no bin-sticker precedent. Built as a deliberate experiment
+# rather than a market-validated pattern -- flag this honestly if asked
+# why it doesn't have the same "real listing" backing as D18-D22.
+#
+# Source: Midjourney "Image 1" of 4 (c4e14b61-..._0.png), no image
+# reference used for generation (text-only prompt) -- there was no clean
+# line-art reference to draw from, only photographed physical door
+# wreaths (twig base, full colour), which would have fought the
+# black-line-art brief the same way the heart-wreath's colour-drifted
+# batch did. Chose Image 1 over 3 alternatives for being the cleanest
+# across all 4 quadrants (checked the same way as every wreath since the
+# arrow-wreath inconsistency) and for reading as genuinely LOOSE/ROUNDED
+# olive-style leaves -- Image 4 in particular had narrower, more pointed
+# leaves that drifted toward looking like a duplicate of P30's laurel
+# wreath, which defeated the point of choosing olive over laurel-adjacent
+# motifs in the first place.
+#
+# 21 connected components: main wreath body (fused) + 6 detached leaf
+# fragments (small linework gaps, same recurring pattern as every other
+# wreath's extraction) + 2 digits ("12") + 12 street components
+# ("MAPLE DRIVE" -- M,A,P,L,E,D,R,I,V,E is 10 letters, but "I" produced 2
+# components -- dot separated from stem -- and a small 12px fragment
+# near "DRIVE" that reads as a broken-off serif, not a stray mark).
+# Kept={main body + 6 leaf fragments}.
+#
+# This source's "MAPLE DRIVE" was FLAT already (confirmed directly --
+# all 12 components share the same y=532-559 range, not a curve-amplitude
+# spread), so no P28-style curved-text trap here.
+#
+# Edge clearance: raw ink margin 5.8mm top / 4.1mm bottom, comfortably
+# over the 3mm minimum -- no safety scale-down needed.
+#
+# Interior gaps measured with the left-half/right-half method (not plain
+# row-by-row measure_gap()) as a precaution -- this wreath's leaf spacing
+# is deliberately irregular (that's the "loose olive branch" look), so
+# the same spurious-small-gap risk that showed up on P28's dashed vine
+# seemed worth guarding against here too, even though this vine turned
+# out to be continuous, not dashed.
+# ---------------------------------------------------------------------------
+P31_OLIVE_ICON_MASTER = "assets/icons/p31_olive_icon.png"
+
+P31_OLIVE_ICON = dict(x=24.5757 * mm, y=1.4201 * mm, w=91.1980 * mm, h=95.3846 * mm)
+
+P31_OLIVE_NUMBER_CENTER_Y = 53.3869 * mm  # RL y, erased "12" centroid
+P31_OLIVE_NUMBER_MAX_WIDTH = 50.5491 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
+P31_OLIVE_NUMBER_MAX_SIZE = 90  # pt -- measured from source digit height (~95pt implied), small trim for safety
+P31_OLIVE_NUMBER_MIN_SIZE = 20
+
+P31_OLIVE_STREET_CENTER_Y = 35.5432 * mm  # RL y, erased "MAPLE DRIVE" centroid
+P31_OLIVE_STREET_MAX_WIDTH = 52.9950 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
+P31_OLIVE_STREET_MAX_SIZE = 12  # pt -- measured from the (genuinely flat) erased letters' own bbox height (~12.7pt implied)
+P31_OLIVE_STREET_MIN_SIZE = 8  # established floor (see D18's broken-14pt-floor bug), not 14
+
+
+def _p31_olive_icon_path(accent_key):
+    """Same recolour-and-cache pattern as every other hollow-icon style
+    in this file. Returns None if the master art isn't present (caller
+    falls back to the plain vector floral icon)."""
+    master = _asset_path(P31_OLIVE_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p31_olive_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p31_olive_wreath(c, ox, oy, order):
+    """21. P31 olive branch wreath -- loose, rounded leaves in irregular
+    alternating pairs, house number nested in the upper interior with the
+    street name in flat text below it. LANDSCAPE (140x100mm, reuses
+    P02_CARD_W/H). No catalogued source idea -- an experimental design
+    with no confirmed bin-sticker market precedent, unlike every other
+    wreath in this file; see the P31_* constants block above for the
+    full derivation and that caveat."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+    cx = ox + P02_CARD_W / 2
+
+    icon_path = _p31_olive_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P31_OLIVE_ICON["x"], oy + P31_OLIVE_ICON["y"],
+            P31_OLIVE_ICON["w"], P31_OLIVE_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- plain vector
+        # floral icon, flat text. Same reasoning as every other
+        # hollow-icon style's fallback: a substitution, not a lesser
+        # version of the same design.
+        print(
+            f"WARNING: p31_olive_wreath: master icon not found at "
+            f"{_asset_path(P31_OLIVE_ICON_MASTER)!r} -- rendering plain "
+            f"floral fallback instead of the extracted olive wreath "
+            f"design for house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, cx, oy + P02_CARD_H - PAD - 10 * mm, 12 * mm, accent_hex, "floral", draw_flower_icon)
+        c.setFillColor(HexColor(INK))
+        c.setFont("Times-Bold", 44)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.52, order["house_number"])
+        c.setFont("Times-Bold", 14)
+        c.drawCentredString(cx, oy + P02_CARD_H * 0.32, order["street_name"].upper())
+        _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
+        return
+
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P31_OLIVE_NUMBER_MAX_SIZE, P31_OLIVE_NUMBER_MIN_SIZE,
+                                  P31_OLIVE_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", number_size)
+    number_baseline = P31_OLIVE_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Times-Bold",
+                                  P31_OLIVE_STREET_MAX_SIZE, P31_OLIVE_STREET_MIN_SIZE,
+                                  P31_OLIVE_STREET_MAX_WIDTH)
+    asc, desc = getAscentDescent("Times-Bold", street_size)
+    street_baseline = P31_OLIVE_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))
+    c.setFont("Times-Bold", street_size)
+    c.drawCentredString(cx, oy + street_baseline, street_text)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H)
 
@@ -1984,6 +2855,12 @@ STYLES = {
     "p25b_landscape_flourish": _style_p25b_landscape_flourish,
     "p27_landscape_house": _style_p27_landscape_house,
     "p47_house": _style_p47_house,
+    "p06_wreath": _style_p06_wreath,
+    "p06_wreath_numbers": _style_p06_wreath_numbers,
+    "p30_laurel_numbers": _style_p30_laurel_numbers,
+    "p15_heart_wreath": _style_p15_heart_wreath,
+    "p28_arrow_wreath": _style_p28_arrow_wreath,
+    "p31_olive_wreath": _style_p31_olive_wreath,
     "duck_family_father": _style_duck_family_father,
     "duck_family_mother": _style_duck_family_mother,
     "duck_family_playing1": _style_duck_family_playing1,
@@ -2014,18 +2891,24 @@ STYLE_LABELS = {
     "p25b_landscape_flourish": "13. D03 — Manor Frame Classic (landscape)",
     "p27_landscape_house": "14. D04 — Homestead Silhouette (landscape)",
     "p47_house": "15. P47 — House-outline + number, black-only (landscape)",
-    "duck_family_father": "16. Duck Family, Scene 1 — Father Duck & Duckling (landscape)",
-    "duck_family_mother": "17. Duck Family, Scene 2 — Mother Duck & Duckling (landscape)",
-    "duck_family_playing1": "18. Duck Family, Scene 3 — Ducklings Playing (landscape)",
-    "duck_family_playing2": "19. Duck Family, Scene 4 — Ducklings Playing, Energetic (landscape)",
-    "dog_family_1": "20. Dog Family, Scene 1 — Adult Dog & Puppy, Walking (landscape)",
-    "dog_family_2": "21. Dog Family, Scene 2 — Adult Dog & Puppy, Close Beside (landscape)",
-    "dog_family_playing1": "22. Dog Family, Scene 3 — Puppies Playing (landscape)",
-    "dog_family_playing2": "23. Dog Family, Scene 4 — Puppies Playing, Energetic (landscape)",
-    "cat_family_1": "24. Cat Family, Scene 1 — Adult Cat & Kitten, Walking (landscape)",
-    "cat_family_2": "25. Cat Family, Scene 2 — Adult Cat & Kitten, Close Beside (landscape)",
-    "cat_family_playing1": "26. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
-    "cat_family_playing2": "27. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
+    "p06_wreath": "16. P06 — Floral vine wreath, number + curved street name (landscape)",
+    "p06_wreath_numbers": "17. P06 numbers-only — Floral vine wreath, number only, no street (landscape)",
+    "p30_laurel_numbers": "18. P30 laurel wreath — Open-top laurel leaves, number only, no street (landscape)",
+    "p15_heart_wreath": "19. P15 heart-vine wreath — Number + flat street name (landscape)",
+    "p28_arrow_wreath": "20. P28 arrow/fletching wreath — Number + flat street name (landscape)",
+    "p31_olive_wreath": "21. P31 olive branch wreath — Number + flat street name (landscape, experimental)",
+    "duck_family_father": "22. Duck Family, Scene 1 — Father Duck & Duckling (landscape)",
+    "duck_family_mother": "23. Duck Family, Scene 2 — Mother Duck & Duckling (landscape)",
+    "duck_family_playing1": "24. Duck Family, Scene 3 — Ducklings Playing (landscape)",
+    "duck_family_playing2": "25. Duck Family, Scene 4 — Ducklings Playing, Energetic (landscape)",
+    "dog_family_1": "26. Dog Family, Scene 1 — Adult Dog & Puppy, Walking (landscape)",
+    "dog_family_2": "27. Dog Family, Scene 2 — Adult Dog & Puppy, Close Beside (landscape)",
+    "dog_family_playing1": "28. Dog Family, Scene 3 — Puppies Playing (landscape)",
+    "dog_family_playing2": "29. Dog Family, Scene 4 — Puppies Playing, Energetic (landscape)",
+    "cat_family_1": "30. Cat Family, Scene 1 — Adult Cat & Kitten, Walking (landscape)",
+    "cat_family_2": "31. Cat Family, Scene 2 — Adult Cat & Kitten, Close Beside (landscape)",
+    "cat_family_playing1": "32. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
+    "cat_family_playing2": "33. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
 }
 
 # Cross-reference from a style key to its internal product ID in
@@ -2061,6 +2944,12 @@ STYLE_PRODUCT_ID = {
     "cat_family_2": "D15",
     "cat_family_playing1": "D16",
     "cat_family_playing2": "D17",
+    "p06_wreath": "D18",
+    "p06_wreath_numbers": "D19",
+    "p30_laurel_numbers": "D20",
+    "p15_heart_wreath": "D21",
+    "p28_arrow_wreath": "D22",
+    "p31_olive_wreath": "D23",
 }
 
 # Card size per style. Every style defaults to the shared portrait
@@ -2076,6 +2965,12 @@ STYLE_CARD_SIZE["p25_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p25b_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p27_landscape_house"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p47_house"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p06_wreath"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p06_wreath_numbers"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p30_laurel_numbers"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p15_heart_wreath"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p28_arrow_wreath"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p31_olive_wreath"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["duck_family_father"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["duck_family_mother"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["duck_family_playing1"] = (P02_CARD_W, P02_CARD_H)

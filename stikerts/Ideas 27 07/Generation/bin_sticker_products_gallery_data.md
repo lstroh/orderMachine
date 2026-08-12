@@ -2,8 +2,8 @@
 
 *Text-only companion to `bin_sticker_products_gallery.html` — same entries, no images, kept lightweight for reference/search. IDs match the HTML gallery exactly; open that file to see the actual proof thumbnails.*
 
-**Total entries:** 17
-**Status:** 15 proof approved · 2 pending
+**Total entries:** 23
+**Status:** 15 proof approved · 8 pending
 
 This file tracks **built, code-backed designs** — a different thing from
 `bin_sticker_idea_board_data.md`, which tracks unbuilt inspiration/research
@@ -304,6 +304,98 @@ from D02's softer symmetrical look.
 **Assets required:** assets/icons/cat_family_playing2_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render, user-selected after 2 generation batches)
 
 **Draft marketing angle:** DRAFT: fourth and final scene completing the cat family set (D14 and D15 adult+kitten, D16 calmer kittens-playing [rear-view exception], D17 more energetic kittens-playing [genuine side profile]) -- sellable standalone or as a 4-bin/caddy bundle, same validated bundling pattern as the duck/dog sets. This scene's side-profile prompt fix worked cleanly where D16's batch didn't -- worth reusing this exact phrasing ('seen strictly in side profile... not from behind... smooth solid black shapes only, absolutely no individual fur strands') as the template for any future animal-family prompts.
+
+---
+
+## D18 — Grove Wreath Circlet
+
+**Style key:** `p06_wreath`
+**Source idea:** P06 (floral wreath border, shown at 3 size options)
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** Delicate black line-art floral vine wreath, house number nested in the upper interior, street name in flat (straight) text in the lower interior beneath it.
+
+**Assets required:** assets/icons/p06_wreath_icon.png (transparent hollow wreath silhouette -- number and street name nested in the interior). Per-accent recoloured copies (p06_wreath_{accent}.png) are generated and cached automatically on first render.
+
+**Draft marketing angle:** the only wreath/floral-border design in the lineup with real extracted line-art (not a plain vector flourish) -- adapted from the idea board's pinned circular 15/20/30cm die-cut sizes onto the standard printed rectangle card (Technique A), so it reads as a premium/romantic option alongside the more graphic house-outline family (D04/D05).
+
+---
+
+## D19 — Grove Wreath Circlet — Numbers Only
+
+**Style key:** `p06_wreath_numbers`
+**Source idea:** P06 (floral wreath) + P30a/P30b (leaf wreath, number only, no street) -- companion to D18, built for the numbers-only market segment those confirm
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** Same wreath artwork as D18, no street-name field -- a single larger number recentred in the wreath's true geometric middle rather than the upper half.
+
+**Assets required:** assets/icons/p06_wreath_icon.png (same asset as D18 -- shared, not duplicated). Per-accent recoloured copies shared with D18 too.
+
+**Draft marketing angle:** the numbers-only pairing for D18, aimed directly at the segment Etsy's own bestseller list confirms exists ("Circle Design ... House Number", no street) -- offer alongside D18 as a with/without-street-name choice on the same wreath artwork rather than a separate design.
+
+---
+
+## D20 — Laurel Circlet — Numbers Only
+
+**Style key:** `p30_laurel_numbers`
+**Source idea:** P30a/P30b ("56"/"64" in a small floral leaf wreath, number only, no street name)
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** Open-top laurel leaf wreath (two symmetrical branches meeting at a small stem at the bottom, no flowers), a single large number centred inside. No street-name field.
+
+**Assets required:** assets/icons/p30_laurel_icon.png (transparent hollow laurel wreath silhouette). Per-accent recoloured copies (p30_laurel_{accent}.png) are generated and cached automatically on first render.
+
+**Draft marketing angle:** the simpler, leaner sibling to D18/D19's dense floral wreath -- open-top laurel shape reads as classic/formal rather than romantic, and the plainer linework leaves more visual room for a large, highly legible number. Third independent wreath-family design, all sharing the same numbers-only market validation (Etsy's own bestseller "Circle Design ... House Number" listing, P30a/P30b's two real-world sightings).
+
+---
+
+## D21 — Fishpond Heart Circlet
+
+**Style key:** `p15_heart_wreath`
+**Source idea:** P15 (blue bin's heart-vine wreath badge, "46 Fishpond Lane" -- one of 3 designs in that pin)
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** Thin vine wreath with small heart-shaped leaves, house number nested in the upper interior with the street name in flat (not curved) text below it.
+
+**Assets required:** assets/icons/p15_heart_icon.png (transparent hollow heart-vine wreath silhouette). Per-accent recoloured copies (p15_heart_{accent}.png) are generated and cached automatically on first render -- defaults to the "berry" accent rather than charcoal, fitting the heart theme.
+
+**Draft marketing angle:** the romantic/gift-market entry in the wreath family, distinct from D18/D19's floral and D20's classic laurel -- a lighter, more open ring than either, with room for a much bigger number than D18 allowed. Positioned as a deliberate "gift" or Valentine/anniversary-adjacent variant rather than a mainline everyday option.
+
+---
+
+## D22 — Central Avenue Arrow Circlet
+
+**Style key:** `p28_arrow_wreath`
+**Source idea:** P28 (TheVinylStudioGB's "36 Central Avenue" listing -- real pricing on record: £2.95+, 4.5 stars, "Various Colours, Various Sizes")
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** Alternating arrowhead and hatched-fletching shapes forming a ring, house number nested in the upper interior with the street name in flat (not curved) text below it.
+
+**Assets required:** assets/icons/p28_arrow_icon.png (transparent hollow arrow-wreath silhouette). Per-accent recoloured copies (p28_arrow_{accent}.png) generated and cached automatically on first render.
+
+**Draft marketing angle:** the rustic/boho entry in the wreath family, visually distinct from the three floral-adjacent designs (D18/D19/D20/D21) -- differentiates the range for customers who want something other than florals. Fourth and final wreath from the original 3-pattern plan (laurel, heart-vine, arrow), completing the set.
+
+**Asset note:** regenerated (v2) after the original source had one visibly inconsistent arrowhead node (caught by the user, confirmed by close zoom -- not fixable via raster splice, see bin_sticker.py's P28 constants block for the full writeup). Current asset's 9 arrow/fletching nodes measured within ~10% of each other by pixel area -- no known inconsistency remaining.
+
+---
+
+## D23 — Maple Olive Circlet
+
+**Style key:** `p31_olive_wreath`
+**Source idea:** None -- no catalogued P## idea, no confirmed bin-sticker market sighting. Searched directly for olive/eucalyptus/wheat wreath bin stickers before building; found only general home-decor door wreaths (Michaels, West Elm, Etsy general wreath category), no bin-sticker precedent. Built as a deliberate experiment, not a validated pattern like D18-D22.
+**Card shape:** 140×100mm landscape
+**Status:** Needs proof
+
+**Layout:** Loose olive-branch wreath (rounded leaves in irregular alternating pairs, distinct from D20's tight symmetrical laurel), house number nested in the upper interior with the street name in flat text below it.
+
+**Assets required:** assets/icons/p31_olive_icon.png (transparent hollow olive-branch wreath silhouette). Per-accent recoloured copies (p31_olive_{accent}.png) generated and cached automatically on first render.
+
+**Draft marketing angle:** EXPERIMENTAL -- unlike every other wreath in the lineup (D18-D22), this has no real competitor listing behind it. Positioned as a softer, more rustic/relaxed alternative to D20's laurel -- worth watching sell-through closely before treating it as validated, rather than assuming it will perform like the market-backed designs.
 
 ---
 
