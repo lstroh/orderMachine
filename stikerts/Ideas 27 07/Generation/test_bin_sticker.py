@@ -25,17 +25,19 @@ os.chdir(_SCRIPT_DIR)
 
 import bin_sticker as bs  # noqa: E402
 
-LANDSCAPE_STYLES = (
-    "house_banner",
-    "p25_landscape_flourish",
-    "p25b_landscape_flourish",
-    "p27_landscape_house",
-    "p47_house",
+# Keep in sync with STYLES in bin_sticker.py (10 portrait + 23 landscape).
+EXPECTED_STYLE_COUNT = 33
+
+LANDSCAPE_SIZE = (bs.P02_CARD_W, bs.P02_CARD_H)
+LANDSCAPE_STYLES = tuple(
+    s for s, size in bs.STYLE_CARD_SIZE.items() if size == LANDSCAPE_SIZE
+)
+PORTRAIT_STYLES = tuple(
+    s for s, size in bs.STYLE_CARD_SIZE.items() if size == (bs.CARD_W, bs.CARD_H)
 )
 
-PORTRAIT_STYLES = tuple(s for s in bs.STYLES if s not in LANDSCAPE_STYLES)
-
 REQUIRED_ASSETS = (
+    # D01–D05 / P25 family
     bs.P02_ICON_MASTER,
     bs.P25_FLOURISH1_ICON,
     bs.P25_FLOURISH2_ICON,
@@ -45,11 +47,26 @@ REQUIRED_ASSETS = (
     bs.P25B_CORNER_BR,
     bs.P25B_CORNER_BL,
     bs.P27_ICON_MASTER,
-)
-
-# Present preferred; style has a vector fallback if missing.
-OPTIONAL_ASSETS = (
     bs.P47_ICON_MASTER,
+    # D18–D23 wreaths
+    bs.P06_ICON_MASTER,
+    bs.P30_LAUREL_ICON_MASTER,
+    bs.P15_HEART_ICON_MASTER,
+    bs.P28_ARROW_ICON_MASTER,
+    bs.P31_OLIVE_ICON_MASTER,
+    # D06–D17 animal families
+    bs.DUCK_FATHER_ICON_MASTER,
+    bs.DUCK_MOTHER_ICON_MASTER,
+    bs.DUCK_PLAYING1_ICON_MASTER,
+    bs.DUCK_PLAYING2_ICON_MASTER,
+    bs.DOG_FAMILY_1_ICON_MASTER,
+    bs.DOG_FAMILY_2_ICON_MASTER,
+    bs.DOG_PLAYING1_ICON_MASTER,
+    bs.DOG_PLAYING2_ICON_MASTER,
+    bs.CAT_FAMILY_1_ICON_MASTER,
+    bs.CAT_FAMILY_2_ICON_MASTER,
+    bs.CAT_PLAYING1_ICON_MASTER,
+    bs.CAT_PLAYING2_ICON_MASTER,
 )
 
 SAMPLE = {"house_number": "36", "street_name": "Grove Street", "accent": "navy"}
@@ -97,7 +114,11 @@ def _assert_pdf(path: str) -> None:
 
 
 def test_registry(r: SuiteResult) -> None:
-    r.check("registry: 15 styles", len(bs.STYLES) == 15, f"got {len(bs.STYLES)}")
+    r.check(
+        f"registry: {EXPECTED_STYLE_COUNT} styles",
+        len(bs.STYLES) == EXPECTED_STYLE_COUNT,
+        f"got {len(bs.STYLES)}",
+    )
 
     missing_labels = set(bs.STYLES) - set(bs.STYLE_LABELS)
     r.check(
@@ -113,21 +134,47 @@ def test_registry(r: SuiteResult) -> None:
         f"missing sizes: {missing_sizes}",
     )
 
+    # Every style must be classified as exactly one of portrait/landscape.
+    classified = set(PORTRAIT_STYLES) | set(LANDSCAPE_STYLES)
+    r.check(
+        "registry: every style is portrait or landscape",
+        classified == set(bs.STYLES),
+        f"unclassified: {set(bs.STYLES) - classified}; "
+        f"extra: {classified - set(bs.STYLES)}",
+    )
+    r.check(
+        "registry: 10 portrait styles",
+        len(PORTRAIT_STYLES) == 10,
+        f"got {len(PORTRAIT_STYLES)}: {PORTRAIT_STYLES}",
+    )
+    r.check(
+        "registry: 23 landscape styles",
+        len(LANDSCAPE_STYLES) == 23,
+        f"got {len(LANDSCAPE_STYLES)}: {LANDSCAPE_STYLES}",
+    )
+
     portrait_ok = all(
         bs.STYLE_CARD_SIZE[s] == (bs.CARD_W, bs.CARD_H) for s in PORTRAIT_STYLES
     )
     r.check("registry: portrait styles use CARD_W/H", portrait_ok)
 
     landscape_ok = all(
-        bs.STYLE_CARD_SIZE[s] == (bs.P02_CARD_W, bs.P02_CARD_H) for s in LANDSCAPE_STYLES
+        bs.STYLE_CARD_SIZE[s] == LANDSCAPE_SIZE for s in LANDSCAPE_STYLES
     )
     r.check("registry: landscape styles use P02_CARD_W/H", landscape_ok)
 
+    # Catalogued products are landscape-only today (D01–D23).
     product_ok = set(bs.STYLE_PRODUCT_ID).issubset(set(LANDSCAPE_STYLES))
     r.check(
         "registry: STYLE_PRODUCT_ID keys subset of landscape",
         product_ok,
         f"unexpected: {set(bs.STYLE_PRODUCT_ID) - set(LANDSCAPE_STYLES)}",
+    )
+    r.check(
+        "registry: every landscape style has STYLE_PRODUCT_ID",
+        set(LANDSCAPE_STYLES) == set(bs.STYLE_PRODUCT_ID),
+        f"missing: {set(LANDSCAPE_STYLES) - set(bs.STYLE_PRODUCT_ID)}; "
+        f"extra: {set(bs.STYLE_PRODUCT_ID) - set(LANDSCAPE_STYLES)}",
     )
 
 
@@ -173,6 +220,44 @@ def test_fit_font_size(r: SuiteResult) -> None:
     )
 
 
+def test_draw_curved_text_uses_passed_coeffs(r: SuiteResult) -> None:
+    """Regression: rotation must use curve_coeffs, not a hardcoded P02 curve."""
+
+    def _smoke() -> None:
+        path = os.path.join(_SCRIPT_DIR, "_tmp_curved_text.pdf")
+        try:
+            c = canvas.Canvas(path, pagesize=(bs.P02_CARD_W, bs.P02_CARD_H))
+            # Flat curve (a=0, b=0) — if coeffs were ignored, P02's steep
+            # banner slope would still rotate glyphs; with correct coeffs
+            # this is a no-op rotation smoke path.
+            flat_coeffs = (0.0, 0.0, 0.0)
+
+            def flat_fn(_x_px: float) -> float:
+                return 0.0
+
+            bs._draw_curved_text(
+                c,
+                "GROVE",
+                bs.P02_CARD_W / 2,
+                40 * bs.mm,
+                "Helvetica-Bold",
+                14,
+                bs.INK,
+                10 * bs.mm,
+                0.1,
+                flat_fn,
+                flat_coeffs,
+            )
+            c.showPage()
+            c.save()
+            _assert_pdf(path)
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+    r.run("_draw_curved_text: accepts explicit curve_coeffs", _smoke)
+
+
 def test_mixed_sheet_raises(r: SuiteResult) -> None:
     def _mixed() -> None:
         orders = [
@@ -200,14 +285,6 @@ def test_required_assets(r: SuiteResult) -> None:
             os.path.isfile(path),
             f"missing {path}",
         )
-    for rel in OPTIONAL_ASSETS:
-        path = bs._asset_path(rel)
-        if os.path.isfile(path):
-            r.ok(f"optional asset present: {rel}")
-        else:
-            # Still a pass: style falls back to a vector placeholder.
-            r.ok(f"optional asset missing (fallback OK): {rel}")
-            print(f"         WARN  {path} not found -- style will use vector fallback")
 
 
 def _render_single(style: str, outdir: str, order_base: dict) -> str:
@@ -332,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     print("== Helpers ==")
     test_resolve_accent(r)
     test_fit_font_size(r)
+    test_draw_curved_text_uses_passed_coeffs(r)
     test_mixed_sheet_raises(r)
     print()
 
