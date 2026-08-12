@@ -2839,6 +2839,123 @@ def _style_cat_family_playing2(c, ox, oy, order):
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
 
+# ---------------------------------------------------------------------------
+# P09a -- '64 Oakley Close' borderless minimal: bold number, thin underline
+# rule sized to match the street name's own width, street name in caps
+# below it. No icon, no border -- deliberately, per the idea board entry
+# (this is the borderless counterpart to style #2 "minimal", which is the
+# same composition plus a border). DRAFT, not yet a catalogued product --
+# no STYLE_PRODUCT_ID entry until it ships.
+#
+# Constants measured via the icon-silhouette-extraction skill's text-only
+# workflow (see SKILL.md's "Text-only layouts" section, added for this
+# design) against the Midjourney mockup render (chat upload,
+# "u3898592314_...73b8a125-1702-415b-a12a-2d4c194766a5_0.png", 1312x928px).
+# No icon/border ink to anchor a scale against, so the white card
+# rectangle itself was isolated from the grey backdrop by luminance
+# (card ~255, backdrop ~245-249) -- bbox x=143-1167 (1024px), y=104-822
+# (718px) -- and ASSUMED to represent the true 140x100mm landscape card
+# edges (per user's explicit choice of orientation for this mockup). Flag
+# this assumption if a future re-render changes the card's position in
+# frame, same as every other icon-border-bbox assumption in this file.
+#
+# Px/mm scale: px_mm_x=7.3143 (1024/140), px_mm_y=7.18 (718/100) -- 1.9%
+# axis mismatch, same small gap seen elsewhere in this file. Each axis
+# uses its own factor below, not one blended constant.
+#
+# Component check (label_components): 14 components, no crop-clipping
+# warning. 2 largest (digits '3'/'6', combined bbox x=520-789 y=240-419),
+# 1 thin full-width rule (label 3, x=263-1048 y=461-466 -- only 5px tall),
+# and exactly 11 further components (x=263-1048 y=524-609) matching
+# G-R-O-V-E-S-T-R-E-E-T letter-for-letter -- confirms nothing merged.
+#
+# Notable composition fact this measurement surfaced: the underline's
+# width (785px) is NOT a fixed decorative length -- it exactly matches
+# GROVE STREET's own rendered width (same x=263-1048 span). Reproduced
+# below as a DYNAMIC underline (stringWidth of the actual street text at
+# its fitted size), not a fixed mm constant, so it still matches
+# correctly for street names of different lengths/widths than the
+# mockup's placeholder.
+#
+# Underline thickness: measured ~0.70mm (5px/7.18), but bitmap
+# anti-aliasing at this render resolution inflates apparent stroke width
+# versus a true vector line -- treated as a judgment call, not a literal
+# constant. Using 1.0pt (~0.35mm) here, a similar weight to the existing
+# "minimal" style's own 0.6pt accent line, just slightly bolder to read
+# clearly at the wider ~100mm+ span this rule spans. Revisit against a
+# real test print if it looks too thin/thick.
+#
+# Font: mockup uses a bold geometric sans (not a Helvetica look-alike
+# exactly) -- Helvetica-Bold used here as the nearest built-in reportlab
+# font, same substitution reasoning as every other style in this file
+# that doesn't have a licensed matching font.
+#
+# NUMBER_MAX_WIDTH/STREET_MAX_WIDTH: no bounding element (no icon, no
+# border) to measure an exact available gap against, unlike P02/P27/P47's
+# hollow-width measurements -- these are generous ceilings sized off the
+# card width with margins, auto-fit shrinks as needed, same pattern as
+# every other MAX_WIDTH constant in this file.
+# ---------------------------------------------------------------------------
+P09A_NUMBER_CENTER_Y = 68.5933 * mm  # RL y, from digits' own measured centroid
+P09A_UNDERLINE_CENTER_Y = 49.9304 * mm  # RL y -- almost exactly the card's vertical midpoint
+P09A_STREET_CENTER_Y = 35.5850 * mm  # RL y, from street-text's own measured centroid
+
+P09A_NUMBER_MAX_WIDTH = 110 * mm  # generous ceiling (card width minus 2x15mm margin)
+P09A_NUMBER_MAX_SIZE = 140  # pt -- auto-fit shrinks as needed
+P09A_NUMBER_MIN_SIZE = 20
+
+P09A_STREET_MAX_WIDTH = 96.5867 * mm  # true measured street-text width (107.32mm), 10% safety margin
+P09A_STREET_MAX_SIZE = 66  # pt
+P09A_STREET_MIN_SIZE = 16
+
+P09A_UNDERLINE_WEIGHT = 1.0  # pt -- judgment call, see note above (not a literal px measurement)
+
+
+def _style_p09a_borderless(c, ox, oy, order):
+    """34. P09a -- borderless minimal: bold house number, thin underline
+    rule sized to the street name's own width, street name in caps below
+    it. No icon, no border. LANDSCAPE (140x100mm, reuses P02_CARD_W/H) --
+    this specific orientation was an explicit user choice for the mockup
+    (source pinned size was ~150x110mm, itself ambiguous vs. this design's
+    OTHER intended build path as a borderless variant of #2 "minimal",
+    which is the shared PORTRAIT CARD_W/CARD_H) -- if this ends up built
+    as that portrait variant instead, re-derive the P09A_* constants
+    against CARD_W/CARD_H rather than reusing these landscape mm values
+    directly (the underlying fractions of card width/height should carry
+    over; the absolute mm won't). DRAFT status -- not yet in
+    bin_sticker_products_gallery.html/.md, no STYLE_PRODUCT_ID entry."""
+    cx = ox + P02_CARD_W / 2
+
+    number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
+                                  P09A_NUMBER_MAX_SIZE, P09A_NUMBER_MIN_SIZE, P09A_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
+    number_baseline = P09A_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", number_size)
+    c.drawCentredString(cx, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"].upper()
+    street_size = _fit_font_size(street_text, "Helvetica-Bold",
+                                  P09A_STREET_MAX_SIZE, P09A_STREET_MIN_SIZE, P09A_STREET_MAX_WIDTH)
+    asc2, desc2 = getAscentDescent("Helvetica-Bold", street_size)
+    street_baseline = P09A_STREET_CENTER_Y - (asc2 + desc2) / 2 * (25.4 / 72) * mm
+    c.setFont("Helvetica-Bold", street_size)
+    c.drawCentredString(cx, oy + street_baseline, street_text)
+
+    # Underline width matches the ACTUAL rendered street text width, not a
+    # fixed constant -- reproduces the mockup's own composition fact that
+    # the rule spans exactly as wide as the street name, whatever that
+    # name's length turns out to be.
+    street_width = stringWidth(street_text, "Helvetica-Bold", street_size)
+    c.setStrokeColor(HexColor(INK))
+    c.setLineWidth(P09A_UNDERLINE_WEIGHT)
+    underline_y = oy + P09A_UNDERLINE_CENTER_Y
+    c.line(cx - street_width / 2, underline_y, cx + street_width / 2, underline_y)
+
+    # Deliberately NO _draw_border call -- this design is borderless per
+    # the idea board entry, unlike every other style in this file.
+
+
 STYLES = {
     "classic": _style_classic,
     "minimal": _style_minimal,
@@ -2873,6 +2990,7 @@ STYLES = {
     "cat_family_2": _style_cat_family_2,
     "cat_family_playing1": _style_cat_family_playing1,
     "cat_family_playing2": _style_cat_family_playing2,
+    "p09a_borderless": _style_p09a_borderless,
 }
 
 STYLE_LABELS = {
@@ -2909,6 +3027,7 @@ STYLE_LABELS = {
     "cat_family_2": "31. Cat Family, Scene 2 — Adult Cat & Kitten, Close Beside (landscape)",
     "cat_family_playing1": "32. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
     "cat_family_playing2": "33. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
+    "p09a_borderless": "34. P09a — Borderless minimal, number + underline + street (landscape, DRAFT)",
 }
 
 # Cross-reference from a style key to its internal product ID in
@@ -2950,6 +3069,7 @@ STYLE_PRODUCT_ID = {
     "p15_heart_wreath": "D21",
     "p28_arrow_wreath": "D22",
     "p31_olive_wreath": "D23",
+    "p09a_borderless": "D24",
 }
 
 # Card size per style. Every style defaults to the shared portrait
@@ -2983,6 +3103,7 @@ STYLE_CARD_SIZE["cat_family_1"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["cat_family_2"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["cat_family_playing1"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["cat_family_playing2"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p09a_borderless"] = (P02_CARD_W, P02_CARD_H)
 
 
 def draw_sticker(c, ox, oy, order):

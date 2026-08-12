@@ -2,8 +2,8 @@
 
 *Text-only companion to `bin_sticker_products_gallery.html` — same entries, no images, kept lightweight for reference/search. IDs match the HTML gallery exactly; open that file to see the actual proof thumbnails.*
 
-**Total entries:** 23
-**Status:** 15 proof approved · 8 pending
+**Total entries:** 24
+**Status:** 16 proof approved · 8 pending
 
 This file tracks **built, code-backed designs** — a different thing from
 `bin_sticker_idea_board_data.md`, which tracks unbuilt inspiration/research
@@ -396,6 +396,21 @@ from D02's softer symmetrical look.
 **Assets required:** assets/icons/p31_olive_icon.png (transparent hollow olive-branch wreath silhouette). Per-accent recoloured copies (p31_olive_{accent}.png) generated and cached automatically on first render.
 
 **Draft marketing angle:** EXPERIMENTAL -- unlike every other wreath in the lineup (D18-D22), this has no real competitor listing behind it. Positioned as a softer, more rustic/relaxed alternative to D20's laurel -- worth watching sell-through closely before treating it as validated, rather than assuming it will perform like the market-backed designs.
+
+---
+
+## D24 — Grove Line — Minimal Borderless
+
+**Style key:** `p09a_borderless`
+**Source idea:** P09a/b/c/d (borderless number + underline + street, no border, no icon — 4 sightings across the idea board)
+**Card shape:** 140×100mm landscape
+**Status:** Proof approved
+
+**Layout:** Bold house number, thin underline rule sized to match the street name width, street name in caps below it. No icon, no border.
+
+**Assets required:** None — pure vector/typographic style, no external PNG dependencies.
+
+**Draft marketing angle:** DRAFT: the clean, borderless minimalist look that keeps showing up on best-selling competitor listings — for customers who want something understated rather than an illustrated or bordered design.
 
 ---
 
