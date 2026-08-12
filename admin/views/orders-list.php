@@ -37,6 +37,17 @@ $pages      = $result['pages'];
 $paged      = $result['paged'];
 $step_names = SOM_Orders::step_name_options();
 
+$products_for_test = SOM_Products::query(
+	array(
+		'status'   => 'active',
+		'per_page' => 500,
+		'paged'    => 1,
+	)
+);
+$test_products = isset( $products_for_test['products'] ) && is_array( $products_for_test['products'] )
+	? $products_for_test['products']
+	: array();
+
 $status_options = array(
 	''               => __( 'All statuses', 'order-machine' ),
 	'open'           => __( 'Open', 'order-machine' ),
@@ -49,6 +60,53 @@ $status_options = array(
 <div class="wrap som-orders-wrap">
 	<h1 class="wp-heading-inline"><?php echo esc_html__( 'Orders', 'order-machine' ); ?></h1>
 	<hr class="wp-header-end" />
+
+	<details class="som-create-test-order">
+		<summary><?php echo esc_html__( 'Create test order', 'order-machine' ); ?></summary>
+		<p class="description">
+			<?php echo esc_html__( 'Creates an External-channel order (same path as REST / Sync create): workflow assignment, stock reservation, and budget funding when applicable.', 'order-machine' ); ?>
+		</p>
+		<?php if ( ! $test_products ) : ?>
+			<p class="description"><?php echo esc_html__( 'Add an active product first, then create a test order.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<form method="post" action="<?php echo esc_url( SOM_Orders::list_url() ); ?>" class="som-create-test-order-form">
+				<?php wp_nonce_field( 'som_create_test_order', 'som_order_nonce' ); ?>
+
+				<label for="som-test-product-id"><?php echo esc_html__( 'Product', 'order-machine' ); ?></label>
+				<select name="som_test_product_id" id="som-test-product-id" required>
+					<option value=""><?php echo esc_html__( 'Select product…', 'order-machine' ); ?></option>
+					<?php foreach ( $test_products as $product ) : ?>
+						<option value="<?php echo esc_attr( (string) $product->id ); ?>">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: 1: product name, 2: SKU */
+									__( '%1$s (%2$s)', 'order-machine' ),
+									(string) $product->name,
+									(string) $product->sku
+								)
+							);
+							?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+
+				<label for="som-test-quantity"><?php echo esc_html__( 'Qty', 'order-machine' ); ?></label>
+				<input type="number" name="som_test_quantity" id="som-test-quantity" value="1" min="1" step="1" />
+
+				<label for="som-test-buyer-name"><?php echo esc_html__( 'Buyer', 'order-machine' ); ?></label>
+				<input type="text" name="som_test_buyer_name" id="som-test-buyer-name" value="" placeholder="<?php echo esc_attr__( 'Test Buyer', 'order-machine' ); ?>" />
+
+				<label for="som-test-unit-price"><?php echo esc_html__( 'Unit price', 'order-machine' ); ?></label>
+				<input type="number" name="som_test_unit_price" id="som-test-unit-price" value="" min="0" step="0.01" placeholder="0.00" />
+
+				<label for="som-test-personalisation"><?php echo esc_html__( 'Personalisation', 'order-machine' ); ?></label>
+				<input type="text" name="som_test_personalisation" id="som-test-personalisation" value="" placeholder="<?php echo esc_attr__( 'Optional', 'order-machine' ); ?>" />
+
+				<?php submit_button( __( 'Create test order', 'order-machine' ), 'secondary', 'som_create_test_order', false ); ?>
+			</form>
+		<?php endif; ?>
+	</details>
 
 	<form method="get" class="som-orders-filters">
 		<input type="hidden" name="page" value="som-orders" />

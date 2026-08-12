@@ -344,6 +344,68 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_POST['som_create_test_order'] ) ) {
+			check_admin_referer( 'som_create_test_order', 'som_order_nonce' );
+
+			$product_id = isset( $_POST['som_test_product_id'] ) ? (int) $_POST['som_test_product_id'] : 0;
+			$quantity   = isset( $_POST['som_test_quantity'] ) ? (int) $_POST['som_test_quantity'] : 1;
+			$quantity   = max( 1, $quantity );
+			$buyer_name = isset( $_POST['som_test_buyer_name'] ) ? sanitize_text_field( wp_unslash( $_POST['som_test_buyer_name'] ) ) : '';
+			$personalis = isset( $_POST['som_test_personalisation'] ) ? sanitize_textarea_field( wp_unslash( $_POST['som_test_personalisation'] ) ) : '';
+			$unit_price = isset( $_POST['som_test_unit_price'] ) ? wp_unslash( $_POST['som_test_unit_price'] ) : '';
+
+			if ( $product_id < 1 || ! SOM_Products::get( $product_id ) ) {
+				self::flash_notice( __( 'Select a valid product for the test order.', 'order-machine' ), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+
+			$item = array(
+				'product_id' => $product_id,
+				'quantity'   => $quantity,
+			);
+			if ( '' !== trim( $personalis ) ) {
+				$item['personalisation_text'] = $personalis;
+			}
+			if ( '' !== $unit_price && is_numeric( $unit_price ) ) {
+				$item['unit_price'] = (float) $unit_price;
+			}
+
+			$external_id = 'test-' . gmdate( 'YmdHis' ) . '-' . wp_generate_password( 4, false, false );
+			$order_id    = SOM_Order_Sync::create_from_external(
+				array(
+					'channel'           => 'external',
+					'external_order_id' => $external_id,
+					'buyer_name'        => '' !== $buyer_name ? $buyer_name : 'Test Buyer',
+					'shipping_address'  => array(
+						'line1'    => '1 Test Street',
+						'city'     => 'London',
+						'postcode' => 'E1 1AA',
+						'country'  => 'GB',
+					),
+					'items'             => array( $item ),
+				)
+			);
+
+			if ( is_wp_error( $order_id ) ) {
+				self::flash_notice( $order_id->get_error_message(), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+
+			self::flash_notice(
+				sprintf(
+					/* translators: %s: external order id */
+					__( 'Test order created (%s).', 'order-machine' ),
+					$external_id
+				),
+				'success',
+				'som_order_saved'
+			);
+			wp_safe_redirect( SOM_Orders::detail_url( (int) $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_retry_script'] ) ) {
 			check_admin_referer( 'som_retry_script', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;

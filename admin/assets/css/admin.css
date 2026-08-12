@@ -2,6 +2,38 @@
  * Order Machine admin styles (orders list + detail).
  */
 
+.som-create-test-order {
+	margin: 12px 0 4px;
+	padding: 8px 12px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	max-width: 960px;
+}
+
+.som-create-test-order > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.som-create-test-order-form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 8px 0 4px;
+}
+
+.som-create-test-order-form label {
+	font-weight: 600;
+}
+
+.som-create-test-order-form select,
+.som-create-test-order-form input[type="text"],
+.som-create-test-order-form input[type="number"] {
+	max-width: 220px;
+}
+
 .som-orders-filters {
 	display: flex;
 	flex-wrap: wrap;
