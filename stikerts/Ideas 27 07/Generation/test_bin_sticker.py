@@ -25,8 +25,10 @@ os.chdir(_SCRIPT_DIR)
 
 import bin_sticker as bs  # noqa: E402
 
-# Keep in sync with STYLES in bin_sticker.py (10 portrait + 23 landscape).
-EXPECTED_STYLE_COUNT = 33
+# Keep in sync with STYLES in bin_sticker.py (10 portrait + 25 landscape).
+EXPECTED_STYLE_COUNT = 35
+EXPECTED_PORTRAIT_COUNT = 10
+EXPECTED_LANDSCAPE_COUNT = 25
 
 LANDSCAPE_SIZE = (bs.P02_CARD_W, bs.P02_CARD_H)
 LANDSCAPE_STYLES = tuple(
@@ -67,6 +69,8 @@ REQUIRED_ASSETS = (
     bs.CAT_FAMILY_2_ICON_MASTER,
     bs.CAT_PLAYING1_ICON_MASTER,
     bs.CAT_PLAYING2_ICON_MASTER,
+    # D25 P21 (D24 / p09a is text-only — no master icon)
+    bs.P21_ICON_MASTER,
 )
 
 SAMPLE = {"house_number": "36", "street_name": "Grove Street", "accent": "navy"}
@@ -143,13 +147,13 @@ def test_registry(r: SuiteResult) -> None:
         f"extra: {classified - set(bs.STYLES)}",
     )
     r.check(
-        "registry: 10 portrait styles",
-        len(PORTRAIT_STYLES) == 10,
+        f"registry: {EXPECTED_PORTRAIT_COUNT} portrait styles",
+        len(PORTRAIT_STYLES) == EXPECTED_PORTRAIT_COUNT,
         f"got {len(PORTRAIT_STYLES)}: {PORTRAIT_STYLES}",
     )
     r.check(
-        "registry: 23 landscape styles",
-        len(LANDSCAPE_STYLES) == 23,
+        f"registry: {EXPECTED_LANDSCAPE_COUNT} landscape styles",
+        len(LANDSCAPE_STYLES) == EXPECTED_LANDSCAPE_COUNT,
         f"got {len(LANDSCAPE_STYLES)}: {LANDSCAPE_STYLES}",
     )
 
@@ -163,7 +167,7 @@ def test_registry(r: SuiteResult) -> None:
     )
     r.check("registry: landscape styles use P02_CARD_W/H", landscape_ok)
 
-    # Catalogued products are landscape-only today (D01–D23).
+    # Catalogued products are landscape-only today (D01–D25).
     product_ok = set(bs.STYLE_PRODUCT_ID).issubset(set(LANDSCAPE_STYLES))
     r.check(
         "registry: STYLE_PRODUCT_ID keys subset of landscape",
@@ -175,6 +179,17 @@ def test_registry(r: SuiteResult) -> None:
         set(LANDSCAPE_STYLES) == set(bs.STYLE_PRODUCT_ID),
         f"missing: {set(LANDSCAPE_STYLES) - set(bs.STYLE_PRODUCT_ID)}; "
         f"extra: {set(bs.STYLE_PRODUCT_ID) - set(LANDSCAPE_STYLES)}",
+    )
+
+    r.check(
+        "registry: p09a_borderless is D24",
+        bs.STYLE_PRODUCT_ID.get("p09a_borderless") == "D24",
+        f"got {bs.STYLE_PRODUCT_ID.get('p09a_borderless')!r}",
+    )
+    r.check(
+        "registry: p21_paw_trail is D25",
+        bs.STYLE_PRODUCT_ID.get("p21_paw_trail") == "D25",
+        f"got {bs.STYLE_PRODUCT_ID.get('p21_paw_trail')!r}",
     )
 
 
@@ -275,6 +290,99 @@ def test_mixed_sheet_raises(r: SuiteResult) -> None:
         raise AssertionError("expected ValueError for mixed card sizes")
 
     r.run("render_sheet: mixed portrait+landscape raises ValueError", _mixed)
+
+
+def test_p09a_borderless_contracts(r: SuiteResult) -> None:
+    """P09a: text-only landscape; underline width tracks fitted street width."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    r.check(
+        "p09a: registered landscape",
+        "p09a_borderless" in LANDSCAPE_STYLES,
+    )
+
+    short_street = "RYE"
+    long_street = "OLD WINCHESTER ROAD"
+    short_size = bs._fit_font_size(
+        short_street,
+        "Helvetica-Bold",
+        bs.P09A_STREET_MAX_SIZE,
+        bs.P09A_STREET_MIN_SIZE,
+        bs.P09A_STREET_MAX_WIDTH,
+    )
+    long_size = bs._fit_font_size(
+        long_street,
+        "Helvetica-Bold",
+        bs.P09A_STREET_MAX_SIZE,
+        bs.P09A_STREET_MIN_SIZE,
+        bs.P09A_STREET_MAX_WIDTH,
+    )
+    short_w = stringWidth(short_street, "Helvetica-Bold", short_size)
+    long_w = stringWidth(long_street, "Helvetica-Bold", long_size)
+    r.check(
+        "p09a: underline width tracks street text length",
+        short_w < long_w,
+        f"short={short_w:.2f} long={long_w:.2f}",
+    )
+
+    # Number auto-fit must shrink when glyphs exceed P09A_NUMBER_MAX_WIDTH.
+    huge = bs._fit_font_size(
+        "1234567890",
+        "Helvetica-Bold",
+        bs.P09A_NUMBER_MAX_SIZE,
+        bs.P09A_NUMBER_MIN_SIZE,
+        bs.P09A_NUMBER_MAX_WIDTH,
+    )
+    short_num = bs._fit_font_size(
+        "7",
+        "Helvetica-Bold",
+        bs.P09A_NUMBER_MAX_SIZE,
+        bs.P09A_NUMBER_MIN_SIZE,
+        bs.P09A_NUMBER_MAX_WIDTH,
+    )
+    r.check(
+        "p09a: short house number stays at max size",
+        short_num == bs.P09A_NUMBER_MAX_SIZE,
+        f"got {short_num}",
+    )
+    r.check(
+        "p09a: oversized house number shrinks below max",
+        huge < bs.P09A_NUMBER_MAX_SIZE,
+        f"got {huge}",
+    )
+
+
+def test_p21_paw_trail_contracts(r: SuiteResult) -> None:
+    """P21: off-centre text beside icon; recolour cache path works."""
+    r.check(
+        "p21: registered landscape",
+        "p21_paw_trail" in LANDSCAPE_STYLES,
+    )
+    r.check(
+        "p21: number X is right of icon box",
+        bs.P21_NUMBER_CENTER_X > bs.P21_ICON["x"] + bs.P21_ICON["w"],
+        f"number_x={bs.P21_NUMBER_CENTER_X} icon_right="
+        f"{bs.P21_ICON['x'] + bs.P21_ICON['w']}",
+    )
+    r.check(
+        "p21: street X is right of icon left edge",
+        bs.P21_STREET_CENTER_X > bs.P21_ICON["x"],
+        f"street_x={bs.P21_STREET_CENTER_X} icon_x={bs.P21_ICON['x']}",
+    )
+    r.check(
+        "p21: PAD exceeds shared PAD (edge clearance)",
+        bs.P21_PAD > bs.PAD,
+        f"P21_PAD={bs.P21_PAD} PAD={bs.PAD}",
+    )
+
+    def _recolour() -> None:
+        path = bs._p21_icon_path("navy")
+        if path is None:
+            raise AssertionError("expected recolour path, got None")
+        if not os.path.isfile(path):
+            raise AssertionError(f"recolour cache missing: {path}")
+
+    r.run("p21: _p21_icon_path caches navy recolour", _recolour)
 
 
 def test_required_assets(r: SuiteResult) -> None:
@@ -411,6 +519,11 @@ def main(argv: list[str] | None = None) -> int:
     test_fit_font_size(r)
     test_draw_curved_text_uses_passed_coeffs(r)
     test_mixed_sheet_raises(r)
+    print()
+
+    print("== New styles (P09a / P21) ==")
+    test_p09a_borderless_contracts(r)
+    test_p21_paw_trail_contracts(r)
     print()
 
     print("== Assets ==")
