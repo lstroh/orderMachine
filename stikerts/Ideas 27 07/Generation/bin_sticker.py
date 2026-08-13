@@ -2956,6 +2956,173 @@ def _style_p09a_borderless(c, ox, oy, order):
     # the idea board entry, unlike every other style in this file.
 
 
+# ---------------------------------------------------------------------------
+# P21 -- EDSG 'Design 5': diagonal trail of 5 dog paw prints (largest at
+# bottom-left, shrinking toward top-right) beside a large house number,
+# street name below it. Real Midjourney-sourced artwork (not the plain
+# vector single-paw of style 10), extracted and measured via
+# icon-silhouette-extraction -- see the P21_* constants below for the
+# full derivation. Source: chosen from 6 renders across 2 Midjourney
+# seed batches (chat upload "...daaf5f81-..._2.png", 1312x928px,
+# landscape --ar 7:5), user-selected for cleanest linework/no drop-shadow.
+#
+# LANDSCAPE 140x100mm (reuses P02_CARD_W/H) -- explicit user choice for
+# this build, same off-spec-vs-idea-board caveat as p25/p27/p09a: P21's
+# actual idea-board entry has fits_spec=Yes for the standard 100x140mm
+# PORTRAIT card (matching how the design was originally pinned/sold by
+# EDSG). This is a deliberate landscape variant, not "P21 built to spec".
+# CATALOGUED as D25 -- see STYLE_PRODUCT_ID and
+# bin_sticker_products_gallery_data.md. Proof approved after fixing the
+# PAD (see P21_PAD below): the default 2mm PAD measured only ~1.7-1.96mm
+# real edge clearance on products_io.py's render_proof_thumbnail check,
+# same failure D01/D02 shipped with -- fixed before cataloguing, not
+# after.
+#
+# NOT a nested-hollow design (unlike P02/P27/P47's house icons) -- the
+# paw trail and the number/street sit side-by-side on the card, same
+# layout family as style 10 (paw) and the duck/dog/cat family scenes,
+# so there's no interior hollow width/curve to measure. What WAS
+# measured: the real baked-in "76"/"North Avenue" placeholder text's own
+# centroid position before erasing it -- ground truth for where a
+# human/AI actually placed it, same reasoning as every other placement
+# constant in this file.
+#
+# Px/mm scale: px_mm_x=9.3714 (1312/140), px_mm_y=9.28 (928/100) -- same
+# small axis mismatch seen elsewhere in this file; each axis uses its
+# own factor throughout, not one blended constant.
+#
+# Component check (label_components): 39 components total, no
+# crop-clipping warning. 25 kept (5 paw prints x [1 pad + 4 toes] each),
+# 14 erased (2 digit components '7'/'6', 11 letter components spelling
+# N-o-r-t-h-A-v-e-n-u-e letter-for-letter, and the card's own outer
+# border). su.verify() confirms exactly 25 components survived the crop
+# -- nothing merged, nothing left behind. All 25 kept components measured
+# near-uniform luminance (2-10 out of 255) -- no tonal hierarchy to
+# preserve, single flat fill colour throughout.
+#
+# RESOLVED LIMITATION (checked against a real render, not just the
+# constants): P21_ICON's box is a single rectangle bounding a DIAGONAL
+# shape, so it's conservative at the top (smallest paw reaches furthest
+# right) but loose at the bottom (where the street name actually sits).
+# Because of this, P21_STREET_MAX_WIDTH below is taken directly from the
+# source mockup's own measured text width (same reasoning as
+# P27_STREET_MAX_WIDTH: "the street band isn't bounded by the icon at
+# all"), NOT clamped against P21_ICON's bounding box. su.check_edge_
+# clearance() referenced by the skill doesn't actually exist in
+# silhouette_utils.py (same gap already hit elsewhere in this project) --
+# checked by hand instead against a real render (Helvetica-Bold,
+# "76"/"North Avenue"): real ink gap between the paw pad and the street
+# text at the street's own row is ~20mm, and all four design-to-border
+# clearances (icon left 5.47mm, icon bottom 5.76mm, icon top 4.47mm,
+# number/street right 12-14mm) clear the project's 3mm minimum
+# comfortably. Confirmed safe, not just assumed.
+# ---------------------------------------------------------------------------
+P21_ICON_MASTER = "assets/icons/p21_paw_trail_icon.png"
+
+# Icon placement box (x, y, w, h), same convention as P02_ICON/P27_ICON:
+# x/y are the distance from the card's LEFT and BOTTOM edges to the drawn
+# image box's left/bottom edges (reportlab y-up). w/h are the box to draw
+# the (already-cropped, ~3%-padded) icon PNG into.
+P21_ICON = dict(x=7.4695 * mm, y=7.7586 * mm, w=57.8354 * mm, h=85.7759 * mm)
+
+# Number/street sit beside the icon, NOT centred on the card -- explicit
+# X centres below, unlike every card-centred style in this file.
+P21_NUMBER_CENTER_X = 99.2478 * mm  # RL x, from erased "76"'s own measured centroid
+P21_NUMBER_CENTER_Y = 62.3159 * mm  # RL y, from erased "76"'s own measured centroid
+# Available half-width is limited by the SHORTER of (card right edge) and
+# (icon's right edge, 65.3049mm) from the centre above -- the icon side
+# binds (33.95mm vs. 38.75mm to the card edge), so max width uses that
+# with a 10% safety margin: 33.95mm * 2 * 0.9.
+P21_NUMBER_MAX_WIDTH = 61.11 * mm
+P21_NUMBER_MAX_SIZE = 127  # pt -- measured cap-height implies ~127.1pt at Helvetica-Bold
+P21_NUMBER_MIN_SIZE = 20
+
+P21_STREET_CENTER_X = 87.2456 * mm  # RL x, from erased "North Avenue"'s own measured centroid
+P21_STREET_CENTER_Y = 24.7577 * mm  # RL y, from erased "North Avenue"'s own measured centroid
+# See KNOWN LIMITATION note above -- this is the mockup's own measured
+# text width with a 10% safety margin, not clamped against P21_ICON's
+# (overly conservative at this height) bounding box.
+P21_STREET_MAX_WIDTH = 76.9253 * mm
+P21_STREET_MAX_SIZE = 34  # pt -- measured cap-height implies ~30.5pt; small ceiling above that
+P21_STREET_MIN_SIZE = 16
+
+# Cutting-tolerance margin, larger than the shared 2mm PAD -- same fix
+# already applied to P27_PAD (3mm) and DUCK_FATHER_PAD (3.4mm) after
+# D01/D02 shipped with only ~1.2-1.9mm of real clearance. The default
+# 2mm PAD measured only ~1.7-1.96mm real ink-to-card-edge clearance on
+# a real render (products_io.py's render_proof_thumbnail check) --
+# below the 3mm minimum. 3.4mm matches DUCK_FATHER_PAD's precedent and
+# was re-verified against a real render below.
+P21_PAD = 3.4 * mm
+
+
+def _p21_icon_path(accent_key):
+    """Same recolour-and-cache pattern as _p02_icon_path/_p27_icon_path --
+    generates the accent-coloured paw-trail icon from the master
+    silhouette on first use, caches to disk. Returns None if the master
+    art isn't present."""
+    master = _asset_path(P21_ICON_MASTER)
+    if not os.path.exists(master):
+        return None
+    path = _asset_path(f"assets/icons/p21_paw_trail_{accent_key}.png")
+    if not os.path.exists(path):
+        recolour_silhouette(master, path, _resolve_accent(accent_key))
+    return path
+
+
+def _style_p21_paw_trail(c, ox, oy, order):
+    """35. P21 -- diagonal trail of 5 paw prints (illustrated, extracted
+    via icon-silhouette-extraction -- not the plain vector single-paw of
+    style 10), house number and street name printed beside it rather
+    than nested inside (no interior hollow on this icon). LANDSCAPE
+    (140x100mm) -- see P21_* constants above for the off-spec-vs-idea-
+    board caveat and the RESOLVED street-width limitation. Catalogued as
+    D25 -- see STYLE_PRODUCT_ID and bin_sticker_products_gallery_data.md."""
+    accent_key = order.get("accent", "charcoal")
+    accent_hex = _resolve_accent(accent_key)
+
+    icon_path = _p21_icon_path(accent_key)
+    if icon_path:
+        img = ImageReader(icon_path)
+        c.drawImage(
+            img, ox + P21_ICON["x"], oy + P21_ICON["y"], P21_ICON["w"], P21_ICON["h"],
+            mask="auto", preserveAspectRatio=True, anchor="c",
+        )
+    else:
+        # Graceful fallback if the master art is missing -- there's no
+        # vector equivalent of a 5-print diagonal trail, so this falls
+        # back to the existing single-paw vector icon (style 10's
+        # draw_paw_icon) rather than attempting to fake a trail, same
+        # "substitution, not a lesser version" reasoning as every other
+        # fallback in this file.
+        print(
+            f"WARNING: p21_paw_trail: master icon not found at "
+            f"{_asset_path(P21_ICON_MASTER)!r} -- rendering plain single-"
+            f"paw fallback instead of the extracted P21 trail design for "
+            f"house_number={order.get('house_number')!r}."
+        )
+        _draw_icon(c, ox + P21_ICON["x"] + P21_ICON["w"] / 2, oy + P21_ICON["y"] + P21_ICON["h"] / 2,
+                   19 * mm, accent_hex, "paw", draw_paw_icon)
+
+    number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
+                                  P21_NUMBER_MAX_SIZE, P21_NUMBER_MIN_SIZE, P21_NUMBER_MAX_WIDTH)
+    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
+    number_baseline = P21_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(INK))
+    c.setFont("Helvetica-Bold", number_size)
+    c.drawCentredString(ox + P21_NUMBER_CENTER_X, oy + number_baseline, order["house_number"])
+
+    street_text = order["street_name"]
+    street_size = _fit_font_size(street_text, "Helvetica-Bold",
+                                  P21_STREET_MAX_SIZE, P21_STREET_MIN_SIZE, P21_STREET_MAX_WIDTH)
+    asc2, desc2 = getAscentDescent("Helvetica-Bold", street_size)
+    street_baseline = P21_STREET_CENTER_Y - (asc2 + desc2) / 2 * (25.4 / 72) * mm
+    c.setFont("Helvetica-Bold", street_size)
+    c.drawCentredString(ox + P21_STREET_CENTER_X, oy + street_baseline, street_text)
+
+    _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=P21_PAD)
+
+
 STYLES = {
     "classic": _style_classic,
     "minimal": _style_minimal,
@@ -2991,6 +3158,7 @@ STYLES = {
     "cat_family_playing1": _style_cat_family_playing1,
     "cat_family_playing2": _style_cat_family_playing2,
     "p09a_borderless": _style_p09a_borderless,
+    "p21_paw_trail": _style_p21_paw_trail,
 }
 
 STYLE_LABELS = {
@@ -3028,6 +3196,7 @@ STYLE_LABELS = {
     "cat_family_playing1": "32. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
     "cat_family_playing2": "33. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
     "p09a_borderless": "34. P09a — Borderless minimal, number + underline + street (landscape, DRAFT)",
+    "p21_paw_trail": "35. P21 — Paw trail (5 paws), number + street beside (landscape)",
 }
 
 # Cross-reference from a style key to its internal product ID in
@@ -3070,6 +3239,7 @@ STYLE_PRODUCT_ID = {
     "p28_arrow_wreath": "D22",
     "p31_olive_wreath": "D23",
     "p09a_borderless": "D24",
+    "p21_paw_trail": "D25",
 }
 
 # Card size per style. Every style defaults to the shared portrait
@@ -3104,6 +3274,7 @@ STYLE_CARD_SIZE["cat_family_2"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["cat_family_playing1"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["cat_family_playing2"] = (P02_CARD_W, P02_CARD_H)
 STYLE_CARD_SIZE["p09a_borderless"] = (P02_CARD_W, P02_CARD_H)
+STYLE_CARD_SIZE["p21_paw_trail"] = (P02_CARD_W, P02_CARD_H)
 
 
 def draw_sticker(c, ox, oy, order):

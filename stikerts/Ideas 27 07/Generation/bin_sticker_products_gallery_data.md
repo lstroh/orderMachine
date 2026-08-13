@@ -2,8 +2,8 @@
 
 *Text-only companion to `bin_sticker_products_gallery.html` — same entries, no images, kept lightweight for reference/search. IDs match the HTML gallery exactly; open that file to see the actual proof thumbnails.*
 
-**Total entries:** 24
-**Status:** 16 proof approved · 8 pending
+**Total entries:** 25
+**Status:** 17 proof approved · 8 pending
 
 This file tracks **built, code-backed designs** — a different thing from
 `bin_sticker_idea_board_data.md`, which tracks unbuilt inspiration/research
@@ -411,6 +411,21 @@ from D02's softer symmetrical look.
 **Assets required:** None — pure vector/typographic style, no external PNG dependencies.
 
 **Draft marketing angle:** DRAFT: the clean, borderless minimalist look that keeps showing up on best-selling competitor listings — for customers who want something understated rather than an illustrated or bordered design.
+
+---
+
+## D25 — Trailing Paws
+
+**Style key:** `p21_paw_trail`
+**Source idea:** P21 (EDSG 'Design 5' -- trailing paw prints + number + street, on a white card)
+**Card shape:** 140×100mm landscape
+**Status:** Proof approved
+
+**Layout:** A diagonal trail of 5 illustrated paw prints (largest at bottom-left, shrinking toward top-right), house number and street name printed beside it, accent-recolourable.
+
+**Assets required:** assets/icons/p21_paw_trail_icon.png (solid single-colour silhouette, accent-recolourable via recolour_silhouette; extracted via icon-silhouette-extraction from a Midjourney render, user-selected from 6 renders across 2 seed batches)
+
+**Draft marketing angle:** DRAFT: real market-validated pet design (EDSG's own bestselling 'Design 5', seen at genuine Amazon scale) reproduced as an upgrade over the catalogue's existing single-paw accent (style 10) -- the 5-print diagonal trail reads as more premium/illustrated than a lone paw icon, first of a planned multi-species paw-trail line (cat/rabbit/fox/hedgehog to follow using the same layout).
 
 ---
 
