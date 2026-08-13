@@ -81,6 +81,22 @@ EDGE_LONG = {
 }
 EDGE_SHORT = {"house_number": "7", "street_name": "Rye", "accent": "charcoal"}
 
+# All 12 animal-family scenes share _animal_family_text auto-shrink.
+ANIMAL_FAMILY_STYLES = (
+    "duck_family_father",
+    "duck_family_mother",
+    "duck_family_playing1",
+    "duck_family_playing2",
+    "dog_family_1",
+    "dog_family_2",
+    "dog_family_playing1",
+    "dog_family_playing2",
+    "cat_family_1",
+    "cat_family_2",
+    "cat_family_playing1",
+    "cat_family_playing2",
+)
+
 
 class SuiteResult:
     def __init__(self) -> None:
@@ -385,6 +401,136 @@ def test_p21_paw_trail_contracts(r: SuiteResult) -> None:
     r.run("p21: _p21_icon_path caches navy recolour", _recolour)
 
 
+def test_animal_family_autofit(r: SuiteResult) -> None:
+    """Animal families: shared auto-shrink replaces fixed 50pt/16pt text."""
+    missing = [s for s in ANIMAL_FAMILY_STYLES if s not in bs.STYLES]
+    r.check(
+        "animal family: all 12 styles registered",
+        not missing and len(ANIMAL_FAMILY_STYLES) == 12,
+        f"missing={missing}",
+    )
+
+    not_using_helper = [
+        s
+        for s in ANIMAL_FAMILY_STYLES
+        if "_animal_family_text" not in bs.STYLES[s].__code__.co_names
+    ]
+    r.check(
+        "animal family: every style calls _animal_family_text",
+        not not_using_helper,
+        f"styles without helper: {not_using_helper}",
+    )
+
+    r.check(
+        "animal family: number max matches prior fixed size",
+        bs.ANIMAL_NUMBER_MAX_SIZE == 50,
+        f"got {bs.ANIMAL_NUMBER_MAX_SIZE}",
+    )
+    r.check(
+        "animal family: street max matches prior fixed size",
+        bs.ANIMAL_STREET_MAX_SIZE == 16,
+        f"got {bs.ANIMAL_STREET_MAX_SIZE}",
+    )
+
+    short_num = bs._fit_font_size(
+        "36",
+        "Helvetica-Bold",
+        bs.ANIMAL_NUMBER_MAX_SIZE,
+        bs.ANIMAL_NUMBER_MIN_SIZE,
+        bs.ANIMAL_NUMBER_MAX_WIDTH,
+    )
+    long_num = bs._fit_font_size(
+        "1400",
+        "Helvetica-Bold",
+        bs.ANIMAL_NUMBER_MAX_SIZE,
+        bs.ANIMAL_NUMBER_MIN_SIZE,
+        bs.ANIMAL_NUMBER_MAX_WIDTH,
+    )
+    # Max widths are deliberately generous; use extreme text to force shrink.
+    overflow_num = "9" * 40
+    huge_num = bs._fit_font_size(
+        overflow_num,
+        "Helvetica-Bold",
+        bs.ANIMAL_NUMBER_MAX_SIZE,
+        bs.ANIMAL_NUMBER_MIN_SIZE,
+        bs.ANIMAL_NUMBER_MAX_WIDTH,
+    )
+    r.check(
+        "animal family: short number stays at max",
+        short_num == bs.ANIMAL_NUMBER_MAX_SIZE,
+        f"got {short_num}",
+    )
+    r.check(
+        "animal family: typical long number stays within max band",
+        bs.ANIMAL_NUMBER_MIN_SIZE <= long_num <= bs.ANIMAL_NUMBER_MAX_SIZE,
+        f"got {long_num}",
+    )
+    r.check(
+        "animal family: overflowing number shrinks below max",
+        huge_num < bs.ANIMAL_NUMBER_MAX_SIZE,
+        f"got {huge_num}",
+    )
+    r.check(
+        "animal family: overflowing number stays at/above min",
+        huge_num >= bs.ANIMAL_NUMBER_MIN_SIZE,
+        f"got {huge_num}",
+    )
+
+    short_street = bs._fit_font_size(
+        "Grove Street",
+        "Helvetica",
+        bs.ANIMAL_STREET_MAX_SIZE,
+        bs.ANIMAL_STREET_MIN_SIZE,
+        bs.ANIMAL_STREET_MAX_WIDTH,
+    )
+    long_street = bs._fit_font_size(
+        "Old Winchester Road",
+        "Helvetica",
+        bs.ANIMAL_STREET_MAX_SIZE,
+        bs.ANIMAL_STREET_MIN_SIZE,
+        bs.ANIMAL_STREET_MAX_WIDTH,
+    )
+    overflow_street = "Winchester " * 12
+    huge_street = bs._fit_font_size(
+        overflow_street,
+        "Helvetica",
+        bs.ANIMAL_STREET_MAX_SIZE,
+        bs.ANIMAL_STREET_MIN_SIZE,
+        bs.ANIMAL_STREET_MAX_WIDTH,
+    )
+    r.check(
+        "animal family: short street stays at max",
+        short_street == bs.ANIMAL_STREET_MAX_SIZE,
+        f"got {short_street}",
+    )
+    r.check(
+        "animal family: typical long street stays within max band",
+        bs.ANIMAL_STREET_MIN_SIZE <= long_street <= bs.ANIMAL_STREET_MAX_SIZE,
+        f"got {long_street}",
+    )
+    r.check(
+        "animal family: overflowing street shrinks below max",
+        huge_street < bs.ANIMAL_STREET_MAX_SIZE,
+        f"got {huge_street}",
+    )
+
+    def _helper_smoke() -> None:
+        path = os.path.join(_SCRIPT_DIR, "_tmp_animal_family_text.pdf")
+        try:
+            c = canvas.Canvas(path, pagesize=LANDSCAPE_SIZE)
+            bs._animal_family_text(
+                c, bs.P02_CARD_W / 2, 0, EDGE_LONG
+            )
+            c.showPage()
+            c.save()
+            _assert_pdf(path)
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+    r.run("animal family: _animal_family_text smoke", _helper_smoke)
+
+
 def test_required_assets(r: SuiteResult) -> None:
     for rel in REQUIRED_ASSETS:
         path = bs._asset_path(rel)
@@ -459,6 +605,14 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
 
     r.run("PDF edge-case short text", _edge_short)
 
+    def _animal_edge_long() -> None:
+        # Dedicated regression for the shared animal-family auto-shrink path.
+        path = os.path.join(outdir, "edge_animal_family_long_text.pdf")
+        bs.render_gallery(list(ANIMAL_FAMILY_STYLES), EDGE_LONG, path)
+        _assert_pdf(path)
+
+    r.run("PDF animal-family long-text gallery", _animal_edge_long)
+
     def _clear_vinyl() -> None:
         # render_gallery doesn't vary accent; draw a custom multi-page sheet
         from reportlab.lib.pagesizes import A4
@@ -524,6 +678,10 @@ def main(argv: list[str] | None = None) -> int:
     print("== New styles (P09a / P21) ==")
     test_p09a_borderless_contracts(r)
     test_p21_paw_trail_contracts(r)
+    print()
+
+    print("== Animal-family auto-fit ==")
+    test_animal_family_autofit(r)
     print()
 
     print("== Assets ==")

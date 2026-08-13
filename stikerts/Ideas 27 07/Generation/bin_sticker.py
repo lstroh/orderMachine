@@ -2165,6 +2165,54 @@ DUCK_FATHER_STREET_CENTER_Y = 10 * mm  # RL y, baseline
 # PAD change.
 DUCK_FATHER_PAD = 3.4 * mm
 
+# ---------------------------------------------------------------------------
+# ANIMAL-FAMILY AUTO-SHRINK CONSTANTS -- added to close the "22 fixed-size
+# styles have zero overflow protection" gap identified when auditing all 35
+# styles against the 13 that already auto-fit (P02/P25/P25b/P27/P47/P06
+# family/P09a/P21). Shared across all 12 animal-family scenes (duck/dog/cat
+# x4 each), since they all use the identical fixed-size text block this
+# replaces -- see chat history for the full audit.
+#
+# MAX sizes are set to the PREVIOUS fixed sizes (50pt number / 16pt street)
+# so short text (e.g. "36"/"Grove Street") renders identically to the old
+# proofs -- nothing changes until text is long enough to need shrinking.
+#
+# MIN sizes and MAX widths below are a PROVISIONAL starting point, not yet
+# validated against a real print -- these scenes sit in a fixed-height band
+# under the icon (unlike P02/P27's hollow-interior nesting), so there's no
+# hard geometric constraint forcing a particular floor the way there is for
+# those styles. Revisit once the physical print test (short/long/edge-case
+# house numbers and street names) comes back; tighten MAX_WIDTH or raise
+# MIN_SIZE if anything reads as touching the icon above or the border below.
+ANIMAL_NUMBER_MAX_SIZE = 50
+ANIMAL_NUMBER_MIN_SIZE = 24
+ANIMAL_NUMBER_MAX_WIDTH = 110 * mm  # card is 140mm wide; leaves margin inside PAD
+
+ANIMAL_STREET_MAX_SIZE = 16
+ANIMAL_STREET_MIN_SIZE = 9
+ANIMAL_STREET_MAX_WIDTH = 122 * mm  # matches the icon box width (120mm) plus a hair
+
+
+def _animal_family_text(c, cx, oy, order):
+    """Shared auto-shrink number/street drawing for all 12 animal-family
+    scenes -- factored out so the fix lives in one place instead of being
+    pasted 12 times (the original fixed-size version WAS pasted 12 times
+    identically, which is how this gap went unnoticed for this long)."""
+    c.setFillColor(HexColor(INK))
+    number_size = _fit_font_size(
+        order["house_number"], "Helvetica-Bold",
+        ANIMAL_NUMBER_MAX_SIZE, ANIMAL_NUMBER_MIN_SIZE, ANIMAL_NUMBER_MAX_WIDTH,
+    )
+    c.setFont("Helvetica-Bold", number_size)
+    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
+
+    street_size = _fit_font_size(
+        order["street_name"], "Helvetica",
+        ANIMAL_STREET_MAX_SIZE, ANIMAL_STREET_MIN_SIZE, ANIMAL_STREET_MAX_WIDTH,
+    )
+    c.setFont("Helvetica", street_size)
+    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+
 
 def _style_duck_family_father(c, ox, oy, order):
     """16. Duck family, scene 1 of 4 -- father mallard (identifiable by a
@@ -2202,11 +2250,7 @@ def _style_duck_family_father(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2267,11 +2311,7 @@ def _style_duck_family_mother(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2328,11 +2368,7 @@ def _style_duck_family_playing1(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2384,11 +2420,7 @@ def _style_duck_family_playing2(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2442,11 +2474,7 @@ def _style_dog_family_1(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2497,11 +2525,7 @@ def _style_dog_family_2(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2547,11 +2571,7 @@ def _style_dog_family_playing1(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2600,11 +2620,7 @@ def _style_dog_family_playing2(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2655,11 +2671,7 @@ def _style_cat_family_1(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2708,11 +2720,7 @@ def _style_cat_family_2(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2773,11 +2781,7 @@ def _style_cat_family_playing1(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
@@ -2830,11 +2834,7 @@ def _style_cat_family_playing2(c, ox, oy, order):
         )
         _draw_icon(c, cx, oy + P02_CARD_H * 0.62, 30 * mm, accent_hex, "paw", draw_paw_icon)
 
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 50)
-    c.drawCentredString(cx, oy + DUCK_FATHER_NUMBER_CENTER_Y, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + DUCK_FATHER_STREET_CENTER_Y, order["street_name"])
+    _animal_family_text(c, cx, oy, order)
 
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=DUCK_FATHER_PAD)
 
