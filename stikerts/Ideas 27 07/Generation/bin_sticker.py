@@ -631,7 +631,17 @@ P25_FLOURISH1_Y_FRAC = _p25_frac(440)         # line between number and street
 P25_STREET_BASELINE_FRAC = _p25_frac(602)     # bottom of "GROVE STREET"
 P25_FLOURISH2_Y_FRAC = _p25_frac(660)         # line below street name
 
-P25_NUMBER_SIZE = 90          # pt, Times-Bold -- matches measured ~21.2mm cap height
+P25_NUMBER_SIZE = 90          # pt, Times-Bold -- matches measured ~21.2mm cap height.
+# This was the MAX size only -- the number had no shrink protection at all
+# (fixed-size c.setFont call) until the Group 2 structural audit found it
+# alongside the animal-family gap. Kept as the max so short numbers like
+# "36" render identically to the original measured mockup.
+P25_NUMBER_MIN_SIZE = 40      # pt -- provisional floor, not yet print-validated;
+# kept well above the street's own 16pt floor so the number stays the
+# visual focal point even in a worst-case long/wide house number.
+P25_NUMBER_MAX_WIDTH = 122 * mm  # reuses the same measured text band as
+# P25_STREET_MAX_WIDTH below -- number and street are centred on the same
+# card width, so the same usable span applies to both.
 P25_STREET_MAX_WIDTH = 122 * mm  # measured text band was ~116mm; small safety margin
 P25_FLOURISH_HALF_WIDTH = 58 * mm  # measured flourish/street band was ~116mm wide
 P25_BORDER_WEIGHT = 4.5       # pt -- "solid thick" per user request, vs. 1.1pt elsewhere
@@ -904,7 +914,9 @@ def _style_p25_landscape_flourish(c, ox, oy, order):
     c.restoreState()
 
     c.setFillColor(HexColor(INK))
-    c.setFont("Times-Bold", P25_NUMBER_SIZE)
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P25_NUMBER_SIZE, P25_NUMBER_MIN_SIZE, P25_NUMBER_MAX_WIDTH)
+    c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + h * P25_NUMBER_BASELINE_FRAC, order["house_number"])
 
     draw_center_flourish(c, cx, oy + h * P25_FLOURISH1_Y_FRAC, P25_FLOURISH1_ICON, P25_FLOURISH_WIDTH)
@@ -944,7 +956,9 @@ def _style_p25b_landscape_flourish(c, ox, oy, order):
     draw_p25b_border(c, ox, oy, w, h)
 
     c.setFillColor(HexColor(INK))
-    c.setFont("Times-Bold", P25_NUMBER_SIZE)
+    number_size = _fit_font_size(order["house_number"], "Times-Bold",
+                                  P25_NUMBER_SIZE, P25_NUMBER_MIN_SIZE, P25_NUMBER_MAX_WIDTH)
+    c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + h * P25B_NUMBER_BASELINE_FRAC, order["house_number"])
 
     draw_center_flourish(c, cx, oy + h * P25B_FLOURISH_Y_FRAC, P25B_FLOURISH_ICON, P25B_FLOURISH_WIDTH)
@@ -3292,8 +3306,38 @@ def draw_sticker(c, ox, oy, order):
     STYLES[style](c, ox, oy, order)
 
 
+# Landscape sheets only (140x100mm cards, 2-up across a 297mm-wide A4 page)
+# get an ASYMMETRIC left/right margin instead of the default centred split.
+# Set from a real print test (Aug 2026): more slack on the left ("A1")
+# gives room for lamination misalignment without touching the stickers;
+# less on the right ("A2") since that side doesn't need the buffer. Portrait
+# sheets (100x140mm cards) stay centred/symmetric -- not requested there.
+#
+# This is an ABSOLUTE mm value, not a fraction of the available slack --
+# it only works because the one landscape card size in use (P02_CARD_W/H,
+# 140x100mm) has exactly 17mm of total horizontal slack on a 297mm page
+# (297 - 2*140), and 14mm fits inside that with 3mm left over for the
+# right margin (originally 15/2mm, tightened to 14/3mm after the 2mm
+# right margin risked clipping on the printer's non-printable edge). If a
+# second landscape card size is ever added with less horizontal slack than
+# 14mm, the assertion below will fail loudly rather than silently
+# producing a negative/zero right margin.
+LANDSCAPE_MARGIN_LEFT = 14 * mm
+
+
 def _sheet_layout(card_w, card_h, page_w, page_h):
-    margin_x = (page_w - 2 * card_w) / 2
+    if card_w > card_h:
+        margin_x = LANDSCAPE_MARGIN_LEFT
+        available = page_w - 2 * card_w
+        assert margin_x <= available, (
+            f"LANDSCAPE_MARGIN_LEFT ({LANDSCAPE_MARGIN_LEFT / mm}mm) exceeds "
+            f"the {available / mm}mm of horizontal slack available for a "
+            f"{card_w / mm}x{card_h / mm}mm card on a {page_w / mm}mm-wide "
+            f"page -- reduce LANDSCAPE_MARGIN_LEFT or this card size can't "
+            f"use the asymmetric layout."
+        )
+    else:
+        margin_x = (page_w - 2 * card_w) / 2
     margin_y = (page_h - 2 * card_h) / 2
     return margin_x, margin_y, [
         (margin_x, margin_y + card_h), (margin_x + card_w, margin_y + card_h),
