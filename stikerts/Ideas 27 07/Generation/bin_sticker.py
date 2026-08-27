@@ -26,6 +26,9 @@ from reportlab.pdfbase.pdfmetrics import stringWidth, getAscentDescent
 from PIL import Image
 import os
 import math
+import tempfile
+import atexit
+import shutil
 
 CARD_W, CARD_H = 100 * mm, 140 * mm
 GUIDE = "#CCCCCC"
@@ -44,6 +47,42 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def _asset_path(rel_path):
     return os.path.join(_SCRIPT_DIR, rel_path)
+
+# Recoloured per-accent icon variants (house_banner_navy.png,
+# p06_wreath_black.png, etc.) used to be cached permanently in
+# assets/icons/ alongside the real master artwork. That caused a real bug
+# (Aug 2026): once a variant was generated once, it was reused forever by
+# every future run, even after a code fix changed what colour it SHOULD
+# be -- the cache check only asked "does this file exist", never "is it
+# still correct". A run months later requesting "black" could silently
+# get back a stale file generated back when the code (or the accent
+# resolution) produced navy for that key.
+#
+# Fix: write recoloured variants to a fresh OS temp directory instead,
+# created lazily on first use and registered for automatic cleanup when
+# the process exits (atexit) -- no code changes needed at the call site,
+# `import bin_sticker; bs.render_gallery(...)` keeps working exactly as
+# before. Every run starts from a clean cache, so a stale file from a
+# previous run (or a previous version of the code) can never be picked up
+# again. Master silhouettes (P02_ICON_MASTER etc.) are untouched by this
+# -- those are real source assets and still live permanently in
+# assets/icons/, resolved via _asset_path as always.
+_ICON_CACHE_DIR = None
+
+
+def _get_icon_cache_dir():
+    global _ICON_CACHE_DIR
+    if _ICON_CACHE_DIR is None:
+        _ICON_CACHE_DIR = tempfile.mkdtemp(prefix="bin_sticker_icons_")
+        atexit.register(shutil.rmtree, _ICON_CACHE_DIR, ignore_errors=True)
+    return _ICON_CACHE_DIR
+
+
+def _cached_icon_path(name):
+    """Path for a recoloured icon variant inside this run's temp cache
+    (e.g. name='house_banner_black.png'). Distinct from _asset_path,
+    which resolves permanent, real source assets."""
+    return os.path.join(_get_icon_cache_dir(), name)
 
 BG = "#FFFFFF"
 INK = "#111111"
@@ -96,7 +135,7 @@ def _p02_icon_path(accent_key):
     master = _asset_path(P02_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/house_banner_{accent_key}.png")
+    path = _cached_icon_path(f"house_banner_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -174,7 +213,7 @@ CLEAR_VINYL_ACCENTS = {
 }
 
 
-def _resolve_accent(accent_key, default="navy"):
+def _resolve_accent(accent_key, default="black"):
     """Looks up an accent key in ACCENTS first, then CLEAR_VINYL_ACCENTS,
     so any style function can accept a key from either palette. Falls
     back to ACCENTS[default] if the key isn't found in either."""
@@ -348,7 +387,7 @@ def draw_center_flourish(c, cx, y, icon_rel_path, width, color=INK):
     if not os.path.exists(master):
         return  # asset missing -- draw nothing rather than a wrong placeholder
     name = os.path.splitext(os.path.basename(icon_rel_path))[0]
-    coloured_path = _asset_path(f"assets/icons/{name}_{color.lstrip('#')}.png")
+    coloured_path = _cached_icon_path(f"{name}_{color.lstrip('#')}.png")
     if not os.path.exists(coloured_path):
         recolour_silhouette(master, coloured_path, color)
     img = ImageReader(coloured_path)
@@ -452,7 +491,7 @@ def _style_recycle(c, ox, oy, order):
 def _style_house(c, ox, oy, order):
     """5. House silhouette — contemporary, elegant, versatile across
     house styles per current design-trend coverage."""
-    accent = _resolve_accent(order.get("accent", "navy"))
+    accent = _resolve_accent(order.get("accent", "black"))
     cx = ox + CARD_W / 2
     _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 14 * mm, accent, "house", draw_house_icon)
     c.setFillColor(HexColor(INK))
@@ -466,7 +505,7 @@ def _style_house(c, ox, oy, order):
 def _style_reverse_block(c, ox, oy, order):
     """6. Bold reverse-block (white-on-colour) — high-contrast styling in
     the spirit of the reflective/high-visibility category."""
-    accent = _resolve_accent(order.get("accent", "navy"))
+    accent = _resolve_accent(order.get("accent", "black"))
     cx = ox + CARD_W / 2
     inset = PAD + 1.3 * mm
     c.setFillColor(HexColor(accent))
@@ -809,7 +848,7 @@ def draw_corner_bracket(c, ox, oy, w, h, color=INK):
         if not os.path.exists(master):
             continue
         name = os.path.splitext(os.path.basename(rel_path))[0]
-        coloured_path = _asset_path(f"assets/icons/{name}_{color.lstrip('#')}.png")
+        coloured_path = _cached_icon_path(f"{name}_{color.lstrip('#')}.png")
         if not os.path.exists(coloured_path):
             recolour_silhouette(master, coloured_path, color)
         img = ImageReader(coloured_path)
@@ -900,7 +939,7 @@ def _style_p02_house_banner(c, ox, oy, order):
     STYLE_CARD_SIZE and P02_CARD_W/H. See chat history for the full
     derivation, and STYLE_PRODUCT_ID / bin_sticker_products_gallery_data.md
     for how this maps to the D01 catalogue entry."""
-    accent_key = order.get("accent", "navy")
+    accent_key = order.get("accent", "black")
     accent_hex = _resolve_accent(accent_key)
     cx = ox + P02_CARD_W / 2
 
@@ -1137,7 +1176,7 @@ def _p27_icon_path(accent_key):
     master = _asset_path(P27_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p27_house_{accent_key}.png")
+    path = _cached_icon_path(f"p27_house_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -1279,7 +1318,7 @@ def _p47_icon_path(accent_key):
     master = _asset_path(P47_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p47_house_{accent_key}.png")
+    path = _cached_icon_path(f"p47_house_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -1498,7 +1537,7 @@ def _p06_icon_path(accent_key):
     master = _asset_path(P06_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p06_wreath_{accent_key}.png")
+    path = _cached_icon_path(f"p06_wreath_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -1736,7 +1775,7 @@ def _p30_laurel_icon_path(accent_key):
     master = _asset_path(P30_LAUREL_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p30_laurel_{accent_key}.png")
+    path = _cached_icon_path(f"p30_laurel_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -1878,7 +1917,7 @@ def _p15_heart_icon_path(accent_key):
     master = _asset_path(P15_HEART_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p15_heart_{accent_key}.png")
+    path = _cached_icon_path(f"p15_heart_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -2020,7 +2059,7 @@ def _p28_arrow_icon_path(accent_key):
     master = _asset_path(P28_ARROW_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p28_arrow_{accent_key}.png")
+    path = _cached_icon_path(f"p28_arrow_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -2157,7 +2196,7 @@ def _p31_olive_icon_path(accent_key):
     master = _asset_path(P31_OLIVE_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p31_olive_{accent_key}.png")
+    path = _cached_icon_path(f"p31_olive_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
@@ -3185,7 +3224,7 @@ def _p21_icon_path(accent_key):
     master = _asset_path(P21_ICON_MASTER)
     if not os.path.exists(master):
         return None
-    path = _asset_path(f"assets/icons/p21_paw_trail_{accent_key}.png")
+    path = _cached_icon_path(f"p21_paw_trail_{accent_key}.png")
     if not os.path.exists(path):
         recolour_silhouette(master, path, _resolve_accent(accent_key))
     return path
