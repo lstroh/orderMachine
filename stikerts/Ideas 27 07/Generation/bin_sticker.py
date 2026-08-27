@@ -134,6 +134,7 @@ def _draw_icon_rotated(c, cx, cy, size, color, style_key, vector_fn, rot=0):
         vector_fn(c, cx, cy, size, color, rot)
 
 ACCENTS = {
+    "black":      INK,
     "charcoal":   "#2C2C2A",
     "forest":     "#2F5233",
     "navy":       "#1F3A5F",
@@ -595,7 +596,15 @@ P02_ICON_Y_TOP = 7.9391 * mm  # icon's top edge, measured from the card's top ed
 P02_NUMBER_CENTER_Y = 59.7317 * mm  # RL y
 P02_NUMBER_MAX_WIDTH = 36.8821 * 0.90 * mm  # house interior gap width, 10% safety margin
 
-P02_STREET_CENTER_Y = 35.2426 * mm  # RL y
+P02_STREET_CENTER_Y = 36.8 * mm  # RL y -- nudged from 35.2426mm (Aug 2026):
+# pixel-measured against a real print scan (card border = known 100mm),
+# the street text sat with a 1.15mm gap above vs 2.2mm gap below inside
+# the ribbon -- the cap-height fix (see TIMES_BOLD/HELVETICA_BOLD_CAP_
+# HEIGHT_RATIO above) was directionally correct but left this ~1mm net
+# residual, meaning the original measured centroid was itself slightly
+# off centre-band, not just the ascent/descent formula. This value is
+# the ribbon's actual measured interior midpoint from that same scan
+# ((647px top + 836px bottom)/2, at 11.34px/mm), not a formula output.
 P02_STREET_MAX_WIDTH = 86.4636 * 0.90 * mm  # banner usable-band width, 10% safety margin
 
 # Quadratic fit (least-squares, residual std <1px) to the banner's own
@@ -628,8 +637,48 @@ def _p25_frac(row_px):
 
 P25_NUMBER_BASELINE_FRAC = _p25_frac(367)     # bottom of the "36" glyphs
 P25_FLOURISH1_Y_FRAC = _p25_frac(440)         # line between number and street
-P25_STREET_BASELINE_FRAC = _p25_frac(602)     # bottom of "GROVE STREET"
+P25_STREET_BASELINE_FRAC = _p25_frac(602)     # bottom of "GROVE STREET" --
+# NO LONGER USED for positioning (see P25_STREET_CENTER_Y below); kept as
+# a comment-only reference to the original measured mockup baseline.
 P25_FLOURISH2_Y_FRAC = _p25_frac(660)         # line below street name
+
+# The street baseline used to be the fixed P25_STREET_BASELINE_FRAC above,
+# measured against the original "GROVE STREET" mockup at its full/near-full
+# fitted size. That's fine as long as the text renders near that size --
+# but for a long street name that auto-shrinks a lot, the glyphs get
+# visibly SHORTER while the baseline stays put, so the gap above the text
+# (to FLOURISH1) grows while the gap below (to FLOURISH2) shrinks -- text
+# reads as sitting low in its band instead of centred. Found on a real
+# print test (Aug 2026, cards 5/6, "AMERSHAM-ON-THE-HILL ROAD").
+#
+# Fix: centre the text vertically between the two flourish lines instead,
+# same asc/desc-based centring already used for e.g. P02's number
+# (getAscentDescent + baseline = center_y - (asc+desc)/2 in mm).
+#
+# UPDATE (real print test, Aug 2026, cards 9-12): the asc/desc version
+# above centred correctly for the LONG text case it was built to fix, but
+# introduced a small consistent high-riding offset on every card, short
+# or long. Cause: street_text is always .upper() -- no descenders -- but
+# getAscentDescent's "descent" still reserves space for one anyway (part
+# of the font's full metrics box, not specific to the glyphs actually
+# used), which pulls the calculated centre down toward the baseline more
+# than the real all-caps ink block warrants. Fix: centre against the
+# font's CAP HEIGHT instead of full ascent+descent -- reportlab doesn't
+# expose cap height for the base-14 fonts at runtime, so this uses the
+# standard published Adobe AFM value for Times-Bold (676/1000 em),
+# same authority as the font's other metrics.
+TIMES_BOLD_CAP_HEIGHT_RATIO = 0.676
+
+# Same fix, same reasoning, for the other bold font used across the
+# Group 1 icon-nested styles -- this bug isn't unique to P25/Times-Bold.
+# EVERY style that centres a house number or street name via
+# getAscentDescent has the identical exposure, since house numbers
+# (digit strings) and street names (always .upper()'d) never have
+# descenders in either font. Standard Adobe AFM CapHeight for
+# Helvetica-Bold is 718/1000 em.
+HELVETICA_BOLD_CAP_HEIGHT_RATIO = 0.718
+
+P25_STREET_CENTER_Y = P02_CARD_H * (P25_FLOURISH1_Y_FRAC + P25_FLOURISH2_Y_FRAC) / 2
 
 P25_NUMBER_SIZE = 90          # pt, Times-Bold -- matches measured ~21.2mm cap height.
 # This was the MAX size only -- the number had no shrink protection at all
@@ -675,6 +724,22 @@ P25_FLOURISH_WIDTH = 116 * mm  # measured span of the line+swirl assembly
 # ---------------------------------------------------------------------------
 P25B_FLOURISH_ICON = "assets/icons/p25b_flourish.png"  # aspect 18.22:1 (w:h)
 P25B_FLOURISH_WIDTH = 123 * mm  # measured span of the line+swirl assembly
+
+# P25b's true interior width (between the inner border lines) is ~121.0mm:
+# 140mm card width minus a 9.390mm left inset and 9.603mm right inset,
+# each computed from P25B_EDGE_SPEC's own (inner_inset + inner_width) for
+# that side. That's actually NARROWER than the shared P25_STREET_MAX_WIDTH
+# (122mm) both styles used to share -- P25's plain single rounded border
+# has much more interior room, but P25b's double-line-plus-corner-bracket
+# border doesn't, so the shared 122mm ceiling let text touch/cross P25b's
+# border on real prints (Aug 2026, cards 3/4/8: "AMERSHAM-ON-THE-HILL
+# ROAD" and even the shorter "HIGH STREET"). Trimmed to 115mm to leave
+# ~3mm of visible clearance on each side rather than zero.
+P25B_STREET_MAX_WIDTH = 115 * mm
+P25B_NUMBER_MAX_WIDTH = 115 * mm  # same true-interior reasoning; the
+# number wasn't flagged as touching on any print test, but it shared the
+# same over-generous 122mm ceiling as street, so tightened proactively
+# rather than waiting for a report.
 
 P25B_NUMBER_BASELINE_FRAC = _p25_frac(380)   # bottom of the "36" glyphs
 P25B_FLOURISH_Y_FRAC = _p25_frac(470)        # the flourish's own line row
@@ -869,16 +934,22 @@ def _style_p02_house_banner(c, ox, oy, order):
         return
 
     number_size = _fit_font_size(order["house_number"], "Helvetica-Bold", 44, 20, P02_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
-    number_baseline = P02_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P02_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Helvetica-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
 
     street_text = order["street_name"].upper()
-    street_size = _fit_font_size(street_text, "Helvetica-Bold", 19, 8, P02_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", street_size)
-    street_baseline = P02_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    # MAX size raised 19 -> 22pt (Aug 2026): real print showed short street
+    # names ("RYE", "MILL LANE") pinned at the old 19pt ceiling with the
+    # ribbon's width budget barely touched -- the ceiling, not the width,
+    # was the binding constraint. Pixel-measured against the same scan:
+    # text height was using ~13.3mm of the ribbon's ~16.7mm interior
+    # height, so 22pt leaves ~1mm total clearance (was ~3.3mm at 19pt).
+    street_size = _fit_font_size(street_text, "Helvetica-Bold", 22, 8, P02_STREET_MAX_WIDTH)
+    cap_height = street_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P02_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     _draw_curved_text(
         c, street_text, cx, oy + street_baseline, "Helvetica-Bold", street_size, accent_hex,
         ox + P02_ICON_X_LEFT, P02_ICON_SCALE, _p02_banner_mid_px, P02_BANNER_CURVE_COEFFS,
@@ -923,8 +994,10 @@ def _style_p25_landscape_flourish(c, ox, oy, order):
 
     street_text = order["street_name"].upper()
     street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25_STREET_MAX_WIDTH)
+    cap_height = street_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P25_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFont("Times-Bold", street_size)
-    c.drawCentredString(cx, oy + h * P25_STREET_BASELINE_FRAC, street_text)
+    c.drawCentredString(cx, oy + street_baseline, street_text)
 
     draw_center_flourish(c, cx, oy + h * P25_FLOURISH2_Y_FRAC, P25_FLOURISH2_ICON, P25_FLOURISH_WIDTH)
 
@@ -957,14 +1030,14 @@ def _style_p25b_landscape_flourish(c, ox, oy, order):
 
     c.setFillColor(HexColor(INK))
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
-                                  P25_NUMBER_SIZE, P25_NUMBER_MIN_SIZE, P25_NUMBER_MAX_WIDTH)
+                                  P25_NUMBER_SIZE, P25_NUMBER_MIN_SIZE, P25B_NUMBER_MAX_WIDTH)
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + h * P25B_NUMBER_BASELINE_FRAC, order["house_number"])
 
     draw_center_flourish(c, cx, oy + h * P25B_FLOURISH_Y_FRAC, P25B_FLOURISH_ICON, P25B_FLOURISH_WIDTH)
 
     street_text = order["street_name"].upper()
-    street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25_STREET_MAX_WIDTH)
+    street_size = _fit_font_size(street_text, "Times-Bold", 50, 16, P25B_STREET_MAX_WIDTH)
     c.setFont("Times-Bold", street_size)
     c.drawCentredString(cx, oy + h * P25B_STREET_BASELINE_FRAC, street_text)
 
@@ -1114,8 +1187,8 @@ def _style_p27_landscape_house(c, ox, oy, order):
 
     number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
                                   P27_NUMBER_MAX_SIZE, P27_NUMBER_MIN_SIZE, P27_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
-    number_baseline = P27_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P27_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Helvetica-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1123,8 +1196,8 @@ def _style_p27_landscape_house(c, ox, oy, order):
     street_text = order["street_name"].upper()
     street_size = _fit_font_size(street_text, "Helvetica-Bold",
                                   P27_STREET_MAX_SIZE, P27_STREET_MIN_SIZE, P27_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", street_size)
-    street_baseline = P27_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = street_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P27_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Helvetica-Bold", street_size)
     c.drawCentredString(cx, oy + street_baseline, street_text)
@@ -1260,8 +1333,8 @@ def _style_p47_house(c, ox, oy, order):
 
     number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
                                   P47_NUMBER_MAX_SIZE, P47_NUMBER_MIN_SIZE, P47_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
-    number_baseline = P47_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P47_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Helvetica-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1340,27 +1413,39 @@ def _style_p47_house(c, ox, oy, order):
 # ---------------------------------------------------------------------------
 P06_ICON_MASTER = "assets/icons/p06_wreath_icon.png"
 
-P06_ICON = dict(x=29.8637 * mm, y=9.3501 * mm, w=80.8340 * mm, h=79.2474 * mm)
+# Icon scaled up ~13.6% from its original measured size, per real print-test
+# feedback (Aug 2026): the wreath only spanned ~75mm vertically on a 100mm
+# card, leaving ~12-14mm of unused margin top and bottom -- confirmed by
+# pixel-measuring the printed scan against the card's own known 100mm
+# height. New target height is 90mm (5mm margin top/bottom). Every other
+# P06_* constant below is derived by applying the SAME scale factor around
+# the SAME icon centre (not re-measured from scratch), which is exact by
+# construction since this is a uniform scale of the same artwork -- but
+# still wants a real print check, same as any other change in this file.
+P06_ICON = dict(x=24.3798 * mm, y=3.9738 * mm, w=91.8019 * mm, h=90.0000 * mm)
 
-P06_NUMBER_CENTER_Y = 52.0798 * mm  # RL y, erased "36" centroid
-P06_NUMBER_MAX_WIDTH = 50.8581 * 0.90 * mm  # true min wreath-interior gap across digit height, 10% margin
+P06_NUMBER_CENTER_Y = 52.5012 * mm  # RL y, erased "36" centroid, scaled
+P06_NUMBER_MAX_WIDTH = 57.7587 * 0.90 * mm  # true min wreath-interior gap across digit height, 10% margin, scaled
 # MAX_SIZE is a MEASURED ceiling, not a generous one -- unlike P47 (whose
 # number sits alone with no other field close by, so an oversized
 # ceiling only ever gets trimmed by width), P06 has the street name
 # sitting close beneath the number, so leaving width as the only
 # constraint let the first test render auto-fit "36" up past 100pt and
 # visually collide with "GROVE STREET" below (P06_NUMBER_CENTER_Y and
-# P06_STREET_CENTER_Y are only 18.5mm apart). Ceiling derived from the
-# erased digits' own bbox height (22.12mm, ~62.7pt cap-height) divided
-# by Times-Bold's ~0.662 cap-height-to-nominal-size ratio -> ~94.7pt,
-# rounded down slightly for a small safety margin against the same
-# collision recurring for a 1-digit or unusually tall house number.
-P06_NUMBER_MAX_SIZE = 92  # pt -- measured from source glyph height, see comment above
+# P06_STREET_CENTER_Y are only 18.5mm apart, pre-scale). Ceiling derived
+# from the erased digits' own bbox height (22.12mm, ~62.7pt cap-height)
+# divided by Times-Bold's ~0.662 cap-height-to-nominal-size ratio ->
+# ~94.7pt, rounded down slightly for a small safety margin against the
+# same collision recurring for a 1-digit or unusually tall house number.
+# Scaled by the same factor as everything else above -- the number/street
+# gap and this ceiling grew together, so the collision margin this was
+# built to protect is preserved proportionally, not eroded by the scale-up.
+P06_NUMBER_MAX_SIZE = 104  # pt -- measured from source glyph height, scaled; see comment above
 P06_NUMBER_MIN_SIZE = 20
 
-P06_STREET_CENTER_Y = 33.6152 * mm  # RL y, erased "GROVE STREET" centroid
-P06_STREET_MAX_WIDTH = 36.8244 * 0.90 * mm  # true min wreath-interior gap across street-text height, 10% margin
-P06_STREET_MAX_SIZE = 60  # pt -- below the ~75.7pt measured ceiling; width constraint dominates anyway
+P06_STREET_CENTER_Y = 31.5313 * mm  # RL y, erased "GROVE STREET" centroid, scaled
+P06_STREET_MAX_WIDTH = 41.8209 * 0.90 * mm  # true min wreath-interior gap across street-text height, 10% margin, scaled
+P06_STREET_MAX_SIZE = 68  # pt -- below the scaled measured ceiling; width constraint dominates anyway
 # MIN_SIZE=14 (the original value) turned out to be a BROKEN floor, not a
 # style choice -- _fit_font_size's loop only decrements while size is
 # still above min_size, so once it reaches the floor it stops even if
@@ -1370,11 +1455,20 @@ P06_STREET_MAX_SIZE = 60  # pt -- below the ~75.7pt measured ceiling; width cons
 # both were silently rendering oversized and overlapping the wreath's
 # flowers (caught on a real test render with "FLAT B" / "12 Central
 # Avenue", not visible with the shorter names tested earlier). Lowered
-# to 8pt so auto-fit can actually reach a size that fits for realistic
-# street-name lengths; very long names will render small as a result --
-# that's the honest trade-off for this wreath's narrow interior, not a
-# bug to hide by raising the floor back up.
-P06_STREET_MIN_SIZE = 8
+# to 8pt at the time so auto-fit could reach a size that actually fit.
+#
+# UPDATE (real print test, Aug 2026): 8pt looked too small on paper --
+# raised to 12pt now that the wreath scale-up above gives real headroom
+# ("12 CENTRAL AVENUE" now needs exactly 12pt to fit, not the old ~8pt).
+# This isn't free: it drops the safe street-name length from ~17 chars
+# (at 8pt) to ~12 chars (at 12pt) -- see chat history for the exact
+# breakpoint table across 10/12/14pt. Longer names still render AT the
+# 12pt floor and overflow the intended width band slightly rather than
+# disappearing -- an honest, visible trade-off for legibility, not a
+# silent bug. This style's real street-name limit is materially tighter
+# than P25/P25b's (~28 chars) -- don't assume one project-wide limit
+# covers every style.
+P06_STREET_MIN_SIZE = 12
 
 # Quadratic fit (icon-local px, y-down) to the 10 erased street-letter
 # centroids -- (-3.34512697e-03, 2.38274801e+00, 1.08664515e+02),
@@ -1457,8 +1551,8 @@ def _style_p06_wreath(c, ox, oy, order):
 
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
                                   P06_NUMBER_MAX_SIZE, P06_NUMBER_MIN_SIZE, P06_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", number_size)
-    number_baseline = P06_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P06_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1466,8 +1560,8 @@ def _style_p06_wreath(c, ox, oy, order):
     street_text = order["street_name"].upper()
     street_size = _fit_font_size(street_text, "Times-Bold",
                                   P06_STREET_MAX_SIZE, P06_STREET_MIN_SIZE, P06_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", street_size)
-    street_baseline = P06_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = street_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P06_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", street_size)
     c.drawCentredString(cx, oy + street_baseline, street_text)
@@ -1554,8 +1648,8 @@ def _style_p06_wreath_numbers(c, ox, oy, order):
 
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
                                   P06_NUM_ONLY_MAX_SIZE, P06_NUM_ONLY_MIN_SIZE, P06_NUM_ONLY_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", number_size)
-    number_baseline = P06_NUM_ONLY_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P06_NUM_ONLY_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1690,8 +1784,8 @@ def _style_p30_laurel_numbers(c, ox, oy, order):
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
                                   P30_LAUREL_NUMBER_MAX_SIZE, P30_LAUREL_NUMBER_MIN_SIZE,
                                   P30_LAUREL_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", number_size)
-    number_baseline = P30_LAUREL_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P30_LAUREL_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1773,7 +1867,7 @@ P15_HEART_NUMBER_MIN_SIZE = 20
 
 P15_HEART_STREET_CENTER_Y = 34.5850 * mm  # RL y, erased "FISHPOND LANE" centroid
 P15_HEART_STREET_MAX_WIDTH = 62.85 * 0.90 * mm  # true min interior gap, 10% margin
-P15_HEART_STREET_MAX_SIZE = 20  # pt -- measured from source letter height (~19pt implied)
+P15_HEART_STREET_MAX_SIZE = 26  # pt -- raised further from 22 (2nd Aug 2026 print test): "RYE" was STILL pinned at the ceiling and still read as small, even though it has no real width constraint (only "HIGH STREET" does, at ~23pt). Since _fit_font_size clamps each string independently, raising the ceiling above "HIGH STREET"'s own width limit lets short text like "RYE" grow while "HIGH STREET" naturally stays clamped by its own width, not by this ceiling.
 P15_HEART_STREET_MIN_SIZE = 8  # not 14 -- see D18's broken-floor bug in the block comment above
 
 
@@ -1831,8 +1925,8 @@ def _style_p15_heart_wreath(c, ox, oy, order):
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
                                   P15_HEART_NUMBER_MAX_SIZE, P15_HEART_NUMBER_MIN_SIZE,
                                   P15_HEART_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", number_size)
-    number_baseline = P15_HEART_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P15_HEART_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1841,8 +1935,8 @@ def _style_p15_heart_wreath(c, ox, oy, order):
     street_size = _fit_font_size(street_text, "Times-Bold",
                                   P15_HEART_STREET_MAX_SIZE, P15_HEART_STREET_MIN_SIZE,
                                   P15_HEART_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", street_size)
-    street_baseline = P15_HEART_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = street_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P15_HEART_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", street_size)
     c.drawCentredString(cx, oy + street_baseline, street_text)
@@ -1908,14 +2002,14 @@ P28_ARROW_ICON_MASTER = "assets/icons/p28_arrow_icon.png"
 
 P28_ARROW_ICON = dict(x=22.9268 * mm, y=3.1683 * mm, w=94.0488 * mm, h=93.1683 * mm)
 
-P28_ARROW_NUMBER_CENTER_Y = 54.1521 * mm  # RL y, erased "36" centroid
+P28_ARROW_NUMBER_CENTER_Y = 55.65 * mm  # RL y -- shifted +1.5mm from the erased "36" centroid (54.1521mm) to open a bit more clearance to the street text below (Aug 2026 print test: only ~1.5mm gap at max sizes, user asked for a visible margin)
 P28_ARROW_NUMBER_MAX_WIDTH = 60.5854 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
 P28_ARROW_NUMBER_MAX_SIZE = 120  # pt -- measured from source digit height (~126pt implied), small trim for safety
 P28_ARROW_NUMBER_MIN_SIZE = 20
 
-P28_ARROW_STREET_CENTER_Y = 34.6100 * mm  # RL y, erased "CENTRAL AVENUE" centroid
+P28_ARROW_STREET_CENTER_Y = 33.11 * mm  # RL y -- shifted -1.5mm from the erased "CENTRAL AVENUE" centroid (34.6100mm), same margin fix as the number above, symmetric
 P28_ARROW_STREET_MAX_WIDTH = 69.3659 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
-P28_ARROW_STREET_MAX_SIZE = 19  # pt -- measured from the (this time genuinely flat) erased letters' own bbox height
+P28_ARROW_STREET_MAX_SIZE = 28  # pt -- raised further from 24 (2nd Aug 2026 print test): same fix as P15 -- ceiling now sits above "HIGH STREET"'s own ~25pt width limit so short text can use the full ceiling while long text still clamps safely on width alone.
 P28_ARROW_STREET_MIN_SIZE = 8  # established floor (see D18's broken-14pt-floor bug), not 14
 
 
@@ -1975,8 +2069,8 @@ def _style_p28_arrow_wreath(c, ox, oy, order):
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
                                   P28_ARROW_NUMBER_MAX_SIZE, P28_ARROW_NUMBER_MIN_SIZE,
                                   P28_ARROW_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", number_size)
-    number_baseline = P28_ARROW_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P28_ARROW_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -1985,8 +2079,8 @@ def _style_p28_arrow_wreath(c, ox, oy, order):
     street_size = _fit_font_size(street_text, "Times-Bold",
                                   P28_ARROW_STREET_MAX_SIZE, P28_ARROW_STREET_MIN_SIZE,
                                   P28_ARROW_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", street_size)
-    street_baseline = P28_ARROW_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = street_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P28_ARROW_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", street_size)
     c.drawCentredString(cx, oy + street_baseline, street_text)
@@ -2052,7 +2146,7 @@ P31_OLIVE_NUMBER_MIN_SIZE = 20
 
 P31_OLIVE_STREET_CENTER_Y = 35.5432 * mm  # RL y, erased "MAPLE DRIVE" centroid
 P31_OLIVE_STREET_MAX_WIDTH = 52.9950 * 0.90 * mm  # true min interior gap (left/right-half method), 10% margin
-P31_OLIVE_STREET_MAX_SIZE = 12  # pt -- measured from the (genuinely flat) erased letters' own bbox height (~12.7pt implied)
+P31_OLIVE_STREET_MAX_SIZE = 22  # pt -- raised further from 18 (2nd Aug 2026 print test): same fix as P15/P28 -- ceiling now sits above "HIGH STREET"'s own ~19pt width limit.
 P31_OLIVE_STREET_MIN_SIZE = 8  # established floor (see D18's broken-14pt-floor bug), not 14
 
 
@@ -2112,8 +2206,8 @@ def _style_p31_olive_wreath(c, ox, oy, order):
     number_size = _fit_font_size(order["house_number"], "Times-Bold",
                                   P31_OLIVE_NUMBER_MAX_SIZE, P31_OLIVE_NUMBER_MIN_SIZE,
                                   P31_OLIVE_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", number_size)
-    number_baseline = P31_OLIVE_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P31_OLIVE_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -2122,8 +2216,8 @@ def _style_p31_olive_wreath(c, ox, oy, order):
     street_size = _fit_font_size(street_text, "Times-Bold",
                                   P31_OLIVE_STREET_MAX_SIZE, P31_OLIVE_STREET_MIN_SIZE,
                                   P31_OLIVE_STREET_MAX_WIDTH)
-    asc, desc = getAscentDescent("Times-Bold", street_size)
-    street_baseline = P31_OLIVE_STREET_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = street_size * TIMES_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P31_OLIVE_STREET_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(accent_hex))
     c.setFont("Times-Bold", street_size)
     c.drawCentredString(cx, oy + street_baseline, street_text)
@@ -2165,10 +2259,22 @@ DUCK_FATHER_ICON_MASTER = "assets/icons/duck_family_father_icon.png"
 # the 120mm box width given here.
 DUCK_FATHER_ICON = dict(x=10 * mm, y=34 * mm, w=120 * mm, h=58 * mm)
 
-DUCK_FATHER_NUMBER_CENTER_Y = 22 * mm  # RL y, baseline (not true centre --
-# same simple convention as style 10/paw, not P27/P47's asc/desc centring,
-# since there's no hollow interior to centre precisely against)
-DUCK_FATHER_STREET_CENTER_Y = 10 * mm  # RL y, baseline
+DUCK_FATHER_NUMBER_CENTER_Y = 17 * mm  # RL y, baseline -- shifted down from
+# 22mm (2nd Aug 2026 print test, "text should be bigger" on all 12 cards).
+# The number's cap-height at the OLD 50pt size already reached 34.66mm --
+# 0.66mm INTO the icon's own bounding box (icon bottom edge = 34mm, see
+# DUCK_FATHER_ICON above) -- so simply raising the size ceiling at the old
+# baseline would have made that worse, not better. This baseline and the
+# new ANIMAL_NUMBER_MAX_SIZE below were derived together: baseline moved
+# down to 17mm, target cap height 16mm (up from ~12.7mm), giving a top
+# edge of 33mm -- 1mm of deliberate safety margin below the icon, not
+# flush against it.
+DUCK_FATHER_STREET_CENTER_Y = 7 * mm  # RL y, baseline -- shifted down from
+# 10mm, same exercise as the number above: target cap height ~7mm (up
+# from ~4mm), leaving a ~3mm gap up to the new number baseline and
+# ~1.6mm clearance below the street's own descenders (this field isn't
+# .upper()'d, so real descenders like the "y" in "Rye" are possible) down
+# to DUCK_FATHER_PAD.
 
 # Same fix as D04/P27_PAD: the shared global PAD (2mm) puts the border
 # stroke itself under the 3mm minimum ink-to-card-edge clearance
@@ -2191,18 +2297,19 @@ DUCK_FATHER_PAD = 3.4 * mm
 # so short text (e.g. "36"/"Grove Street") renders identically to the old
 # proofs -- nothing changes until text is long enough to need shrinking.
 #
-# MIN sizes and MAX widths below are a PROVISIONAL starting point, not yet
-# validated against a real print -- these scenes sit in a fixed-height band
-# under the icon (unlike P02/P27's hollow-interior nesting), so there's no
-# hard geometric constraint forcing a particular floor the way there is for
-# those styles. Revisit once the physical print test (short/long/edge-case
-# house numbers and street names) comes back; tighten MAX_WIDTH or raise
-# MIN_SIZE if anything reads as touching the icon above or the border below.
-ANIMAL_NUMBER_MAX_SIZE = 50
+# MIN sizes and MAX widths below are a starting point, validated against
+# real prints for width (never an issue -- even a 25-char street stays
+# well under budget) but the vertical/size ceiling was WRONG (see
+# DUCK_FATHER_NUMBER_CENTER_Y/STREET_CENTER_Y above): both fields read as
+# too small on a real print, and the number's old ceiling was already
+# flush against the icon's bounding box, so this was a baseline+ceiling
+# redesign together, not just a bigger number. Revisit MIN_SIZE floors if
+# a future print shows either field touching the icon or the border.
+ANIMAL_NUMBER_MAX_SIZE = 63  # pt -- raised from 50 (2nd Aug 2026 print test); see DUCK_FATHER_NUMBER_CENTER_Y comment for the geometry this was derived from
 ANIMAL_NUMBER_MIN_SIZE = 24
 ANIMAL_NUMBER_MAX_WIDTH = 110 * mm  # card is 140mm wide; leaves margin inside PAD
 
-ANIMAL_STREET_MAX_SIZE = 16
+ANIMAL_STREET_MAX_SIZE = 27  # pt -- raised from 16 (2nd Aug 2026 print test); see DUCK_FATHER_STREET_CENTER_Y comment for the geometry this was derived from
 ANIMAL_STREET_MIN_SIZE = 9
 ANIMAL_STREET_MAX_WIDTH = 122 * mm  # matches the icon box width (120mm) plus a hair
 
@@ -2918,7 +3025,7 @@ P09A_NUMBER_MAX_WIDTH = 110 * mm  # generous ceiling (card width minus 2x15mm ma
 P09A_NUMBER_MAX_SIZE = 140  # pt -- auto-fit shrinks as needed
 P09A_NUMBER_MIN_SIZE = 20
 
-P09A_STREET_MAX_WIDTH = 96.5867 * mm  # true measured street-text width (107.32mm), 10% safety margin
+P09A_STREET_MAX_WIDTH = 120 * mm  # raised from 96.5867mm (Aug 2026 print test): the old value was 90% of a source-MOCKUP measurement (107.32mm), not a real constraint -- this style has no icon/border to avoid, so the only real limit is staying inside the 140mm card with reasonable side margins. 120mm leaves 10mm each side. Long street names ("AMERSHAM-ON-THE-HILL ROAD") were rendering at ~17pt and looking small; this gets that case to ~21pt.
 P09A_STREET_MAX_SIZE = 66  # pt
 P09A_STREET_MIN_SIZE = 16
 
@@ -2942,8 +3049,8 @@ def _style_p09a_borderless(c, ox, oy, order):
 
     number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
                                   P09A_NUMBER_MAX_SIZE, P09A_NUMBER_MIN_SIZE, P09A_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
-    number_baseline = P09A_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
+    cap_height = number_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P09A_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
     c.setFillColor(HexColor(INK))
     c.setFont("Helvetica-Bold", number_size)
     c.drawCentredString(cx, oy + number_baseline, order["house_number"])
@@ -2951,8 +3058,8 @@ def _style_p09a_borderless(c, ox, oy, order):
     street_text = order["street_name"].upper()
     street_size = _fit_font_size(street_text, "Helvetica-Bold",
                                   P09A_STREET_MAX_SIZE, P09A_STREET_MIN_SIZE, P09A_STREET_MAX_WIDTH)
-    asc2, desc2 = getAscentDescent("Helvetica-Bold", street_size)
-    street_baseline = P09A_STREET_CENTER_Y - (asc2 + desc2) / 2 * (25.4 / 72) * mm
+    cap_height2 = street_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    street_baseline = P09A_STREET_CENTER_Y - cap_height2 / 2 * (25.4 / 72) * mm
     c.setFont("Helvetica-Bold", street_size)
     c.drawCentredString(cx, oy + street_baseline, street_text)
 
@@ -3051,13 +3158,13 @@ P21_NUMBER_MAX_WIDTH = 61.11 * mm
 P21_NUMBER_MAX_SIZE = 127  # pt -- measured cap-height implies ~127.1pt at Helvetica-Bold
 P21_NUMBER_MIN_SIZE = 20
 
-P21_STREET_CENTER_X = 87.2456 * mm  # RL x, from erased "North Avenue"'s own measured centroid
-P21_STREET_CENTER_Y = 24.7577 * mm  # RL y, from erased "North Avenue"'s own measured centroid
+P21_STREET_CENTER_X = 99.2478 * mm  # RL x -- ALIGNED to P21_NUMBER_CENTER_X (Aug 2026 print test): was 87.2456mm (from the erased "North Avenue" mockup's own centroid), a genuinely different X than the number's, which is why the street text visibly wasn't centred under the number on a real print. Sharing the number's X fixes that.
+P21_STREET_CENTER_Y = 24.7577 * mm  # RL y, erased "North Avenue"'s own measured centroid
 # See KNOWN LIMITATION note above -- this is the mockup's own measured
 # text width with a 10% safety margin, not clamped against P21_ICON's
 # (overly conservative at this height) bounding box.
-P21_STREET_MAX_WIDTH = 76.9253 * mm
-P21_STREET_MAX_SIZE = 34  # pt -- measured cap-height implies ~30.5pt; small ceiling above that
+P21_STREET_MAX_WIDTH = 68 * mm  # RECALCULATED (2nd Aug 2026 print test) after the P21_STREET_CENTER_X alignment fix -- that fix correctly centred the street under the number, but the number's own X (99.2478mm) sits well right-of-centre on the 140mm card, so the street's RIGHT side now has much less clearance (~34mm to the border) than its left (~93mm). Text is drawn symmetrically around its centre, so the true safe width is 2x the SMALLER side, not a value measured before the alignment fix. Old 76.9253mm let "Amersham-on-the-Hill Road" run right up against the border with ~0mm clearance ("no space between the text and the border"). This value leaves ~3mm clearance on the tighter (right) side.
+P21_STREET_MAX_SIZE = 44  # pt -- raised further from 38 (2nd Aug 2026 print test): "RYE" was still pinned at the ceiling despite having no real width constraint; ceiling now sits above "High Street"'s own ~40pt width limit, same fix as P15/P28/P31.
 P21_STREET_MIN_SIZE = 16
 
 # Cutting-tolerance margin, larger than the shared 2mm PAD -- same fix
@@ -3120,17 +3227,32 @@ def _style_p21_paw_trail(c, ox, oy, order):
 
     number_size = _fit_font_size(order["house_number"], "Helvetica-Bold",
                                   P21_NUMBER_MAX_SIZE, P21_NUMBER_MIN_SIZE, P21_NUMBER_MAX_WIDTH)
-    asc, desc = getAscentDescent("Helvetica-Bold", number_size)
-    number_baseline = P21_NUMBER_CENTER_Y - (asc + desc) / 2 * (25.4 / 72) * mm
-    c.setFillColor(HexColor(INK))
+    cap_height = number_size * HELVETICA_BOLD_CAP_HEIGHT_RATIO
+    number_baseline = P21_NUMBER_CENTER_Y - cap_height / 2 * (25.4 / 72) * mm
+    # Was hardcoded HexColor(INK) -- a real bug, not a style choice: every
+    # other icon+text landscape style (P02/P06/P15/P28/P31...) colours its
+    # text with accent_hex to match the icon, and P21 was the one
+    # exception, which is exactly the "icon and text are different
+    # colours" mismatch flagged on a real print test (Aug 2026).
+    c.setFillColor(HexColor(accent_hex))
     c.setFont("Helvetica-Bold", number_size)
     c.drawCentredString(ox + P21_NUMBER_CENTER_X, oy + number_baseline, order["house_number"])
 
+    # NOTE: street_text here is NOT .upper()'d, unlike every other style in
+    # this file -- P21 displays street names in their original case. That
+    # means it CAN contain real lowercase descenders (g/y/p/j/q), so the
+    # cap-height fix applied everywhere else in this audit is NOT safe here
+    # -- cap-height assumes no descender ink, which would be wrong for e.g.
+    # "Grove" or "Ye Olde". Left on the original ascent/descent centring
+    # deliberately, not an oversight. If this field is later forced to
+    # .upper() (for consistency with the rest of the file), switch it to
+    # the same TIMES/HELVETICA_BOLD_CAP_HEIGHT_RATIO pattern at that point.
     street_text = order["street_name"]
     street_size = _fit_font_size(street_text, "Helvetica-Bold",
                                   P21_STREET_MAX_SIZE, P21_STREET_MIN_SIZE, P21_STREET_MAX_WIDTH)
     asc2, desc2 = getAscentDescent("Helvetica-Bold", street_size)
     street_baseline = P21_STREET_CENTER_Y - (asc2 + desc2) / 2 * (25.4 / 72) * mm
+    c.setFillColor(HexColor(accent_hex))  # was missing entirely -- inherited INK from the number's old setFillColor call
     c.setFont("Helvetica-Bold", street_size)
     c.drawCentredString(ox + P21_STREET_CENTER_X, oy + street_baseline, street_text)
 

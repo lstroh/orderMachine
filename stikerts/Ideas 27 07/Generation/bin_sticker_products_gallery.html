@@ -55,6 +55,11 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
   font-size: 12.5px; color: #4a4a45; margin: 10px 0 0; padding-top: 10px;
   border-top: 1px dashed var(--line); font-style: italic;
 }
+.limits {
+  font-size: 12.5px; color: #4a4a45; margin: 8px 0 0; padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.limits b { color: var(--charcoal); }
 </style>
 </head>
 <body>
@@ -97,6 +102,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>Solid rounded border, bold serif number, wide street name flanked by a scroll flourish both above and below</dd>
       </dl>
       <p class="angle">Draft angle: the most symmetrical/formal of the three — the double flourish reads as "matching pair," good for pitching as a set or gift-pair listing. Assets extracted (not hand-drawn) from a real reference image via icon-silhouette-extraction, so it's got more organic linework than a typical vector-only design.</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>32 characters</b> before auto-shrink hits its 16pt floor; house number/name field safe up to <b>12 characters</b> as a name (numeric house numbers are effectively unconstrained — up to ~17 digits still fit at the 40pt floor). Both fields now auto-shrink with a 3–4mm side margin at any length; number vertically centres against the card's two flourish lines using Times-Bold cap-height (676/1000 em), not full ascent/descent. See <code>P25_STREET_MAX_WIDTH</code> / <code>P25_NUMBER_MAX_WIDTH</code> / <code>TIMES_BOLD_CAP_HEIGHT_RATIO</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
@@ -115,6 +121,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>Double-line border with ornate corner brackets (independently extracted per corner, not rotated copies), single flourish between number and street name</dd>
       </dl>
       <p class="angle">Draft angle: the most "architectural"/heritage-plaque feel of the three, thanks to the corner brackets — could pitch toward period-property or conservation-area customers specifically, distinct from D02's softer symmetrical look.</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>30 characters</b> before auto-shrink hits its 16pt floor — tighter than D02 because this style's double-line-plus-corner-bracket border leaves a narrower true interior (measured ~121mm vs. D02's roomier single border). House number/name field safe up to <b>12 characters</b> as a name; numeric house numbers effectively unconstrained. Was previously touching/crossing the border at these lengths on a real print (fixed by giving this style its own tighter width budget). See <code>P25B_STREET_MAX_WIDTH</code> / <code>P25B_NUMBER_MAX_WIDTH</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
@@ -385,6 +392,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>Delicate black line-art floral vine wreath, house number nested in the upper interior, street name in flat (straight) text in the lower interior beneath it.</dd>
       </dl>
       <p class="angle">Draft angle: the only wreath/floral-border design in the lineup with real extracted line-art (not a plain vector flourish) -- adapted from the idea board's pinned circular 15/20/30cm die-cut sizes onto the standard printed rectangle card (Technique A), so it reads as a premium/romantic option alongside the more graphic house-outline family (D04/D05).</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>12 characters</b> before auto-shrink hits its 12pt floor -- e.g. "High Street" (11) and "Mill Lane" (9) fit; "Amersham-on-the-Hill Road" (25) does not and will render small and overflowing regardless of tuning. Materially tighter than P25/P25b's ~28-30 char limit -- this wreath's interior is just smaller, and no floor-size choice fixes that (raising the floor for legibility only shrinks the safe character count further; see chat history for the full 10pt/12pt/14pt trade-off table). House number/name field unaffected by this constraint. Icon and all P06_* text-fit constants were scaled up ~13.6% in this same round (wreath was leaving ~12-14mm of unused margin on a 100mm-tall card) -- see <code>P06_ICON</code> / <code>P06_STREET_MIN_SIZE</code> / <code>P06_STREET_MAX_WIDTH</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
@@ -439,6 +447,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>Thin vine wreath with small heart-shaped leaves, house number nested in the upper interior with the street name in flat (not curved) text below it.</dd>
       </dl>
       <p class="angle">Draft angle: the romantic/gift-market entry in the wreath family, distinct from D18/D19's floral and D20's classic laurel -- a lighter, more open ring than either, with room for a much bigger number than D18 allowed. Positioned as a deliberate "gift" or Valentine/anniversary-adjacent variant rather than a mainline everyday option.</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>29 characters</b> before auto-shrink hits its floor. Size ceiling deliberately set above "HIGH STREET"'s own ~23pt width limit so short names like "RYE" use the full ceiling while longer names stay clamped by their own width -- not a single shared size for every length. See <code>P15_HEART_STREET_MAX_SIZE</code> / <code>P15_HEART_STREET_MAX_WIDTH</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
@@ -457,6 +466,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>Alternating arrowhead and hatched-fletching shapes forming a ring, house number nested in the upper interior with the street name in flat (not curved) text below it.</dd>
       </dl>
       <p class="angle">Draft angle: the rustic/boho entry in the wreath family, visually distinct from the three floral-adjacent designs (D18/D19/D20/D21) -- differentiates the range for customers who want something other than florals. Fourth and final wreath from the original 3-pattern plan (laurel, heart-vine, arrow), completing the set.</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>31 characters</b> before auto-shrink hits its floor -- the roomiest of the wreath family. Also has a small (~3mm) added margin between number and street after the first print showed them sitting too close at max sizes. Ceiling set above "HIGH STREET"'s own ~25pt width limit, same reasoning as D21. See <code>P28_ARROW_STREET_MAX_SIZE</code> / <code>P28_ARROW_NUMBER_CENTER_Y</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
@@ -475,6 +485,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>Loose olive-branch wreath (rounded leaves in irregular alternating pairs, distinct from D20's tight symmetrical laurel), house number nested in the upper interior with the street name in flat text below it.</dd>
       </dl>
       <p class="angle">Draft angle: EXPERIMENTAL -- unlike every other wreath in the lineup (D18-D22), this has no real competitor listing behind it. Positioned as a softer, more rustic/relaxed alternative to D20's laurel -- worth watching sell-through closely before treating it as validated, rather than assuming it will perform like the market-backed designs.</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>24 characters</b> before auto-shrink hits its floor -- the tightest of the wreath family (had an unusually low 12pt size ceiling originally, corrected after two rounds of real prints). See <code>P31_OLIVE_STREET_MAX_SIZE</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
@@ -511,6 +522,7 @@ h3 { margin: 8px 0 2px; font-size: 16px; }
         <dt>Layout</dt><dd>A diagonal trail of 5 illustrated paw prints (largest at bottom-left, shrinking toward top-right), house number and street name printed beside it, accent-recolourable.</dd>
       </dl>
       <p class="angle">Draft angle: DRAFT: real market-validated pet design (EDSG's own bestselling 'Design 5', seen at genuine Amazon scale) reproduced as an upgrade over the catalogue's existing single-paw accent (style 10) -- the 5-print diagonal trail reads as more premium/illustrated than a lone paw icon, first of a planned multi-species paw-trail line (cat/rabbit/fox/hedgehog to follow using the same layout).</p>
+      <p class="limits"><b>Text limits (print-tested Aug 2026):</b> street name safe up to <b>22 characters</b> before auto-shrink hits its floor -- the tightest limit of any style tested so far. Two real bugs also found and fixed here: number/street text was rendering in a fixed ink colour instead of matching the icon's accent colour, and the street text's centre-X didn't match the number's, so it wasn't actually centred underneath it. Fixing the alignment also required recalculating the width budget, since the number's centre sits well right-of-card-centre, giving the street's right side much less clearance than its left. See <code>P21_STREET_MAX_WIDTH</code> / <code>P21_STREET_CENTER_X</code> in <code>bin_sticker.py</code>.</p>
     </div>
   </div>
 
