@@ -44,6 +44,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-local-actions.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-script-dispatch.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-engine.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-shipments.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-listings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-rest-api.php';

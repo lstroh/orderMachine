@@ -132,11 +132,22 @@ class SOM_Workflow_Engine {
 			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
 		}
 
+		if ( SOM_Shipments::is_ship_step( $step ) && ! SOM_Shipments::has_required( $order_id ) ) {
+			return new WP_Error(
+				'som_shipment_required',
+				__( 'Record the shipment (carrier, service, ship date, postage) before marking Ship done.', 'order-machine' )
+			);
+		}
+
 		if ( ! self::can_mark_done( $progress, $step ) ) {
 			return new WP_Error( 'som_step_locked', __( 'This step cannot be marked done yet.', 'order-machine' ) );
 		}
 
-		return self::complete_current_and_advance( $order_id, $progress, $step );
+		$result = self::complete_current_and_advance( $order_id, $progress, $step );
+		if ( ! is_wp_error( $result ) && SOM_Shipments::is_ship_step( $step ) ) {
+			SOM_Shipments::maybe_push_after_ship( $order_id );
+		}
+		return $result;
 	}
 
 	/**
@@ -436,7 +447,22 @@ class SOM_Workflow_Engine {
 			return new WP_Error( 'som_not_current', __( 'Batch step is not the order current step.', 'order-machine' ) );
 		}
 
-		return self::complete_current_and_advance( $order_id, $progress, $step );
+		if ( SOM_Shipments::is_ship_step( $step ) && ! SOM_Shipments::has_required( $order_id ) ) {
+			return new WP_Error(
+				'som_shipment_required',
+				sprintf(
+					/* translators: %d: order id */
+					__( 'Order #%d is missing a shipment record.', 'order-machine' ),
+					$order_id
+				)
+			);
+		}
+
+		$result = self::complete_current_and_advance( $order_id, $progress, $step );
+		if ( ! is_wp_error( $result ) && SOM_Shipments::is_ship_step( $step ) ) {
+			SOM_Shipments::maybe_push_after_ship( $order_id );
+		}
+		return $result;
 	}
 
 	/**
@@ -458,6 +484,13 @@ class SOM_Workflow_Engine {
 		$timer = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
 		if ( $timer > 0 && ! empty( $progress->timer_ends_at ) && ! self::timer_elapsed( $progress->timer_ends_at ) ) {
 			return false;
+		}
+
+		if ( SOM_Shipments::is_ship_step( $step ) ) {
+			$order_id = isset( $progress->order_id ) ? (int) $progress->order_id : 0;
+			if ( $order_id > 0 && ! SOM_Shipments::has_required( $order_id ) ) {
+				return false;
+			}
 		}
 
 		return true;

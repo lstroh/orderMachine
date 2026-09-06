@@ -419,6 +419,76 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_save_shipment'] ) ) {
+			check_admin_referer( 'som_save_shipment', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$result   = SOM_Shipments::upsert(
+				$order_id,
+				array(
+					'carrier'            => isset( $_POST['som_ship_carrier'] ) ? wp_unslash( $_POST['som_ship_carrier'] ) : '',
+					'service'            => isset( $_POST['som_ship_service'] ) ? wp_unslash( $_POST['som_ship_service'] ) : '',
+					'shipped_at'         => isset( $_POST['som_ship_shipped_at'] ) ? wp_unslash( $_POST['som_ship_shipped_at'] ) : '',
+					'postage_paid'       => isset( $_POST['som_ship_postage_paid'] ) ? wp_unslash( $_POST['som_ship_postage_paid'] ) : '',
+					'tracking_number'    => isset( $_POST['som_ship_tracking_number'] ) ? wp_unslash( $_POST['som_ship_tracking_number'] ) : '',
+					'click_and_drop_ref' => isset( $_POST['som_ship_click_and_drop_ref'] ) ? wp_unslash( $_POST['som_ship_click_and_drop_ref'] ) : '',
+				)
+			);
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+				exit;
+			}
+
+			if ( ! empty( $_POST['som_ship_remove_proof'] ) ) {
+				$removed = SOM_Shipments::remove_proof( $order_id, true );
+				if ( is_wp_error( $removed ) ) {
+					self::flash_notice( $removed->get_error_message(), 'error', 'som_order_error' );
+					wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+					exit;
+				}
+			}
+
+			if ( ! empty( $_FILES['som_shipment_proof']['name'] ) ) {
+				$proof = SOM_Shipments::attach_proof_from_upload( $order_id, 'som_shipment_proof' );
+				if ( is_wp_error( $proof ) ) {
+					self::flash_notice( $proof->get_error_message(), 'error', 'som_order_error' );
+					wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+					exit;
+				}
+			}
+
+			self::flash_notice( __( 'Shipment saved.', 'order-machine' ), 'success', 'som_order_saved' );
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
+		if ( isset( $_POST['som_push_tracking'] ) ) {
+			check_admin_referer( 'som_push_tracking', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			// Allow re-push: clear pushed_at first when operator requests push again.
+			$shipment = SOM_Shipments::get_by_order( $order_id );
+			if ( $shipment && ! empty( $shipment->tracking_pushed_at ) ) {
+				global $wpdb;
+				$wpdb->update(
+					SOM_DB::table( 'shipments' ),
+					array(
+						'tracking_pushed_at'  => null,
+						'tracking_push_error' => null,
+						'updated_at'          => current_time( 'mysql', true ),
+					),
+					array( 'order_id' => $order_id )
+				);
+			}
+			$result = SOM_Shipments::push_tracking( $order_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Tracking pushed to channel.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
 		if ( ! isset( $_POST['som_mark_step_done'] ) ) {
 			return;
 		}

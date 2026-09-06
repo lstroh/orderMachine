@@ -1125,6 +1125,175 @@ class SOM_Channel_Ebay {
 	}
 
 	/**
+	 * Create a shipping fulfillment (tracking upload) for an eBay order.
+	 *
+	 * @param string $external_order_id eBay order ID.
+	 * @param string $tracking_number   Tracking number.
+	 * @param string $carrier_code      eBay shippingCarrierCode (e.g. RoyalMail).
+	 * @param string $shipped_at        UTC MySQL datetime.
+	 * @return true|WP_Error
+	 */
+	public static function create_shipping_fulfillment( $external_order_id, $tracking_number, $carrier_code, $shipped_at = '' ) {
+		$external_order_id = (string) $external_order_id;
+		$tracking_number   = preg_replace( '/[^A-Za-z0-9]/', '', (string) $tracking_number );
+		$carrier_code      = (string) $carrier_code;
+
+		if ( '' === $external_order_id || '' === $tracking_number ) {
+			return new WP_Error( 'som_ebay_fulfillment', __( 'Order ID and tracking number are required.', 'order-machine' ) );
+		}
+
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			$stored = get_option( 'som_dummy_ebay_fulfillments', array() );
+			if ( ! is_array( $stored ) ) {
+				$stored = array();
+			}
+			$stored[ $external_order_id ] = array(
+				'trackingNumber'      => $tracking_number,
+				'shippingCarrierCode' => $carrier_code,
+				'shippedDate'         => $shipped_at,
+				'pushed_at'           => gmdate( 'c' ),
+			);
+			update_option( 'som_dummy_ebay_fulfillments', $stored, false );
+			return true;
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_ebay_fulfillment', __( 'eBay is not connected.', 'order-machine' ) );
+		}
+
+		$base  = self::api_base( $creds );
+		$token = (string) $creds['access_token'];
+
+		$line_items = self::line_items_for_fulfillment( $external_order_id, $token, $base );
+		if ( is_wp_error( $line_items ) ) {
+			return $line_items;
+		}
+
+		$body = array(
+			'lineItems'           => $line_items,
+			'shippingCarrierCode' => $carrier_code ? $carrier_code : 'RoyalMail',
+			'trackingNumber'      => $tracking_number,
+		);
+		if ( '' !== (string) $shipped_at ) {
+			$ts = strtotime( (string) $shipped_at . ' UTC' );
+			if ( $ts ) {
+				$body['shippedDate'] = gmdate( 'Y-m-d\TH:i:s.000\Z', $ts );
+			}
+		}
+
+		$response = wp_remote_post(
+			$base . '/sell/fulfillment/v1/order/' . rawurlencode( $external_order_id ) . '/shipping_fulfillment',
+			array(
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization'    => 'Bearer ' . $token,
+					'Content-Type'     => 'application/json',
+					'Accept'           => 'application/json',
+					'Content-Language' => 'en-GB',
+				),
+				'body'    => wp_json_encode( $body ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			$err     = json_decode( wp_remote_retrieve_body( $response ), true );
+			$message = __( 'eBay shipping fulfillment failed.', 'order-machine' );
+			if ( ! empty( $err['errors'][0]['message'] ) ) {
+				$message = (string) $err['errors'][0]['message'];
+			}
+			return new WP_Error( 'som_ebay_fulfillment', $message );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Build lineItems array for createShippingFulfillment from stored order or live GET.
+	 *
+	 * @param string $external_order_id eBay order ID.
+	 * @param string $token             Access token.
+	 * @param string $base              API base URL.
+	 * @return array<int, array{lineItemId: string, quantity: int}>|WP_Error
+	 */
+	private static function line_items_for_fulfillment( $external_order_id, $token, $base ) {
+		global $wpdb;
+
+		$orders_t   = SOM_DB::table( 'orders' );
+		$channels_t = SOM_DB::table( 'channels' );
+		$raw        = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT o.raw_payload FROM {$orders_t} o
+				INNER JOIN {$channels_t} c ON c.id = o.channel_id
+				WHERE c.slug = %s AND o.external_order_id = %s
+				LIMIT 1",
+				self::SLUG,
+				$external_order_id
+			)
+		);
+
+		$line_items = self::extract_line_items_from_payload( $raw );
+		if ( ! empty( $line_items ) ) {
+			return $line_items;
+		}
+
+		$order = self::api_get_json(
+			$base . '/sell/fulfillment/v1/order/' . rawurlencode( $external_order_id ),
+			$token
+		);
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
+
+		$line_items = self::extract_line_items_from_payload( $order );
+		if ( empty( $line_items ) ) {
+			return new WP_Error( 'som_ebay_fulfillment', __( 'Could not resolve eBay line items for fulfillment.', 'order-machine' ) );
+		}
+		return $line_items;
+	}
+
+	/**
+	 * @param string|array|null $raw JSON string or decoded order.
+	 * @return array<int, array{lineItemId: string, quantity: int}>
+	 */
+	private static function extract_line_items_from_payload( $raw ) {
+		$data = $raw;
+		if ( is_string( $raw ) ) {
+			$data = json_decode( $raw, true );
+		}
+		if ( ! is_array( $data ) || empty( $data['lineItems'] ) || ! is_array( $data['lineItems'] ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $data['lineItems'] as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$id = isset( $item['lineItemId'] ) ? (string) $item['lineItemId'] : '';
+			if ( '' === $id ) {
+				continue;
+			}
+			$qty = isset( $item['quantity'] ) ? max( 1, (int) $item['quantity'] ) : 1;
+			$out[] = array(
+				'lineItemId' => $id,
+				'quantity'   => $qty,
+			);
+		}
+		return $out;
+	}
+
+	/**
 	 * @param array<string, mixed> $body Token endpoint JSON.
 	 * @return array<string, mixed>
 	 */

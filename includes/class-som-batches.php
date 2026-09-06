@@ -429,6 +429,27 @@ class SOM_Batches {
 			return new WP_Error( 'som_batch_not_manual', __( 'Only manual_confirm batches use mark done.', 'order-machine' ) );
 		}
 
+		if ( 'shipping_label' === (string) $group->group_key ) {
+			$items   = self::get_items( (int) $batch->id );
+			$missing = array();
+			foreach ( $items as $item ) {
+				$oid = (int) $item->order_id;
+				if ( $oid > 0 && ! SOM_Shipments::has_required( $oid ) ) {
+					$missing[] = $oid;
+				}
+			}
+			if ( ! empty( $missing ) ) {
+				return new WP_Error(
+					'som_shipment_required',
+					sprintf(
+						/* translators: %s: comma-separated order IDs */
+						__( 'Record a shipment for every order before marking this shipping batch done. Missing order IDs: %s', 'order-machine' ),
+						implode( ', ', $missing )
+					)
+				);
+			}
+		}
+
 		return self::complete_batch( $batch );
 	}
 

@@ -219,18 +219,20 @@ $status_options = array_merge(
 								<tr>
 									<th scope="col"><?php echo esc_html__( 'Order', 'order-machine' ); ?></th>
 									<th scope="col"><?php echo esc_html__( 'Buyer', 'order-machine' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Shipment', 'order-machine' ); ?></th>
 									<th scope="col"><?php echo esc_html__( 'Address', 'order-machine' ); ?></th>
 								</tr>
 							</thead>
 							<tbody>
 								<?php if ( empty( $members ) ) : ?>
 									<tr>
-										<td colspan="3"><?php echo esc_html__( 'No orders in this batch.', 'order-machine' ); ?></td>
+										<td colspan="4"><?php echo esc_html__( 'No orders in this batch.', 'order-machine' ); ?></td>
 									</tr>
 								<?php else : ?>
 									<?php foreach ( $members as $member ) : ?>
 										<?php
-										$address = SOM_Orders::format_address( $member->shipping_address );
+										$address     = SOM_Orders::format_address( $member->shipping_address );
+										$ship_status = SOM_Shipments::status_key( (int) $member->order_id );
 										?>
 										<tr class="som-batch-member">
 											<td>
@@ -239,6 +241,17 @@ $status_options = array_merge(
 												</a>
 											</td>
 											<td><?php echo esc_html( (string) $member->buyer_name ); ?></td>
+											<td>
+												<span class="som-badge som-badge-shipment-<?php echo esc_attr( $ship_status ); ?>">
+													<?php echo esc_html( SOM_Shipments::status_label( $ship_status ) ); ?>
+												</span>
+												<?php if ( 'missing' === $ship_status ) : ?>
+													<br />
+													<a href="<?php echo esc_url( SOM_Orders::detail_url( (int) $member->order_id ) ); ?>">
+														<?php echo esc_html__( 'Add shipment', 'order-machine' ); ?>
+													</a>
+												<?php endif; ?>
+											</td>
 											<td>
 												<button type="button" class="button-link som-batch-address-toggle" data-som-address-toggle aria-expanded="false">
 													<?php echo esc_html__( 'Show address', 'order-machine' ); ?>

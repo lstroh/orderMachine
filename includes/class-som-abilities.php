@@ -433,6 +433,7 @@ class SOM_Abilities {
 			'buyer_name'          => (string) $order->buyer_name,
 			'shipping_address'    => is_array( $address ) ? $address : array(),
 			'formatted_address'   => SOM_Orders::format_address( $order->shipping_address ),
+			'shipment'            => SOM_Shipments::summary_for_api( (int) $order->id ),
 			'order_date'          => (string) $order->order_date,
 			'is_complete'         => (int) $order->is_complete,
 			'is_cancelled'        => ! empty( $order->is_cancelled ),

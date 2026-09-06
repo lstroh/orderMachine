@@ -170,6 +170,35 @@
 	border-left: 4px solid #00a32a;
 }
 
+.som-panel-shipment {
+	border-left: 4px solid #dba617;
+	margin-bottom: 20px;
+}
+
+.som-badge-shipment-missing {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.som-badge-shipment-untracked {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.som-badge-shipment-tracked {
+	background: #fcf9e8;
+	color: #996800;
+}
+
+.som-badge-shipment-pushed {
+	background: #edfaef;
+	color: #007017;
+}
+
+.som-shipment-form .form-table th {
+	width: 180px;
+}
+
 .som-personalisation-list {
 	margin: 0;
 	padding: 0;

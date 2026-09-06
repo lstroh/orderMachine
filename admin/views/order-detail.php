@@ -130,6 +130,122 @@ if ( ! empty( $order->raw_payload ) ) {
 		</section>
 	</div>
 
+	<?php
+	$shipment      = SOM_Shipments::get_by_order( (int) $order->id );
+	$ship_defaults = SOM_Shipments::defaults();
+	$ship_form     = array(
+		'carrier'            => $shipment ? (string) $shipment->carrier : $ship_defaults['carrier'],
+		'service'            => $shipment ? (string) $shipment->service : $ship_defaults['service'],
+		'shipped_at'         => $shipment ? SOM_Shipments::shipped_at_date_local( (string) $shipment->shipped_at ) : $ship_defaults['shipped_at'],
+		'postage_paid'       => $shipment ? (string) $shipment->postage_paid : $ship_defaults['postage_paid'],
+		'tracking_number'    => $shipment && $shipment->tracking_number ? (string) $shipment->tracking_number : '',
+		'click_and_drop_ref' => $shipment && $shipment->click_and_drop_ref ? (string) $shipment->click_and_drop_ref : '',
+	);
+	$ship_status = SOM_Shipments::status_key( (int) $order->id );
+	?>
+	<section class="som-panel som-panel-shipment">
+		<h2><?php echo esc_html__( 'Shipment', 'order-machine' ); ?></h2>
+		<?php if ( ! $shipment ) : ?>
+			<p class="som-muted"><?php echo esc_html__( 'No shipment recorded yet. After Click & Drop, save what you posted.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<p>
+				<span class="som-badge som-badge-shipment-<?php echo esc_attr( $ship_status ); ?>">
+					<?php echo esc_html( SOM_Shipments::status_label( $ship_status ) ); ?>
+				</span>
+				<?php if ( ! empty( $shipment->tracking_pushed_at ) ) : ?>
+					<span class="description">
+						<?php
+						printf(
+							/* translators: %s: datetime */
+							esc_html__( 'Pushed %s UTC', 'order-machine' ),
+							esc_html( (string) $shipment->tracking_pushed_at )
+						);
+						?>
+					</span>
+				<?php endif; ?>
+			</p>
+			<?php if ( ! empty( $shipment->tracking_push_error ) ) : ?>
+				<p class="som-script-error"><?php echo esc_html( (string) $shipment->tracking_push_error ); ?></p>
+			<?php endif; ?>
+		<?php endif; ?>
+
+		<form method="post" action="" enctype="multipart/form-data" class="som-shipment-form">
+			<?php wp_nonce_field( 'som_save_shipment', 'som_order_nonce' ); ?>
+			<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+			<input type="hidden" name="som_save_shipment" value="1" />
+
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="som_ship_carrier"><?php echo esc_html__( 'Carrier', 'order-machine' ); ?></label></th>
+					<td><input name="som_ship_carrier" id="som_ship_carrier" type="text" class="regular-text" value="<?php echo esc_attr( $ship_form['carrier'] ); ?>" required /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_ship_service"><?php echo esc_html__( 'Service', 'order-machine' ); ?></label></th>
+					<td><input name="som_ship_service" id="som_ship_service" type="text" class="regular-text" value="<?php echo esc_attr( $ship_form['service'] ); ?>" required /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_ship_shipped_at"><?php echo esc_html__( 'Ship date', 'order-machine' ); ?></label></th>
+					<td><input name="som_ship_shipped_at" id="som_ship_shipped_at" type="date" value="<?php echo esc_attr( $ship_form['shipped_at'] ); ?>" required /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_ship_postage"><?php echo esc_html__( 'Postage paid (GBP)', 'order-machine' ); ?></label></th>
+					<td><input name="som_ship_postage_paid" id="som_ship_postage" type="number" step="0.01" min="0" class="small-text" value="<?php echo esc_attr( $ship_form['postage_paid'] ); ?>" required /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_ship_tracking"><?php echo esc_html__( 'Tracking number', 'order-machine' ); ?></label></th>
+					<td>
+						<input name="som_ship_tracking_number" id="som_ship_tracking" type="text" class="regular-text" value="<?php echo esc_attr( $ship_form['tracking_number'] ); ?>" />
+						<p class="description"><?php echo esc_html__( 'Leave blank for untracked 2nd Class. When set, tracking can be pushed to eBay/Etsy after Ship.', 'order-machine' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_ship_cad"><?php echo esc_html__( 'Click & Drop ref', 'order-machine' ); ?></label></th>
+					<td><input name="som_ship_click_and_drop_ref" id="som_ship_cad" type="text" class="regular-text" value="<?php echo esc_attr( $ship_form['click_and_drop_ref'] ); ?>" /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_shipment_proof"><?php echo esc_html__( 'Proof of posting', 'order-machine' ); ?></label></th>
+					<td>
+						<?php if ( $shipment && ! empty( $shipment->proof_attachment_id ) ) : ?>
+							<?php
+							$proof_url = wp_get_attachment_url( (int) $shipment->proof_attachment_id );
+							?>
+							<p>
+								<?php if ( $proof_url ) : ?>
+									<a href="<?php echo esc_url( $proof_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'View current proof', 'order-machine' ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html__( 'Proof attached.', 'order-machine' ); ?>
+								<?php endif; ?>
+							</p>
+							<label>
+								<input type="checkbox" name="som_ship_remove_proof" value="1" />
+								<?php echo esc_html__( 'Remove proof', 'order-machine' ); ?>
+							</label>
+							<br /><br />
+						<?php endif; ?>
+						<input type="file" name="som_shipment_proof" id="som_shipment_proof" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" />
+						<p class="description"><?php echo esc_html__( 'Optional JPEG, PNG, or PDF (max 5 MB). Not required for v1.', 'order-machine' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
+			<?php submit_button( $shipment ? __( 'Update shipment', 'order-machine' ) : __( 'Save shipment', 'order-machine' ), 'primary', 'submit', false ); ?>
+		</form>
+
+		<?php if ( $shipment && '' !== trim( (string) ( $shipment->tracking_number ?? '' ) ) ) : ?>
+			<form method="post" action="" class="som-inline-form" style="margin-top:12px;">
+				<?php wp_nonce_field( 'som_push_tracking', 'som_order_nonce' ); ?>
+				<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+				<input type="hidden" name="som_push_tracking" value="1" />
+				<?php
+				$push_label = ! empty( $shipment->tracking_pushed_at )
+					? __( 'Re-push tracking', 'order-machine' )
+					: ( ! empty( $shipment->tracking_push_error ) ? __( 'Retry push tracking', 'order-machine' ) : __( 'Push tracking to channel', 'order-machine' ) );
+				submit_button( $push_label, 'secondary', 'submit', false );
+				?>
+			</form>
+		<?php endif; ?>
+	</section>
+
 	<section class="som-panel som-panel-workflow">
 		<h2><?php echo esc_html__( 'Workflow', 'order-machine' ); ?></h2>
 		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
@@ -145,9 +261,11 @@ if ( ! empty( $order->raw_payload ) ) {
 					$is_current = (int) $row->workflow_step_id === (int) $order->current_step_id;
 					$status     = (string) $row->status;
 					$step_obj   = (object) array(
+						'name'                    => $row->step_name,
 						'timer_seconds'           => $row->timer_seconds,
 						'requires_manual_confirm' => $row->requires_manual_confirm,
 						'script_config'           => $row->script_config,
+						'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
 					);
 					$can_done   = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
 					$can_retry  = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_retry_script( $row, $step_obj );

@@ -22,6 +22,7 @@ class SOM_Channel_Etsy {
 	public static function scopes() {
 		return array(
 			'transactions_r',
+			'transactions_w',
 			'shops_r',
 			'listings_r',
 			'listings_w',
@@ -1192,6 +1193,110 @@ class SOM_Channel_Etsy {
 			$stored[ $key ] = $payload;
 			update_option( 'som_dummy_etsy_listings', $stored, false );
 		}
+		return true;
+	}
+
+	/**
+	 * Submit tracking for an Etsy shop receipt (createReceiptShipment).
+	 *
+	 * @param string $receipt_id      Etsy receipt ID (external_order_id).
+	 * @param string $tracking_code   Tracking number.
+	 * @param string $carrier_name    Etsy carrier_name (e.g. royal-mail).
+	 * @param string $shipped_at      UTC MySQL datetime (optional).
+	 * @return true|WP_Error
+	 */
+	public static function create_receipt_shipment( $receipt_id, $tracking_code, $carrier_name, $shipped_at = '' ) {
+		$receipt_id    = (string) $receipt_id;
+		$tracking_code = (string) $tracking_code;
+		$carrier_name  = (string) $carrier_name;
+
+		if ( '' === $receipt_id || '' === $tracking_code ) {
+			return new WP_Error( 'som_etsy_shipment', __( 'Receipt ID and tracking code are required.', 'order-machine' ) );
+		}
+
+		if ( SOM_Channels::is_dummy( self::SLUG ) ) {
+			$stored = get_option( 'som_dummy_etsy_shipments', array() );
+			if ( ! is_array( $stored ) ) {
+				$stored = array();
+			}
+			$stored[ $receipt_id ] = array(
+				'tracking_code' => $tracking_code,
+				'carrier_name'  => $carrier_name,
+				'ship_date'     => $shipped_at,
+				'pushed_at'     => gmdate( 'c' ),
+			);
+			update_option( 'som_dummy_etsy_shipments', $stored, false );
+			return true;
+		}
+
+		$refresh = self::refresh_token_if_needed( false );
+		if ( is_wp_error( $refresh ) ) {
+			return $refresh;
+		}
+
+		$creds = SOM_Channels::get_credentials( self::SLUG );
+		if ( empty( $creds['access_token'] ) ) {
+			return new WP_Error( 'som_etsy_shipment', __( 'Etsy is not connected.', 'order-machine' ) );
+		}
+
+		$settings = SOM_Settings::get();
+		$api_key  = $settings['etsy']['client_id'];
+		$token    = (string) $creds['access_token'];
+		$shop_id  = ! empty( $creds['shop_id'] ) ? (string) $creds['shop_id'] : '';
+
+		if ( '' === $shop_id ) {
+			$shop_id = self::fetch_shop_id( $token, $api_key );
+			if ( is_wp_error( $shop_id ) || '' === $shop_id ) {
+				return is_wp_error( $shop_id )
+					? $shop_id
+					: new WP_Error( 'som_etsy_shop', __( 'Could not resolve Etsy shop ID.', 'order-machine' ) );
+			}
+		}
+
+		$fields = array(
+			'tracking_code' => $tracking_code,
+			'carrier_name'  => $carrier_name ? $carrier_name : 'other',
+		);
+		if ( '' !== (string) $shipped_at ) {
+			$ts = strtotime( (string) $shipped_at . ' UTC' );
+			if ( $ts ) {
+				$fields['ship_date'] = gmdate( 'Y-m-d', $ts );
+			}
+		}
+
+		$url = 'https://openapi.etsy.com/v3/application/shops/' . rawurlencode( $shop_id )
+			. '/receipts/' . rawurlencode( $receipt_id ) . '/tracking';
+
+		$response = wp_remote_post(
+			$url,
+			array(
+				'timeout' => 45,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $token,
+					'x-api-key'     => $api_key,
+					'Content-Type'  => 'application/x-www-form-urlencoded',
+					'Accept'        => 'application/json',
+				),
+				'body'    => $fields,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			$err     = json_decode( wp_remote_retrieve_body( $response ), true );
+			$message = __( 'Etsy tracking upload failed.', 'order-machine' );
+			if ( ! empty( $err['error'] ) ) {
+				$message = (string) $err['error'];
+			} elseif ( ! empty( $err['error_description'] ) ) {
+				$message = (string) $err['error_description'];
+			}
+			return new WP_Error( 'som_etsy_shipment', $message );
+		}
+
 		return true;
 	}
 

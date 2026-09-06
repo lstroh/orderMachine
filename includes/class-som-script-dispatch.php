@@ -192,7 +192,10 @@ class SOM_Script_Dispatch {
 		}
 
 		$tracking = '';
-		if ( ! empty( $order->raw_payload ) ) {
+		$shipment = class_exists( 'SOM_Shipments' ) ? SOM_Shipments::get_by_order( (int) $order->id ) : null;
+		if ( $shipment && ! empty( $shipment->tracking_number ) ) {
+			$tracking = (string) $shipment->tracking_number;
+		} elseif ( ! empty( $order->raw_payload ) ) {
 			$raw = json_decode( (string) $order->raw_payload, true );
 			if ( is_array( $raw ) ) {
 				if ( ! empty( $raw['tracking_number'] ) ) {

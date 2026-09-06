@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.8.0';
+	const DB_VERSION = '1.9.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -184,6 +184,24 @@ class SOM_DB {
 			PRIMARY KEY  (id),
 			KEY order_id (order_id),
 			KEY product_id (product_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_shipments (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			order_id bigint(20) unsigned NOT NULL,
+			carrier varchar(50) NOT NULL,
+			service varchar(100) NOT NULL,
+			shipped_at datetime NOT NULL,
+			postage_paid decimal(10,2) NOT NULL,
+			tracking_number varchar(100) NULL,
+			click_and_drop_ref varchar(100) NULL,
+			tracking_pushed_at datetime NULL,
+			tracking_push_error text NULL,
+			proof_attachment_id bigint(20) unsigned NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY order_id (order_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_order_step_progress (
