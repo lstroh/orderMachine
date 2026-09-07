@@ -452,6 +452,14 @@ class SOM_Order_Sync {
 			$product_id = self::match_product_id( $channel_id, $listing_keys );
 		}
 
+		$listing_id = null;
+		if ( ! empty( $item['external_listing_id'] ) ) {
+			$listing_id = sanitize_text_field( (string) $item['external_listing_id'] );
+			if ( '' === $listing_id ) {
+				$listing_id = null;
+			}
+		}
+
 		$wpdb->insert(
 			SOM_DB::table( 'order_items' ),
 			array(
@@ -464,6 +472,7 @@ class SOM_Order_Sync {
 				'unit_price'           => array_key_exists( 'unit_price', $item ) && null !== $item['unit_price']
 					? (float) $item['unit_price']
 					: null,
+				'external_listing_id'  => $listing_id,
 			),
 			array(
 				'%d',
@@ -471,6 +480,7 @@ class SOM_Order_Sync {
 				'%d',
 				'%s',
 				'%f',
+				'%s',
 			)
 		);
 	}

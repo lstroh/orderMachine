@@ -54,6 +54,7 @@ flowchart LR
    Create a template (e.g. “Bin Sticker Production”). In the step editor:
    - Add steps in production order; reorder as needed.
    - Toggle **requires manual confirm** and/or a **timer** (minutes / hours / days).
+   - Optionally set a **Confirmation checklist** (print vs request / shipping address / packing items) — exclusive with timer, script, and batch.
    - For thank-you / label style steps, assign a **batch group** only (do not combine with timer/script/manual on the same step).
    - Optionally set **material cost goals** (target / approaching) for materials used by this workflow.
 
@@ -170,7 +171,7 @@ flowchart LR
 4. Filter by channel, product, workflow template, or free-text (buyer / external ID / personalisation).
 5. Advance work:
    - **Drag** a card only when it could **Mark done** (in progress and gates clear). Drop on the **next** step column, or the ephemeral **Complete** zone on the last step.
-   - Waiting (timer / script / batch), error, pending, and Unassigned cards stay **locked**.
+   - Waiting (timer / script / batch / incomplete confirmation), error, pending, and Unassigned cards stay **locked**. Confirmation steps show a **Confirm on order** hint until the checklist is saved.
    - Invalid drop or API error → card snaps back.
 6. Use **order ID**, **product name**, or **View** links for detail — the card body is not one big link.
 7. When a card shows **waiting_batch**, follow the batch link (Workflow 6) instead of dragging.
@@ -203,22 +204,26 @@ flowchart LR
 | # | Step | How it advances |
 |---|---|---|
 | 1 | Print | Manual confirm |
-| 2 | Dry | Timer (e.g. 15 minutes) then Mark done / drag |
-| 3 | Laminate | Manual |
-| 4 | Cut | Manual |
-| 5 | Pack | Manual |
-| 6 | Ship | Manual (optionally assign `shipping_label` batch group via workflow editor) |
-| 7 | Thank-you | **Batch** `thank_you_card` — wait for batch release/script |
-| 8 | Review reminder | Timer (e.g. 7 days) + manual |
+| 2 | Confirm print | Confirmation checklist (print vs client request) then Mark done |
+| 3 | Dry | Timer (e.g. 15 minutes) then Mark done / drag |
+| 4 | Laminate | Manual |
+| 5 | Cut | Manual |
+| 6 | Confirm pack | Confirmation checklist (each line item in package) then Mark done |
+| 7 | Pack | Manual |
+| 8 | Confirm address | Confirmation checklist (address vs marketplace) then Mark done |
+| 9 | Ship | Manual (optionally assign `shipping_label` batch group via workflow editor) |
+| 10 | Thank-you | **Batch** `thank_you_card` — wait for batch release/script |
+| 11 | Review reminder | Timer (e.g. 7 days) + manual |
 
 ### Steps
 
 1. Start from a **matched** open order with this workflow (after Sync on a product that has the template assigned).
-2. **Print** — Mark done or drag to Dry.
-3. **Dry** — Mark done stays blocked until the timer ends (engine tick unlocks). Then advance to Laminate.
-4. Continue **Laminate → Cut → Pack → Ship** with manual confirms (Board drag or Mark done).
-5. On **Thank-you**, status becomes **waiting_batch**. Mark done is hidden on the order. Open **Batches** (Workflow 6).
-6. After the thank-you batch completes, the order advances toward **Review reminder**; complete when the timer and manual gate allow.
+2. **Print** — Mark done or drag to Confirm print.
+3. **Confirm print** — open marketplace order / listing links, tick the checklist, **Save checklist**, then Mark done / drag to Dry.
+4. **Dry** — Mark done stays blocked until the timer ends (engine tick unlocks). Then advance to Laminate.
+5. Continue **Laminate → Cut → Confirm pack → Pack → Confirm address → Ship** (Board drag or Mark done; confirmation steps need the checklist saved first).
+6. On **Thank-you**, status becomes **waiting_batch**. Mark done is hidden on the order. Open **Batches** (Workflow 6).
+7. After the thank-you batch completes, the order advances toward **Review reminder**; complete when the timer and manual gate allow.
 
 ### Expected result
 

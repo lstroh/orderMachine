@@ -102,7 +102,9 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Shipping address
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, scripts, **waiting_batch** badge + Batches link
-- **Mark done** when gates allow (hidden while waiting on a batch)
+- **Confirmation checklist** panel when the current step has a confirmation kind (print / address / packing) — Save checklist, then Mark done
+- **Open on eBay/Etsy** link when channel supports it
+- **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete)
 - Material stock impact when reserved
 - **Platform fees** panel when synced fee lines exist
 - Raw channel payload in a collapsed block
@@ -112,6 +114,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - One workflow per order from the **primary product** = first line with a matched product.
 - If nothing matches → no progress rows; flags show unmatched / no workflow.
 - Batch advance is batch-level only while `waiting_batch`.
+- Confirmation ticks persist on the order; Mark done / Board drag stay locked until every required box is saved.
 
 ---
 
@@ -205,12 +208,13 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 - Add / remove / reorder steps
 - Requires manual confirm
+- **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer, script, and batch
 - Timer (friendly min/hr/day → seconds)
 - Script config (local / api / n8n — form + JSON fallback)
 - Assign **batch group** (batch-only step in v1; combo with other gates is rejected)
 - Template-level **material cost goals**
 
-**Seeded example — Bin Sticker Production:** Print (manual) → Dry (timer) → Laminate → Cut → Pack → Ship → Thank-you (batch `thank_you_card`) → Review (timer + manual). Shipping label batch is opt-in via editor.
+**Seeded example — Bin Sticker Production (new seeds only):** Print → Confirm print → Dry (timer) → Laminate → Cut → Confirm pack → Pack → Confirm address → Ship → Thank-you (batch `thank_you_card`) → Review (timer + manual). Existing Local templates are not rewritten. Shipping label batch is opt-in via editor.
 
 ---
 
@@ -230,6 +234,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 | Gate | Behaviour |
 |---|---|
 | Manual | Mark done / drag only when current and allowed |
+| Confirmation | Checklist on order detail must be saved complete before Mark done / drag |
 | Timer | Blocked until countdown ends (or tick unlocks) |
 | Script | Allowlisted runner + retries + callback |
 | Batch | Entering sets `waiting_batch` and enqueues; other gates ignored on that step in v1 |

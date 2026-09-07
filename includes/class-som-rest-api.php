@@ -53,6 +53,22 @@ class SOM_REST_API {
 
 		register_rest_route(
 			'som/v1',
+			'/orders/(?P<id>\d+)/confirm-step',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'confirm_step' ),
+				'permission_callback' => array( __CLASS__, 'check_api_key_or_admin' ),
+				'args'                => array(
+					'id' => array(
+						'required' => true,
+						'type'     => 'integer',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'som/v1',
 			'/workflow-callback/(?P<token>[a-zA-Z0-9]+)',
 			array(
 				'methods'             => 'POST',
@@ -427,6 +443,68 @@ class SOM_REST_API {
 				'ok'       => true,
 				'order_id' => (int) $order_id,
 				'order'    => $order ? self::order_to_rest( $order ) : null,
+			)
+		);
+	}
+
+	/**
+	 * POST /som/v1/orders/{id}/confirm-step — save confirmation checklist ticks (does not advance).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public static function confirm_step( $request ) {
+		$order_id = (int) $request['id'];
+		$params   = $request->get_json_params();
+		if ( ! is_array( $params ) ) {
+			$params = array();
+		}
+		// Accept either flat body or nested under "confirm".
+		$input = isset( $params['confirm'] ) && is_array( $params['confirm'] ) ? $params['confirm'] : $params;
+
+		$result = SOM_Step_Confirmations::save_for_order( $order_id, $input );
+		if ( is_wp_error( $result ) ) {
+			return self::error_response( $result );
+		}
+
+		$order      = SOM_Orders::get( $order_id );
+		$complete   = false;
+		$kind       = null;
+		$can_advance = false;
+		if ( $order && ! empty( $order->current_step_id ) ) {
+			foreach ( $order->workflow_progress as $row ) {
+				if ( (int) $row->workflow_step_id === (int) $order->current_step_id ) {
+					$kind = SOM_Step_Confirmations::sanitize_kind(
+						isset( $row->confirmation_kind ) ? $row->confirmation_kind : null
+					);
+					if ( $kind ) {
+						$complete = SOM_Step_Confirmations::is_complete(
+							$kind,
+							SOM_Step_Confirmations::decode_state( $row ),
+							$order
+						);
+					}
+					$step_obj = (object) array(
+						'name'                    => $row->step_name,
+						'timer_seconds'           => $row->timer_seconds,
+						'requires_manual_confirm' => $row->requires_manual_confirm,
+						'script_config'           => $row->script_config,
+						'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
+						'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
+					);
+					$can_advance = SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
+					break;
+				}
+			}
+		}
+
+		return rest_ensure_response(
+			array(
+				'ok'                  => true,
+				'order_id'            => $order_id,
+				'confirmation_kind'   => $kind,
+				'confirmation_complete' => $complete,
+				'can_advance'         => $can_advance,
 			)
 		);
 	}

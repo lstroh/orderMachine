@@ -139,6 +139,14 @@ class SOM_Workflow_Engine {
 			);
 		}
 
+		if ( SOM_Step_Confirmations::has_confirmation( $step )
+			&& ! SOM_Step_Confirmations::progress_is_complete( $progress, $step, $order ) ) {
+			return new WP_Error(
+				'som_confirmation_required',
+				__( 'Complete the confirmation checklist before marking this step done.', 'order-machine' )
+			);
+		}
+
 		if ( ! self::can_mark_done( $progress, $step ) ) {
 			return new WP_Error( 'som_step_locked', __( 'This step cannot be marked done yet.', 'order-machine' ) );
 		}
@@ -493,6 +501,14 @@ class SOM_Workflow_Engine {
 			}
 		}
 
+		if ( SOM_Step_Confirmations::has_confirmation( $step ) ) {
+			$order_id = isset( $progress->order_id ) ? (int) $progress->order_id : 0;
+			$order    = $order_id > 0 ? SOM_Orders::get( $order_id ) : null;
+			if ( ! $order || ! SOM_Step_Confirmations::progress_is_complete( $progress, $step, $order ) ) {
+				return false;
+			}
+		}
+
 		return true;
 	}
 
@@ -536,7 +552,8 @@ class SOM_Workflow_Engine {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
-					s.timer_seconds, s.script_config, s.workflow_template_id, s.batch_group_id
+					s.timer_seconds, s.script_config, s.workflow_template_id, s.batch_group_id,
+					s.confirmation_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
 				WHERE p.order_id = %d
@@ -711,10 +728,16 @@ class SOM_Workflow_Engine {
 		$timer  = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
 		$manual = ! empty( $step->requires_manual_confirm );
 		$script = SOM_Script_Dispatch::has_script( $step );
+		$confirm = SOM_Step_Confirmations::has_confirmation( $step );
 
 		// Batch gate (batch-only in v1 — ignore other gates on the same step).
 		if ( ! empty( $step->batch_group_id ) ) {
 			return SOM_Batches::enqueue( $order_id, $step );
+		}
+
+		// Confirmation steps are always manual gates.
+		if ( $confirm ) {
+			$manual = true;
 		}
 
 		// Zero-gate (no timer, no manual, no script) → auto-advance.

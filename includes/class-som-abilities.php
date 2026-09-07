@@ -398,25 +398,32 @@ class SOM_Abilities {
 
 		$items = array();
 		foreach ( $order->items as $item ) {
-			$items[] = array(
+			$listing_id = SOM_Step_Confirmations::listing_id_for_item( $item, $order );
+			$items[]    = array(
 				'id'                   => (int) $item->id,
 				'product_id'           => null !== $item->product_id && '' !== $item->product_id ? (int) $item->product_id : null,
 				'product_name'         => (string) ( $item->product_name ?? '' ),
 				'quantity'             => (int) $item->quantity,
 				'personalisation_text' => $item->personalisation_text,
 				'unit_price'           => $item->unit_price,
+				'external_listing_id'  => '' !== $listing_id ? $listing_id : null,
+				'listing_url'          => SOM_Step_Confirmations::marketplace_listing_url( (string) $order->channel_slug, $listing_id ),
 			);
 		}
 
 		$progress = array();
 		foreach ( $order->workflow_progress as $row ) {
 			$progress[] = array(
-				'workflow_step_id' => (int) $row->workflow_step_id,
-				'step_name'        => (string) $row->step_name,
-				'step_order'       => (int) $row->step_order,
-				'status'           => (string) $row->status,
-				'timer_ends_at'    => $row->timer_ends_at,
-				'last_error'       => isset( $row->last_error ) ? (string) $row->last_error : '',
+				'workflow_step_id'    => (int) $row->workflow_step_id,
+				'step_name'           => (string) $row->step_name,
+				'step_order'          => (int) $row->step_order,
+				'status'              => (string) $row->status,
+				'timer_ends_at'       => $row->timer_ends_at,
+				'last_error'          => isset( $row->last_error ) ? (string) $row->last_error : '',
+				'confirmation_kind'   => SOM_Step_Confirmations::sanitize_kind(
+					isset( $row->confirmation_kind ) ? $row->confirmation_kind : null
+				),
+				'confirmation_state'  => SOM_Step_Confirmations::decode_state( $row ),
 			);
 		}
 
@@ -430,6 +437,10 @@ class SOM_Abilities {
 			'id'                  => (int) $order->id,
 			'channel_slug'        => (string) $order->channel_slug,
 			'external_order_id'   => (string) $order->external_order_id,
+			'marketplace_order_url' => SOM_Step_Confirmations::marketplace_order_url(
+				(string) $order->channel_slug,
+				(string) $order->external_order_id
+			),
 			'buyer_name'          => (string) $order->buyer_name,
 			'shipping_address'    => is_array( $address ) ? $address : array(),
 			'formatted_address'   => SOM_Orders::format_address( $order->shipping_address ),

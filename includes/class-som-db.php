@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.9.0';
+	const DB_VERSION = '1.10.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -149,6 +149,7 @@ class SOM_DB {
 			timer_seconds int(11) NULL,
 			script_config text NULL,
 			batch_group_id bigint(20) unsigned NULL,
+			confirmation_kind varchar(40) NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -181,6 +182,7 @@ class SOM_DB {
 			quantity int(11) NOT NULL DEFAULT 1,
 			personalisation_text text NULL,
 			unit_price decimal(10,2) NULL,
+			external_listing_id varchar(100) NULL,
 			PRIMARY KEY  (id),
 			KEY order_id (order_id),
 			KEY product_id (product_id)
@@ -212,6 +214,7 @@ class SOM_DB {
 			timer_ends_at datetime NULL,
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
+			confirmation_state text NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
 			PRIMARY KEY  (id),

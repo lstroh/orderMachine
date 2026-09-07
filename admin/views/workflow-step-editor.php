@@ -37,7 +37,11 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 	$script   = SOM_Workflows::script_for_display( $step ? $step->script_config : null );
 	$type     = $script['type'];
 	$batch_id = $step && ! empty( $step->batch_group_id ) ? (int) $step->batch_group_id : 0;
+	$confirm  = $step && ! empty( $step->confirmation_kind )
+		? SOM_Step_Confirmations::sanitize_kind( $step->confirmation_kind )
+		: null;
 	$prefix   = 'som_step[' . $index . ']';
+	$confirm_choices = SOM_Step_Confirmations::kind_choices();
 	?>
 	<div class="som-step-card" data-som-step>
 		<div class="som-step-card-header">
@@ -53,9 +57,27 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 
 		<div class="som-step-gates">
 			<label class="som-step-gate">
-				<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[requires_manual_confirm]" value="1" <?php checked( $manual ); ?> />
+				<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[requires_manual_confirm]" value="1" <?php checked( $manual ); ?> data-som-manual-confirm />
 				<?php echo esc_html__( 'Requires manual confirm', 'order-machine' ); ?>
 			</label>
+
+			<div class="som-step-gate som-step-confirmation" data-som-confirmation-gate>
+				<label>
+					<?php echo esc_html__( 'Confirmation checklist', 'order-machine' ); ?>
+					<select name="<?php echo esc_attr( $prefix ); ?>[confirmation_kind]" class="som-confirmation-kind">
+						<option value=""><?php echo esc_html__( 'None', 'order-machine' ); ?></option>
+						<?php foreach ( $confirm_choices as $kind_key => $kind_label ) : ?>
+							<option value="<?php echo esc_attr( $kind_key ); ?>" <?php selected( $confirm, $kind_key ); ?>>
+								<?php echo esc_html( $kind_label ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<p class="description"><?php echo esc_html__( 'If set, Mark done stays locked until the checklist on the order is completed. Cannot combine with timer, script, or batch.', 'order-machine' ); ?></p>
+				<p class="som-confirm-combo-warning notice notice-warning inline" data-som-confirm-warning hidden>
+					<?php echo esc_html__( 'Confirmation steps cannot also use timer, script, or batch gates. Save will be rejected until those are cleared.', 'order-machine' ); ?>
+				</p>
+			</div>
 
 			<div class="som-step-gate som-step-timer">
 				<label><?php echo esc_html__( 'Timer', 'order-machine' ); ?></label>
@@ -83,7 +105,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 				</label>
 				<p class="description"><?php echo esc_html__( 'If set, this step is batch-only: clear manual, timer, and script gates. Shipping-label grouping is opt-in here.', 'order-machine' ); ?></p>
 				<p class="som-batch-combo-warning notice notice-warning inline" data-som-batch-warning hidden>
-					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, or script gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
+					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, script, or confirmation gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
 				</p>
 			</div>
 
@@ -245,7 +267,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates).', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates). Confirmation checklists cannot combine with timer, script, or batch.', 'order-machine' ); ?></p>
 
 		<div id="som-step-list" class="som-step-list">
 			<?php

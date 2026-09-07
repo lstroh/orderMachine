@@ -150,12 +150,17 @@
 						if ( batchSelect ) {
 							batchSelect.value = '0';
 						}
+						var confirmSelect = card.querySelector( '.som-confirmation-kind' );
+						if ( confirmSelect ) {
+							confirmSelect.value = '';
+						}
 						var idField = card.querySelector( 'input[name*="[id]"]' );
 						if ( idField ) {
 							idField.value = '0';
 						}
 						syncScriptPanels( card );
 						syncBatchWarning( card );
+						syncConfirmWarning( card );
 						return;
 					}
 					card.remove();
@@ -166,6 +171,7 @@
 				typeSelect.addEventListener( 'change', function () {
 					syncScriptPanels( card );
 					syncBatchWarning( card );
+					syncConfirmWarning( card );
 				} );
 			}
 			if ( rawToggle ) {
@@ -177,9 +183,11 @@
 			var batchSelectBind = card.querySelector( '.som-batch-group-select' );
 			var manualBind = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timerBind = card.querySelector( 'input[name*="[timer_value]"]' );
+			var confirmBind = card.querySelector( '.som-confirmation-kind' );
 			if ( batchSelectBind ) {
 				batchSelectBind.addEventListener( 'change', function () {
 					syncBatchWarning( card );
+					syncConfirmWarning( card );
 				} );
 			}
 			if ( manualBind ) {
@@ -190,11 +198,25 @@
 			if ( timerBind ) {
 				timerBind.addEventListener( 'input', function () {
 					syncBatchWarning( card );
+					syncConfirmWarning( card );
+				} );
+			}
+			if ( confirmBind ) {
+				confirmBind.addEventListener( 'change', function () {
+					if ( confirmBind.value ) {
+						var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+						if ( manual ) {
+							manual.checked = true;
+						}
+					}
+					syncBatchWarning( card );
+					syncConfirmWarning( card );
 				} );
 			}
 
 			syncScriptPanels( card );
 			syncBatchWarning( card );
+			syncConfirmWarning( card );
 		}
 
 		function syncBatchWarning( card ) {
@@ -211,10 +233,32 @@
 			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
 			var typeSelect = card.querySelector( '.som-script-type' );
+			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
 			var hasScript = typeSelect && typeSelect.value !== 'none';
-			warning.hidden = ! ( hasManual || hasTimer || hasScript );
+			var hasConfirm = confirmSelect && confirmSelect.value !== '';
+			warning.hidden = ! ( hasManual || hasTimer || hasScript || hasConfirm );
+		}
+
+		function syncConfirmWarning( card ) {
+			var warning = card.querySelector( '[data-som-confirm-warning]' );
+			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
+			if ( ! warning || ! confirmSelect ) {
+				return;
+			}
+			var hasConfirm = confirmSelect.value !== '';
+			if ( ! hasConfirm ) {
+				warning.hidden = true;
+				return;
+			}
+			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
+			var typeSelect = card.querySelector( '.som-script-type' );
+			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			var hasTimer = timer && String( timer.value ).trim() !== '';
+			var hasScript = typeSelect && typeSelect.value !== 'none';
+			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
+			warning.hidden = ! ( hasTimer || hasScript || hasBatch );
 		}
 
 		cards().forEach( bindCard );
@@ -307,6 +351,32 @@
 	initBatchesPage();
 	initCountdowns();
 	initAdvanceStepRest();
+	initCopyText();
+
+	function initCopyText() {
+		document.querySelectorAll( '[data-som-copy-text]' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var text = btn.getAttribute( 'data-som-copy-text' ) || '';
+				if ( ! text ) {
+					return;
+				}
+				var done = function () {
+					var original = btn.textContent;
+					btn.textContent = 'Copied';
+					setTimeout( function () {
+						btn.textContent = original;
+					}, 1500 );
+				};
+				if ( navigator.clipboard && navigator.clipboard.writeText ) {
+					navigator.clipboard.writeText( text ).then( done ).catch( function () {
+						window.prompt( 'Copy address:', text );
+					} );
+				} else {
+					window.prompt( 'Copy address:', text );
+				}
+			} );
+		} );
+	}
 
 	function initBatchesPage() {
 		var list = document.querySelector( '[data-som-batch-list]' );

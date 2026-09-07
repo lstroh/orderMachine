@@ -406,6 +406,22 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_save_confirmation'] ) ) {
+			check_admin_referer( 'som_save_confirmation', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$input    = isset( $_POST['som_confirm'] ) && is_array( $_POST['som_confirm'] )
+				? wp_unslash( $_POST['som_confirm'] )
+				: array();
+			$result   = SOM_Step_Confirmations::save_for_order( $order_id, $input );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Confirmation checklist saved.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_retry_script'] ) ) {
 			check_admin_referer( 'som_retry_script', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;

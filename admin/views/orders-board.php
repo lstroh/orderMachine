@@ -321,6 +321,20 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 											<?php echo esc_html__( 'View', 'order-machine' ); ?>
 										</a>
 									</div>
+									<?php
+									$needs_confirm = ! $can_advance
+										&& 'in_progress' === $status
+										&& SOM_Step_Confirmations::sanitize_kind(
+											isset( $order->confirmation_kind ) ? $order->confirmation_kind : null
+										);
+									?>
+									<?php if ( $needs_confirm ) : ?>
+										<p class="som-board-confirm-hint description">
+											<a href="<?php echo esc_url( $detail_url ); ?>">
+												<?php echo esc_html__( 'Confirm on order', 'order-machine' ); ?>
+											</a>
+										</p>
+									<?php endif; ?>
 								</article>
 							<?php endforeach; ?>
 						</div>

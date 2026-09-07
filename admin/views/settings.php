@@ -259,7 +259,7 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 						printf(
 							/* translators: %s: REST route examples */
 							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s', 'order-machine' ),
-							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/workflow-callback/{token}</code>'
+							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/confirm-step</code>, <code>…/workflow-callback/{token}</code>'
 						);
 						?>
 					</p>

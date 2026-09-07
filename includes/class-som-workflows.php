@@ -366,15 +366,33 @@ class SOM_Workflows {
 
 			$manual = ! empty( $row['requires_manual_confirm'] ) ? 1 : 0;
 
+			$confirmation_kind = SOM_Step_Confirmations::sanitize_kind(
+				isset( $row['confirmation_kind'] ) ? $row['confirmation_kind'] : null
+			);
+
 			if ( $batch_group_id ) {
-				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script );
+				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || null !== $confirmation_kind;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_batch_only_step',
-						__( 'A batch step cannot also have manual, timer, or script gates.', 'order-machine' )
+						__( 'A batch step cannot also have manual, timer, script, or confirmation gates.', 'order-machine' )
 					);
 				}
-				$manual = 0;
+				$manual            = 0;
+				$timer             = null;
+				$script            = null;
+				$confirmation_kind = null;
+			}
+
+			if ( null !== $confirmation_kind ) {
+				$has_other = ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || $batch_group_id;
+				if ( $has_other ) {
+					return new WP_Error(
+						'som_confirmation_only_step',
+						__( 'A confirmation step cannot also have timer, script, or batch gates.', 'order-machine' )
+					);
+				}
+				$manual = 1;
 				$timer  = null;
 				$script = null;
 			}
@@ -387,6 +405,7 @@ class SOM_Workflows {
 				'timer_seconds'           => $timer,
 				'script_config'           => $script,
 				'batch_group_id'          => $batch_group_id,
+				'confirmation_kind'       => $confirmation_kind,
 			);
 		}
 
@@ -410,6 +429,7 @@ class SOM_Workflows {
 				'timer_seconds'           => $row['timer_seconds'],
 				'script_config'           => $row['script_config'],
 				'batch_group_id'          => $row['batch_group_id'],
+				'confirmation_kind'       => $row['confirmation_kind'],
 				'updated_at'              => $now,
 			);
 
@@ -421,7 +441,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -435,7 +455,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );

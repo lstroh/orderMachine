@@ -505,6 +505,7 @@ class SOM_Orders {
 				c.display_name AS channel_name,
 				( SELECT s.name FROM {$steps_t} s WHERE s.id = o.current_step_id LIMIT 1 ) AS current_step_name,
 				( SELECT s.step_order FROM {$steps_t} s WHERE s.id = o.current_step_id LIMIT 1 ) AS current_step_order,
+				( SELECT s.confirmation_kind FROM {$steps_t} s WHERE s.id = o.current_step_id LIMIT 1 ) AS confirmation_kind,
 				( SELECT osp.status FROM {$progress_t} osp
 					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
 					LIMIT 1 ) AS progress_status,

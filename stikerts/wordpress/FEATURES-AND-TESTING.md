@@ -20,7 +20,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Orders Board (Kanban + gated DnD) | Done (U2-4 / U2-5) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
-| Workflow engine (manual + timer + script + batch) | Done |
+| Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |
 | Listings push | Done (Sprint 10) |
@@ -59,7 +59,7 @@ Dummy mode auto-seeds:
 - Encrypted fake eBay + Etsy credentials
 - Sample product **BIN-SET-4PK** with vinyl + laminate recipe
 - Listing matches so some fixture lines resolve to that product
-- Workflow template **Bin Sticker Production** (8 steps) assigned to the product
+- Workflow template **Bin Sticker Production** (11 steps on fresh seed) assigned to the product
 - Batch groups **thank_you_card** (script) and **shipping_label** (manual_confirm), both size 4
 - Thank-you steps auto-converted to `batch_group_id` (per-order thank-you `script_config` cleared)
 
@@ -174,7 +174,9 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Shipping address
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, scripts, **waiting_batch** badge + link to Batches
-- **Mark done** when allowed (hidden/disabled while status is `waiting_batch` — advance is batch-level only)
+- **Confirmation checklist** when the current step has a confirmation kind (print / address / packing)
+- **Open on eBay/Etsy** marketplace order link
+- **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete)
 - Material stock impact for this order (when reserved)
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
 - Raw channel payload in a collapsed `<details>` block
@@ -183,6 +185,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 - One workflow per order, from the **primary product** = first line item with a non-null `product_id`
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
+- Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
 
 ---
 
@@ -245,27 +248,31 @@ Deactivate rather than hard-delete (soft inactive).
 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
+- Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer, script, or batch
 - Set **timer** (seconds via friendly min/hr/day UI)
 - Configure **script_config** (form fields + raw JSON fallback for `local` / `api` / `n8n`)
-- Assign a **batch group** (`thank_you_card` or `shipping_label`) — batch-only steps for v1 (combo with manual/timer/script shows a warning; save is still rejected by validation)
+- Assign a **batch group** (`thank_you_card` or `shipping_label`) — batch-only steps for v1 (combo with manual/timer/script/confirmation shows a warning; save is still rejected by validation)
 
 **Material cost goals (template-level section on the editor):**
 
 - Per-material target / approaching thresholds for this workflow
 - Saved with the template (`sync_for_workflow`); alerts surface on Materials + Product Costing after PO receives change WA
 
-**Seeded template — Bin Sticker Production:**
+**Seeded template — Bin Sticker Production (fresh seeds only; existing templates untouched):**
 
 | # | Step | Gates |
 |---|---|---|
 | 1 | Print | Manual confirm |
-| 2 | Dry | Timer 15 minutes |
-| 3 | Laminate | Manual confirm |
-| 4 | Cut | Manual confirm |
-| 5 | Pack | Manual confirm |
-| 6 | Ship | Manual confirm |
-| 7 | Thank-you | Batch group `thank_you_card` (auto-converted on activate; script runs once for the whole batch) |
-| 8 | Review reminder | Timer 7 days + manual confirm |
+| 2 | Confirm print | Confirmation `print_vs_request` |
+| 3 | Dry | Timer 15 minutes |
+| 4 | Laminate | Manual confirm |
+| 5 | Cut | Manual confirm |
+| 6 | Confirm pack | Confirmation `packing_items` |
+| 7 | Pack | Manual confirm |
+| 8 | Confirm address | Confirmation `shipping_address` |
+| 9 | Ship | Manual confirm |
+| 10 | Thank-you | Batch group `thank_you_card` (auto-converted on activate; script runs once for the whole batch) |
+| 11 | Review reminder | Timer 7 days + manual confirm |
 
 Opt-in: assign **shipping_label** to a Ship (or other) step via the editor — no bulk convert of existing Ship steps.
 
@@ -283,6 +290,7 @@ Opt-in: assign **shipping_label** to a Ship (or other) step via the editor — n
 **Gates:**
 
 - Manual confirm: Mark done enabled only when that step is current and confirmed by you
+- Confirmation checklist: order-detail ticks must be saved complete before Mark done / Board drag (`print_vs_request`, `shipping_address`, `packing_items`)
 - Timer: Mark done disabled until the countdown finishes (or tick unlocks it)
 - Script (`local` / `api` / `n8n`): allowlisted runner + retries + REST callback (Sprint 9)
 - Batch: entering a step with `batch_group_id` sets progress to `waiting_batch` and enqueues into a collecting batch (other gates ignored on that step in v1)
@@ -290,6 +298,20 @@ Opt-in: assign **shipping_label** to a Ship (or other) step via the editor — n
 **Important for testing:** workflow + stock run on **new creates**. If fixtures were already imported **before** the product had a workflow/recipe, those old rows won’t retroactively get progress or stock. Fix: destroy/reseed wp-env, or sync after seed is in place (fresh env does this automatically).
 
 ---
+
+### 3.7a Confirmation steps
+
+**Where:** Workflow editor (kind dropdown) · Order detail (checklist) · Orders Board (locked until complete)
+
+**Kinds:**
+
+| Kind | What you confirm |
+|---|---|
+| `print_vs_request` | Personalisation + product vs marketplace order/listing (print files slot reserved for later) |
+| `shipping_address` | SOM shipping address vs marketplace (Copy + Open marketplace order) |
+| `packing_items` | One checkbox per line item that it is in the package |
+
+**Rules:** Confirmation steps force manual confirm; cannot combine with timer, script, or batch. `POST /som/v1/orders/{id}/confirm-step` saves ticks without advancing.
 
 ### 3.8 Listings
 
@@ -382,7 +404,7 @@ Opt-in: assign **shipping_label** to a Ship (or other) step via the editor — n
 
 **Auth:** API key or admin (`check_api_key_or_admin`) for mutating / sensitive routes. Channel credentials are never exposed.
 
-**Core routes (Sprint 11):** `POST /som/v1/orders`, `POST /som/v1/orders/{id}/advance-step`, workflow callback.
+**Core routes (Sprint 11):** `POST /som/v1/orders`, `POST /som/v1/orders/{id}/advance-step`, `POST /som/v1/orders/{id}/confirm-step`, workflow callback.
 
 **Update routes (U7):**
 
@@ -603,7 +625,7 @@ Expect DB version `1.8.0`, plugin `0.22.0`, and **25** `wp_som_*` tables (includ
 2. Confirm workflow template **Bin Sticker Production** is assigned; note costing panel fields.
 3. Confirm recipe rows: vinyl + laminate (~1 each).
 4. **Materials** → both sheets show stock (seed starts at 25), WA / value on hand, threshold 5.
-5. **Workflows** → open **Bin Sticker Production** → 8 steps as in §3.6; Thank-you has batch group (not per-order thank-you script).
+5. **Workflows** → open **Bin Sticker Production** → steps as in §3.6 (fresh seeds include confirmation steps); Thank-you has batch group (not per-order thank-you script).
 6. **Batches** → confirm two batch groups exist (thank_you_card / shipping_label, size 4).
 
 - [ ] Product, recipe, materials, workflow, batch groups all present without manual create
@@ -655,10 +677,11 @@ Expect DB version `1.8.0`, plugin `0.22.0`, and **25** `wp_som_*` tables (includ
 
 On a matched open order with progress:
 
-1. Current step should be **Print** (manual).
-2. Click **Mark done** → advances to **Dry** (15-minute timer).
-3. Confirm Mark done is **disabled** (or blocked) while the timer is running.
-4. Either:
+1. Current step should be **Print** (manual) — or the first step of your template.
+2. Click **Mark done** → advances (on a fresh seed, next is **Confirm print**).
+3. If on a confirmation step: leave boxes unticked → Mark done disabled; tick + **Save checklist** → Mark done enabled.
+4. Continue until **Dry** (15-minute timer). Confirm Mark done is **disabled** while the timer is running.
+5. Either:
    - Wait ~15 minutes and refresh / wait for engine tick, **or**
    - Force unlock for review (WP-CLI), e.g. set `timer_ends_at` in the past then run the tick:
 
@@ -666,13 +689,28 @@ On a matched open order with progress:
 npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 ```
 
-5. After unlock, Mark done on Dry → Laminate, then walk a couple more manual steps if you like.
-6. Optional: complete through Ship; Thank-you should enter **`waiting_batch`** (Mark done hidden) and appear under **Batches** — not a per-order script pass-through.
+6. After unlock, Mark done on Dry → Laminate, then walk confirmation / pack / address steps if present.
+7. Optional: complete through Ship; Thank-you should enter **`waiting_batch`** (Mark done hidden) and appear under **Batches** — not a per-order script pass-through.
 
 - [ ] Manual advance works
+- [ ] Confirmation checklist blocks early Mark done / Board drag
 - [ ] Timer blocks early completion
 - [ ] Engine tick / elapsed timer unlocks the step
 - [ ] Thank-you lands in a batch (not auto-completed alone)
+
+---
+
+### Test 6b — Confirmation checklists
+
+1. Workflows → create a template with three confirmation steps (`print_vs_request`, `packing_items`, `shipping_address`) and assign to a product.
+2. Create/sync an order onto that workflow.
+3. On print confirm: open marketplace links; leave checkbox clear → Mark done disabled; tick + Save → Mark done works.
+4. On packing: leave one line unticked → blocked; tick all → advances.
+5. On address: Copy address works; marketplace link opens; tick + Save → Mark done.
+
+- [ ] Incomplete checklist blocks advance
+- [ ] Packing requires every line item
+- [ ] Marketplace order link present for eBay/Etsy
 
 ---
 

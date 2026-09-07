@@ -333,14 +333,17 @@ class SOM_Seed {
 			);
 
 			$seed_steps = array(
-				array( 'Print', 1, null, null ),
-				array( 'Dry', 0, 15 * MINUTE_IN_SECONDS, null ),
-				array( 'Laminate', 1, null, null ),
-				array( 'Cut', 1, null, null ),
-				array( 'Pack', 1, null, null ),
-				array( 'Ship', 1, null, null ),
-				array( 'Thank-you', 0, null, $thankyou ),
-				array( 'Review reminder', 1, 7 * DAY_IN_SECONDS, null ),
+				array( 'Print', 1, null, null, null ),
+				array( 'Confirm print', 1, null, null, 'print_vs_request' ),
+				array( 'Dry', 0, 15 * MINUTE_IN_SECONDS, null, null ),
+				array( 'Laminate', 1, null, null, null ),
+				array( 'Cut', 1, null, null, null ),
+				array( 'Confirm pack', 1, null, null, 'packing_items' ),
+				array( 'Pack', 1, null, null, null ),
+				array( 'Confirm address', 1, null, null, 'shipping_address' ),
+				array( 'Ship', 1, null, null, null ),
+				array( 'Thank-you', 0, null, $thankyou, null ),
+				array( 'Review reminder', 1, 7 * DAY_IN_SECONDS, null, null ),
 			);
 
 			$order = 0;
@@ -355,10 +358,11 @@ class SOM_Seed {
 						'requires_manual_confirm' => $row[1],
 						'timer_seconds'           => $row[2],
 						'script_config'           => $row[3],
+						'confirmation_kind'       => $row[4],
 						'created_at'              => $now,
 						'updated_at'              => $now,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s' )
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s' )
 				);
 			}
 		}

@@ -1024,3 +1024,75 @@
 	margin-top: 8px;
 }
 
+.som-board-confirm-hint {
+	margin: 6px 0 0;
+	font-size: 12px;
+}
+
+.som-marketplace-links {
+	margin: 8px 0 12px;
+}
+
+.som-confirmation-panel {
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.som-confirmation-panel h3 {
+	margin: 0 0 8px;
+}
+
+.som-confirm-compare-list,
+.som-confirm-pack-list {
+	margin: 8px 0 12px;
+	padding-left: 1.2em;
+}
+
+.som-confirm-compare-list li {
+	margin-bottom: 10px;
+}
+
+.som-confirm-person {
+	font-size: 1.1em;
+	font-weight: 600;
+	margin-top: 4px;
+}
+
+.som-confirm-links {
+	margin: 4px 0 0;
+}
+
+.som-confirm-files {
+	margin: 8px 0 12px;
+	padding: 8px 10px;
+	border: 1px dashed #c3c4c7;
+	background: #fff;
+}
+
+.som-confirm-check {
+	display: block;
+	margin: 8px 0;
+	font-weight: 600;
+}
+
+.som-confirm-address-block {
+	margin: 8px 0 12px;
+}
+
+.som-confirm-address-block .som-shipping-address {
+	margin-bottom: 8px;
+}
+
+.som-badge-confirm {
+	background: #f0f6fc;
+	color: #0a4b78;
+}
+
+.som-confirm-step-form .button {
+	margin-right: 8px;
+	vertical-align: middle;
+}
+
