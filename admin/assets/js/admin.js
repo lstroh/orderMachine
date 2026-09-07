@@ -727,16 +727,140 @@
 			return;
 		}
 
+		var unlocking = {};
+		var notified = {};
+
+		maybeRequestNotifyPermission();
+
+		function maybeRequestNotifyPermission() {
+			if ( typeof Notification === 'undefined' ) {
+				return;
+			}
+			if ( Notification.permission === 'default' ) {
+				try {
+					Notification.requestPermission();
+				} catch ( e ) {
+					/* ignore */
+				}
+			}
+		}
+
+		function notifyTimerReady( orderId, stepName, orderRef ) {
+			var key = 'som_timer_ready_' + String( orderId );
+			if ( notified[ key ] || ( typeof sessionStorage !== 'undefined' && sessionStorage.getItem( key ) ) ) {
+				return;
+			}
+			notified[ key ] = true;
+			try {
+				if ( typeof sessionStorage !== 'undefined' ) {
+					sessionStorage.setItem( key, '1' );
+				}
+			} catch ( e ) {
+				/* ignore */
+			}
+			if ( typeof Notification === 'undefined' || Notification.permission !== 'granted' ) {
+				return;
+			}
+			var title = ( stepName || 'Step' ) + ' ready';
+			var body = orderRef
+				? ( 'Order ' + orderRef + ' — ready to advance' )
+				: 'Ready to advance';
+			try {
+				new Notification( title, { body: body, tag: key } );
+			} catch ( err ) {
+				/* ignore */
+			}
+		}
+
+		function applyDetailReady( el, data ) {
+			var step = el.closest( '.som-workflow-step' );
+			var badge = step ? step.querySelector( '[data-som-step-status-badge]' ) : null;
+			var readyBadge = el.getAttribute( 'data-ready-badge' ) || 'Timer ready';
+			var readyLabel = el.getAttribute( 'data-ready-label' ) || 'Timer ready — you can Mark done.';
+
+			el.textContent = readyLabel;
+			el.classList.add( 'som-timer-ready' );
+			el.removeAttribute( 'data-som-countdown' );
+
+			if ( step ) {
+				step.classList.add( 'is-timer-ready' );
+				step.classList.remove( 'status-waiting_timer' );
+				step.classList.add( 'status-in_progress' );
+			}
+			if ( badge ) {
+				badge.className = 'som-badge som-badge-step-timer_ready';
+				badge.setAttribute( 'data-som-step-status-badge', '' );
+				badge.textContent = readyBadge;
+			}
+
+			var form = step ? step.querySelector( '.som-mark-done-form' ) : document.querySelector( '.som-mark-done-form[data-som-advance-step]' );
+			if ( form ) {
+				var btn = form.querySelector( 'input[type="submit"], button[type="submit"]' );
+				if ( btn ) {
+					btn.disabled = false;
+					btn.removeAttribute( 'disabled' );
+				}
+			}
+
+			var canAdvance = data && data.can_advance;
+			if ( canAdvance === false && data && data.status === 'waiting_script' ) {
+				/* script took over — leave Mark done as-is */
+				return;
+			}
+			notifyTimerReady(
+				el.getAttribute( 'data-order-id' ),
+				( data && data.step_name ) || el.getAttribute( 'data-step-name' ),
+				( data && data.external_order_id ) || el.getAttribute( 'data-order-ref' )
+			);
+		}
+
+		function unlockViaRest( el ) {
+			var orderId = el.getAttribute( 'data-order-id' );
+			if ( ! orderId || unlocking[ orderId ] ) {
+				return;
+			}
+			if ( typeof somAdmin === 'undefined' || ! somAdmin.restUrl ) {
+				el.textContent = el.getAttribute( 'data-ready-label' ) || 'Timer ready — refresh to unlock Mark done.';
+				return;
+			}
+			unlocking[ orderId ] = true;
+			fetch( somAdmin.restUrl + 'orders/' + encodeURIComponent( orderId ) + '/progress', {
+				method: 'GET',
+				credentials: 'same-origin',
+				headers: {
+					'X-WP-Nonce': somAdmin.restNonce || ''
+				}
+			} )
+				.then( function ( res ) {
+					return res.json().then( function ( data ) {
+						return { ok: res.ok, data: data };
+					} );
+				} )
+				.then( function ( result ) {
+					unlocking[ orderId ] = false;
+					if ( ! result.ok || ! result.data ) {
+						el.textContent = el.getAttribute( 'data-ready-label' ) || 'Timer ready — refresh to unlock Mark done.';
+						return;
+					}
+					applyDetailReady( el, result.data );
+				} )
+				.catch( function () {
+					unlocking[ orderId ] = false;
+					el.textContent = el.getAttribute( 'data-ready-label' ) || 'Timer ready — refresh to unlock Mark done.';
+				} );
+		}
+
 		function tick() {
 			var now = Math.floor( Date.now() / 1000 );
-			nodes.forEach( function ( el ) {
+			var live = document.querySelectorAll( '[data-som-countdown]' );
+			live.forEach( function ( el ) {
 				var ends = parseInt( el.getAttribute( 'data-ends-at' ), 10 );
 				if ( ! ends ) {
 					return;
 				}
 				var remaining = ends - now;
 				if ( remaining <= 0 ) {
-					el.textContent = el.getAttribute( 'data-unlocked-label' ) || 'Timer elapsed — refresh or wait for the next engine tick to unlock Mark done.';
+					unlockViaRest( el );
 					return;
 				}
 				var h = Math.floor( remaining / 3600 );

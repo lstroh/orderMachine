@@ -509,6 +509,9 @@ class SOM_Orders {
 				( SELECT osp.status FROM {$progress_t} osp
 					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
 					LIMIT 1 ) AS progress_status,
+				( SELECT osp.timer_ends_at FROM {$progress_t} osp
+					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
+					LIMIT 1 ) AS timer_ends_at,
 				( SELECT osp.started_at FROM {$progress_t} osp
 					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
 					LIMIT 1 ) AS step_started_at,
@@ -544,11 +547,43 @@ class SOM_Orders {
 			$order->column_key = ( empty( $order->current_step_id ) || '' === $step_name )
 				? self::BOARD_UNASSIGNED_KEY
 				: $step_name;
-			$order->batch      = null;
+			$order->batch         = null;
+			$order->timer_ends_ts = 0;
+			$order->timer_ready   = false;
+
+			if ( ! empty( $order->timer_ends_at ) ) {
+				$ends = strtotime( (string) $order->timer_ends_at . ' UTC' );
+				if ( ! $ends ) {
+					$ends = strtotime( (string) $order->timer_ends_at );
+				}
+				$order->timer_ends_ts = $ends ? (int) $ends : 0;
+			}
+
+			if ( 'waiting_timer' === (string) $order->progress_status
+				&& $order->timer_ends_ts > 0
+				&& time() >= $order->timer_ends_ts ) {
+				$status = SOM_Workflow_Engine::progress_status_for_api( (int) $order->id );
+				if ( ! is_wp_error( $status ) ) {
+					$order->progress_status = (string) ( $status['status'] ?? $order->progress_status );
+					$order->timer_ready     = ! empty( $status['timer_ready'] );
+					$order->can_advance     = ! empty( $status['can_advance'] );
+					$order->next_step_name  = (string) ( $status['next_step_name'] ?? '' );
+					$order->is_last_step    = ! empty( $status['is_last_step'] );
+				} else {
+					self::attach_board_dnd_meta( $order );
+				}
+			} else {
+				self::attach_board_dnd_meta( $order );
+				if ( 'in_progress' === (string) $order->progress_status
+					&& $order->timer_ends_ts > 0
+					&& time() >= $order->timer_ends_ts ) {
+					$order->timer_ready = true;
+				}
+			}
+
 			if ( 'waiting_batch' === (string) $order->progress_status ) {
 				$order->batch = SOM_Batches::find_for_order( (int) $order->id );
 			}
-			self::attach_board_dnd_meta( $order );
 		}
 
 		return array(
@@ -755,6 +790,7 @@ class SOM_Orders {
 			'waiting_timer'  => __( 'Waiting (timer)', 'order-machine' ),
 			'waiting_script' => __( 'Waiting (script)', 'order-machine' ),
 			'waiting_batch'  => __( 'Waiting (batch)', 'order-machine' ),
+			'timer_ready'    => __( 'Timer ready', 'order-machine' ),
 			'error'          => __( 'Error', 'order-machine' ),
 			'done'           => __( 'Done', 'order-machine' ),
 		);

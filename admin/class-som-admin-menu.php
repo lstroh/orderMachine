@@ -273,6 +273,7 @@ class SOM_Admin_Menu {
 						'waiting_timer'  => __( 'Waiting (timer)', 'order-machine' ),
 						'waiting_script' => __( 'Waiting (script)', 'order-machine' ),
 						'waiting_batch'  => __( 'Waiting (batch)', 'order-machine' ),
+						'timer_ready'    => __( 'Timer ready', 'order-machine' ),
 						'error'          => __( 'Error', 'order-machine' ),
 						'done'           => __( 'Done', 'order-machine' ),
 					),
@@ -282,6 +283,9 @@ class SOM_Admin_Menu {
 						'advanceError'  => __( 'Could not advance step.', 'order-machine' ),
 						'networkError'  => __( 'Could not advance step (network error).', 'order-machine' ),
 						'batchLabel'    => __( 'Batch #%3$d: %1$d of %2$d', 'order-machine' ),
+						'timerReady'    => __( 'Timer ready', 'order-machine' ),
+						'unlocksIn'     => __( 'Unlocks in', 'order-machine' ),
+						'notifyReady'   => __( 'ready to advance', 'order-machine' ),
 					),
 				)
 			);

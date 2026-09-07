@@ -617,6 +617,11 @@
 	color: #9a6700;
 }
 
+.som-badge-step-timer_ready {
+	background: #edfaef;
+	color: #007017;
+}
+
 .som-badge-step-waiting_script {
 	background: #f5e8ff;
 	color: #6e3a8c;
@@ -767,6 +772,27 @@
 
 .som-timer-countdown {
 	margin: 6px 0 0;
+}
+
+.som-timer-countdown.som-timer-ready,
+.som-board-timer.som-timer-ready {
+	color: #007017;
+	font-weight: 600;
+}
+
+.som-workflow-step.is-timer-ready {
+	border-left: 3px solid #007017;
+	padding-left: 8px;
+}
+
+.som-board-timer {
+	margin: 6px 0 0;
+	font-size: 12px;
+}
+
+.som-board-card.is-timer-ready {
+	border-color: #68de7c;
+	box-shadow: 0 0 0 1px #68de7c;
 }
 
 .som-script-error {

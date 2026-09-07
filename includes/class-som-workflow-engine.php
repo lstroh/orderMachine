@@ -15,6 +15,13 @@ class SOM_Workflow_Engine {
 	const HOOK_SCRIPT_ATTEMPT = 'som_script_attempt';
 
 	/**
+	 * Fired after a waiting_timer progress row unlocks (to in_progress or waiting_script).
+	 *
+	 * @var string
+	 */
+	const HOOK_TIMER_UNLOCKED = 'som_timer_unlocked';
+
+	/**
 	 * Assign workflow progress for a newly created order (primary product rule).
 	 *
 	 * @param int $order_id Order PK.
@@ -332,43 +339,8 @@ class SOM_Workflow_Engine {
 		$unlocked = 0;
 		if ( is_array( $rows ) ) {
 			foreach ( $rows as $row ) {
-				$order = SOM_Orders::get( (int) $row->order_id );
-				if ( ! $order || ! empty( $order->is_cancelled ) ) {
-					continue;
-				}
-
-				$step = self::get_step( (int) $row->workflow_step_id );
-				if ( ! $step ) {
-					continue;
-				}
-
-				if ( SOM_Script_Dispatch::has_script( $step ) ) {
-					$wpdb->update(
-						$progress_t,
-						array(
-							'status'        => 'waiting_script',
-							'timer_ends_at' => null,
-						),
-						array( 'id' => (int) $row->progress_id ),
-						array( '%s', '%s' ),
-						array( '%d' )
-					);
-					$progress = self::get_progress_for_step( (int) $row->order_id, (int) $row->workflow_step_id );
-					if ( $progress ) {
-						self::attempt_script( (int) $row->order_id, $step, $progress );
-					}
+				if ( self::unlock_elapsed_for_order( (int) $row->order_id ) ) {
 					++$unlocked;
-				} else {
-					$updated = $wpdb->update(
-						$progress_t,
-						array( 'status' => 'in_progress' ),
-						array( 'id' => (int) $row->progress_id ),
-						array( '%s' ),
-						array( '%d' )
-					);
-					if ( false !== $updated ) {
-						++$unlocked;
-					}
 				}
 			}
 		}
@@ -569,9 +541,9 @@ class SOM_Workflow_Engine {
 	 * Unlock waiting_timer for one order; start script if configured.
 	 *
 	 * @param int $order_id Order PK.
-	 * @return void
+	 * @return bool True when status was flipped from waiting_timer.
 	 */
-	private static function unlock_elapsed_for_order( $order_id ) {
+	public static function unlock_elapsed_for_order( $order_id ) {
 		global $wpdb;
 
 		$orders_t   = SOM_DB::table( 'orders' );
@@ -587,47 +559,59 @@ class SOM_Workflow_Engine {
 			)
 		);
 		if ( ! $order || ! empty( $order->is_complete ) || empty( $order->current_step_id ) ) {
-			return;
+			return false;
 		}
 
 		if ( SOM_Orders::is_cancelled( $order->raw_payload, $order->channel_slug ) ) {
-			return;
+			return false;
 		}
 
 		$now        = current_time( 'mysql', true );
 		$progress_t = SOM_DB::table( 'order_step_progress' );
 		$progress   = self::get_progress_for_step( (int) $order_id, (int) $order->current_step_id );
 		if ( ! $progress || 'waiting_timer' !== (string) $progress->status ) {
-			return;
+			return false;
 		}
 		if ( empty( $progress->timer_ends_at ) || ! self::timer_elapsed( $progress->timer_ends_at ) ) {
-			return;
+			return false;
 		}
 
 		$step = self::get_step( (int) $order->current_step_id );
 		if ( ! $step ) {
-			return;
+			return false;
 		}
 
+		$progress_id = (int) $progress->id;
+
 		if ( SOM_Script_Dispatch::has_script( $step ) ) {
-			$wpdb->update(
+			$updated = $wpdb->update(
 				$progress_t,
 				array(
 					'status'        => 'waiting_script',
 					'timer_ends_at' => null,
 				),
-				array( 'id' => (int) $progress->id ),
+				array( 'id' => $progress_id ),
 				array( '%s', '%s' ),
 				array( '%d' )
 			);
+			if ( false === $updated || 0 === (int) $updated ) {
+				return false;
+			}
+			/**
+			 * After a waiting_timer step unlocks.
+			 *
+			 * @param int $order_id    Order PK.
+			 * @param int $progress_id order_step_progress PK.
+			 */
+			do_action( self::HOOK_TIMER_UNLOCKED, (int) $order_id, $progress_id );
 			$progress = self::get_progress_for_step( (int) $order_id, (int) $order->current_step_id );
 			if ( $progress ) {
 				self::attempt_script( (int) $order_id, $step, $progress );
 			}
-			return;
+			return true;
 		}
 
-		$wpdb->query(
+		$updated = $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$progress_t}
 				SET status = 'in_progress'
@@ -641,6 +625,94 @@ class SOM_Workflow_Engine {
 				$now
 			)
 		);
+		if ( false === $updated || 0 === (int) $updated ) {
+			return false;
+		}
+
+		/**
+		 * After a waiting_timer step unlocks.
+		 *
+		 * @param int $order_id    Order PK.
+		 * @param int $progress_id order_step_progress PK.
+		 */
+		do_action( self::HOOK_TIMER_UNLOCKED, (int) $order_id, $progress_id );
+		return true;
+	}
+
+	/**
+	 * Compact current-step progress for admin REST (unlocks elapsed timer first).
+	 *
+	 * @param int $order_id Order PK.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	public static function progress_status_for_api( $order_id ) {
+		$order_id = (int) $order_id;
+		$unlocked = self::unlock_elapsed_for_order( $order_id );
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order ) {
+			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
+		}
+
+		$payload = array(
+			'ok'                => true,
+			'order_id'          => $order_id,
+			'unlocked'          => (bool) $unlocked,
+			'external_order_id' => (string) $order->external_order_id,
+			'current_step_id'   => (int) $order->current_step_id,
+			'step_name'         => (string) ( $order->current_step_name ?? '' ),
+			'status'            => '',
+			'timer_ends_at'     => null,
+			'timer_ready'       => false,
+			'can_advance'       => false,
+			'next_step_name'    => '',
+			'is_last_step'      => false,
+			'is_complete'       => ! empty( $order->is_complete ),
+			'is_cancelled'      => ! empty( $order->is_cancelled ),
+		);
+
+		if ( ! empty( $order->is_complete ) || ! empty( $order->is_cancelled ) || empty( $order->current_step_id ) ) {
+			return $payload;
+		}
+
+		$progress = self::get_progress_for_step( $order_id, (int) $order->current_step_id );
+		$step     = self::get_step( (int) $order->current_step_id );
+		if ( ! $progress || ! $step ) {
+			return $payload;
+		}
+
+		$payload['status'] = (string) $progress->status;
+		if ( ! empty( $progress->timer_ends_at ) ) {
+			$ends = strtotime( (string) $progress->timer_ends_at . ' UTC' );
+			if ( ! $ends ) {
+				$ends = strtotime( (string) $progress->timer_ends_at );
+			}
+			$payload['timer_ends_at'] = $ends ? (int) $ends : null;
+		}
+
+		$payload['timer_ready'] = self::is_timer_ready( $progress );
+		$meta                   = self::board_dnd_meta( $order_id );
+		$payload['can_advance']    = ! empty( $meta['can_advance'] );
+		$payload['next_step_name'] = (string) $meta['next_step_name'];
+		$payload['is_last_step']   = ! empty( $meta['is_last_step'] );
+
+		return $payload;
+	}
+
+	/**
+	 * Whether progress is unlocked after a timer and ready to Mark done (UI hint).
+	 *
+	 * @param object $progress Progress row.
+	 * @return bool
+	 */
+	public static function is_timer_ready( $progress ) {
+		if ( ! $progress || 'in_progress' !== (string) $progress->status ) {
+			return false;
+		}
+		if ( empty( $progress->timer_ends_at ) ) {
+			return false;
+		}
+		return self::timer_elapsed( $progress->timer_ends_at );
 	}
 
 	/**

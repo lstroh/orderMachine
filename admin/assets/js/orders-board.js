@@ -252,19 +252,21 @@
 		var canAdvance = !!(data && data.can_advance);
 		var isLast = !!(data && data.is_last_step);
 		var next = (data && data.next_step_name) ? String(data.next_step_name) : '';
-		var status = (data && data.progress_status) ? String(data.progress_status) : '';
+		var status = (data && data.progress_status) ? String(data.progress_status) : ((data && data.status) ? String(data.status) : '');
+		var timerReady = !!(data && data.timer_ready);
 
 		card.setAttribute('data-som-can-advance', canAdvance ? '1' : '0');
 		card.setAttribute('data-som-is-last-step', isLast ? '1' : '0');
 		card.setAttribute('data-som-next-step-name', next);
 		card.setAttribute('data-som-progress-status', status);
 		card.classList.toggle('is-locked', !canAdvance);
+		card.classList.toggle('is-timer-ready', timerReady);
 		if (canAdvance) {
 			card.removeAttribute('data-som-locked');
 		} else {
 			card.setAttribute('data-som-locked', '1');
 		}
-		updateStatusBadge(card, status);
+		updateStatusBadge(card, timerReady ? 'timer_ready' : status);
 		updateBatchBlock(card, (data && data.batch) || null);
 
 		if (canAdvance && isLast) {
@@ -272,6 +274,165 @@
 		} else if (canAdvance && next) {
 			ensureColumn(next);
 		}
+	}
+
+	function notifyTimerReady(orderId, stepName, orderRef) {
+		var key = 'som_timer_ready_' + String(orderId);
+		try {
+			if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(key)) {
+				return;
+			}
+			if (typeof sessionStorage !== 'undefined') {
+				sessionStorage.setItem(key, '1');
+			}
+		} catch (e) {
+			/* ignore */
+		}
+		if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+			return;
+		}
+		var title = (stepName || 'Step') + ' ready';
+		var readyPhrase = (cfg.i18n && cfg.i18n.notifyReady) || 'ready to advance';
+		var body = orderRef ? ('Order ' + orderRef + ' — ' + readyPhrase) : readyPhrase;
+		try {
+			new Notification(title, { body: body, tag: key });
+		} catch (err) {
+			/* ignore */
+		}
+	}
+
+	function maybeRequestNotifyPermission() {
+		if (typeof Notification === 'undefined') {
+			return;
+		}
+		if (Notification.permission === 'default') {
+			try {
+				Notification.requestPermission();
+			} catch (e) {
+				/* ignore */
+			}
+		}
+	}
+
+	function fetchProgress(orderId) {
+		if (!cfg.restUrl) {
+			return Promise.reject(new Error('no rest'));
+		}
+		return fetch(cfg.restUrl + 'orders/' + encodeURIComponent(orderId) + '/progress', {
+			method: 'GET',
+			credentials: 'same-origin',
+			headers: {
+				'X-WP-Nonce': cfg.restNonce || ''
+			}
+		}).then(function (res) {
+			return res.json().then(function (data) {
+				return { ok: res.ok, data: data };
+			});
+		});
+	}
+
+	function applyTimerReadyOnCard(card, data) {
+		var readyLabel = (cfg.i18n && cfg.i18n.timerReady) || 'Timer ready';
+		card.removeAttribute('data-som-timer-ends-at');
+		card.classList.add('is-timer-ready');
+
+		var countdown = card.querySelector('[data-som-board-countdown]');
+		if (countdown) {
+			countdown.classList.add('som-timer-ready');
+			countdown.removeAttribute('data-som-board-countdown');
+			countdown.setAttribute('data-som-timer-ready-msg', '');
+			countdown.textContent = readyLabel;
+		} else {
+			var meta = card.querySelector('.som-board-card-meta');
+			if (meta && !card.querySelector('[data-som-timer-ready-msg]')) {
+				var p = document.createElement('p');
+				p.className = 'som-board-timer som-timer-ready description';
+				p.setAttribute('data-som-timer-ready-msg', '');
+				p.textContent = readyLabel;
+				meta.insertAdjacentElement('afterend', p);
+			}
+		}
+
+		var payload = {
+			can_advance: !!(data && data.can_advance),
+			is_last_step: !!(data && data.is_last_step),
+			next_step_name: (data && data.next_step_name) || '',
+			progress_status: (data && data.status) || 'in_progress',
+			timer_ready: !!(data && data.timer_ready),
+			batch: null
+		};
+		if (payload.progress_status === 'in_progress' && !payload.timer_ready && data && data.unlocked) {
+			payload.timer_ready = true;
+		}
+		applyDndMeta(card, payload);
+
+		notifyTimerReady(
+			card.getAttribute('data-som-order-id'),
+			(data && data.step_name) || card.getAttribute('data-som-step-name'),
+			(data && data.external_order_id) || card.getAttribute('data-som-order-ref')
+		);
+	}
+
+	var unlockingTimers = {};
+
+	function unlockBoardCard(card) {
+		var orderId = card.getAttribute('data-som-order-id');
+		if (!orderId || unlockingTimers[orderId]) {
+			return;
+		}
+		unlockingTimers[orderId] = true;
+		fetchProgress(orderId)
+			.then(function (result) {
+				unlockingTimers[orderId] = false;
+				if (!result.ok || !result.data) {
+					return;
+				}
+				applyTimerReadyOnCard(card, result.data);
+			})
+			.catch(function () {
+				unlockingTimers[orderId] = false;
+			});
+	}
+
+	function initBoardTimers() {
+		var cards = board.querySelectorAll('.som-board-card[data-som-timer-ends-at]');
+		if (!cards.length) {
+			return;
+		}
+		maybeRequestNotifyPermission();
+
+		function tick() {
+			var now = Math.floor(Date.now() / 1000);
+			var prefix = (cfg.i18n && cfg.i18n.unlocksIn) || 'Unlocks in';
+			board.querySelectorAll('.som-board-card[data-som-timer-ends-at]').forEach(function (card) {
+				var ends = parseInt(card.getAttribute('data-som-timer-ends-at'), 10);
+				if (!ends) {
+					return;
+				}
+				var remaining = ends - now;
+				var el = card.querySelector('[data-som-board-countdown]');
+				if (remaining <= 0) {
+					unlockBoardCard(card);
+					return;
+				}
+				if (!el) {
+					return;
+				}
+				var h = Math.floor(remaining / 3600);
+				var m = Math.floor((remaining % 3600) / 60);
+				var s = remaining % 60;
+				var parts = [];
+				if (h > 0) {
+					parts.push(h + 'h');
+				}
+				parts.push(m + 'm');
+				parts.push(s + 's');
+				el.textContent = prefix + ' ' + parts.join(' ');
+			});
+		}
+
+		tick();
+		setInterval(tick, 1000);
 	}
 
 	function ensureCompleteZone() {
@@ -412,4 +573,5 @@
 	}
 
 	initSortables();
+	initBoardTimers();
 })();

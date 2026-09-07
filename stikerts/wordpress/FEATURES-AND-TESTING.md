@@ -680,9 +680,9 @@ On a matched open order with progress:
 1. Current step should be **Print** (manual) — or the first step of your template.
 2. Click **Mark done** → advances (on a fresh seed, next is **Confirm print**).
 3. If on a confirmation step: leave boxes unticked → Mark done disabled; tick + **Save checklist** → Mark done enabled.
-4. Continue until **Dry** (15-minute timer). Confirm Mark done is **disabled** while the timer is running.
+4. Continue until **Dry** (15-minute timer). Confirm Mark done is **disabled** while the timer is running; order detail and Board show a live countdown.
 5. Either:
-   - Wait ~15 minutes and refresh / wait for engine tick, **or**
+   - Wait until the countdown hits zero — UI should flip to **Timer ready**, enable Mark done / unlock the Board card (optional browser notification if allowed), **or**
    - Force unlock for review (WP-CLI), e.g. set `timer_ends_at` in the past then run the tick:
 
 ```bash
@@ -695,7 +695,7 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 - [ ] Manual advance works
 - [ ] Confirmation checklist blocks early Mark done / Board drag
 - [ ] Timer blocks early completion
-- [ ] Engine tick / elapsed timer unlocks the step
+- [ ] Live unlock / **Timer ready** (or engine tick) unlocks the step
 - [ ] Thank-you lands in a batch (not auto-completed alone)
 
 ---

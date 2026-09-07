@@ -220,7 +220,7 @@ flowchart LR
 1. Start from a **matched** open order with this workflow (after Sync on a product that has the template assigned).
 2. **Print** — Mark done or drag to Confirm print.
 3. **Confirm print** — open marketplace order / listing links, tick the checklist, **Save checklist**, then Mark done / drag to Dry.
-4. **Dry** — Mark done stays blocked until the timer ends (engine tick unlocks). Then advance to Laminate.
+4. **Dry** — Mark done stays blocked until the timer ends. Order detail and the Orders Board unlock live when the countdown hits zero (badge shows **Timer ready**); the engine cron also unlocks in the background. Browser notifications may appear if you allow them. Then advance to Laminate.
 5. Continue **Laminate → Cut → Confirm pack → Pack → Confirm address → Ship** (Board drag or Mark done; confirmation steps need the checklist saved first).
 6. On **Thank-you**, status becomes **waiting_batch**. Mark done is hidden on the order. Open **Batches** (Workflow 6).
 7. After the thank-you batch completes, the order advances toward **Review reminder**; complete when the timer and manual gate allow.
@@ -235,7 +235,7 @@ flowchart LR
 | Problem | Likely cause |
 |---|---|
 | No progress rows | Unmatched / no primary product / history import |
-| Stuck on Dry | Timer still running |
+| Stuck on Dry | Timer still running (wait for countdown / **Timer ready** badge) |
 | Stuck on Thank-you | Batch not released / not full / script error — use Batches |
 
 ---

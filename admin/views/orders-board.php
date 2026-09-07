@@ -213,7 +213,10 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 								$is_pinned       = isset( $pinned_set[ $oid ] );
 								$person          = SOM_Orders::truncate_personalisation( (string) $order->personalisation_summary );
 								$status          = (string) $order->progress_status;
-								$status_slug     = preg_replace( '/[^a-z0-9_]/', '', $status );
+								$timer_ready     = ! empty( $order->timer_ready );
+								$timer_ends_ts   = ! empty( $order->timer_ends_ts ) ? (int) $order->timer_ends_ts : 0;
+								$display_status  = $timer_ready ? 'timer_ready' : $status;
+								$display_slug    = preg_replace( '/[^a-z0-9_]/', '', $display_status );
 								$time_label      = SOM_Orders::format_time_in_step( $order->step_started_at );
 								$product_id_card = ! empty( $order->primary_product_id ) ? (int) $order->primary_product_id : 0;
 								$product_url     = $product_id_card > 0 ? SOM_Products::detail_url( $product_id_card ) : '';
@@ -235,6 +238,9 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 								if ( ! $can_advance ) {
 									$card_classes .= ' is-locked';
 								}
+								if ( $timer_ready ) {
+									$card_classes .= ' is-timer-ready';
+								}
 								?>
 								<article
 									class="<?php echo esc_attr( $card_classes ); ?>"
@@ -246,6 +252,11 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 									data-som-can-advance="<?php echo $can_advance ? '1' : '0'; ?>"
 									data-som-is-last-step="<?php echo $is_last_step ? '1' : '0'; ?>"
 									data-som-next-step-name="<?php echo esc_attr( $next_step_name ); ?>"
+									data-som-order-ref="<?php echo esc_attr( (string) $order->external_order_id ); ?>"
+									data-som-step-name="<?php echo esc_attr( (string) $order->current_step_name ); ?>"
+									<?php if ( 'waiting_timer' === $status && $timer_ends_ts > 0 ) : ?>
+										data-som-timer-ends-at="<?php echo esc_attr( (string) $timer_ends_ts ); ?>"
+									<?php endif; ?>
 									<?php echo $can_advance ? '' : ' data-som-locked="1"'; ?>
 								>
 									<div class="som-board-card-top">
@@ -290,12 +301,22 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 										<?php else : ?>
 											<span class="som-badge som-badge-open" data-som-card-step><?php echo esc_html( (string) $order->current_step_name ); ?></span>
 										<?php endif; ?>
-										<?php if ( $status_slug ) : ?>
-											<span class="som-badge som-badge-step-<?php echo esc_attr( $status_slug ); ?>" data-som-card-status>
-												<?php echo esc_html( SOM_Orders::progress_status_label( $status ) ); ?>
+										<?php if ( $display_slug ) : ?>
+											<span class="som-badge som-badge-step-<?php echo esc_attr( $display_slug ); ?>" data-som-card-status>
+												<?php echo esc_html( SOM_Orders::progress_status_label( $display_status ) ); ?>
 											</span>
 										<?php endif; ?>
 									</div>
+
+									<?php if ( 'waiting_timer' === $status && $timer_ends_ts > 0 && ! $timer_ready ) : ?>
+										<p class="som-board-timer description" data-som-board-countdown data-ends-at="<?php echo esc_attr( (string) $timer_ends_ts ); ?>">
+											<?php echo esc_html__( 'Waiting (timer)', 'order-machine' ); ?>
+										</p>
+									<?php elseif ( $timer_ready ) : ?>
+										<p class="som-board-timer som-timer-ready description" data-som-timer-ready-msg>
+											<?php echo esc_html__( 'Timer ready', 'order-machine' ); ?>
+										</p>
+									<?php endif; ?>
 
 									<?php if ( ! empty( $order->batch ) ) : ?>
 										<?php $batch = $order->batch; ?>

@@ -53,6 +53,22 @@ class SOM_REST_API {
 
 		register_rest_route(
 			'som/v1',
+			'/orders/(?P<id>\d+)/progress',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'get_order_progress' ),
+				'permission_callback' => array( __CLASS__, 'check_api_key_or_admin' ),
+				'args'                => array(
+					'id' => array(
+						'required' => true,
+						'type'     => 'integer',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'som/v1',
 			'/orders/(?P<id>\d+)/confirm-step',
 			array(
 				'methods'             => 'POST',
@@ -445,6 +461,20 @@ class SOM_REST_API {
 				'order'    => $order ? self::order_to_rest( $order ) : null,
 			)
 		);
+	}
+
+	/**
+	 * GET /som/v1/orders/{id}/progress — unlock elapsed timer and return current-step status.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public static function get_order_progress( $request ) {
+		$result = SOM_Workflow_Engine::progress_status_for_api( (int) $request['id'] );
+		if ( is_wp_error( $result ) ) {
+			return self::error_response( $result );
+		}
+		return rest_ensure_response( $result );
 	}
 
 	/**

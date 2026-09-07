@@ -430,14 +430,24 @@ if ( ! empty( $order->raw_payload ) ) {
 					if ( ! $ends_ts && $timer_ends ) {
 						$ends_ts = strtotime( $timer_ends );
 					}
+					$timer_ready = $is_current && SOM_Workflow_Engine::is_timer_ready( $row );
 					$last_error = isset( $row->last_error ) ? (string) $row->last_error : '';
 					$waiting_cb = ( 0 === strpos( $last_error, 'waiting_callback:' ) );
 					$display_err = ( $last_error && ! $waiting_cb ) ? $last_error : '';
+					$badge_status = $timer_ready ? 'timer_ready' : $status;
+					$step_classes = 'som-workflow-step';
+					if ( $is_current ) {
+						$step_classes .= ' is-current';
+					}
+					$step_classes .= ' status-' . $status;
+					if ( $timer_ready ) {
+						$step_classes .= ' is-timer-ready';
+					}
 					?>
-					<li class="som-workflow-step<?php echo $is_current ? ' is-current' : ''; ?> status-<?php echo esc_attr( $status ); ?>">
+					<li class="<?php echo esc_attr( $step_classes ); ?>">
 						<div class="som-workflow-step-main">
 							<strong><?php echo esc_html( (string) $row->step_name ); ?></strong>
-							<span class="som-badge som-badge-step-<?php echo esc_attr( $status ); ?>">
+							<span class="som-badge som-badge-step-<?php echo esc_attr( $badge_status ); ?>" data-som-step-status-badge>
 								<?php
 								$labels = array(
 									'pending'        => __( 'Pending', 'order-machine' ),
@@ -445,20 +455,30 @@ if ( ! empty( $order->raw_payload ) ) {
 									'waiting_timer'  => __( 'Waiting (timer)', 'order-machine' ),
 									'waiting_script' => __( 'Waiting (script)', 'order-machine' ),
 									'waiting_batch'  => __( 'Waiting (batch)', 'order-machine' ),
+									'timer_ready'    => __( 'Timer ready', 'order-machine' ),
 									'error'          => __( 'Error', 'order-machine' ),
 									'done'           => __( 'Done', 'order-machine' ),
 								);
-								echo esc_html( isset( $labels[ $status ] ) ? $labels[ $status ] : $status );
+								echo esc_html( isset( $labels[ $badge_status ] ) ? $labels[ $badge_status ] : $status );
 								?>
 							</span>
 							<?php if ( ! empty( $row->confirmation_kind ) ) : ?>
 								<span class="som-badge som-badge-confirm"><?php echo esc_html__( 'Confirm', 'order-machine' ); ?></span>
 							<?php endif; ?>
 						</div>
-						<?php if ( $is_current && 'waiting_timer' === $status && $ends_ts ) : ?>
+						<?php if ( $is_current && $timer_ready ) : ?>
+							<p class="som-timer-countdown som-timer-ready description" data-som-timer-ready-msg>
+								<?php echo esc_html__( 'Timer ready — you can Mark done.', 'order-machine' ); ?>
+							</p>
+						<?php elseif ( $is_current && 'waiting_timer' === $status && $ends_ts ) : ?>
 							<p class="som-timer-countdown description"
 								data-som-countdown
-								data-ends-at="<?php echo esc_attr( (string) $ends_ts ); ?>">
+								data-ends-at="<?php echo esc_attr( (string) $ends_ts ); ?>"
+								data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>"
+								data-step-name="<?php echo esc_attr( (string) $row->step_name ); ?>"
+								data-order-ref="<?php echo esc_attr( (string) $order->external_order_id ); ?>"
+								data-ready-label="<?php echo esc_attr__( 'Timer ready — you can Mark done.', 'order-machine' ); ?>"
+								data-ready-badge="<?php echo esc_attr__( 'Timer ready', 'order-machine' ); ?>">
 								<?php
 								printf(
 									/* translators: %s: datetime */
