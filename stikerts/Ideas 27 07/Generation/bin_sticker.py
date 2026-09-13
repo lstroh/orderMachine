@@ -1,20 +1,28 @@
 """
 Bin sticker generator — Kerbside Craft Co.
-4x 100x140mm stickers, 2x2, one A4 sheet, printed on white vinyl.
-Same cut-guide-lines-and-tick-marks convention as thankyou_card.py
+Landscape-only, 140x100mm cards, 2x2, one A4 sheet, printed on white
+vinyl. Same cut-guide-lines-and-tick-marks convention as thankyou_card.py
 (guillotine + corner rounder punch + Slice 00200 workflow — this PDF
 does NOT use Cricut Print Then Cut / registration marks).
 
-10 design presets, researched July 2026 against current bestseller/trend
-categories (Etsy "wheelie bin numbers" bestseller list, wheeliebinnumbers.net
-popular collections, and a Dec-2025 UK design-ideas roundup). Every icon is
-drawn as plain vector shapes in this file — not traced/copied from any
-seller's artwork — see the chat writeup for which real listings each style
-is responding to and why.
+25 design presets, all landscape (140x100mm). The original 10 PORTRAIT
+presets (100x140mm — classic, minimal, floral, recycle, house,
+reverse_block, split_panel, vintage, corner_flourish, paw) were removed
+Sep 2026: this generator is landscape-only going forward (see chat
+history, "Custom bin sticker sheet layout specifications" follow-up).
+None of the 10 had shipped as a catalogued product. If a portrait line
+is ever wanted again, restore from git history / a prior chat export
+rather than rewriting from scratch — those styles were print-tested and
+iterated on.
+
+Every icon is drawn as plain vector shapes or real extracted artwork —
+not traced/copied from any seller's artwork — see the chat writeup for
+which real listings each style is responding to and why.
 
 Every sticker is bordered (single or double line, or a filled colour block
 which reads as its own border) — see chat history for why "no border" was
-dropped as a differentiator.
+dropped as a differentiator (p09a_borderless is the one deliberate
+exception, kept as a DRAFT).
 """
 
 from reportlab.lib.pagesizes import A4, landscape
@@ -30,7 +38,16 @@ import tempfile
 import atexit
 import shutil
 
+# Portrait 100x140mm size -- no style uses this after Sep 2026. Kept as
+# a sentinel so tests can assert PORTRAIT_STYLES is empty
+# (STYLE_CARD_SIZE[s] == (CARD_W, CARD_H)) and so a revived portrait
+# line has the original dimensions in one place.
 CARD_W, CARD_H = 100 * mm, 140 * mm
+# Shared landscape card size. Every remaining style uses this (also the
+# default for _draw_base/_draw_border). Named P02_* for history -- P02
+# was the first landscape card.
+P02_CARD_W = 140 * mm
+P02_CARD_H = 100 * mm
 GUIDE = "#CCCCCC"
 PAD = 2 * mm  # inset of the design/border from the cut edge
 
@@ -97,11 +114,13 @@ INK_MUTED = "#555555"
 # Recommended source resolution: ~2000px on the long edge (comfortably
 # over 300dpi at this sticker's print size, no benefit from going higher).
 ICON_ASSETS = {
+    # "recycle", "vintage", and "corner_flourish" removed (Sep 2026) along
+    # with the 10 portrait styles that were their only users. "floral",
+    # "house", and "paw" stay -- all three are also used by landscape
+    # styles (the wreath family, house_banner/p27/p47, and the duck/dog/
+    # cat families + p21_paw_trail respectively).
     "floral": "assets/icons/flower_icon.png",
-    "recycle": "assets/icons/recycle_icon.png",
     "house": "assets/icons/house_icon.png",
-    "vintage": "assets/icons/postmark_icon.png",
-    "corner_flourish": "assets/icons/flourish_icon.png",
     "paw": "assets/icons/paw_icon.png",
 }
 
@@ -155,23 +174,6 @@ def _draw_icon(c, cx, cy, size, color, style_key, vector_fn):
         vector_fn(c, cx, cy, size, color)
 
 
-def _draw_icon_rotated(c, cx, cy, size, color, style_key, vector_fn, rot=0):
-    """Same as _draw_icon, but for placements that need rotating (e.g.
-    the same corner ornament used 4x at 4 different angles). Works for
-    both the asset path (rotates the canvas before drawImage) and the
-    vector fallback (passes rot straight through)."""
-    asset_path = ICON_ASSETS.get(style_key)
-    if asset_path and os.path.exists(_asset_path(asset_path)):
-        img = ImageReader(_asset_path(asset_path))
-        c.saveState()
-        c.translate(cx, cy)
-        c.rotate(rot)
-        c.drawImage(img, -size / 2, -size / 2, size, size,
-                    mask='auto', preserveAspectRatio=True)
-        c.restoreState()
-    else:
-        vector_fn(c, cx, cy, size, color, rot)
-
 ACCENTS = {
     "black":      INK,
     "charcoal":   "#2C2C2A",
@@ -213,7 +215,7 @@ CLEAR_VINYL_ACCENTS = {
 }
 
 
-def _resolve_accent(accent_key, default="black"):
+def _resolve_accent(accent_key, default="navy"):
     """Looks up an accent key in ACCENTS first, then CLEAR_VINYL_ACCENTS,
     so any style function can accept a key from either palette. Falls
     back to ACCENTS[default] if the key isn't found in either."""
@@ -228,7 +230,7 @@ def _resolve_accent(accent_key, default="black"):
 # styles never paint over it)
 # ---------------------------------------------------------------------------
 
-def _draw_base(c, ox, oy, w=CARD_W, h=CARD_H):
+def _draw_base(c, ox, oy, w=P02_CARD_W, h=P02_CARD_H):
     c.setFillColor(HexColor(BG))
     c.rect(ox, oy, w, h, fill=1, stroke=0)
 
@@ -245,7 +247,7 @@ def _draw_base(c, ox, oy, w=CARD_W, h=CARD_H):
         c.line(cx, cy, cx, cy + dy)
 
 
-def _draw_border(c, ox, oy, order, weight="single", w=CARD_W, h=CARD_H, pad=None):
+def _draw_border(c, ox, oy, order, weight="single", w=P02_CARD_W, h=P02_CARD_H, pad=None):
     """pad overrides the global PAD cutting-tolerance inset for this call
     only -- used when one style needs a different cut-to-border margin
     than the rest (e.g. D04's P27_PAD), without touching the shared PAD
@@ -295,37 +297,6 @@ def draw_flower_icon(c, cx, cy, size, color):
     c.restoreState()
 
 
-def draw_recycle_icon(c, cx, cy, size, color):
-    """3-arrow loop with connecting arcs — generic/universal recycling
-    motif, not a traced copy of any brand's mark. Previous version was
-    3 disconnected arrowheads with no connecting body, which read as
-    small flecks rather than a recycle symbol; this version draws the
-    arc body first so the loop actually reads as a loop."""
-    c.saveState()
-    r = size * 0.4
-    c.setStrokeColor(HexColor(color))
-    c.setLineWidth(size * 0.11)
-    c.setLineCap(1)
-    for i in range(3):
-        c.arc(cx - r, cy - r, cx + r, cy + r, i * 120 + 12, i * 120 + 88)
-    c.setFillColor(HexColor(color))
-    for i in range(3):
-        ang = math.radians(i * 120 + 88)
-        tip_x = cx + r * math.cos(ang)
-        tip_y = cy + r * math.sin(ang)
-        perp = ang + math.pi / 2
-        wing = size * 0.15
-        back_x = tip_x - wing * 1.3 * math.cos(ang)
-        back_y = tip_y - wing * 1.3 * math.sin(ang)
-        p = c.beginPath()
-        p.moveTo(tip_x + wing * math.cos(perp), tip_y + wing * math.sin(perp))
-        p.lineTo(tip_x - wing * math.cos(perp), tip_y - wing * math.sin(perp))
-        p.lineTo(back_x, back_y)
-        p.close()
-        c.drawPath(p, fill=1, stroke=0)
-    c.restoreState()
-
-
 def draw_house_icon(c, cx, cy, size, color):
     c.saveState()
     c.setFillColor(HexColor(color))
@@ -354,27 +325,6 @@ def draw_paw_icon(c, cx, cy, size, color):
     c.restoreState()
 
 
-def draw_postmark_icon(c, cx, cy, size, color):
-    c.saveState()
-    r = size * 0.42
-    c.setStrokeColor(HexColor(color))
-    c.setDash(1, 2)
-    c.setLineWidth(1)
-    c.circle(cx, cy, r, stroke=1, fill=0)
-    c.setDash()
-    # radiating ticks — this is what actually makes it read as a postmark
-    # stamp rather than an empty dashed circle
-    c.setLineWidth(0.7)
-    for i in range(16):
-        ang = math.radians(i * 22.5)
-        x1 = cx + (r + 0.6 * mm) * math.cos(ang)
-        y1 = cy + (r + 0.6 * mm) * math.sin(ang)
-        x2 = cx + (r + 2.2 * mm) * math.cos(ang)
-        y2 = cy + (r + 2.2 * mm) * math.sin(ang)
-        c.line(x1, y1, x2, y2)
-    c.restoreState()
-
-
 def draw_center_flourish(c, cx, y, icon_rel_path, width, color=INK):
     """Draws a flourish as a real image asset (extracted from the
     reference PNG via icon-silhouette-extraction, then recoloured/cached
@@ -394,200 +344,6 @@ def draw_center_flourish(c, cx, y, icon_rel_path, width, color=INK):
     iw, ih = img.getSize()
     height = width * ih / iw
     c.drawImage(img, cx - width / 2, y - height / 2, width=width, height=height, mask="auto")
-
-
-def draw_corner_ornament(c, cx, cy, size, color, rot=0):
-    """Base shape (rot=0) is oriented for the TOP-LEFT corner: the arc
-    curls from the top edge to the left edge, bulging toward the outer
-    corner (up-left) — i.e. it hugs the corner from the inside, rather
-    than swinging out past the border. Previous version swept 0-90 deg,
-    which bulged the wrong way (toward up-right) and, combined with too
-    little clearance from the border, poked outside it — see chat photo."""
-    c.saveState()
-    c.translate(cx, cy)
-    c.rotate(rot)
-    c.setStrokeColor(HexColor(color))
-    c.setLineWidth(0.8)
-    c.arc(-size, -size, size, size, 90, 180)
-    c.setFillColor(HexColor(color))
-    c.circle(-size * 0.5, size * 0.5, size * 0.09, fill=1, stroke=0)
-    c.restoreState()
-
-# ---------------------------------------------------------------------------
-# 10 style presets
-# ---------------------------------------------------------------------------
-
-def _style_classic(c, ox, oy, order):
-    """1. Classic serif + border — the dominant 'safe' seller (matches
-    EDSG, 4.8*/5,046 reviews, and most top Etsy listings)."""
-    accent = _resolve_accent(order.get("accent", "charcoal"))
-    cx = ox + CARD_W / 2
-    c.setFillColor(HexColor(INK))
-    c.setFont("Times-Bold", 58)
-    c.drawCentredString(cx, oy + CARD_H * 0.58, order["house_number"])
-    fy = oy + CARD_H * 0.49
-    c.setStrokeColor(HexColor(accent))
-    c.setLineWidth(0.8)
-    c.line(cx - 16 * mm, fy, cx - 4 * mm, fy)
-    c.line(cx + 4 * mm, fy, cx + 16 * mm, fy)
-    c.circle(cx, fy, 1.1 * mm, stroke=1, fill=0)
-    c.setFont("Times-Roman", 17)
-    c.drawCentredString(cx, oy + CARD_H * 0.36, order["street_name"])
-    _draw_border(c, ox, oy, order, "double")
-
-
-def _style_minimal(c, ox, oy, order):
-    """2. Modern minimalist sans — the 'modern-font' niche shop angle."""
-    accent = _resolve_accent(order.get("accent", "charcoal"))
-    cx = ox + CARD_W / 2
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 62)
-    c.drawCentredString(cx, oy + CARD_H * 0.56, order["house_number"])
-    c.setFont("Helvetica", 18)
-    c.setFillColor(HexColor(INK_MUTED))
-    c.drawCentredString(cx, oy + CARD_H * 0.32, order["street_name"].upper())
-    # subtle anchor line — fixes the empty-lower-half balance issue the
-    # original version had versus the other 9 designs
-    c.setStrokeColor(HexColor(accent))
-    c.setLineWidth(0.6)
-    c.line(cx - 14 * mm, oy + CARD_H * 0.24, cx + 14 * mm, oy + CARD_H * 0.24)
-    _draw_border(c, ox, oy, order, "single")
-
-
-def _style_floral(c, ox, oy, order):
-    """3. Floral corner accent — floral/foliage is a consistently
-    popular category (wheeliebinnumbers.net lists it as one of their
-    most popular collections)."""
-    accent = _resolve_accent(order.get("accent", "terracotta"))
-    cx = ox + CARD_W / 2
-    _draw_icon(c, cx, oy + CARD_H - PAD - 11 * mm, 15 * mm, accent, "floral", draw_flower_icon)
-    c.setFillColor(HexColor(INK))
-    c.setFont("Times-Bold", 52)
-    c.drawCentredString(cx, oy + CARD_H * 0.48, order["house_number"])
-    c.setFont("Times-Italic", 16)
-    c.drawCentredString(cx, oy + CARD_H * 0.30, order["street_name"])
-    _draw_border(c, ox, oy, order, "single")
-
-
-def _style_recycle(c, ox, oy, order):
-    """4. Recycling-icon informational — icons + friendly text reinforcing
-    recycling rules; also ties to the Growth Plan's recycling/food-caddy
-    bundle idea."""
-    accent = _resolve_accent(order.get("accent", "forest"))
-    cx = ox + CARD_W / 2
-    _draw_icon(c, cx, oy + CARD_H - PAD - 11 * mm, 14 * mm, accent, "recycle", draw_recycle_icon)
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 54)
-    c.drawCentredString(cx, oy + CARD_H * 0.48, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + CARD_H * 0.30, order["street_name"])
-    if order.get("bin_type"):
-        c.setFont("Helvetica-Bold", 10)
-        c.setFillColor(HexColor(accent))
-        c.drawCentredString(cx, oy + CARD_H * 0.24, order["bin_type"].upper())
-    _draw_border(c, ox, oy, order, "single")
-
-
-def _style_house(c, ox, oy, order):
-    """5. House silhouette — contemporary, elegant, versatile across
-    house styles per current design-trend coverage."""
-    accent = _resolve_accent(order.get("accent", "black"))
-    cx = ox + CARD_W / 2
-    _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 14 * mm, accent, "house", draw_house_icon)
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 54)
-    c.drawCentredString(cx, oy + CARD_H * 0.48, order["house_number"])
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(cx, oy + CARD_H * 0.30, order["street_name"])
-    _draw_border(c, ox, oy, order, "single")
-
-
-def _style_reverse_block(c, ox, oy, order):
-    """6. Bold reverse-block (white-on-colour) — high-contrast styling in
-    the spirit of the reflective/high-visibility category."""
-    accent = _resolve_accent(order.get("accent", "black"))
-    cx = ox + CARD_W / 2
-    inset = PAD + 1.3 * mm
-    c.setFillColor(HexColor(accent))
-    c.rect(ox + inset, oy + inset, CARD_W - 2 * inset, CARD_H - 2 * inset, fill=1, stroke=0)
-    c.setFillColor(white)
-    c.setFont("Helvetica-Bold", 62)
-    c.drawCentredString(cx, oy + CARD_H * 0.56, order["house_number"])
-    c.setFont("Helvetica", 17)
-    c.drawCentredString(cx, oy + CARD_H * 0.32, order["street_name"].upper())
-    _draw_border(c, ox, oy, order, "single")
-
-
-def _style_split_panel(c, ox, oy, order):
-    """7. Split panel — colour band with the number, white lower half
-    with the street name. A layout differentiator, easy to spot from a
-    car/from a distance."""
-    accent = _resolve_accent(order.get("accent", "berry"))
-    cx = ox + CARD_W / 2
-    inset = PAD + 1.3 * mm
-    band_h = (CARD_H - 2 * inset) * 0.5
-    c.setFillColor(HexColor(accent))
-    c.rect(ox + inset, oy + CARD_H - inset - band_h, CARD_W - 2 * inset, band_h, fill=1, stroke=0)
-    c.setFillColor(white)
-    c.setFont("Helvetica-Bold", 56)
-    c.drawCentredString(cx, oy + CARD_H - inset - band_h * 0.62, order["house_number"])
-    c.setFillColor(HexColor(INK))
-    c.setFont("Times-Roman", 17)
-    c.drawCentredString(cx, oy + CARD_H * 0.28, order["street_name"])
-    _draw_border(c, ox, oy, order, "single")
-
-
-def _style_vintage(c, ox, oy, order):
-    """8. Vintage dashed-border / postmark — a visual-style gap versus
-    the single/double solid borders every competitor uses."""
-    accent = _resolve_accent(order.get("accent", "mustard"))
-    cx = ox + CARD_W / 2
-    c.setFillColor(HexColor(INK))
-    c.setFont("Times-Roman", 54)
-    c.drawCentredString(cx, oy + CARD_H * 0.55, order["house_number"])
-    c.setFont("Times-Italic", 15)
-    c.setFillColor(HexColor(INK_MUTED))
-    c.drawCentredString(cx, oy + CARD_H * 0.34, order["street_name"])
-    _draw_icon(c, cx, oy + CARD_H - PAD - 10 * mm, 18 * mm, accent, "vintage", draw_postmark_icon)
-    _draw_border(c, ox, oy, order, "dashed")
-
-
-def _style_corner_flourish(c, ox, oy, order):
-    """9. Four-corner flourish — vector-only take on the floral-wreath +
-    traditional-font look called out in current design trend coverage,
-    without using photographic floral art."""
-    accent = _resolve_accent(order.get("accent", "berry"))
-    cx = ox + CARD_W / 2
-    inset = PAD + 7 * mm
-    corner_size = 4.5 * mm
-    for (px, py, rot) in [
-        (ox + inset, oy + CARD_H - inset, 0),
-        (ox + CARD_W - inset, oy + CARD_H - inset, -90),
-        (ox + inset, oy + inset, 90),
-        (ox + CARD_W - inset, oy + inset, 180),
-    ]:
-        _draw_icon_rotated(c, px, py, corner_size, accent, "corner_flourish", draw_corner_ornament, rot)
-    c.setFillColor(HexColor(INK))
-    c.setFont("Times-Bold", 54)
-    c.drawCentredString(cx, oy + CARD_H * 0.55, order["house_number"])
-    c.setFont("Times-Roman", 16)
-    c.drawCentredString(cx, oy + CARD_H * 0.32, order["street_name"])
-    _draw_border(c, ox, oy, order, "double")
-
-
-def _style_paw(c, ox, oy, order):
-    """10. Paw-print accent — pet designs (dog breeds, cat silhouettes)
-    are called out as surprisingly popular across households; a cat-
-    silhouette listing is named directly among Etsy's bestsellers."""
-    accent = _resolve_accent(order.get("accent", "terracotta"))
-    cx = ox + CARD_W / 2
-    _draw_icon(c, cx, oy + CARD_H - PAD - 12 * mm, 19 * mm, accent, "paw", draw_paw_icon)
-    c.setFillColor(HexColor(INK))
-    c.setFont("Helvetica-Bold", 54)
-    c.drawCentredString(cx, oy + CARD_H * 0.48, order["house_number"])
-    c.setFont("Helvetica-Oblique", 16)
-    c.drawCentredString(cx, oy + CARD_H * 0.30, order["street_name"])
-    _draw_border(c, ox, oy, order, "single")
 
 
 def _fit_font_size(text, font, max_size, min_size, max_width, step=0.5):
@@ -624,9 +380,9 @@ def _fit_font_size(text, font, max_size, min_size, max_width, step=0.5):
 # for the general recipe (rescale from the ORIGINAL pixel measurements,
 # don't nudge these mm values directly).
 # ---------------------------------------------------------------------------
-P02_CARD_W = 140 * mm  # landscape -- this style's card is a different shape/size
-P02_CARD_H = 100 * mm  # than the other 10 styles' portrait CARD_W/CARD_H
-
+# Card size is P02_CARD_W/H at the top of this file (shared landscape
+# size for every remaining style). Named P02_* because this style was
+# the first landscape card.
 P02_ICON = dict(x=8.8 * mm, y=7.9391 * mm, w=122.4 * mm, h=84.1219 * mm)
 P02_ICON_SCALE = 0.090066  # mm per source-icon px -- rescaled for the landscape card, see chat history
 P02_ICON_X_LEFT = 8.8 * mm
@@ -939,7 +695,7 @@ def _style_p02_house_banner(c, ox, oy, order):
     STYLE_CARD_SIZE and P02_CARD_W/H. See chat history for the full
     derivation, and STYLE_PRODUCT_ID / bin_sticker_products_gallery_data.md
     for how this maps to the D01 catalogue entry."""
-    accent_key = order.get("accent", "black")
+    accent_key = order.get("accent", "navy")
     accent_hex = _resolve_accent(accent_key)
     cx = ox + P02_CARD_W / 2
 
@@ -3072,17 +2828,16 @@ P09A_UNDERLINE_WEIGHT = 1.0  # pt -- judgment call, see note above (not a litera
 
 
 def _style_p09a_borderless(c, ox, oy, order):
-    """34. P09a -- borderless minimal: bold house number, thin underline
+    """24. P09a -- borderless minimal: bold house number, thin underline
     rule sized to the street name's own width, street name in caps below
     it. No icon, no border. LANDSCAPE (140x100mm, reuses P02_CARD_W/H) --
     this specific orientation was an explicit user choice for the mockup
-    (source pinned size was ~150x110mm, itself ambiguous vs. this design's
-    OTHER intended build path as a borderless variant of #2 "minimal",
-    which is the shared PORTRAIT CARD_W/CARD_H) -- if this ends up built
-    as that portrait variant instead, re-derive the P09A_* constants
-    against CARD_W/CARD_H rather than reusing these landscape mm values
-    directly (the underlying fractions of card width/height should carry
-    over; the absolute mm won't). DRAFT status -- not yet in
+    (source pinned size was ~150x110mm, itself ambiguous vs. a portrait
+    build path that would have reused the old "minimal" style's
+    portrait CARD_W/CARD_H -- that style and the shared portrait card
+    size were both removed Sep 2026, so this landscape build is now the
+    only version of this style; the note is kept only as history in case
+    a portrait product line is ever revived). DRAFT status -- not yet in
     bin_sticker_products_gallery.html/.md, no STYLE_PRODUCT_ID entry."""
     cx = ox + P02_CARD_W / 2
 
@@ -3298,17 +3053,16 @@ def _style_p21_paw_trail(c, ox, oy, order):
     _draw_border(c, ox, oy, order, "single", w=P02_CARD_W, h=P02_CARD_H, pad=P21_PAD)
 
 
+# The 10 portrait styles (classic, minimal, floral, recycle, house,
+# reverse_block, split_panel, vintage, corner_flourish, paw) were removed
+# Sep 2026 -- this catalogue is landscape-only now (see chat history,
+# "Custom bin sticker sheet layout specifications" follow-up). None of
+# them had shipped as a catalogued product (STYLE_PRODUCT_ID below only
+# ever covered landscape styles), so nothing in the products gallery
+# referenced them. If a portrait product is ever wanted again, restore
+# from git history / a prior chat export rather than rewriting from
+# scratch -- these were print-tested and iterated on.
 STYLES = {
-    "classic": _style_classic,
-    "minimal": _style_minimal,
-    "floral": _style_floral,
-    "recycle": _style_recycle,
-    "house": _style_house,
-    "reverse_block": _style_reverse_block,
-    "split_panel": _style_split_panel,
-    "vintage": _style_vintage,
-    "corner_flourish": _style_corner_flourish,
-    "paw": _style_paw,
     "house_banner": _style_p02_house_banner,
     "p25_landscape_flourish": _style_p25_landscape_flourish,
     "p25b_landscape_flourish": _style_p25b_landscape_flourish,
@@ -3336,42 +3090,37 @@ STYLES = {
     "p21_paw_trail": _style_p21_paw_trail,
 }
 
+# Renumbered 1-25 (Sep 2026) after the 10 portrait styles were removed --
+# the old numbering (11-35) was a historical artefact of styles 1-10
+# having existed first; nothing else depends on these specific numbers
+# (STYLE_PRODUCT_ID below is the real cross-reference for shipped
+# products and is unaffected by this renumbering).
 STYLE_LABELS = {
-    "classic": "1. Classic serif + border",
-    "minimal": "2. Modern minimalist sans",
-    "floral": "3. Floral corner accent",
-    "recycle": "4. Recycling-icon informational",
-    "house": "5. House silhouette",
-    "reverse_block": "6. Bold reverse-block",
-    "split_panel": "7. Split panel",
-    "vintage": "8. Vintage dashed/postmark",
-    "corner_flourish": "9. Four-corner flourish",
-    "paw": "10. Paw print accent",
-    "house_banner": "11. D01 — Cottage Bloom Banner (landscape)",
-    "p25_landscape_flourish": "12. D02 — Regency Double Flourish (landscape)",
-    "p25b_landscape_flourish": "13. D03 — Manor Frame Classic (landscape)",
-    "p27_landscape_house": "14. D04 — Homestead Silhouette (landscape)",
-    "p47_house": "15. P47 — House-outline + number, black-only (landscape)",
-    "p06_wreath": "16. P06 — Floral vine wreath, number + curved street name (landscape)",
-    "p06_wreath_numbers": "17. P06 numbers-only — Floral vine wreath, number only, no street (landscape)",
-    "p30_laurel_numbers": "18. P30 laurel wreath — Open-top laurel leaves, number only, no street (landscape)",
-    "p15_heart_wreath": "19. P15 heart-vine wreath — Number + flat street name (landscape)",
-    "p28_arrow_wreath": "20. P28 arrow/fletching wreath — Number + flat street name (landscape)",
-    "p31_olive_wreath": "21. P31 olive branch wreath — Number + flat street name (landscape, experimental)",
-    "duck_family_father": "22. Duck Family, Scene 1 — Father Duck & Duckling (landscape)",
-    "duck_family_mother": "23. Duck Family, Scene 2 — Mother Duck & Duckling (landscape)",
-    "duck_family_playing1": "24. Duck Family, Scene 3 — Ducklings Playing (landscape)",
-    "duck_family_playing2": "25. Duck Family, Scene 4 — Ducklings Playing, Energetic (landscape)",
-    "dog_family_1": "26. Dog Family, Scene 1 — Adult Dog & Puppy, Walking (landscape)",
-    "dog_family_2": "27. Dog Family, Scene 2 — Adult Dog & Puppy, Close Beside (landscape)",
-    "dog_family_playing1": "28. Dog Family, Scene 3 — Puppies Playing (landscape)",
-    "dog_family_playing2": "29. Dog Family, Scene 4 — Puppies Playing, Energetic (landscape)",
-    "cat_family_1": "30. Cat Family, Scene 1 — Adult Cat & Kitten, Walking (landscape)",
-    "cat_family_2": "31. Cat Family, Scene 2 — Adult Cat & Kitten, Close Beside (landscape)",
-    "cat_family_playing1": "32. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
-    "cat_family_playing2": "33. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
-    "p09a_borderless": "34. P09a — Borderless minimal, number + underline + street (landscape, DRAFT)",
-    "p21_paw_trail": "35. P21 — Paw trail (5 paws), number + street beside (landscape)",
+    "house_banner": "1. D01 — Cottage Bloom Banner (landscape)",
+    "p25_landscape_flourish": "2. D02 — Regency Double Flourish (landscape)",
+    "p25b_landscape_flourish": "3. D03 — Manor Frame Classic (landscape)",
+    "p27_landscape_house": "4. D04 — Homestead Silhouette (landscape)",
+    "p47_house": "5. P47 — House-outline + number, black-only (landscape)",
+    "p06_wreath": "6. P06 — Floral vine wreath, number + curved street name (landscape)",
+    "p06_wreath_numbers": "7. P06 numbers-only — Floral vine wreath, number only, no street (landscape)",
+    "p30_laurel_numbers": "8. P30 laurel wreath — Open-top laurel leaves, number only, no street (landscape)",
+    "p15_heart_wreath": "9. P15 heart-vine wreath — Number + flat street name (landscape)",
+    "p28_arrow_wreath": "10. P28 arrow/fletching wreath — Number + flat street name (landscape)",
+    "p31_olive_wreath": "11. P31 olive branch wreath — Number + flat street name (landscape, experimental)",
+    "duck_family_father": "12. Duck Family, Scene 1 — Father Duck & Duckling (landscape)",
+    "duck_family_mother": "13. Duck Family, Scene 2 — Mother Duck & Duckling (landscape)",
+    "duck_family_playing1": "14. Duck Family, Scene 3 — Ducklings Playing (landscape)",
+    "duck_family_playing2": "15. Duck Family, Scene 4 — Ducklings Playing, Energetic (landscape)",
+    "dog_family_1": "16. Dog Family, Scene 1 — Adult Dog & Puppy, Walking (landscape)",
+    "dog_family_2": "17. Dog Family, Scene 2 — Adult Dog & Puppy, Close Beside (landscape)",
+    "dog_family_playing1": "18. Dog Family, Scene 3 — Puppies Playing (landscape)",
+    "dog_family_playing2": "19. Dog Family, Scene 4 — Puppies Playing, Energetic (landscape)",
+    "cat_family_1": "20. Cat Family, Scene 1 — Adult Cat & Kitten, Walking (landscape)",
+    "cat_family_2": "21. Cat Family, Scene 2 — Adult Cat & Kitten, Close Beside (landscape)",
+    "cat_family_playing1": "22. Cat Family, Scene 3 — Kittens Playing (landscape, rear view)",
+    "cat_family_playing2": "23. Cat Family, Scene 4 — Kittens Playing, Energetic (landscape)",
+    "p09a_borderless": "24. P09a — Borderless minimal, number + underline + street (landscape, DRAFT)",
+    "p21_paw_trail": "25. P21 — Paw trail (5 paws), number + street beside (landscape)",
 }
 
 # Cross-reference from a style key to its internal product ID in
@@ -3417,39 +3166,16 @@ STYLE_PRODUCT_ID = {
     "p21_paw_trail": "D25",
 }
 
-# Card size per style. Every style defaults to the shared portrait
-# (CARD_W, CARD_H) EXCEPT house_banner, which is landscape
-# (P02_CARD_W, P02_CARD_H) -- the first and so far only style with a
-# different card shape. draw_sticker/render_sheet/render_gallery all
-# look up a style's real size here rather than assuming CARD_W/CARD_H
-# uniformly -- if you add another non-portrait style in future, register
-# its size here too, or it will silently get drawn onto a portrait base.
-STYLE_CARD_SIZE = {style: (CARD_W, CARD_H) for style in STYLES}
-STYLE_CARD_SIZE["house_banner"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p25_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p25b_landscape_flourish"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p27_landscape_house"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p47_house"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p06_wreath"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p06_wreath_numbers"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p30_laurel_numbers"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p15_heart_wreath"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p28_arrow_wreath"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p31_olive_wreath"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["duck_family_father"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["duck_family_mother"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["duck_family_playing1"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["duck_family_playing2"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["dog_family_1"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["dog_family_2"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["dog_family_playing1"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["dog_family_playing2"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["cat_family_1"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["cat_family_2"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["cat_family_playing1"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["cat_family_playing2"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p09a_borderless"] = (P02_CARD_W, P02_CARD_H)
-STYLE_CARD_SIZE["p21_paw_trail"] = (P02_CARD_W, P02_CARD_H)
+# Card size per style. Before Sep 2026 this mapped each style to either
+# the shared portrait (CARD_W, CARD_H) or landscape (P02_CARD_W,
+# P02_CARD_H) size, defaulting to portrait. Now that the 10 portrait
+# styles are gone, every remaining style is landscape -- kept as an
+# explicit per-style dict (not a bare constant) rather than collapsing
+# it away, so draw_sticker/render_sheet/render_gallery still look up size
+# by style name uniformly, and so a differently-sized style (e.g. a
+# genuine Medium/210x140mm variant) can still be registered here later
+# without changing any of those three functions' logic.
+STYLE_CARD_SIZE = {style: (P02_CARD_W, P02_CARD_H) for style in STYLES}
 
 
 def draw_sticker(c, ox, oy, order):
@@ -3457,12 +3183,11 @@ def draw_sticker(c, ox, oy, order):
     order = dict:
         house_number str
         street_name  str
-        style        key in STYLES              (default "minimal")
+        style        key in STYLES              (default "house_banner")
         accent       key in ACCENTS              (each style has its own default)
-        bin_type     str or None                 (style "recycle" only)
     """
-    style = order.get("style", "minimal")
-    w, h = STYLE_CARD_SIZE.get(style, (CARD_W, CARD_H))
+    style = order.get("style", "house_banner")
+    w, h = STYLE_CARD_SIZE.get(style, (P02_CARD_W, P02_CARD_H))
     _draw_base(c, ox, oy, w, h)
     STYLES[style](c, ox, oy, order)
 
@@ -3512,19 +3237,23 @@ def render_sheet(orders, out_path, caption=False):
     (used for the design gallery, not for real customer orders).
 
     All orders in one call must use styles with the SAME card size --
-    this fills one uniform 2x2 grid, so a batch mixing e.g. a portrait
-    style with landscape house_banner can't be laid out sensibly in one
-    call. Split into separate render_sheet calls per card shape instead;
-    mixing raises ValueError rather than silently producing a wrong
-    layout (a card drawn at the wrong size/position on a shared grid)."""
-    sizes = {STYLE_CARD_SIZE.get(o.get("style", "minimal"), (CARD_W, CARD_H)) for o in orders}
+    this fills one uniform 2x2 grid, so a batch mixing two different
+    card sizes can't be laid out sensibly in one call. (Historically this
+    guarded against mixing the old portrait styles with landscape ones;
+    since the portrait styles were removed Sep 2026 every style is
+    140x100mm today, but the check stays in place for whenever a second
+    landscape size, e.g. Medium at 210x140mm, gets registered.) Split
+    into separate render_sheet calls per card shape instead; mixing
+    raises ValueError rather than silently producing a wrong layout (a
+    card drawn at the wrong size/position on a shared grid)."""
+    sizes = {STYLE_CARD_SIZE.get(o.get("style", "house_banner"), (P02_CARD_W, P02_CARD_H)) for o in orders}
     if len(sizes) > 1:
         raise ValueError(
             f"render_sheet got orders with different card sizes ({sizes}) -- "
             "a single sheet can't mix card shapes in one uniform 2x2 grid. "
             "Split into separate render_sheet calls, one per card shape."
         )
-    card_w, card_h = sizes.pop() if sizes else (CARD_W, CARD_H)
+    card_w, card_h = sizes.pop() if sizes else (P02_CARD_W, P02_CARD_H)
     page_size = landscape(A4) if card_w > card_h else A4
     page_w, page_h = page_size
     margin_x, margin_y, positions = _sheet_layout(card_w, card_h, page_w, page_h)
@@ -3544,13 +3273,14 @@ def render_gallery(style_keys, sample_order, out_path):
     """One sticker per style in style_keys, same sample_order text on all
     of them, paginated 4-up across as many A4 pages as needed.
 
-    Styles are grouped by card shape (portrait vs. landscape) and each
-    group gets its own page(s) in the matching orientation -- a page
-    can't sensibly mix a 100x140mm portrait card with a 140x100mm
-    landscape one in one uniform grid, same reasoning as render_sheet."""
+    Styles are grouped by card shape and each group gets its own page(s)
+    in the matching orientation -- same reasoning as render_sheet. Every
+    style is 140x100mm today (portrait styles removed Sep 2026), so this
+    will produce a single group in practice, but stays in place for when
+    a second landscape size is registered."""
     groups = {}
     for style in style_keys:
-        size = STYLE_CARD_SIZE.get(style, (CARD_W, CARD_H))
+        size = STYLE_CARD_SIZE.get(style, (P02_CARD_W, P02_CARD_H))
         groups.setdefault(size, []).append(style)
 
     c = canvas.Canvas(out_path, pagesize=A4)  # placeholder; first setPageSize call below fixes it
@@ -3580,5 +3310,6 @@ def render_gallery(style_keys, sample_order, out_path):
 if __name__ == "__main__":
     sample_order = {"house_number": "28", "street_name": "North Avenue"}
     all_styles = list(STYLES.keys())
-    render_gallery(all_styles, sample_order, "/mnt/user-data/outputs/bin_sticker_design_gallery.pdf")
-    print("done")
+    out_path = os.path.join(_SCRIPT_DIR, "bin_sticker_design_gallery.pdf")
+    render_gallery(all_styles, sample_order, out_path)
+    print(f"Wrote {out_path}")

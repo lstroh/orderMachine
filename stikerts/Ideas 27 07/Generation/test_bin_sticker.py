@@ -25,9 +25,13 @@ os.chdir(_SCRIPT_DIR)
 
 import bin_sticker as bs  # noqa: E402
 
-# Keep in sync with STYLES in bin_sticker.py (10 portrait + 25 landscape).
-EXPECTED_STYLE_COUNT = 35
-EXPECTED_PORTRAIT_COUNT = 10
+# Keep in sync with STYLES in bin_sticker.py. The 10 portrait styles were
+# removed Sep 2026 -- this generator is landscape-only now. Portrait
+# count is asserted at 0 (rather than deleting the portrait-related
+# checks below) so this suite doubles as a regression check that they
+# stay gone.
+EXPECTED_STYLE_COUNT = 25
+EXPECTED_PORTRAIT_COUNT = 0
 EXPECTED_LANDSCAPE_COUNT = 25
 
 LANDSCAPE_SIZE = (bs.P02_CARD_W, bs.P02_CARD_H)
@@ -290,22 +294,40 @@ def test_draw_curved_text_uses_passed_coeffs(r: SuiteResult) -> None:
 
 
 def test_mixed_sheet_raises(r: SuiteResult) -> None:
+    """render_sheet's mixed-card-size guard used to be tested with a real
+    portrait style ("minimal") against a landscape one. Since the 10
+    portrait styles were removed Sep 2026, every real style is now
+    140x100mm and there's no longer a second real size to mix in. Rather
+    than delete this regression check, register a temporary synthetic
+    style with a different size, confirm the guard still raises, then
+    remove it -- this still proves the ValueError path itself works,
+    which matters again the moment a second real size (e.g. Medium,
+    210x140mm) gets registered."""
+
     def _mixed() -> None:
+        fake_style = "_test_fake_other_size"
+        fake_size = (50 * bs.mm, 50 * bs.mm)  # deliberately unlike 140x100mm
+        assert fake_style not in bs.STYLES, "fake test style name collided with a real one"
+        bs.STYLES[fake_style] = bs.STYLES["house_banner"]
+        bs.STYLE_CARD_SIZE[fake_style] = fake_size
         orders = [
-            {**SAMPLE, "style": "minimal"},
+            {**SAMPLE, "style": fake_style},
             {**SAMPLE, "style": "house_banner"},
         ]
         out = os.path.join(_SCRIPT_DIR, "_should_not_exist_mixed.pdf")
         try:
-            bs.render_sheet(orders, out)
-        except ValueError:
-            return
+            try:
+                bs.render_sheet(orders, out)
+            except ValueError:
+                return
+            raise AssertionError("expected ValueError for mixed card sizes")
         finally:
             if os.path.exists(out):
                 os.remove(out)
-        raise AssertionError("expected ValueError for mixed card sizes")
+            bs.STYLES.pop(fake_style, None)
+            bs.STYLE_CARD_SIZE.pop(fake_style, None)
 
-    r.run("render_sheet: mixed portrait+landscape raises ValueError", _mixed)
+    r.run("render_sheet: mixed card sizes raises ValueError", _mixed)
 
 
 def test_p09a_borderless_contracts(r: SuiteResult) -> None:
@@ -397,6 +419,11 @@ def test_p21_paw_trail_contracts(r: SuiteResult) -> None:
             raise AssertionError("expected recolour path, got None")
         if not os.path.isfile(path):
             raise AssertionError(f"recolour cache missing: {path}")
+        cache_dir = os.path.abspath(bs._get_icon_cache_dir())
+        if os.path.abspath(path).startswith(cache_dir) is False:
+            raise AssertionError(
+                f"recolour wrote outside temp cache: {path} (cache={cache_dir})"
+            )
 
     r.run("p21: _p21_icon_path caches navy recolour", _recolour)
 
@@ -422,13 +449,13 @@ def test_animal_family_autofit(r: SuiteResult) -> None:
     )
 
     r.check(
-        "animal family: number max matches prior fixed size",
-        bs.ANIMAL_NUMBER_MAX_SIZE == 50,
+        "animal family: number max is 63pt (raised from 50 after print test)",
+        bs.ANIMAL_NUMBER_MAX_SIZE == 63,
         f"got {bs.ANIMAL_NUMBER_MAX_SIZE}",
     )
     r.check(
-        "animal family: street max matches prior fixed size",
-        bs.ANIMAL_STREET_MAX_SIZE == 16,
+        "animal family: street max is 27pt (raised from 16 after print test)",
+        bs.ANIMAL_STREET_MAX_SIZE == 27,
         f"got {bs.ANIMAL_STREET_MAX_SIZE}",
     )
 
@@ -563,14 +590,9 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
             lambda s=style: _render_single(s, outdir, SAMPLE),
         )
 
-    def _portrait_sheet() -> None:
-        styles = list(PORTRAIT_STYLES)[:4]
-        orders = [{**SAMPLE, "style": s} for s in styles]
-        path = os.path.join(outdir, "sheet_portrait_4up.pdf")
-        bs.render_sheet(orders, path)
-        _assert_pdf(path)
-
-    r.run("PDF 4-up portrait sheet", _portrait_sheet)
+    # No portrait 4-up sheet test -- the 10 portrait styles were removed
+    # Sep 2026 and PORTRAIT_STYLES is now expected to be empty (see
+    # test_registry). This isn't a gap; it's the point of the removal.
 
     for style in LANDSCAPE_STYLES:
         def _landscape_sheet(s: str = style) -> None:
@@ -590,17 +612,16 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
 
     def _edge_long() -> None:
         path = os.path.join(outdir, "edge_long_text.pdf")
-        # Auto-fit landscape styles + a couple of portrait styles
-        keys = list(LANDSCAPE_STYLES) + ["classic", "minimal"]
-        bs.render_gallery(keys, EDGE_LONG, path)
+        # All 25 remaining styles are landscape now -- no portrait styles
+        # left to add on top of LANDSCAPE_STYLES.
+        bs.render_gallery(list(LANDSCAPE_STYLES), EDGE_LONG, path)
         _assert_pdf(path)
 
     r.run("PDF edge-case long text", _edge_long)
 
     def _edge_short() -> None:
         path = os.path.join(outdir, "edge_short_text.pdf")
-        keys = list(LANDSCAPE_STYLES) + ["classic", "minimal"]
-        bs.render_gallery(keys, EDGE_SHORT, path)
+        bs.render_gallery(list(LANDSCAPE_STYLES), EDGE_SHORT, path)
         _assert_pdf(path)
 
     r.run("PDF edge-case short text", _edge_short)
@@ -614,14 +635,26 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
     r.run("PDF animal-family long-text gallery", _animal_edge_long)
 
     def _clear_vinyl() -> None:
-        # render_gallery doesn't vary accent; draw a custom multi-page sheet
-        from reportlab.lib.pagesizes import A4
+        # render_gallery doesn't vary accent; draw a custom multi-page
+        # sheet. Uses p09a_borderless (text-only, no PNG asset
+        # dependency) rather than the old "minimal" -- any style would
+        # do here since the point is testing accent colours, not the
+        # style itself, but a dependency-free one keeps this smoke test
+        # from silently depending on assets/ being present.
+        #
+        # IMPORTANT: P02_CARD_W/H is a LANDSCAPE card (140x100mm) -- it
+        # needs a landscape page, unlike the old portrait CARD_W/H test
+        # this replaced (which used plain portrait A4). Using portrait
+        # A4 here would make _sheet_layout compute a negative margin and
+        # assert (confirmed by actually running this: it did).
+        from reportlab.lib.pagesizes import A4, landscape
 
         path = os.path.join(outdir, "clear_vinyl_accents.pdf")
         accents = list(bs.CLEAR_VINYL_ACCENTS.keys())
-        c = canvas.Canvas(path, pagesize=A4)
-        page_w, page_h = A4
-        _, _, positions = bs._sheet_layout(bs.CARD_W, bs.CARD_H, page_w, page_h)
+        page_size = landscape(A4)
+        c = canvas.Canvas(path, pagesize=page_size)
+        page_w, page_h = page_size
+        _, _, positions = bs._sheet_layout(bs.P02_CARD_W, bs.P02_CARD_H, page_w, page_h)
         for i, accent in enumerate(accents):
             slot = i % 4
             if i > 0 and slot == 0:
@@ -630,12 +663,12 @@ def test_pdf_renders(r: SuiteResult, outdir: str) -> None:
             order = {
                 "house_number": "36",
                 "street_name": "Grove Street",
-                "style": "minimal",
+                "style": "p09a_borderless",
                 "accent": accent,
             }
             bs.draw_sticker(c, x, y, order)
             c.setFont("Helvetica", 6)
-            c.drawCentredString(x + bs.CARD_W / 2, 2.5 * bs.mm, accent)
+            c.drawCentredString(x + bs.P02_CARD_W / 2, 2.5 * bs.mm, accent)
         c.showPage()
         c.save()
         _assert_pdf(path)
