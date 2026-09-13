@@ -47,7 +47,7 @@ Full item-by-item details and purchase links are provided in the companion file:
 
 | Item | Approx. Cost |
 |---|---|
-| Cricut Explore 5 (cutting machine, current gen, Feb 2026) | £180–200 |
+| Cricut Explore 5 (cutting machine, current gen, Feb 2026) — ✅ purchased, in transit (Sep 2026) | £180–200 |
 | Epson EcoTank ET-3950 (pigment-ink printer, current gen) | £330–360 |
 | Printable vinyl sticker paper (starter pack) | £10–15 |
 | Self-adhesive laminate sheets + squeegee | £15–25 |

@@ -1,0 +1,31 @@
+Chat 1 — Single-colour
+
+Let's work out the production process for the "Single-colour" family in the decal idea board (D01, D04, D12, D27, D32–D35, D38, D43, D44, D47, D48). Direct-cut only, no printer. Walk me through the exact Design Space steps, and let's settle how we're generating the name text — built-in Design Space text tool, or something else?
+
+Chat 2 — Two-tone / Shadow
+
+Let's work out the production process for the "Two-tone / Shadow" family (D02, D20, D24, D26, D31, D37, D40, D41, D46). Direct-cut, using Design Space's Offset tool for the shadow effect. Walk me through the exact steps, and how we should generate/manage the name text for this one.
+
+Chat 3 — White-border flat-print
+
+Let's work out the production process for the "White-border flat-print" family (D07, D08, D17, D18, D21, D45). Print-and-Cut, needs Canva for the outline effect before Design Space. Let's settle the Canva → Design Space handoff and how custom names get generated within that.
+
+Chat 4 — Gradient print
+
+Let's work out the production process for the "Gradient print" family (D03, D05). Print-and-Cut, Canva for the gradient fill. Same handoff questions as the white-border family — let's work out the details for this one.
+
+Chat 5 — Multicolour bubble+cursive
+
+Let's work out the production process for the "Multicolour bubble+cursive" family (D09, D10, D14, D15, D25). Print-and-Cut, multicolour per letter — Canva territory. Let's settle the process and custom-text generation approach.
+
+Chat 7 — Icon+name theme templates
+
+Let's work out the production process for the "Icon+name theme template" family (D19 ⭐, D23 ⭐, D42). This one starts with Midjourney for the character/icon art before any layout work. Let's map the full pipeline from Midjourney through to a cut-ready file, and how names get swapped in per order.
+
+Chat 8 — Listing/marketing assets
+
+Let's work through building the actual listing assets from the "Listing/marketing insight" entries (D11, D16, D22, D28, D29, D30, D36, D39, D47) plus Listing-Assets-Reference.md. Not production — this is building the hero image, badges, and font/colour reference sheets themselves.
+
+Chat 6 — Small icon+name label sheets
+
+Let's continue the "Small icon+name label" family (D06, D13) — production script is already built (name_sticker.py + generate_name_sticker_cut_lines.py, cut-only on the Explore 5, rounded-rectangle labels). Now I want to find/generate real icon sets to replace the placeholder star, and talk through some ideas for this line — sports icons, kawaii/cute characters, maybe other themes. Let's start with icon sourcing.
