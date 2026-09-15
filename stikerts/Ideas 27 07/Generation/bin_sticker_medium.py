@@ -92,7 +92,7 @@ from bin_sticker_core import (
     PAD,
 )
 
-CARD_W = 210 * mm
+CARD_W = 202 * mm  # narrowed from 210mm (Sep 2026) -- 210mm needed borderless printing (full A4 width), which was unreliably dropping some designs' border lines entirely (the measured 2-4mm borderless dead zone). 202mm fits comfortably inside NORMAL print mode (4mm margin each side, printer minimum is 3mm) -- reliable mechanical margin instead of a borderless gamble. Departs from the original exact 21cm competitor-match size by 8mm -- a deliberate trade for print reliability.
 CARD_H = 140 * mm
 
 # Alias so every verbatim-copied style body below (originally written
@@ -115,11 +115,11 @@ P09A_NUMBER_CENTER_Y = 96.0306 * mm      # 68.5933 x1.4
 P09A_UNDERLINE_CENTER_Y = 69.9026 * mm   # 49.9304 x1.4
 P09A_STREET_CENTER_Y = 49.8190 * mm      # 35.5850 x1.4
 
-P09A_NUMBER_MAX_WIDTH = 165.0 * mm       # 110 x1.5
+P09A_NUMBER_MAX_WIDTH = 158.7143 * mm    # 165.0 x(202/210), width narrowed Sep 2026
 P09A_NUMBER_MAX_SIZE = 196               # pt -- 140 x1.4
 P09A_NUMBER_MIN_SIZE = 28                # pt -- 20 x1.4
 
-P09A_STREET_MAX_WIDTH = 180.0 * mm       # 120 x1.5
+P09A_STREET_MAX_WIDTH = 173.1429 * mm    # 180.0 x(202/210)
 P09A_STREET_MAX_SIZE = 92                # pt -- 66 x1.4 (92.4 rounded)
 P09A_STREET_MIN_SIZE = 22                # pt -- 16 x1.4 (22.4 rounded)
 
@@ -170,11 +170,11 @@ def _style_p09a_borderless(c, ox, oy, order):
 # origin (x, y) uses normal per-axis position scaling.
 # ---------------------------------------------------------------------------
 P21_ICON_MASTER = "assets/icons/p21_paw_trail_icon.png"
-P21_ICON = dict(x=11.2043 * mm, y=10.8620 * mm, w=80.9696 * mm, h=120.0863 * mm)
+P21_ICON = dict(x=10.7775 * mm, y=10.8620 * mm, w=80.9696 * mm, h=120.0863 * mm)  # x narrowed x(202/210)
 
-P21_NUMBER_CENTER_X = 148.8717 * mm    # 99.2478 x1.5
+P21_NUMBER_CENTER_X = 143.2004 * mm    # 148.8717 x(202/210)
 P21_NUMBER_CENTER_Y = 87.2423 * mm     # 62.3159 x1.4
-P21_NUMBER_MAX_WIDTH = 102.056 * mm    # CORRECTED (was 91.665mm x1.5) -- not a hollow
+P21_NUMBER_MAX_WIDTH = 92.6159 * mm    # RE-RECOMPUTED for the 202mm-wide card (Sep 2026) -- not a hollow
 # gap, but a "distance to the nearest binding edge" measurement, since
 # P21's icon sits BESIDE the text, not enclosing it (see module comment).
 # Naively scaling the old final mm value by one axis ratio doesn't work
@@ -189,9 +189,9 @@ P21_NUMBER_MAX_WIDTH = 102.056 * mm    # CORRECTED (was 91.665mm x1.5) -- not a 
 P21_NUMBER_MAX_SIZE = 178              # pt -- 127 x1.4 (177.8 rounded)
 P21_NUMBER_MIN_SIZE = 28               # pt -- 20 x1.4
 
-P21_STREET_CENTER_X = 148.8717 * mm    # matches NUMBER_CENTER_X, same as Small
+P21_STREET_CENTER_X = 143.2004 * mm    # matches NUMBER_CENTER_X
 P21_STREET_CENTER_Y = 34.6608 * mm     # 24.7577 x1.4
-P21_STREET_MAX_WIDTH = 102.0 * mm      # 68 x1.5
+P21_STREET_MAX_WIDTH = 98.1143 * mm    # 102.0 x(202/210)
 P21_STREET_MAX_SIZE = 62               # pt -- 44 x1.4 (61.6 rounded)
 P21_STREET_MIN_SIZE = 22               # pt -- 16 x1.4 (22.4 rounded)
 
@@ -274,7 +274,7 @@ def _style_p21_paw_trail(c, ox, oy, order):
 # fill proportion (133.5384/140 = 95.4%, identical).
 # ---------------------------------------------------------------------------
 P31_OLIVE_ICON_MASTER = "assets/icons/p31_olive_icon.png"
-P31_OLIVE_ICON = dict(x=36.8636 * mm, y=1.9881 * mm, w=127.6772 * mm, h=133.5384 * mm)
+P31_OLIVE_ICON = dict(x=35.4593 * mm, y=1.9881 * mm, w=127.6772 * mm, h=133.5384 * mm)  # x narrowed x(202/210)
 
 P31_OLIVE_NUMBER_CENTER_Y = 74.7417 * mm   # 53.3869 x1.4
 P31_OLIVE_NUMBER_MAX_WIDTH = 63.6919 * mm  # CORRECTED (was 68.2413mm x1.5) --
@@ -314,7 +314,15 @@ def _style_p31_olive_wreath(c, ox, oy, order):
     methodology and the "not yet print-validated" caveat."""
     accent_key = order.get("accent", "charcoal")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P31_OLIVE_ICON["x"] + P31_OLIVE_ICON["w"] / 2
 
     icon_path = _p31_olive_icon_path(accent_key)
     if icon_path:
@@ -411,16 +419,16 @@ def _p02_icon_path(accent_key):
     return path
 
 
-P02_ICON = dict(x=13.2 * mm, y=11.11474 * mm, w=183.6 * mm, h=126.18285 * mm)
-P02_ICON_SCALE = 0.135099  # mm per source-icon px -- 0.090066 x1.5 (icon's own uniform scale)
-P02_ICON_X_LEFT = 13.2 * mm
+P02_ICON = dict(x=12.6971 * mm, y=11.11474 * mm, w=176.6057 * mm, h=126.18285 * mm)  # x,w narrowed x(202/210) (width-dominant icon)
+P02_ICON_SCALE = 0.129952  # mm per source-icon px -- 0.135099 x(202/210)
+P02_ICON_X_LEFT = 12.6971 * mm
 P02_ICON_Y_TOP = 11.11474 * mm  # not used in drawing, kept for reference (unused in Small too)
 
 P02_NUMBER_CENTER_Y = 83.62438 * mm      # 59.7317 x1.4
-P02_NUMBER_MAX_WIDTH = 49.790835 * mm    # (36.8821*0.90) x1.5 (hollow gap, icon's own dominant axis)
+P02_NUMBER_MAX_WIDTH = 47.894 * mm    # 49.790835 x(202/210)
 
 P02_STREET_CENTER_Y = 51.52 * mm         # 36.8 x1.4
-P02_STREET_MAX_WIDTH = 116.72586 * mm    # (86.4636*0.90) x1.5 (banner hollow gap, same axis)
+P02_STREET_MAX_WIDTH = 112.2792 * mm    # 116.72586 x(202/210)
 
 P02_BANNER_CURVE_COEFFS = (3.36374116e-04, -4.56481049e-01, 7.64104309e+02)  # unchanged, see module note above
 
@@ -518,20 +526,20 @@ P25_STREET_CENTER_Y = P02_CARD_H * (P25_FLOURISH1_Y_FRAC + P25_FLOURISH2_Y_FRAC)
 
 P25_NUMBER_SIZE = 126            # pt -- 90 x1.4
 P25_NUMBER_MIN_SIZE = 56         # pt -- 40 x1.4
-P25_NUMBER_MAX_WIDTH = 183 * mm  # 122 x1.5
-P25_STREET_MAX_WIDTH = 183 * mm  # 122 x1.5
+P25_NUMBER_MAX_WIDTH = 176.0286 * mm  # 183 x(202/210)
+P25_STREET_MAX_WIDTH = 176.0286 * mm  # 183 x(202/210)
 P25_BORDER_WEIGHT = 6.3          # pt -- 4.5 x1.4
 P25_BORDER_RADIUS = 7 * mm       # 5 x1.4
 
 P25_FLOURISH1_ICON = "assets/icons/p25_flourish1.png"
 P25_FLOURISH2_ICON = "assets/icons/p25_flourish2.png"
-P25_FLOURISH_WIDTH = 174 * mm    # 116 x1.5 (draw_center_flourish auto-preserves the asset's own aspect)
+P25_FLOURISH_WIDTH = 167.3714 * mm    # 174 x(202/210) (draw_center_flourish auto-preserves the asset's own aspect)
 
 P25B_FLOURISH_ICON = "assets/icons/p25b_flourish.png"
-P25B_FLOURISH_WIDTH = 184.5 * mm  # 123 x1.5
+P25B_FLOURISH_WIDTH = 177.4714 * mm  # 184.5 x(202/210)
 
-P25B_STREET_MAX_WIDTH = 172.5 * mm  # 115 x1.5
-P25B_NUMBER_MAX_WIDTH = 172.5 * mm  # 115 x1.5
+P25B_STREET_MAX_WIDTH = 165.9286 * mm  # 172.5 x(202/210)
+P25B_NUMBER_MAX_WIDTH = 165.9286 * mm  # 172.5 x(202/210)
 
 P25B_NUMBER_BASELINE_FRAC = _p25_frac(380)
 P25B_FLOURISH_Y_FRAC = _p25_frac(470)
@@ -550,7 +558,7 @@ P25B_CORNER_BL = "assets/icons/p25b_corner_bl.png"
 # distortion -- run_x/run_y below are computed directly from these same
 # W/H values, so keeping them on the same per-axis convention as the line
 # placement keeps the whole border self-consistent.
-P25B_CORNER_W = 26.4101 * mm  # (165/(1312/140)) x1.5
+P25B_CORNER_W = 25.404 * mm  # 26.4101 x(202/210)
 P25B_CORNER_H = 24.8922 * mm  # (165/(928/100)) x1.4
 
 # Per-edge spec, same per-axis convention: top/bottom use the height
@@ -558,8 +566,8 @@ P25B_CORNER_H = 24.8922 * mm  # (165/(928/100)) x1.4
 P25B_EDGE_SPEC = {
     "top":    (7.8442, 3.3194, 12.5216, 1.358),
     "bottom": (10.2592, 3.3194, 14.9352, 1.358),
-    "left":   (7.5225, 3.681, 12.645, 1.44),
-    "right":  (7.8435, 3.681, 12.9645, 1.44),
+    "left":   (7.2359, 3.5408, 12.1633, 1.3851),  # narrowed x(202/210)
+    "right":  (7.5447, 3.5408, 12.4706, 1.3851),  # narrowed x(202/210)
 }
 
 
@@ -718,7 +726,7 @@ def _style_p25b_landscape_flourish(c, ox, oy, order):
 # all") -- independent measurement, uses the plain width-axis (1.5).
 # ---------------------------------------------------------------------------
 P27_ICON_MASTER = "assets/icons/p27_house_icon.png"
-P27_ICON = dict(x=43.7535 * mm, y=34.8587 * mm, w=114.5651 * mm, h=100.1384 * mm)
+P27_ICON = dict(x=42.0867 * mm, y=34.8587 * mm, w=114.5651 * mm, h=100.1384 * mm)  # x narrowed x(202/210)
 
 P27_NUMBER_CENTER_Y = 73.2277 * mm   # 52.3055 x1.4
 P27_NUMBER_MAX_WIDTH = 59.2052 * mm  # 42.2894 x1.4 (hollow gap, icon's dominant axis)
@@ -726,7 +734,7 @@ P27_NUMBER_MAX_SIZE = 196            # pt -- 140 x1.4
 P27_NUMBER_MIN_SIZE = 28             # pt -- 20 x1.4
 
 P27_STREET_CENTER_Y = 19.487 * mm     # 13.9193 x1.4
-P27_STREET_MAX_WIDTH = 144.4889 * mm  # 96.3259 x1.5 (independent measurement, not icon-bounded)
+P27_STREET_MAX_WIDTH = 138.9846 * mm  # 144.4889 x(202/210)
 P27_STREET_MAX_SIZE = 92              # pt -- 66 x1.4 (92.4 rounded)
 P27_STREET_MIN_SIZE = 22              # pt -- 16 x1.4 (22.4 rounded)
 
@@ -760,7 +768,15 @@ def _style_p27_landscape_house(c, ox, oy, order):
     STYLE_PRODUCT_ID and bin_sticker_products_gallery_data.md."""
     accent_key = order.get("accent", "charcoal")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + P02_CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P27_ICON["x"] + P27_ICON["w"] / 2
 
     icon_path = _p27_icon_path(accent_key)
     if icon_path:
@@ -816,10 +832,10 @@ def _style_p27_landscape_house(c, ox, oy, order):
 # NUMBER_MAX_WIDTH (hollow gap) uses the same 1.5 axis.
 # ---------------------------------------------------------------------------
 P47_ICON_MASTER = "assets/icons/p47_house_icon.png"
-P47_ICON = dict(x=22.5 * mm, y=17.3317 * mm, w=165.0 * mm, h=112.8606 * mm)
+P47_ICON = dict(x=21.6429 * mm, y=17.3317 * mm, w=158.7143 * mm, h=112.8606 * mm)  # x,w narrowed x(202/210) (width-dominant icon)
 
 P47_NUMBER_CENTER_Y = 60.2522 * mm    # 43.0373 x1.4
-P47_NUMBER_MAX_WIDTH = 104.4892 * mm  # 69.6595 x1.5 (hollow gap, icon's dominant axis)
+P47_NUMBER_MAX_WIDTH = 100.5087 * mm  # 104.4892 x(202/210)
 P47_NUMBER_MAX_SIZE = 196             # pt -- 140 x1.4
 P47_NUMBER_MIN_SIZE = 28              # pt -- 20 x1.4
 
@@ -905,7 +921,7 @@ def _style_p47_house(c, ox, oy, order):
 # NUMBER_MAX_WIDTH/STREET_MAX_WIDTH (true hollow gaps) use the same 1.4.
 # ---------------------------------------------------------------------------
 P06_ICON_MASTER = "assets/icons/p06_wreath_icon.png"
-P06_ICON = dict(x=36.5697 * mm, y=5.5633 * mm, w=128.5227 * mm, h=126.0 * mm)
+P06_ICON = dict(x=35.1766 * mm, y=5.5633 * mm, w=128.5227 * mm, h=126.0 * mm)  # x narrowed x(202/210)
 
 P06_NUMBER_CENTER_Y = 73.5017 * mm    # 52.5012 x1.4
 P06_NUMBER_MAX_WIDTH = 72.776 * mm    # (57.7587*0.90) x1.4
@@ -947,7 +963,15 @@ def _style_p06_wreath(c, ox, oy, order):
     full extraction/derivation writeup."""
     accent_key = order.get("accent", "charcoal")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + P02_CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P06_ICON["x"] + P06_ICON["w"] / 2
 
     icon_path = _p06_icon_path(accent_key)
     if icon_path:
@@ -1017,7 +1041,15 @@ def _style_p06_wreath_numbers(c, ox, oy, order):
     as unrelated designs."""
     accent_key = order.get("accent", "charcoal")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + P02_CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P06_ICON["x"] + P06_ICON["w"] / 2
 
     icon_path = _p06_icon_path(accent_key)
     if icon_path:
@@ -1060,7 +1092,7 @@ def _style_p06_wreath_numbers(c, ox, oy, order):
 # vs 61.9%) -- uniform scale x1.4, NUMBER_MAX_WIDTH (hollow gap) same axis.
 # ---------------------------------------------------------------------------
 P30_LAUREL_ICON_MASTER = "assets/icons/p30_laurel_icon.png"
-P30_LAUREL_ICON = dict(x=39.6767 * mm, y=3.85 * mm, w=121.2698 * mm, h=133.175 * mm)
+P30_LAUREL_ICON = dict(x=38.1652 * mm, y=3.85 * mm, w=121.2698 * mm, h=133.175 * mm)  # x narrowed x(202/210)
 
 P30_LAUREL_NUMBER_CENTER_Y = 73.7191 * mm   # 52.6565 x1.4
 P30_LAUREL_NUMBER_MAX_WIDTH = 60.5052 * mm  # (48.02*0.90) x1.4
@@ -1093,7 +1125,15 @@ def _style_p30_laurel_numbers(c, ox, oy, order):
     and symmetry-check findings specific to this source image."""
     accent_key = order.get("accent", "charcoal")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + P02_CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P30_LAUREL_ICON["x"] + P30_LAUREL_ICON["w"] / 2
 
     icon_path = _p30_laurel_icon_path(accent_key)
     if icon_path:
@@ -1142,7 +1182,7 @@ def _style_p30_laurel_numbers(c, ox, oy, order):
 # use the same axis.
 # ---------------------------------------------------------------------------
 P15_HEART_ICON_MASTER = "assets/icons/p15_heart_icon.png"
-P15_HEART_ICON = dict(x=34.97 * mm, y=3.15 * mm, w=129.5451 * mm, h=133.875 * mm)
+P15_HEART_ICON = dict(x=33.6378 * mm, y=3.15 * mm, w=129.5451 * mm, h=133.875 * mm)  # x narrowed x(202/210)
 
 P15_HEART_NUMBER_CENTER_Y = 75.2842 * mm   # 53.7744 x1.4
 P15_HEART_NUMBER_MAX_WIDTH = 87.066 * mm   # (69.10*0.90) x1.4
@@ -1177,7 +1217,15 @@ def _style_p15_heart_wreath(c, ox, oy, order):
     own curved layout. LANDSCAPE (140x100mm, reuses P02_CARD_W/H)."""
     accent_key = order.get("accent", "berry")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + P02_CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P15_HEART_ICON["x"] + P15_HEART_ICON["w"] / 2
 
     icon_path = _p15_heart_icon_path(accent_key)
     if icon_path:
@@ -1237,7 +1285,7 @@ def _style_p15_heart_wreath(c, ox, oy, order):
 # MAX_WIDTH values (true hollow gaps) use the same axis.
 # ---------------------------------------------------------------------------
 P28_ARROW_ICON_MASTER = "assets/icons/p28_arrow_icon.png"
-P28_ARROW_ICON = dict(x=34.3902 * mm, y=4.4356 * mm, w=131.6683 * mm, h=130.4356 * mm)
+P28_ARROW_ICON = dict(x=33.0801 * mm, y=4.4356 * mm, w=131.6683 * mm, h=130.4356 * mm)  # x narrowed x(202/210)
 
 P28_ARROW_NUMBER_CENTER_Y = 77.91 * mm      # 55.65 x1.4
 P28_ARROW_NUMBER_MAX_WIDTH = 76.3376 * mm   # (60.5854*0.90) x1.4
@@ -1274,7 +1322,15 @@ def _style_p28_arrow_wreath(c, ox, oy, order):
     this time, raw margins were already comfortably clear."""
     accent_key = order.get("accent", "charcoal")
     accent_hex = _resolve_accent(accent_key)
-    cx = ox + P02_CARD_W / 2
+    # Centre on the ICON's own midpoint, not the card's -- fixes a real bug
+    # found via print review (Sep 2026): this icon's x/w were scaled by
+    # different axis ratios (position by width-axis, size by height-axis,
+    # since this icon is height-dominant), which amplified a small
+    # pre-existing off-centre asymmetry in the Small-size source art into
+    # a visually noticeable offset at Medium size. Centring on the icon's
+    # own midpoint makes the text track wherever the actual artwork sits,
+    # regardless of any such asymmetry.
+    cx = ox + P28_ARROW_ICON["x"] + P28_ARROW_ICON["w"] / 2
 
     icon_path = _p28_arrow_icon_path(accent_key)
     if icon_path:
@@ -1338,7 +1394,7 @@ def _style_p28_arrow_wreath(c, ox, oy, order):
 # not nested inside it), so they use the plain width-axis. Font sizes use
 # the height-axis, per the general rule.
 # ---------------------------------------------------------------------------
-_ANIMAL_ICON_BOX = dict(x=15.0 * mm, y=47.6 * mm, w=180.0 * mm, h=87.0 * mm)
+_ANIMAL_ICON_BOX = dict(x=14.4286 * mm, y=47.6 * mm, w=173.1429 * mm, h=87.0 * mm)  # x,w narrowed x(202/210) (width-dominant icon)
 
 DUCK_FATHER_ICON_MASTER = "assets/icons/duck_family_father_icon.png"
 DUCK_FATHER_ICON = dict(_ANIMAL_ICON_BOX)
@@ -1350,11 +1406,11 @@ DUCK_FATHER_PAD = 3.4 * mm  # unscaled, physical cutting tolerance -- shared by 
 
 ANIMAL_NUMBER_MAX_SIZE = 88   # pt -- 63 x1.4 (88.2 rounded)
 ANIMAL_NUMBER_MIN_SIZE = 34   # pt -- 24 x1.4 (33.6 rounded)
-ANIMAL_NUMBER_MAX_WIDTH = 165 * mm  # 110 x1.5 (independent, card-width-based)
+ANIMAL_NUMBER_MAX_WIDTH = 158.7143 * mm  # 165 x(202/210)
 
 ANIMAL_STREET_MAX_SIZE = 38   # pt -- 27 x1.4 (37.8 rounded)
 ANIMAL_STREET_MIN_SIZE = 13   # pt -- 9 x1.4 (12.6 rounded)
-ANIMAL_STREET_MAX_WIDTH = 183 * mm  # 122 x1.5
+ANIMAL_STREET_MAX_WIDTH = 176.0286 * mm  # 183 x(202/210)
 
 
 def _animal_family_text(c, cx, oy, order):
@@ -1929,16 +1985,34 @@ def draw_sticker(c, ox, oy, order):
 
 
 # This size's real print layout: 2-per-A4, STACKED VERTICALLY (1 column x
-# 2 rows) on a PORTRAIT A4 page -- NOT the small size's 2x2 grid. The
-# card is 210mm wide, exactly the full physical A4 page width, so
-# margin_x=0 (confirmed via real print test: borderless on left/right,
-# ~2-4mm measured dead zone -- see module docstring). Vertical margin is
-# None (auto-centred), which computes to 8.5mm top/bottom -- normal,
-# non-borderless margin, confirmed comfortably clear of the printer's
-# 3mm minimum.
+# 2 rows) on a PORTRAIT A4 page -- NOT the small size's 2x2 grid.
+#
+# Width narrowed to 202mm (Sep 2026, was 210mm) specifically so this size
+# no longer needs borderless printing at all: normal mode's usable width
+# on A4 is 204mm (3mm minimum margin each side), and 202mm fits with a
+# comfortable 4mm margin each side -- margin_x left as None (auto-centred)
+# since that symmetric 4mm IS the natural centring, no override needed.
+# This replaces the old borderless approach, which was unreliably
+# dropping some designs' border lines entirely (the measured 2-4mm
+# borderless dead zone landed right on top of some border strokes but
+# not others).
+#
+# Vertical margin is now ASYMMETRIC -- 14mm at the TOP (margin_y anchors
+# the top row's gap, confirmed directly -- see core.sheet_layout's
+# docstring), giving an automatic 3mm at the bottom (297-14-280=3) --
+# reusing the exact same 14mm/3mm split already validated on the Small
+# size's LANDSCAPE_MARGIN_LEFT, just rotated to the top/bottom axis
+# since Medium's cards stack vertically instead of sitting side by side.
+# Not a coincidence that the same 17mm of total slack applies to both:
+# Medium's card HEIGHT (140mm) is identical to Small's card WIDTH
+# (140mm), so the leftover space on a 297mm page dimension is
+# 297-2*140=17mm either way. Same physical reasoning as Small's margin:
+# the extra 14mm on the leading (top) edge gives room for lamination
+# misalignment without touching the printed ink.
 _PAGE_SIZE = A4  # portrait, NOT landscape -- see core.render_sheet_grid's
 # docstring for why page orientation can't be auto-derived from whether
 # the card itself is wider than tall.
+MEDIUM_MARGIN_TOP = 14 * mm
 
 
 def render_sheet(orders, out_path, caption=False):
@@ -1947,7 +2021,7 @@ def render_sheet(orders, out_path, caption=False):
     core.render_sheet_grid(
         orders, out_path, CARD_W, CARD_H, cols=1, rows=2,
         draw_fn=draw_sticker, page_size=_PAGE_SIZE,
-        margin_x=0, caption=caption, style_labels=STYLE_LABELS,
+        margin_y=MEDIUM_MARGIN_TOP, caption=caption, style_labels=STYLE_LABELS,
     )
 
 
@@ -1957,7 +2031,7 @@ def render_gallery(style_keys, sample_order, out_path):
     core.render_gallery_grid(
         style_keys, sample_order, out_path, CARD_W, CARD_H,
         cols=1, rows=2, draw_fn=draw_sticker, page_size=_PAGE_SIZE,
-        style_labels=STYLE_LABELS,
+        margin_y=MEDIUM_MARGIN_TOP, style_labels=STYLE_LABELS,
     )
 
 

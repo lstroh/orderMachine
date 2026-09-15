@@ -386,10 +386,18 @@ def sheet_layout(card_w, card_h, page_w, page_h, cols, rows, margin_x=None, marg
     """Computes the grid of card bottom-left origins for a cols x rows
     grid of card_w x card_h cards on a page_w x page_h page.
 
-    margin_x/margin_y: explicit LEFT/BOTTOM margin in points, for an
-    asymmetric layout (e.g. the small size's 14mm left margin for
-    lamination slack, or the Medium size's 0mm left/right margin for its
-    full-page-width borderless card). If None, centred automatically.
+    margin_x: explicit LEFT margin in points, for an asymmetric layout
+    (e.g. the small size's 14mm left margin for lamination slack). If
+    None, centred automatically.
+
+    margin_y: explicit TOP margin in points (the gap above the FIRST/
+    top row) -- NOT the bottom margin, despite the name possibly
+    suggesting otherwise. Rows are generated top-row-first to match the
+    "top-left, top-right, ..." position ordering documented below, so
+    margin_y anchors that same top edge. If None, centred automatically.
+    Confirmed directly (Sep 2026): margin_y=14mm on a 2-row layout with
+    17mm total slack produces a 14mm gap above the top row and a 3mm gap
+    below the bottom row, not the reverse.
 
     Positions are returned top-row-first, left-to-right (matching the
     original single-file convention: top-left, top-right, ..., bottom-
