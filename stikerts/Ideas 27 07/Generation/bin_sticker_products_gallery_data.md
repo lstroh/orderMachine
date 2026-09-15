@@ -44,6 +44,23 @@ generated and cached automatically on first render.
 than the classic/formal look of D02–D03. Good candidate for a "whimsical"
 shelf without actually being a kids' design.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found for either field. Street name
+comfortably handles even long names ("Amersham-on-the-Hill Road", 25 chars,
+renders at 13.5pt) without hitting its 8pt floor -- this style's ceiling is
+modest (22pt max) so long names just look consistently compact rather than
+approaching any hard limit. House number is effectively unconstrained in
+any realistic range. See `P02_STREET_MAX_WIDTH` / `P02_NUMBER_MAX_WIDTH` in
+`bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found for either field. Street name
+comfortably handles even "Sir Winston Churchill Avenue" (28 chars) at 20pt
+-- roomier than Small's equivalent 13.5pt at 25 chars, since the 202mm-wide
+card gives a wider street band even after the icon itself grew too. House
+number unconstrained. See `P02_STREET_MAX_WIDTH` in
+`bin_sticker_medium.py`.
+
 ---
 
 ## D02 — Regency Double Flourish
@@ -67,17 +84,22 @@ design.
 matching double flourish reads as a "pair," which could suit pitching it
 as a set or a gift-pair listing.
 
-**Text limits (print-tested Aug 2026):** street name safe up to **32
-characters** before auto-shrink hits its 16pt floor; house number/name
-field safe up to **12 characters** as a name (numeric house numbers are
-effectively unconstrained — up to ~17 digits still fit at the 40pt
-floor). Both fields now auto-shrink with a 3–4mm side margin at any
-length; the number vertically centres against the card's two flourish
-lines using Times-Bold cap-height (676/1000 em), not full ascent/descent
-— the earlier ascent/descent version centred long text correctly but
-left short text sitting slightly high in its band. See
-`P25_STREET_MAX_WIDTH` / `P25_NUMBER_MAX_WIDTH` /
-`TIMES_BOLD_CAP_HEIGHT_RATIO` in `bin_sticker.py`.
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **32 characters** before auto-shrink hits its 16pt floor; house
+number/name field safe up to **12 characters** as a name (numeric house
+numbers are effectively unconstrained — up to ~17 digits still fit at the
+40pt floor). Both fields now auto-shrink with a 3–4mm side margin at any
+length; the number vertically centres against the card's two flourish lines
+using Times-Bold cap-height (676/1000 em), not full ascent/descent — the
+earlier ascent/descent version centred long text correctly but left short
+text sitting slightly high in its band. See `P25_STREET_MAX_WIDTH` /
+`P25_NUMBER_MAX_WIDTH` / `TIMES_BOLD_CAP_HEIGHT_RATIO` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 30pt even at 25 characters ("Amersham-on-the-Hill Road"), comfortably
+above the floor. Materially roomier than Small thanks to the wider 176mm
+street band. See `P25_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
 ---
 
@@ -107,16 +129,21 @@ of the three, thanks to the corner brackets — could pitch toward
 period-property or conservation-area customers specifically, distinct
 from D02's softer symmetrical look.
 
-**Text limits (print-tested Aug 2026):** street name safe up to **30
-characters** before auto-shrink hits its 16pt floor — tighter than D02
-because this style's double-line-plus-corner-bracket border leaves a
-narrower true interior (measured ~121mm vs. D02's roomier single
-border). House number/name field safe up to **12 characters** as a
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **30 characters** before auto-shrink hits its 16pt floor —
+tighter than D02 because this style's double-line-plus-corner-bracket
+border leaves a narrower true interior (measured ~121mm vs. D02's roomier
+single border). House number/name field safe up to **12 characters** as a
 name; numeric house numbers effectively unconstrained. Was previously
 touching/crossing the border at these lengths on a real print (fixed by
-giving this style its own tighter width budget rather than sharing
-D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
-`bin_sticker.py`.
+giving this style its own tighter width budget rather than sharing D02's).
+See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 28.5pt even at 25 characters. Same pattern as D02: tighter than D02
+relatively speaking (narrower interior), but still no realistic overflow at
+this size. See `P25B_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
 ---
 
@@ -133,6 +160,21 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** the strongest real-world sales evidence of any design in the lineup -- 4th sighting of the house-outline-with-nested-number concept on the idea board, same trusted EDSG line as D02/D03's Amazon's Choice comparables, chimney detail as a differentiator. Pending: street-name auto-fit renders smaller than the source mockup's proportions imply (font-width mismatch, Helvetica-Bold vs. the mockup's narrower typeface) -- see this file for the full numbers before approving.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** street name safe up to roughly **25 characters**
+("Amersham-on-the-Hill Road" still fits at 17pt) -- overflows past that
+("Sir Winston Churchill Avenue", 28 chars, hits the 16pt floor and still
+doesn't fit). Roomiest of the house-outline family thanks to the wide
+96.3mm street band below the icon rather than a nested hollow. House number
+unconstrained. See `P27_STREET_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name handles
+even "Sir Winston Churchill Avenue" (28 chars) at 24.5pt, a genuine
+improvement over Small (which overflowed at that exact length). The wide
+street band scales generously with the bigger card. See
+`P27_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
+
 ---
 
 ## D05 — Threshold Numeral
@@ -147,6 +189,17 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** `assets/icons/p47_house_icon.png` (transparent hollow house-outline silhouette, no street band). Per-accent recoloured copies (`p47_house_{accent}.png`) are generated and cached automatically on first render.
 
 **Draft marketing angle:** the cleanest/most minimal of the house-outline family -- black-only line art with no street name to fit, so it reads well small and suits a 'just the number' customer who finds D01/D04's street-name band unnecessary.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** numbers-only design (no street-name field) -- house number
+is effectively unconstrained in any realistic range (a 5-character number
+like "12-14" still renders at 77pt, well above the 20pt floor). See
+`P47_NUMBER_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** numbers-only design -- house number effectively
+unconstrained (128pt even at "1400", well above the floor). See
+`P47_NUMBER_MAX_WIDTH` in `bin_sticker_medium.py`.
 
 ---
 
@@ -163,6 +216,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** DRAFT: first of a 4-scene 'collect the family' set (dad+duckling, mum+duckling, 2x ducklings playing) -- sellable standalone, or as a bundle across a household's bin set (main bin / second bin / food caddy), same validated bundling pattern as P08/P16/P20 on the idea board.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D07 — Duck Family — Mother & Duckling (Scene 2 of 4, draft)
@@ -177,6 +246,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** assets/icons/duck_family_mother_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render, user-selected from 4 v8 options)
 
 **Draft marketing angle:** DRAFT: second of a planned 4-scene 'collect the family' set (dad+duckling done, mum+duckling here, 2x ducklings playing still to come) -- sellable standalone or as a bundle across a household's bin set, same validated bundling pattern as P08/P16/P20.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
 
 ---
 
@@ -193,6 +278,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** DRAFT: third of the planned 4-scene 'collect the family' set (dad+duckling and mum+duckling done, this is the first ducklings-only scene, one more to come) -- sellable standalone or as a bundle across a household's bin set. NOTE: source art has visible fur texture on the ducklings, a style departure from D06/D07's flat fill -- flagged at selection time, user's explicit choice over 3 flatter alternatives from the same batch.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D09 — Duck Family — Ducklings Playing, Energetic (Scene 4 of 4, draft)
@@ -207,6 +308,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** assets/icons/duck_family_playing2_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render)
 
 **Draft marketing angle:** DRAFT: fourth and final scene completing the 'collect the family' set (D06 father+duckling, D07 mother+duckling, D08 and D09 both ducklings-only but distinct energy levels -- D08 a determined little march, D09 more dynamic/playful per explicit user request) -- sellable standalone or as a 4-bin/caddy bundle, same validated bundling pattern as P08/P16/P20. Fur-texture style matches D08, both distinct from D06/D07's flat fill.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
 
 ---
 
@@ -223,6 +340,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** DRAFT: first of a planned 4-scene dog family set (2x adult+pup, 2x pups playing), same 'collect the family' concept validated by the duck set -- sellable standalone or as a bundle across a household's bin set. FLAT SILHOUETTE (no fur texture) -- used as the safe default since the duck texture test (Animal-Family-Texture-Test-Plan.md) hasn't been run yet; revisit once that's decided.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D11 — Dog Family — Adult & Puppy, Close Beside (Scene 2 of 4, draft)
@@ -237,6 +370,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** assets/icons/dog_family_2_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render, user-selected from 3 v8 options)
 
 **Draft marketing angle:** DRAFT: second of the planned 4-scene dog family set (2x adult+pup done, 2x pups playing still to come) -- sellable standalone or as a bundle across a household's bin set, same validated bundling pattern as the duck set. Flat silhouette, matches D10.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
 
 ---
 
@@ -253,6 +402,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** DRAFT: third of the planned 4-scene dog family set (2x adult+pup done, this is the calmer of 2 pups-playing scenes, one more energetic scene to come) -- companion to duck_family_playing1/D08 at the same energy level within its own set. Sellable standalone or as a bundle, same validated pattern as the duck set.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D13 — Dog Family — Puppies Playing, Energetic (Scene 4 of 4, draft)
@@ -267,6 +432,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** assets/icons/dog_family_playing2_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render, user-selected from 3 v8 options)
 
 **Draft marketing angle:** DRAFT: fourth and final scene completing the dog family set (D10 and D11 adult+pup, D12 calmer pups-playing, D13 more energetic pups-playing) -- sellable standalone or as a 4-bin/caddy bundle, same validated bundling pattern as the duck set. Flat silhouette throughout, matches D10-D12. Companion to duck_family_playing2/D09 at the same energy level within its own set.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
 
 ---
 
@@ -283,6 +464,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** DRAFT: first of a planned 4-scene cat family set (2x adult+kitten, 2x kittens playing), same 'collect the family' concept validated by the duck and dog sets -- sellable standalone or as a bundle across a household's bin set. FLAT SILHOUETTE (no fur texture) -- same safe default as the dog set, pending the duck texture test (Animal-Family-Texture-Test-Plan.md).
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D15 — Cat Family — Adult & Kitten, Close Beside (Scene 2 of 4, draft)
@@ -297,6 +494,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** assets/icons/cat_family_2_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render, user-selected from 2 v8 options)
 
 **Draft marketing angle:** DRAFT: second of the planned 4-scene cat family set (2x adult+kitten done, 2x kittens playing still to come) -- sellable standalone or as a bundle across a household's bin set, same validated bundling pattern as the duck/dog sets. Flat silhouette, no whiskers -- kept consistent with D14 rather than a whiskered alternative in the same generation batch.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
 
 ---
 
@@ -313,6 +526,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** DRAFT: third of the planned 4-scene cat family set (2x adult+kitten done, this is the calmer of 2 kittens-playing scenes, one more energetic scene to come) -- companion to duck_family_playing1/D08 and dog_family_playing1/D12 at the same energy level within their own sets. IMPORTANT STYLE NOTE: this is a REAR/THREE-QUARTER VIEW, not the side profile used by every other design in the catalogue -- multiple Midjourney batches only produced this angle for the calm-nuzzle pose; user explicitly accepted it as the best available option rather than a new style direction. Do not default to this angle for future animal-family scenes.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D17 — Cat Family — Kittens Playing, Energetic (Scene 4 of 4, draft)
@@ -327,6 +556,22 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 **Assets required:** assets/icons/cat_family_playing2_icon.png (solid black silhouette, extracted via icon-silhouette-extraction from a Midjourney render, user-selected after 2 generation batches)
 
 **Draft marketing angle:** DRAFT: fourth and final scene completing the cat family set (D14 and D15 adult+kitten, D16 calmer kittens-playing [rear-view exception], D17 more energetic kittens-playing [genuine side profile]) -- sellable standalone or as a 4-bin/caddy bundle, same validated bundling pattern as the duck/dog sets. This scene's side-profile prompt fix worked cleanly where D16's batch didn't -- worth reusing this exact phrasing ('seen strictly in side profile... not from behind... smooth solid black shapes only, absolutely no individual fur strands') as the template for any future animal-family prompts.
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found -- comfortably handles even
+"Sir Winston Churchill Avenue" (28 chars, renders at 26.5pt, barely off its
+27pt ceiling). Roomiest street-name budget of any style tested (122mm
+wide), since text sits below the whole animal scene rather than inside a
+hollow. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker.py` -- true
+for D06-D17 identically, not just this entry.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 38pt even at 28 characters, the roomiest result of any style at either
+size. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
 
 ---
 
@@ -343,19 +588,29 @@ D02's). See `P25B_STREET_MAX_WIDTH` / `P25B_NUMBER_MAX_WIDTH` in
 
 **Draft marketing angle:** the only wreath/floral-border design in the lineup with real extracted line-art (not a plain vector flourish) -- adapted from the idea board's pinned circular 15/20/30cm die-cut sizes onto the standard printed rectangle card (Technique A), so it reads as a premium/romantic option alongside the more graphic house-outline family (D04/D05).
 
-**Text limits (print-tested Aug 2026):** street name safe up to **12
-characters** before auto-shrink hits its 12pt floor -- e.g. "High
-Street" (11) and "Mill Lane" (9) fit; "Amersham-on-the-Hill Road" (25)
-does not and will render small and overflowing regardless of tuning.
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **12 characters** before auto-shrink hits its 12pt floor -- e.g.
+"High Street" (11) and "Mill Lane" (9) fit; "Amersham-on-the-Hill Road"
+(25) does not and will render small and overflowing regardless of tuning.
 Materially tighter than P25/P25b's ~28-30 char limit -- this wreath's
-interior is just smaller, and no floor-size choice fixes that (raising
-the floor for legibility only shrinks the safe character count further;
-see chat history for the full 10pt/12pt/14pt trade-off table). House
+interior is just smaller, and no floor-size choice fixes that (raising the
+floor for legibility only shrinks the safe character count further; see
+chat history for the full 10pt/12pt/14pt trade-off table). House
 number/name field unaffected by this constraint. Icon and all P06_*
 text-fit constants were scaled up ~13.6% in this same round (wreath was
-leaving ~12-14mm of unused margin on a 100mm-tall card) -- see
-`P06_ICON` / `P06_STREET_MIN_SIZE` / `P06_STREET_MAX_WIDTH` in
-`bin_sticker.py`.
+leaving ~12-14mm of unused margin on a 100mm-tall card) -- see `P06_ICON` /
+`P06_STREET_MIN_SIZE` / `P06_STREET_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** the size increase does NOT meaningfully raise this style's
+character limit -- still comfortable only to "Grove Street" (12 chars,
+18.5pt) and overflows at "Victoria Gardens" (16 chars), essentially the
+same practical ceiling as Small. This is because the street-text floor size
+scaled up by the same 1.4x factor as the width did, so the character
+capacity is largely unchanged even though the card itself is bigger. Don't
+assume porting a style to Medium automatically fixes a Small-size text
+constraint -- verify per style. See `P06_STREET_MAX_WIDTH` /
+`P06_STREET_MIN_SIZE` in `bin_sticker_medium.py`.
 
 ---
 
@@ -372,6 +627,16 @@ leaving ~12-14mm of unused margin on a 100mm-tall card) -- see
 
 **Draft marketing angle:** the numbers-only pairing for D18, aimed directly at the segment Etsy's own bestseller list confirms exists ("Circle Design ... House Number", no street) -- offer alongside D18 as a with/without-street-name choice on the same wreath artwork rather than a separate design.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** numbers-only design (no street-name field) -- house number
+is effectively unconstrained in any realistic range. See
+`P06_NUM_ONLY_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** numbers-only design -- house number effectively
+unconstrained (94.5pt even at "1400"). See `P06_NUM_ONLY_MAX_WIDTH` in
+`bin_sticker_medium.py`.
+
 ---
 
 ## D20 — Laurel Circlet — Numbers Only
@@ -386,6 +651,16 @@ leaving ~12-14mm of unused margin on a 100mm-tall card) -- see
 **Assets required:** assets/icons/p30_laurel_icon.png (transparent hollow laurel wreath silhouette). Per-accent recoloured copies (p30_laurel_{accent}.png) are generated and cached automatically on first render.
 
 **Draft marketing angle:** the simpler, leaner sibling to D18/D19's dense floral wreath -- open-top laurel shape reads as classic/formal rather than romantic, and the plainer linework leaves more visual room for a large, highly legible number. Third independent wreath-family design, all sharing the same numbers-only market validation (Etsy's own bestseller "Circle Design ... House Number" listing, P30a/P30b's two real-world sightings).
+
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** numbers-only design (no street-name field) -- house number
+is effectively unconstrained in any realistic range. See
+`P30_LAUREL_NUMBER_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** numbers-only design -- house number effectively
+unconstrained (85.5pt even at "1400"). See `P30_LAUREL_NUMBER_MAX_WIDTH` in
+`bin_sticker_medium.py`.
 
 ---
 
@@ -402,13 +677,17 @@ leaving ~12-14mm of unused margin on a 100mm-tall card) -- see
 
 **Draft marketing angle:** the romantic/gift-market entry in the wreath family, distinct from D18/D19's floral and D20's classic laurel -- a lighter, more open ring than either, with room for a much bigger number than D18 allowed. Positioned as a deliberate "gift" or Valentine/anniversary-adjacent variant rather than a mainline everyday option.
 
-**Text limits (print-tested Aug 2026):** street name safe up to **29
-characters** before auto-shrink hits its floor. Size ceiling deliberately
-set above "HIGH STREET"'s own ~23pt width limit so short names like "RYE"
-use the full ceiling while longer names stay clamped by their own width
--- not a single shared size for every length. See
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **29 characters** before auto-shrink hits its floor. Size
+ceiling deliberately set above "HIGH STREET"'s own ~23pt width limit so
+short names like "RYE" use the full ceiling while longer names stay clamped
+by their own width -- not a single shared size for every length. See
 `P15_HEART_STREET_MAX_SIZE` / `P15_HEART_STREET_MAX_WIDTH` in
 `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found -- street name renders at 13.5pt even at
+25 characters. See `P15_HEART_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
 ---
 
@@ -427,13 +706,17 @@ use the full ceiling while longer names stay clamped by their own width
 
 **Asset note:** regenerated (v2) after the original source had one visibly inconsistent arrowhead node (caught by the user, confirmed by close zoom -- not fixable via raster splice, see bin_sticker.py's P28 constants block for the full writeup). Current asset's 9 arrow/fletching nodes measured within ~10% of each other by pixel area -- no known inconsistency remaining.
 
-**Text limits (print-tested Aug 2026):** street name safe up to **31
-characters** before auto-shrink hits its floor -- the roomiest of the
-wreath family. Also has a small (~3mm) added margin between number and
-street after the first print showed them sitting too close at max
-sizes. Ceiling set above "HIGH STREET"'s own ~25pt width limit, same
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **31 characters** before auto-shrink hits its floor -- the
+roomiest of the wreath family. Also has a small (~3mm) added margin between
+number and street after the first print showed them sitting too close at
+max sizes. Ceiling set above "HIGH STREET"'s own ~25pt width limit, same
 reasoning as D21. See `P28_ARROW_STREET_MAX_SIZE` /
 `P28_ARROW_NUMBER_CENTER_Y` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found -- street name renders at 15.0pt even at
+25 characters. See `P28_ARROW_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
 ---
 
@@ -450,11 +733,18 @@ reasoning as D21. See `P28_ARROW_STREET_MAX_SIZE` /
 
 **Draft marketing angle:** EXPERIMENTAL -- unlike every other wreath in the lineup (D18-D22), this has no real competitor listing behind it. Positioned as a softer, more rustic/relaxed alternative to D20's laurel -- worth watching sell-through closely before treating it as validated, rather than assuming it will perform like the market-backed designs.
 
-**Text limits (print-tested Aug 2026):** street name safe up to **24
-characters** before auto-shrink hits its floor -- the tightest of the
-wreath family (had an unusually low 12pt size ceiling originally,
-corrected after two rounds of real prints). See
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **24 characters** before auto-shrink hits its floor -- the
+tightest of the wreath family (had an unusually low 12pt size ceiling
+originally, corrected after two rounds of real prints). See
 `P31_OLIVE_STREET_MAX_SIZE` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** essentially the same practical limit as Small despite the
+bigger card -- comfortable to 25 characters ("Amersham-on-the-Hill Road",
+11.5pt) but still overflows at 28 ("Sir Winston Churchill Avenue", 11.0pt).
+Same floor-scales-with-width effect as D18 -- see that entry's note. See
+`P31_OLIVE_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
 ---
 
@@ -471,6 +761,17 @@ corrected after two rounds of real prints). See
 
 **Draft marketing angle:** DRAFT: the clean, borderless minimalist look that keeps showing up on best-selling competitor listings — for customers who want something understated rather than an illustrated or bordered design.
 
+**Text limits — Small (140×100mm, computed Sep 2026, not yet
+print-tested):** no realistic overflow found. Street name comfortably
+handles even "Sir Winston Churchill Avenue" (28 chars, renders at 19.5pt,
+still above the 16pt floor). This style's generous 120mm street band (no
+icon competing for width) makes it one of the roomiest in the catalogue.
+See `P09A_STREET_MAX_WIDTH` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** no overflow found -- street name renders at 31pt even at
+28 characters. See `P09A_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
+
 ---
 
 ## D25 — Trailing Paws
@@ -486,16 +787,23 @@ corrected after two rounds of real prints). See
 
 **Draft marketing angle:** DRAFT: real market-validated pet design (EDSG's own bestselling 'Design 5', seen at genuine Amazon scale) reproduced as an upgrade over the catalogue's existing single-paw accent (style 10) -- the 5-print diagonal trail reads as more premium/illustrated than a lone paw icon, first of a planned multi-species paw-trail line (cat/rabbit/fox/hedgehog to follow using the same layout).
 
-**Text limits (print-tested Aug 2026):** street name safe up to **22
-characters** before auto-shrink hits its floor -- the tightest limit of
-any style tested so far. Two real bugs also found and fixed here:
-number/street text was rendering in a fixed ink colour instead of
-matching the icon's accent colour, and the street text's centre-X
-didn't match the number's, so it wasn't actually centred underneath it.
-Fixing the alignment also required recalculating the width budget,
-since the number's centre sits well right-of-card-centre, giving the
-street's right side much less clearance than its left. See
-`P21_STREET_MAX_WIDTH` / `P21_STREET_CENTER_X` in `bin_sticker.py`.
+**Text limits — Small (140×100mm, print-tested Aug 2026):** street name
+safe up to **22 characters** before auto-shrink hits its floor -- the
+tightest limit of any style tested so far. Two real bugs also found and
+fixed here: number/street text was rendering in a fixed ink colour instead
+of matching the icon's accent colour, and the street text's centre-X didn't
+match the number's, so it wasn't actually centred underneath it. Fixing the
+alignment also required recalculating the width budget, since the number's
+centre sits well right-of-card-centre, giving the street's right side much
+less clearance than its left. See `P21_STREET_MAX_WIDTH` /
+`P21_STREET_CENTER_X` in `bin_sticker.py`.
+
+**Text limits — Medium (202×140mm, computed Sep 2026, not yet
+print-tested):** same practical limit as Small despite the bigger card --
+comfortable to "Queen Elizabeth Drive" (21 chars, 26.0pt), overflows at
+"The Old Coach House Lane" (24 chars, 22.0pt, at the floor). Same
+floor-scales-with-width effect as D18/D23. See `P21_STREET_MAX_WIDTH` /
+`P21_STREET_MIN_SIZE` in `bin_sticker_medium.py`.
 
 ---
 
