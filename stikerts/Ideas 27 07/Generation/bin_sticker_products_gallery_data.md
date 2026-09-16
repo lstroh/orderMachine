@@ -61,6 +61,11 @@ card gives a wider street band even after the icon itself grew too. House
 number unconstrained. See `P02_STREET_MAX_WIDTH` in
 `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 28.5pt even at 25 characters ("Amersham-on-the-Hill Road"). See
+`P02_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
+
 ---
 
 ## D02 — Regency Double Flourish
@@ -100,6 +105,11 @@ print-tested):** no overflow found for either field -- street name renders
 at 30pt even at 25 characters ("Amersham-on-the-Hill Road"), comfortably
 above the floor. Materially roomier than Small thanks to the wider 176mm
 street band. See `P25_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 42.0pt even at 25 characters. Roomiest of the flourish pair. See
+`P25_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
 
 ---
 
@@ -145,6 +155,11 @@ at 28.5pt even at 25 characters. Same pattern as D02: tighter than D02
 relatively speaking (narrower interior), but still no realistic overflow at
 this size. See `P25B_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 39.5pt even at 25 characters. See `P25B_STREET_MAX_WIDTH` in
+`bin_sticker_large.py`.
+
 ---
 
 ## D04 — Homestead Silhouette
@@ -175,6 +190,11 @@ improvement over Small (which overflowed at that exact length). The wide
 street band scales generously with the bigger card. See
 `P27_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 34.0pt even at 25 characters. See `P27_STREET_MAX_WIDTH` in
+`bin_sticker_large.py`.
+
 ---
 
 ## D05 — Threshold Numeral
@@ -200,6 +220,11 @@ like "12-14" still renders at 77pt, well above the 20pt floor). See
 print-tested):** numbers-only design -- house number effectively
 unconstrained (128pt even at "1400", well above the floor). See
 `P47_NUMBER_MAX_WIDTH` in `bin_sticker_medium.py`.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** numbers-only design -- house number effectively
+unconstrained (183pt even at "1400"). See `P47_NUMBER_MAX_WIDTH` in
+`bin_sticker_large.py`.
 
 ---
 
@@ -230,6 +255,13 @@ print-tested):** no overflow found for either field -- street name renders
 at 38pt even at 28 characters, the roomiest result of any style at either
 size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
 -- true for D06-D17 identically.
 
 ---
@@ -263,6 +295,13 @@ size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
 -- true for D06-D17 identically.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D08 — Duck Family — Ducklings Playing (Scene 3 of 4, draft)
@@ -292,6 +331,13 @@ print-tested):** no overflow found for either field -- street name renders
 at 38pt even at 28 characters, the roomiest result of any style at either
 size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
 -- true for D06-D17 identically.
 
 ---
@@ -325,6 +371,13 @@ size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
 -- true for D06-D17 identically.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D10 — Dog Family — Adult & Puppy, Walking (Scene 1 of 4, draft)
@@ -354,6 +407,13 @@ print-tested):** no overflow found for either field -- street name renders
 at 38pt even at 28 characters, the roomiest result of any style at either
 size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
 -- true for D06-D17 identically.
 
 ---
@@ -387,6 +447,13 @@ size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
 -- true for D06-D17 identically.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D12 — Dog Family — Puppies Playing, Calm (Scene 3 of 4, draft)
@@ -416,6 +483,13 @@ print-tested):** no overflow found for either field -- street name renders
 at 38pt even at 28 characters, the roomiest result of any style at either
 size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
 -- true for D06-D17 identically.
 
 ---
@@ -449,6 +523,13 @@ size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
 -- true for D06-D17 identically.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D14 — Cat Family — Adult & Kitten, Walking (Scene 1 of 4, draft)
@@ -478,6 +559,13 @@ print-tested):** no overflow found for either field -- street name renders
 at 38pt even at 28 characters, the roomiest result of any style at either
 size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
 -- true for D06-D17 identically.
 
 ---
@@ -511,6 +599,13 @@ size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
 -- true for D06-D17 identically.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D16 — Cat Family — Kittens Playing, Calm (Scene 3 of 4, draft)
@@ -542,6 +637,13 @@ size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
 -- true for D06-D17 identically.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
+-- true for D06-D17 identically.
+
 ---
 
 ## D17 — Cat Family — Kittens Playing, Energetic (Scene 4 of 4, draft)
@@ -571,6 +673,13 @@ print-tested):** no overflow found for either field -- street name renders
 at 38pt even at 28 characters, the roomiest result of any style at either
 size. Shared across all 12 animal-family scenes via
 `_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_medium.py`
+-- true for D06-D17 identically.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found for either field -- street name renders
+at 54pt even at 25 characters, the roomiest result of any style at any size
+so far. Shared across all 12 animal-family scenes via
+`_animal_family_text`/`ANIMAL_STREET_MAX_WIDTH` in `bin_sticker_large.py`
 -- true for D06-D17 identically.
 
 ---
@@ -612,6 +721,14 @@ assume porting a style to Medium automatically fixes a Small-size text
 constraint -- verify per style. See `P06_STREET_MAX_WIDTH` /
 `P06_STREET_MIN_SIZE` in `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** STILL the same practical ceiling as Small and Medium --
+comfortable only to "Grove Street" (12 chars, 27.0pt) and overflows at
+"Victoria Gardens" (16 chars). This is now a confirmed pattern across all
+three sizes (Small, Medium, Large): the wreath's interior is a genuinely
+structural constraint on this style, not something a bigger card fixes on
+its own. See `P06_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
+
 ---
 
 ## D19 — Grove Wreath Circlet — Numbers Only
@@ -637,6 +754,11 @@ print-tested):** numbers-only design -- house number effectively
 unconstrained (94.5pt even at "1400"). See `P06_NUM_ONLY_MAX_WIDTH` in
 `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** numbers-only design -- house number effectively
+unconstrained (135pt even at "1400"). See `P06_NUM_ONLY_MAX_WIDTH` in
+`bin_sticker_large.py`.
+
 ---
 
 ## D20 — Laurel Circlet — Numbers Only
@@ -661,6 +783,11 @@ is effectively unconstrained in any realistic range. See
 print-tested):** numbers-only design -- house number effectively
 unconstrained (85.5pt even at "1400"). See `P30_LAUREL_NUMBER_MAX_WIDTH` in
 `bin_sticker_medium.py`.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** numbers-only design -- house number effectively
+unconstrained (122.5pt even at "1400"). See `P30_LAUREL_NUMBER_MAX_WIDTH`
+in `bin_sticker_large.py`.
 
 ---
 
@@ -688,6 +815,10 @@ by their own width -- not a single shared size for every length. See
 **Text limits — Medium (202×140mm, computed Sep 2026, not yet
 print-tested):** no overflow found -- street name renders at 13.5pt even at
 25 characters. See `P15_HEART_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found -- street name renders at 19.5pt even at
+25 characters. See `P15_HEART_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
 
 ---
 
@@ -718,6 +849,10 @@ reasoning as D21. See `P28_ARROW_STREET_MAX_SIZE` /
 print-tested):** no overflow found -- street name renders at 15.0pt even at
 25 characters. See `P28_ARROW_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found -- street name renders at 21.5pt even at
+25 characters. See `P28_ARROW_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
+
 ---
 
 ## D23 — Maple Olive Circlet
@@ -746,6 +881,14 @@ bigger card -- comfortable to 25 characters ("Amersham-on-the-Hill Road",
 Same floor-scales-with-width effect as D18 -- see that entry's note. See
 `P31_OLIVE_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
 
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** same practical limit as Medium -- comfortable to 25
+characters ("Amersham-on-the-Hill Road", 16.5pt) but still overflows at 28
+("Sir Winston Churchill Avenue", 16.0pt). Same floor-scales-with-width
+effect as D18 -- see that entry's note; confirmed again here that Large's
+extra size doesn't fix it. See `P31_OLIVE_STREET_MAX_WIDTH` in
+`bin_sticker_large.py`.
+
 ---
 
 ## D24 — Grove Line — Minimal Borderless
@@ -771,6 +914,10 @@ See `P09A_STREET_MAX_WIDTH` in `bin_sticker.py`.
 **Text limits — Medium (202×140mm, computed Sep 2026, not yet
 print-tested):** no overflow found -- street name renders at 31pt even at
 28 characters. See `P09A_STREET_MAX_WIDTH` in `bin_sticker_medium.py`.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** no overflow found -- street name renders at 42.5pt even at
+25 characters. See `P09A_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
 
 ---
 
@@ -804,6 +951,13 @@ comfortable to "Queen Elizabeth Drive" (21 chars, 26.0pt), overflows at
 "The Old Coach House Lane" (24 chars, 22.0pt, at the floor). Same
 floor-scales-with-width effect as D18/D23. See `P21_STREET_MAX_WIDTH` /
 `P21_STREET_MIN_SIZE` in `bin_sticker_medium.py`.
+
+**Text limits — Large (280×200mm, computed Sep 2026, not yet
+print-tested):** STILL the same practical ceiling as Small and Medium --
+comfortable to "Queen Elizabeth Drive" (21 chars, 36.5pt), overflows at
+"The Old Coach House Lane" (24 chars, 31.0pt). Confirmed 3-for-3 now across
+every size -- this is a genuinely structural limit for this style, not a
+card-size effect. See `P21_STREET_MAX_WIDTH` in `bin_sticker_large.py`.
 
 ---
 
