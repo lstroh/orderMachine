@@ -8,6 +8,20 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-16
+
+### Added
+
+- Create test order panel on the Orders list (External-channel rows without calling REST)
+- Outbound shipment records (carrier, service, postage, tracking); Ship waits for that record; optional tracking push to eBay/Etsy (schema 1.9.0)
+- Workflow confirmation checklists (print / packing / shipping address) that block Mark done and Board drag until saved (schema 1.10.0)
+- Live timer unlock on order detail and Board (`Timer ready`) so Mark done / drag do not wait for cron; optional browser notifications
+
+### Notes
+
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.23.0.zip`, not the repository source zipball
+
 ## [0.22.0] - 2026-08-10
 
 First tagged alpha release with GitHub Releases packaging.
