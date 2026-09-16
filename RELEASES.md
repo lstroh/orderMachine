@@ -8,5 +8,5 @@ Repo: `https://github.com/lstroh/orderMachine`
 
 | Version | Date | Release | Zip | Actions run |
 |---------|------|---------|-----|-------------|
-| [0.23.0](CHANGELOG.md#0230---2026-09-16) | 2026-09-16 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.23.0) | [orderMachine-0.23.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.23.0/orderMachine-0.23.0.zip) | TBD |
+| [0.23.0](CHANGELOG.md#0230---2026-09-16) | 2026-09-16 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.23.0) | [orderMachine-0.23.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.23.0/orderMachine-0.23.0.zip) | [Run](https://github.com/lstroh/orderMachine/actions/runs/35053503246) |
 | [0.22.0](CHANGELOG.md#0220---2026-08-10) | 2026-08-10 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.22.0) | [orderMachine-0.22.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.22.0/orderMachine-0.22.0.zip) | [Run](https://github.com/lstroh/orderMachine/actions/runs/31365928476) |
