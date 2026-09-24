@@ -2858,9 +2858,18 @@ def draw_sticker(c, ox, oy, order):
         street_name  str
         style        key in STYLES              (default "house_banner")
         accent       key in ACCENTS              (each style has its own default)
+        trim_margin  float or None -- OPT-IN, testing only (Sep 2026).
+                     When set (e.g. 2.5*mm), draws an extra dashed guide
+                     line that far OUTSIDE the real cut line, for the
+                     hand-trim-into-pieces-before-Cricut paper test
+                     workflow. Leave unset/None for every real order --
+                     this has no role in the finished product.
     """
     style = order.get("style", "house_banner")
     _draw_base(c, ox, oy, P02_CARD_W, P02_CARD_H)
+    trim_margin = order.get("trim_margin")
+    if trim_margin:
+        core.draw_trim_margin_guide(c, ox, oy, P02_CARD_W, P02_CARD_H, trim_margin)
     STYLES[style](c, ox, oy, order)
 
 

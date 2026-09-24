@@ -102,6 +102,11 @@ INK = "#111111"
 INK_MUTED = "#555555"
 GUIDE = "#CCCCCC"
 PAD = 2 * mm  # inset of the design/border from the cut edge, shared default
+BORDER_CORNER_RADIUS = 2 * mm  # rounded-corner radius for draw_border's
+# accent-colour printed border (Sep 2026) -- NOT the grey cut-guide line
+# in draw_base, which stays sharp-cornered on purpose (it's a cutting
+# reference, not part of the finished design). See draw_border's own
+# docstring for which styles this does and doesn't apply to.
 
 ACCENTS = {
     "black":      INK,
@@ -202,6 +207,35 @@ def draw_base(c, ox, oy, w, h):
         c.line(cx, cy, cx, cy + dy)
 
 
+# Colour deliberately distinct from GUIDE (the real, precise cut line) so
+# the two are never confused when hand-trimming by eye -- GUIDE is what
+# the Cricut/scissors should ultimately follow exactly; this is the
+# looser, "cut somewhere out here" line.
+TRIM_MARGIN_GUIDE_COLOR = "#4A90D9"
+
+
+def draw_trim_margin_guide(c, ox, oy, w, h, margin):
+    """Optional, opt-in guide for the "hand-trim into separate pieces,
+    then cut precisely on the Cricut" paper-test workflow (Sep 2026) --
+    draws a dashed rectangle OUTSET from the card's true boundary by
+    `margin`, well outside the real cut line drawn by draw_base above.
+
+    This is deliberately a SEPARATE function, not folded into draw_base,
+    and deliberately not called by default anywhere -- it only exists to
+    mark where it's safe to hand-trim with scissors/guillotine BEFORE
+    the precise machine cut, leaving real margin for placement error on
+    the mat. It has no role in the finished product and should never
+    appear on a real customer order.
+
+    margin: how far OUTSIDE the true card edge to draw this line, e.g.
+    2.5*mm for a 2.5mm trim allowance each side."""
+    c.setStrokeColor(HexColor(TRIM_MARGIN_GUIDE_COLOR))
+    c.setLineWidth(0.4)
+    c.setDash(2, 2)
+    c.rect(ox - margin, oy - margin, w + 2 * margin, h + 2 * margin, fill=0, stroke=1)
+    c.setDash()
+
+
 def draw_border(c, ox, oy, order, weight="single", *, w, h, pad=None):
     """pad overrides the shared PAD cutting-tolerance inset for this call
     only -- used when one style needs a different cut-to-border margin
@@ -212,23 +246,34 @@ def draw_border(c, ox, oy, order, weight="single", *, w, h, pad=None):
     the original single-file signature, where they had defaults), so
     keyword-only here doesn't break any call site, it just makes the
     lack of a default explicit and stops `weight`'s position from ever
-    colliding with a keyword `w=` the way a plain positional w would."""
+    colliding with a keyword `w=` the way a plain positional w would.
+
+    Corners are rounded at BORDER_CORNER_RADIUS (Sep 2026, chosen after
+    a direct visual comparison at 1/1.5/2mm). This does NOT touch every
+    style's border -- p09a_borderless has no border at all by design,
+    p25_landscape_flourish already had its own distinct rounded corner
+    (5mm, P25_BORDER_RADIUS, a separate deliberate choice paired with
+    its own thicker border weight) from an earlier request and draws it
+    directly rather than through this function, and p25b's corner-
+    bracket artwork is bespoke and doesn't use a radius concept at all.
+    Every other bordered style goes through this function and picks up
+    the 2mm rounding automatically."""
     if pad is None:
         pad = PAD
     accent = HexColor(resolve_accent(order.get("accent", "charcoal")))
     c.setStrokeColor(accent)
     c.setLineWidth(1.1)
     c.setDash()
-    c.rect(ox + pad, oy + pad, w - 2 * pad, h - 2 * pad, fill=0, stroke=1)
+    c.roundRect(ox + pad, oy + pad, w - 2 * pad, h - 2 * pad, BORDER_CORNER_RADIUS, fill=0, stroke=1)
     if weight == "double":
         c.setLineWidth(0.5)
         inset = pad + 2.2 * mm
-        c.rect(ox + inset, oy + inset, w - 2 * inset, h - 2 * inset, fill=0, stroke=1)
+        c.roundRect(ox + inset, oy + inset, w - 2 * inset, h - 2 * inset, BORDER_CORNER_RADIUS, fill=0, stroke=1)
     elif weight == "dashed":
         c.setDash(2, 2)
         c.setLineWidth(0.7)
         inset = pad + 2.0 * mm
-        c.rect(ox + inset, oy + inset, w - 2 * inset, h - 2 * inset, fill=0, stroke=1)
+        c.roundRect(ox + inset, oy + inset, w - 2 * inset, h - 2 * inset, BORDER_CORNER_RADIUS, fill=0, stroke=1)
         c.setDash()
 
 
