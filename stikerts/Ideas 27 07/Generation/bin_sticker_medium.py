@@ -529,7 +529,7 @@ P25_NUMBER_MIN_SIZE = 56         # pt -- 40 x1.4
 P25_NUMBER_MAX_WIDTH = 176.0286 * mm  # 183 x(202/210)
 P25_STREET_MAX_WIDTH = 176.0286 * mm  # 183 x(202/210)
 P25_BORDER_WEIGHT = 6.3          # pt -- 4.5 x1.4
-P25_BORDER_RADIUS = 7 * mm       # 5 x1.4
+P25_BORDER_RADIUS = core.BORDER_CORNER_RADIUS  # same 7mm punch radius as draw_border; not scaled with card size
 
 P25_FLOURISH1_ICON = "assets/icons/p25_flourish1.png"
 P25_FLOURISH2_ICON = "assets/icons/p25_flourish2.png"
@@ -2032,6 +2032,52 @@ def render_gallery(style_keys, sample_order, out_path):
         style_keys, sample_order, out_path, CARD_W, CARD_H,
         cols=1, rows=2, draw_fn=draw_sticker, page_size=_PAGE_SIZE,
         margin_y=MEDIUM_MARGIN_TOP, style_labels=STYLE_LABELS,
+    )
+
+
+# Per-style (pad, radius) for the Cricut placement-reference SVG -- see
+# core.render_cricut_reference_svg's own docstring for the full
+# rationale, and Small's own STYLE_PAD_RADIUS for the same table's first
+# occurrence/full reasoning. None means no real border to show.
+STYLE_PAD_RADIUS = {
+    "house_banner": (PAD, core.BORDER_CORNER_RADIUS),
+    "p25_landscape_flourish": (PAD, P25_BORDER_RADIUS),  # same 7mm punch radius; drawn with its own thicker stroke
+    "p25b_landscape_flourish": None,
+    "p27_landscape_house": (P27_PAD, core.BORDER_CORNER_RADIUS),
+    "p47_house": (PAD, core.BORDER_CORNER_RADIUS),
+    "p06_wreath": (PAD, core.BORDER_CORNER_RADIUS),
+    "p06_wreath_numbers": (PAD, core.BORDER_CORNER_RADIUS),
+    "p30_laurel_numbers": (PAD, core.BORDER_CORNER_RADIUS),
+    "p15_heart_wreath": (PAD, core.BORDER_CORNER_RADIUS),
+    "p28_arrow_wreath": (PAD, core.BORDER_CORNER_RADIUS),
+    "p31_olive_wreath": (PAD, core.BORDER_CORNER_RADIUS),
+    "duck_family_father": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "duck_family_mother": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "duck_family_playing1": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "duck_family_playing2": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "dog_family_1": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "dog_family_2": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "dog_family_playing1": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "dog_family_playing2": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "cat_family_1": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "cat_family_2": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "cat_family_playing1": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "cat_family_playing2": (DUCK_FATHER_PAD, core.BORDER_CORNER_RADIUS),
+    "p09a_borderless": None,
+    "p21_paw_trail": (P21_PAD, core.BORDER_CORNER_RADIUS),
+}
+
+
+def render_cricut_reference(orders, out_path):
+    """Writes an SVG placement-reference image for these orders (same
+    `orders` list you'd pass to render_sheet -- only each order's
+    "style" is used, house_number/street_name are ignored since this
+    has no design content, lines only). NOT a PDF, never for real
+    cutting -- see core.render_cricut_reference_svg's own docstring."""
+    core.render_cricut_reference_svg(
+        orders, out_path, CARD_W, CARD_H, cols=1, rows=2,
+        page_size=_PAGE_SIZE, style_pad_radius=STYLE_PAD_RADIUS,
+        margin_y=MEDIUM_MARGIN_TOP,
     )
 
 

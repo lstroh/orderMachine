@@ -102,11 +102,24 @@ INK = "#111111"
 INK_MUTED = "#555555"
 GUIDE = "#CCCCCC"
 PAD = 2 * mm  # inset of the design/border from the cut edge, shared default
-BORDER_CORNER_RADIUS = 2 * mm  # rounded-corner radius for draw_border's
-# accent-colour printed border (Sep 2026) -- NOT the grey cut-guide line
-# in draw_base, which stays sharp-cornered on purpose (it's a cutting
-# reference, not part of the finished design). See draw_border's own
-# docstring for which styles this does and doesn't apply to.
+BORDER_CORNER_RADIUS = 7 * mm  # rounded-corner radius for draw_border's
+# accent-colour printed border (Sep 2026, revised) -- matches the middle
+# option of the physical 3-in-1 corner rounder punch (4mm/7mm/10mm), NOT
+# the original 2mm chosen from a pure visual-preference test. That 2mm
+# choice was made before checking the punch tool's actual fixed radii --
+# 2mm isn't achievable with any real punch option, so the software
+# border now matches a size the physical tool can actually produce.
+# 7mm chosen as the middle ground given unresolved prior test data
+# (Material-Test-Plan.md, Aug 2026, Stickiply material only): 4mm/7mm
+# jammed the punch, 10mm avoided jamming but tore the material -- 7mm
+# splits the difference between the two reported failure modes rather
+# than being a confirmed-safe choice. Re-test on real Cricut-brand
+# material before committing to bulk production.
+#
+# NOT the grey cut-guide line in draw_base, which stays sharp-cornered
+# on purpose (it's a cutting reference, not part of the finished
+# design). See draw_border's own docstring for which styles this does
+# and doesn't apply to.
 
 ACCENTS = {
     "black":      INK,
@@ -248,16 +261,16 @@ def draw_border(c, ox, oy, order, weight="single", *, w, h, pad=None):
     lack of a default explicit and stops `weight`'s position from ever
     colliding with a keyword `w=` the way a plain positional w would.
 
-    Corners are rounded at BORDER_CORNER_RADIUS (Sep 2026, chosen after
-    a direct visual comparison at 1/1.5/2mm). This does NOT touch every
-    style's border -- p09a_borderless has no border at all by design,
-    p25_landscape_flourish already had its own distinct rounded corner
-    (5mm, P25_BORDER_RADIUS, a separate deliberate choice paired with
-    its own thicker border weight) from an earlier request and draws it
-    directly rather than through this function, and p25b's corner-
-    bracket artwork is bespoke and doesn't use a radius concept at all.
-    Every other bordered style goes through this function and picks up
-    the 2mm rounding automatically."""
+    Corners are rounded at BORDER_CORNER_RADIUS (7mm as of Sep 2026,
+    matching the middle option on the physical 3-in-1 corner punch --
+    see the constant's own comment). This does NOT touch every style's
+    border -- p09a_borderless has no border at all by design, and
+    p25b's corner-bracket artwork is bespoke and doesn't use a radius
+    concept at all. p25_landscape_flourish draws its own thicker
+    roundRect rather than calling this function, but uses the same
+    7mm punch radius via P25_BORDER_RADIUS. Every other bordered
+    style goes through this function and picks up the 7mm rounding
+    automatically."""
     if pad is None:
         pad = PAD
     accent = HexColor(resolve_accent(order.get("accent", "charcoal")))
@@ -546,3 +559,145 @@ def render_gallery_grid(style_keys, sample_order, out_path, card_w, card_h, cols
         c.drawCentredString(x + card_w / 2, 2.5 * mm, label)
     c.showPage()
     c.save()
+
+
+# ---------------------------------------------------------------------------
+# Cricut placement-reference SVG -- OPTIONAL, never part of a real print
+# job. Purpose: a visual aid loaded into Design Space to help position
+# real vector cut shapes by eye against a picture of the actual printed
+# sheet, since cut-only mode has no camera/registration to do this
+# automatically (see chat history, "Custom bin sticker sheet layout
+# specifications" follow-up, for the full story of why this exists and
+# the several rounds of correction that arrived at this design).
+#
+# 4 layers, each a distinct colour -- Design Space automatically splits
+# an imported multi-colour SVG into one layer per colour on import, so
+# no special grouping syntax is needed beyond genuinely using 4 colours:
+#   GREEN  -- the full physical page boundary (sharp corners -- it's the
+#             page itself, not a sticker)
+#   GREY   -- each card's true edge (sharp corners) + corner tick marks,
+#             matching draw_base's own convention exactly
+#   BLACK  -- each card's REAL accent-border outline, at that specific
+#             style's own true pad + radius (NOT a generic guess --
+#             computed from the same values that style's own
+#             draw_border call actually uses, via style_pad_radius)
+#   RED    -- kiss-cut reference, per card, fixed 1mm inset from the true
+#             edge (grey) -- guaranteed to sit outside every style's own
+#             border since 1mm is less than the smallest real pad (2mm),
+#             confirmed directly rather than assumed
+#
+# Deliberately LINES ONLY -- no illustrated design content (icons, house
+# numbers, street names). This is a placement aid, not something meant
+# to preview the finished design, and the full illustrated content would
+# be far more complex to convert to clean SVG for no real benefit here.
+#
+# UNITS: unitless coordinates (1 user unit = 1px @ 96dpi) -- the SVG
+# spec's own default, chosen after DIRECT TESTING found explicit "mm"
+# unit suffixes import at an unpredictable wrong scale in Design Space
+# (confirmed: one file imported ~2.77x too large with "mm" suffixes).
+# Unitless coordinates fared better in practice but were STILL observed
+# to import at an unpredictable wrong scale once (~1.3x too large) on a
+# separate file -- ALWAYS verify the imported size in Design Space's own
+# Size panel after upload (should read the true page size, e.g. 29.7 x
+# 21.0cm for Small) and manually correct via the aspect-locked Size
+# field if it's off. This isn't a one-time fix, it's a check to make
+# every time -- Design Space's import scale has not been reliable.
+# ---------------------------------------------------------------------------
+
+_MM_TO_PX = 96 / 25.4  # SVG spec default: 1 user unit = 1px = 1/96 inch
+
+
+def _svg_px(v_points):
+    """Convert an internal reportlab-points value (i.e. anything already
+    multiplied by the `mm` scale factor, like every other measurement in
+    this codebase) to the unitless SVG coordinate this file uses."""
+    return round((v_points / mm) * _MM_TO_PX, 3)
+
+
+def render_cricut_reference_svg(orders, out_path, card_w, card_h, cols, rows,
+                                 page_size, style_pad_radius,
+                                 margin_x=None, margin_y=None,
+                                 kiss_cut_inset=1 * mm, tick=3 * mm):
+    """Writes an SVG placement-reference image (see module comment above
+    for the full rationale) -- NOT a PDF, never for real cutting.
+
+    orders: list of order dicts, one per card actually on this sheet
+    (must each have a "style" key) -- NOT necessarily all styles this
+    size supports, just whichever ones this specific reference is for.
+    Uses the same sheet_layout positions render_sheet_grid would for
+    these same cols/rows/margins, so it matches a real print exactly.
+
+    style_pad_radius: dict, style_key -> (pad, radius) or None.
+    "pad"/"radius" must be THAT STYLE'S OWN real accent-border values
+    (not a generic default) -- computed once per size script from each
+    style's actual _draw_border call, so the black reference line
+    genuinely matches what prints, not a guess. None means this style
+    has no real border (e.g. p09a_borderless, or a style like p25b
+    whose border is too structurally different from a simple rounded
+    rectangle to represent this way) -- the black layer is simply
+    skipped for that specific card; grey and red still render as usual.
+    """
+    if len(orders) > cols * rows:
+        raise ValueError(
+            f"render_cricut_reference_svg got {len(orders)} orders but the "
+            f"{cols}x{rows} grid only holds {cols * rows}."
+        )
+    page_w, page_h = page_size
+    _, _, positions = sheet_layout(card_w, card_h, page_w, page_h, cols, rows, margin_x, margin_y)
+
+    def rect_el(x, y, w, h):
+        return (f'<rect x="{_svg_px(x)}" y="{_svg_px(y)}" width="{_svg_px(w)}" '
+                f'height="{_svg_px(h)}" fill="none" stroke-width="1.5" />')
+
+    def roundrect_el(x, y, w, h, r):
+        return (f'<rect x="{_svg_px(x)}" y="{_svg_px(y)}" width="{_svg_px(w)}" '
+                f'height="{_svg_px(h)}" rx="{_svg_px(r)}" ry="{_svg_px(r)}" '
+                f'fill="none" stroke-width="1.5" />')
+
+    green_shapes = [rect_el(0, 0, page_w, page_h)]
+
+    grey_shapes = []
+    black_shapes = []
+    red_shapes = []
+    for order, (x_rl, y_rl) in zip(orders, positions):
+        # Flip bottom-left/y-up (reportlab, matches every other position
+        # in this codebase) to top-left/y-down (SVG) -- same flip as the
+        # already-confirmed working small_cut_lines.svg.
+        x = x_rl
+        y = page_h - y_rl - card_h
+
+        grey_shapes.append(rect_el(x, y, card_w, card_h))
+        for cx, cy, dx, dy in [
+            (x, y, -tick, -tick), (x + card_w, y, tick, -tick),
+            (x, y + card_h, -tick, tick), (x + card_w, y + card_h, tick, tick),
+        ]:
+            grey_shapes.append(f'<line x1="{_svg_px(cx)}" y1="{_svg_px(cy)}" '
+                                f'x2="{_svg_px(cx + dx)}" y2="{_svg_px(cy)}" stroke-width="1.5" />')
+            grey_shapes.append(f'<line x1="{_svg_px(cx)}" y1="{_svg_px(cy)}" '
+                                f'x2="{_svg_px(cx)}" y2="{_svg_px(cy + dy)}" stroke-width="1.5" />')
+
+        style = order["style"]
+        pad_radius = style_pad_radius.get(style)
+        if pad_radius is not None:
+            pad, radius = pad_radius
+            black_shapes.append(roundrect_el(x + pad, y + pad, card_w - 2 * pad, card_h - 2 * pad, radius))
+
+        i = kiss_cut_inset
+        # Use this style's own radius for red too if known, otherwise a
+        # plain rectangle (0 radius) -- red should still visually relate
+        # to the same corner style as black where that's known.
+        red_radius = pad_radius[1] if pad_radius is not None else 0
+        red_shapes.append(roundrect_el(x + i, y + i, card_w - 2 * i, card_h - 2 * i, red_radius))
+
+    svg = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{_svg_px(page_w)}" height="{_svg_px(page_h)}"\n'
+        f'     viewBox="0 0 {_svg_px(page_w)} {_svg_px(page_h)}">\n'
+        f'  <g id="green_page_frame" stroke="#00A651">\n    ' + "\n    ".join(green_shapes) + "\n  </g>\n"
+        f'  <g id="grey_cut_guide" stroke="#CCCCCC">\n    ' + "\n    ".join(grey_shapes) + "\n  </g>\n"
+        f'  <g id="black_accent_border" stroke="#111111">\n    ' + ("\n    ".join(black_shapes) if black_shapes else "") + "\n  </g>\n"
+        f'  <g id="red_kiss_cut" stroke="#E8112D">\n    ' + "\n    ".join(red_shapes) + "\n  </g>\n"
+        "</svg>\n"
+    )
+    with open(out_path, "w") as f:
+        f.write(svg)
