@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1122.52" height="793.701"
+     viewBox="0 0 1122.52 793.701">
+  <g id="green_page_frame" stroke="#00A651">
+    <rect x="0.0" y="0.0" width="1122.52" height="793.701" fill="none" stroke-width="1.5" />
+  </g>
+  <g id="grey_cut_guide" stroke="#CCCCCC">
+    <rect x="52.913" y="18.898" width="529.134" height="377.953" fill="none" stroke-width="1.5" />
+    <line x1="52.913" y1="18.898" x2="41.575" y2="18.898" stroke-width="1.5" />
+    <line x1="52.913" y1="18.898" x2="52.913" y2="7.559" stroke-width="1.5" />
+    <line x1="582.047" y1="18.898" x2="593.386" y2="18.898" stroke-width="1.5" />
+    <line x1="582.047" y1="18.898" x2="582.047" y2="7.559" stroke-width="1.5" />
+    <line x1="52.913" y1="396.85" x2="41.575" y2="396.85" stroke-width="1.5" />
+    <line x1="52.913" y1="396.85" x2="52.913" y2="408.189" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="593.386" y2="396.85" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="582.047" y2="408.189" stroke-width="1.5" />
+    <rect x="582.047" y="18.898" width="529.134" height="377.953" fill="none" stroke-width="1.5" />
+    <line x1="582.047" y1="18.898" x2="570.709" y2="18.898" stroke-width="1.5" />
+    <line x1="582.047" y1="18.898" x2="582.047" y2="7.559" stroke-width="1.5" />
+    <line x1="1111.181" y1="18.898" x2="1122.52" y2="18.898" stroke-width="1.5" />
+    <line x1="1111.181" y1="18.898" x2="1111.181" y2="7.559" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="570.709" y2="396.85" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="582.047" y2="408.189" stroke-width="1.5" />
+    <line x1="1111.181" y1="396.85" x2="1122.52" y2="396.85" stroke-width="1.5" />
+    <line x1="1111.181" y1="396.85" x2="1111.181" y2="408.189" stroke-width="1.5" />
+    <rect x="52.913" y="396.85" width="529.134" height="377.953" fill="none" stroke-width="1.5" />
+    <line x1="52.913" y1="396.85" x2="41.575" y2="396.85" stroke-width="1.5" />
+    <line x1="52.913" y1="396.85" x2="52.913" y2="385.512" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="593.386" y2="396.85" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="582.047" y2="385.512" stroke-width="1.5" />
+    <line x1="52.913" y1="774.803" x2="41.575" y2="774.803" stroke-width="1.5" />
+    <line x1="52.913" y1="774.803" x2="52.913" y2="786.142" stroke-width="1.5" />
+    <line x1="582.047" y1="774.803" x2="593.386" y2="774.803" stroke-width="1.5" />
+    <line x1="582.047" y1="774.803" x2="582.047" y2="786.142" stroke-width="1.5" />
+    <rect x="582.047" y="396.85" width="529.134" height="377.953" fill="none" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="570.709" y2="396.85" stroke-width="1.5" />
+    <line x1="582.047" y1="396.85" x2="582.047" y2="385.512" stroke-width="1.5" />
+    <line x1="1111.181" y1="396.85" x2="1122.52" y2="396.85" stroke-width="1.5" />
+    <line x1="1111.181" y1="396.85" x2="1111.181" y2="385.512" stroke-width="1.5" />
+    <line x1="582.047" y1="774.803" x2="570.709" y2="774.803" stroke-width="1.5" />
+    <line x1="582.047" y1="774.803" x2="582.047" y2="786.142" stroke-width="1.5" />
+    <line x1="1111.181" y1="774.803" x2="1122.52" y2="774.803" stroke-width="1.5" />
+    <line x1="1111.181" y1="774.803" x2="1111.181" y2="786.142" stroke-width="1.5" />
+  </g>
+  <g id="black_accent_border" stroke="#111111">
+    
+  </g>
+  <g id="red_kiss_cut" stroke="#E8112D">
+    <rect x="56.693" y="22.677" width="521.575" height="370.394" rx="0.0" ry="0.0" fill="none" stroke-width="1.5" />
+    <rect x="585.827" y="22.677" width="521.575" height="370.394" rx="0.0" ry="0.0" fill="none" stroke-width="1.5" />
+    <rect x="56.693" y="400.63" width="521.575" height="370.394" rx="0.0" ry="0.0" fill="none" stroke-width="1.5" />
+    <rect x="585.827" y="400.63" width="521.575" height="370.394" rx="0.0" ry="0.0" fill="none" stroke-width="1.5" />
+  </g>
+</svg>
