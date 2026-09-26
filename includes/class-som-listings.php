@@ -176,6 +176,10 @@ class SOM_Listings {
 		if ( $product_id < 1 ) {
 			return new WP_Error( 'som_listing_product', __( 'Product is required.', 'order-machine' ) );
 		}
+		$product_ok = self::assert_listable_product( $product_id );
+		if ( is_wp_error( $product_ok ) ) {
+			return $product_ok;
+		}
 		if ( ! in_array( $slug, array( 'ebay', 'etsy' ), true ) ) {
 			return new WP_Error( 'som_listing_channel', __( 'Channel is required.', 'order-machine' ) );
 		}
@@ -239,6 +243,10 @@ class SOM_Listings {
 			$pid = (int) $data['product_id'];
 			if ( $pid < 1 ) {
 				return new WP_Error( 'som_listing_product', __( 'Product is required.', 'order-machine' ) );
+			}
+			$product_ok = self::assert_listable_product( $pid );
+			if ( is_wp_error( $product_ok ) ) {
+				return $product_ok;
 			}
 			$fields['product_id'] = $pid;
 			$formats[]            = '%d';
@@ -536,9 +544,29 @@ class SOM_Listings {
 		global $wpdb;
 		$table = SOM_DB::table( 'products' );
 		$rows  = $wpdb->get_results(
-			"SELECT id, name, sku FROM {$table} WHERE is_active = 1 ORDER BY name ASC"
+			"SELECT id, name, sku FROM {$table} WHERE is_active = 1 AND is_internal = 0 ORDER BY name ASC"
 		);
 		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Internal products cannot be marketplace-listed.
+	 *
+	 * @param int $product_id Product PK.
+	 * @return true|WP_Error
+	 */
+	public static function assert_listable_product( $product_id ) {
+		$product = SOM_Products::get( (int) $product_id );
+		if ( ! $product ) {
+			return new WP_Error( 'som_listing_product', __( 'Product not found.', 'order-machine' ) );
+		}
+		if ( ! empty( $product->is_internal ) ) {
+			return new WP_Error(
+				'som_listing_internal',
+				__( 'Internal products cannot be linked to marketplace listings.', 'order-machine' )
+			);
+		}
+		return true;
 	}
 
 	/**

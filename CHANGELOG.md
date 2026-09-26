@@ -14,6 +14,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - Order **Materials used** panel: raise actual recipe material usage (Extra material usage) → stock, COGS/profit, and material budget funding; increase-only
 - Clearer R&D vs Adjust stock help copy (restock pot)
 - Internal products (make-to-stock): Internal channel, Produce N, linked output material credited on workflow complete (`production_output`); schema 1.12.0
+- Internal products UX/guards: list badges/filters, listing exclude, recipe cycle/depth limits, deactivate with open jobs blocked, analytics exclude production, low-stock Produce on linked materials
 
 ## [0.23.0] - 2026-09-16
 

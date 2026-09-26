@@ -294,8 +294,9 @@ class SOM_Analytics {
 			'o.order_date >= %s',
 			'o.order_date <= %s',
 			"NOT {$excluded}",
+			'c.slug <> %s',
 		);
-		$params = array( $filters['start'], $filters['end'] );
+		$params = array( $filters['start'], $filters['end'], SOM_Production::CHANNEL_SLUG );
 
 		if ( (int) $filters['channel_id'] > 0 ) {
 			$where[]  = 'o.channel_id = %d';

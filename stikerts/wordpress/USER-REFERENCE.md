@@ -156,11 +156,13 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
 - Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order)
 - Assign workflow template
-- Edit material recipe (material + qty per unit)
+- Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, fee-aware profit/margin, goal alerts, listing prices)
-- Follow links to related Listings
+- Follow links to related Listings (internal products are excluded from marketplace listing pickers)
 
-**List columns:** target price, material cost, fee-aware margin with Est./Actual fees badge, goal alerts.
+**List columns:** target price, material cost, fee-aware margin with Est./Actual fees badge, goal alerts, Internal badge; type filter sellable/internal.
+
+**Deactivate:** blocked while open Internal production jobs exist for that product.
 
 **Important rules:**
 
@@ -185,6 +187,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **R&D / non-sale write-off** — stock down + restock-pot debit when an active material budget exists (notes required). Sales fund the pot; purchases and R&D draw it down
 - Goal-alert badges; per-workflow breakdown on edit
 - Lead time from past POs; purchase history table; recent stock log
+- **Made in-house** badge when linked to an internal product; **Produce N** when that material is low stock (no auto job)
 
 **Auto-decrement on new orders:**
 

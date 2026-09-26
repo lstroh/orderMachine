@@ -11,7 +11,7 @@
 | UP4-S1 | Step instructions | Done | Schema 1.11.0; plugin 0.24.0 |
 | UP4-S2 | Order material overuse + R&D copy | Done | Plugin 0.25.0; no schema bump |
 | UP4-S3 | Internal products core | Done | Schema 1.12.0; plugin 0.26.0 |
-| UP4-S4 | Internal products UX / guards | Not started | |
+| UP4-S4 | Internal products UX / guards | Done | Plugin 0.27.0; no schema bump |
 
 ---
 
@@ -170,3 +170,56 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 ```
 
 Then in wp-admin: edit an internal product (workflow + recipe) → **Produce N** → open the Internal order → complete remaining steps if any → confirm linked material stock rose and input stock fell.
+
+---
+
+## UP4-S4 — Internal products UX / guards / analytics
+
+- **Status:** Done
+- **Completed:** 2026-09-26
+- **Verified on:** Deferred to operator desktop (Local / wp-env). Smoke script: `tests/sprint-up4-s4-smoke.php`. Cloud agent had no Docker.
+
+### Decisions applied
+
+| Topic | Decision |
+|---|---|
+| Low stock | Produce affordance on linked material when low (no auto-draft) |
+| Deactivate | Block while open Internal production jobs; allow with stock remaining |
+| Analytics | Exclude `internal` from sales/AOV/profit revenue load |
+| Nesting | Max depth 5 + cycle detection on recipe save |
+| Orders | Show all by default; Production badge on Internal channel |
+| Schema | None |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `admin/views/products-list.php` | Internal badge + type filter |
+| `admin/views/orders-list.php` | Production badge |
+| `admin/views/materials-list.php` / `material-edit.php` | Made in-house + low-stock Produce |
+| `admin/class-som-admin-menu.php` | Produce from material |
+| `admin/views/analytics.php` | Hide Internal in channel filter |
+| `includes/class-som-listings.php` | Exclude/reject internal products |
+| `includes/class-som-products.php` | Cycle/depth validation; deactivate guard; type query |
+| `includes/class-som-analytics.php` | Exclude internal orders from dashboard load |
+| `includes/seed/class-som-seed.php` | Logo sticker internal + sellable recipe line |
+| `orderMachine.php` | Version **0.27.0** |
+| `tests/sprint-up4-s4-smoke.php` | Nesting, listing, analytics, deactivate |
+
+### Done-when checklist
+
+| Criterion | Result |
+|---|---|
+| Cannot list internal on marketplace mapping | Implemented |
+| Nested cycle rejected; depth guarded | Implemented |
+| Low-stock material Produce path (no auto job) | Implemented |
+| Analytics excludes production from sales/AOV | Implemented |
+| Deactivate blocked with open jobs | Implemented |
+
+### How to verify
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up4-s4-smoke.php
+```
+
+Then in wp-admin: Products type filter Internal; Materials Made in-house + Produce when low; Listings picker has no internals; Analytics has no Internal channel and production jobs do not inflate sales.
