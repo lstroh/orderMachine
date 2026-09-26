@@ -15,6 +15,9 @@ $filters  = SOM_Analytics::parse_filters( $_GET ); // phpcs:ignore WordPress.Sec
 $payload  = SOM_Analytics::dashboard_payload( $filters );
 $channels = array();
 foreach ( SOM_Channels::known() as $slug => $name ) {
+	if ( SOM_Production::CHANNEL_SLUG === $slug ) {
+		continue; // Production jobs are excluded from sales / AOV / profit charts.
+	}
 	$row = SOM_Channels::get_by_slug( $slug );
 	if ( $row ) {
 		$channels[] = $row;

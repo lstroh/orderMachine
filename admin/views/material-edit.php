@@ -22,6 +22,10 @@ $goal_alerts      = ( $material && ! empty( $material->goal_alerts ) ) ? $materi
 $wa               = $material ? (float) $material->weighted_average : 0.0;
 $value_on_hand    = $material ? (float) $material->total_value_on_hand : 0.0;
 $lead_days        = $material && null !== $material->average_lead_time_days ? (float) $material->average_lead_time_days : null;
+$source_product   = ( $material && ! empty( $material->source_product_id ) )
+	? SOM_Products::get( (int) $material->source_product_id )
+	: null;
+$show_produce     = $source_product && ! empty( $material->is_low_stock );
 ?>
 <div class="wrap som-catalog-wrap">
 	<h1>
@@ -37,6 +41,41 @@ $lead_days        = $material && null !== $material->average_lead_time_days ? (f
 	</p>
 
 	<?php if ( ! $is_new && $material ) : ?>
+		<?php if ( $source_product ) : ?>
+			<p class="description">
+				<span class="som-badge som-badge-made-in-house"><?php echo esc_html__( 'Made in-house', 'order-machine' ); ?></span>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: product name */
+						__( 'Produced by internal product: %s', 'order-machine' ),
+						(string) $source_product->name
+					)
+				);
+				?>
+				— <a href="<?php echo esc_url( SOM_Products::detail_url( (int) $source_product->id ) ); ?>"><?php echo esc_html__( 'View product', 'order-machine' ); ?></a>
+			</p>
+		<?php endif; ?>
+
+		<?php if ( $show_produce ) : ?>
+			<div class="som-produce-panel" id="som-produce-panel">
+				<h2><?php echo esc_html__( 'Produce', 'order-machine' ); ?></h2>
+				<p class="description">
+					<?php echo esc_html__( 'Stock is low. Start a make-to-stock job for the linked internal product (no automatic draft — enter quantity and confirm).', 'order-machine' ); ?>
+				</p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-materials&material_id=' . (int) $material->id ) ); ?>" class="som-produce-form">
+					<?php wp_nonce_field( 'som_produce_from_material', 'som_produce_material_nonce' ); ?>
+					<input type="hidden" name="som_produce_from_material" value="1" />
+					<input type="hidden" name="material_id" value="<?php echo esc_attr( (string) (int) $material->id ); ?>" />
+					<label for="som_produce_qty">
+						<?php echo esc_html__( 'Quantity', 'order-machine' ); ?>
+						<input type="number" min="1" step="1" class="small-text" id="som_produce_qty" name="som_produce_qty" value="1" required />
+					</label>
+					<?php submit_button( __( 'Produce N', 'order-machine' ), 'secondary', 'submit', false ); ?>
+				</form>
+			</div>
+		<?php endif; ?>
+
 		<div class="som-stock-summary som-panel">
 			<h2><?php echo esc_html__( 'Stock &amp; costing', 'order-machine' ); ?></h2>
 			<p class="som-stock-level">

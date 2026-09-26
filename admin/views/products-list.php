@@ -12,12 +12,14 @@ if ( ! current_user_can( 'manage_options' ) ) {
 }
 
 $status = isset( $_GET['som_status'] ) ? sanitize_key( wp_unslash( $_GET['som_status'] ) ) : 'active';
+$type   = isset( $_GET['som_type'] ) ? sanitize_key( wp_unslash( $_GET['som_type'] ) ) : 'all';
 $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 $paged  = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
 $result   = SOM_Products::query(
 	array(
 		'status' => $status,
+		'type'   => $type,
 		's'      => $search,
 		'paged'  => $paged,
 	)
@@ -31,6 +33,11 @@ $status_options = array(
 	'active'   => __( 'Active', 'order-machine' ),
 	'inactive' => __( 'Inactive', 'order-machine' ),
 	'all'      => __( 'All', 'order-machine' ),
+);
+$type_options = array(
+	'all'      => __( 'All types', 'order-machine' ),
+	'sellable' => __( 'Sellable', 'order-machine' ),
+	'internal' => __( 'Internal', 'order-machine' ),
 );
 ?>
 <div class="wrap som-catalog-wrap">
@@ -47,6 +54,13 @@ $status_options = array(
 		<select name="som_status">
 			<?php foreach ( $status_options as $value => $label ) : ?>
 				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $status, $value ); ?>>
+					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<select name="som_type">
+			<?php foreach ( $type_options as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $type, $value ); ?>>
 					<?php echo esc_html( $label ); ?>
 				</option>
 			<?php endforeach; ?>
@@ -94,6 +108,9 @@ $status_options = array(
 									<?php echo esc_html( (string) $product->name ); ?>
 								</a>
 							</strong>
+							<?php if ( ! empty( $product->is_internal ) ) : ?>
+								<br /><span class="som-badge som-badge-internal"><?php echo esc_html__( 'Internal', 'order-machine' ); ?></span>
+							<?php endif; ?>
 							<?php if ( $alert_level ) : ?>
 								<br />
 								<span class="som-badge som-badge-goal-<?php echo esc_attr( sanitize_html_class( $alert_level ) ); ?>">

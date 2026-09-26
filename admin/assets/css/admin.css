@@ -338,6 +338,13 @@
 	color: #9a5b1a;
 }
 
+.som-badge-internal,
+.som-badge-made-in-house,
+.som-badge-production {
+	background: #e7f0f7;
+	color: #135e96;
+}
+
 .som-badge-low-balance {
 	background: #fcf0e3;
 	color: #9a5b1a;

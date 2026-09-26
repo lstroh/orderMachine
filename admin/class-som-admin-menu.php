@@ -1394,6 +1394,31 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_POST['som_produce_from_material'] ) ) {
+			check_admin_referer( 'som_produce_from_material', 'som_produce_material_nonce' );
+			$material_id = isset( $_POST['material_id'] ) ? (int) $_POST['material_id'] : 0;
+			$qty         = isset( $_POST['som_produce_qty'] ) ? (int) $_POST['som_produce_qty'] : 0;
+			$material    = $material_id > 0 ? SOM_Materials::get( $material_id ) : null;
+			$product_id  = $material && ! empty( $material->source_product_id ) ? (int) $material->source_product_id : 0;
+			$result      = SOM_Production::produce( $product_id, $qty );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_produce_error' );
+				wp_safe_redirect( SOM_Materials::detail_url( $material_id > 0 ? $material_id : 'new' ) );
+				exit;
+			}
+			self::flash_notice(
+				sprintf(
+					/* translators: %d: order ID */
+					__( 'Production order #%d created.', 'order-machine' ),
+					(int) $result
+				),
+				'success',
+				'som_produce_ok'
+			);
+			wp_safe_redirect( SOM_Orders::detail_url( (int) $result ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_adjust_stock'] ) ) {
 			check_admin_referer( 'som_adjust_stock', 'som_adjust_stock_nonce' );
 

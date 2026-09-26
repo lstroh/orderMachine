@@ -93,6 +93,12 @@ $status_options = array(
 									<?php echo esc_html( (string) $material->name ); ?>
 								</a>
 							</strong>
+							<?php if ( ! empty( $material->source_product_id ) ) : ?>
+								<br /><span class="som-badge som-badge-made-in-house"><?php echo esc_html__( 'Made in-house', 'order-machine' ); ?></span>
+								<?php if ( ! empty( $material->is_low_stock ) ) : ?>
+									— <a href="<?php echo esc_url( SOM_Materials::detail_url( (int) $material->id ) ); ?>#som-produce-panel"><?php echo esc_html__( 'Produce', 'order-machine' ); ?></a>
+								<?php endif; ?>
+							<?php endif; ?>
 							<?php if ( ! empty( $material->is_low_stock ) ) : ?>
 								<br /><span class="som-badge som-badge-low-stock"><?php echo esc_html__( 'Low stock', 'order-machine' ); ?></span>
 							<?php endif; ?>

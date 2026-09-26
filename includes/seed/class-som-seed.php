@@ -16,6 +16,12 @@ class SOM_Seed {
 	/** Sample product SKU used by fixtures for matched lines. */
 	const SAMPLE_PRODUCT_SKU = 'BIN-SET-4PK';
 
+	/** Sample internal (make-to-stock) product SKU. */
+	const INTERNAL_PRODUCT_SKU = 'LOGO-STICKER';
+
+	/** Workflow for the sample internal product. */
+	const INTERNAL_WORKFLOW_NAME = 'Logo sticker make';
+
 	/** eBay legacyItemId in ebay-orders.json (matched). */
 	const EBAY_LISTING_ID = '110000000001';
 
@@ -247,6 +253,117 @@ class SOM_Seed {
 
 		self::maybe_seed_materials( $product_id );
 		self::maybe_seed_workflow( $product_id );
+		self::maybe_seed_internal_product( $product_id );
+	}
+
+	/**
+	 * Seed an internal Logo sticker product + add its output to the sellable recipe.
+	 *
+	 * @param int $sellable_product_id Demo sellable product PK.
+	 * @return void
+	 */
+	public static function maybe_seed_internal_product( $sellable_product_id ) {
+		global $wpdb;
+
+		$sellable_product_id = (int) $sellable_product_id;
+		if ( $sellable_product_id < 1 ) {
+			return;
+		}
+
+		$products_t = SOM_DB::table( 'products' );
+		$internal_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$products_t} WHERE sku = %s ORDER BY id ASC LIMIT 1",
+				self::INTERNAL_PRODUCT_SKU
+			)
+		);
+
+		if ( $internal_id < 1 ) {
+			$templates_t = SOM_DB::table( 'workflow_templates' );
+			$wf_id       = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE name = %s ORDER BY id ASC LIMIT 1",
+					self::INTERNAL_WORKFLOW_NAME
+				)
+			);
+			if ( $wf_id < 1 ) {
+				$wf_id = SOM_Workflows::create(
+					array(
+						'name'        => self::INTERNAL_WORKFLOW_NAME,
+						'description' => 'Seed workflow for internal logo sticker',
+						'is_active'   => 1,
+					)
+				);
+				if ( is_wp_error( $wf_id ) ) {
+					return;
+				}
+				$wf_id = (int) $wf_id;
+				SOM_Workflows::save_steps(
+					$wf_id,
+					array(
+						array(
+							'name'                    => 'Cut & weed',
+							'requires_manual_confirm' => 1,
+						),
+					)
+				);
+			}
+
+			$created = SOM_Products::create(
+				array(
+					'name'                 => 'Logo sticker (internal)',
+					'sku'                  => self::INTERNAL_PRODUCT_SKU,
+					'workflow_template_id' => $wf_id,
+					'is_internal'          => 1,
+					'is_active'            => 1,
+				)
+			);
+			if ( is_wp_error( $created ) ) {
+				return;
+			}
+			$internal_id = (int) $created;
+
+			$vinyl_id = self::ensure_material( self::MATERIAL_VINYL, 'sheet', 25, 5, 1.25 );
+			if ( $vinyl_id > 0 ) {
+				SOM_Products::save_recipe(
+					$internal_id,
+					array(
+						array(
+							'material_id'       => $vinyl_id,
+							'quantity_per_unit' => 0.1,
+						),
+					)
+				);
+			}
+		}
+
+		$internal = SOM_Products::get( $internal_id );
+		if ( ! $internal || empty( $internal->linked_material_id ) ) {
+			return;
+		}
+
+		$linked_id = (int) $internal->linked_material_id;
+		$recipe_t  = SOM_DB::table( 'product_materials' );
+		$has_line  = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$recipe_t} WHERE product_id = %d AND material_id = %d",
+				$sellable_product_id,
+				$linked_id
+			)
+		);
+		if ( $has_line > 0 ) {
+			return;
+		}
+
+		$wpdb->insert(
+			$recipe_t,
+			array(
+				'product_id'         => $sellable_product_id,
+				'material_id'        => $linked_id,
+				'quantity_per_unit'  => 1.0,
+			),
+			array( '%d', '%d', '%f' )
+		);
 	}
 
 	/** Seed workflow template name. */

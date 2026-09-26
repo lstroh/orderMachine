@@ -207,7 +207,12 @@ $status_options = array(
 								<?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $order->order_date ) ); ?>
 							</a>
 						</td>
-						<td class="column-channel"><?php echo esc_html( (string) $order->channel_name ); ?></td>
+						<td class="column-channel">
+							<?php echo esc_html( (string) $order->channel_name ); ?>
+							<?php if ( isset( $order->channel_slug ) && 'internal' === (string) $order->channel_slug ) : ?>
+								<br /><span class="som-badge som-badge-production"><?php echo esc_html__( 'Production', 'order-machine' ); ?></span>
+							<?php endif; ?>
+						</td>
 						<td class="column-external">
 							<a href="<?php echo esc_url( $detail_url ); ?>">
 								<code><?php echo esc_html( (string) $order->external_order_id ); ?></code>

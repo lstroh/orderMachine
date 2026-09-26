@@ -18,9 +18,14 @@ class SOM_Products {
 	const PER_PAGE = 20;
 
 	/**
+	 * Max nesting depth through component (internal) materials in a recipe graph.
+	 */
+	const MAX_RECIPE_NESTING_DEPTH = 5;
+
+	/**
 	 * Query products for the admin list.
 	 *
-	 * @param array<string, mixed> $args Filters: status, s, paged, per_page.
+	 * @param array<string, mixed> $args Filters: status, type (all|sellable|internal), s, paged, per_page.
 	 * @return array{products: array<int, object>, total: int, pages: int, paged: int}
 	 */
 	public static function query( array $args = array() ) {
@@ -28,6 +33,7 @@ class SOM_Products {
 
 		$defaults = array(
 			'status'   => 'active',
+			'type'     => 'all',
 			's'        => '',
 			'paged'    => 1,
 			'per_page' => self::PER_PAGE,
@@ -47,6 +53,13 @@ class SOM_Products {
 			$where[] = 'p.is_active = 1';
 		} elseif ( 'inactive' === $status ) {
 			$where[] = 'p.is_active = 0';
+		}
+
+		$type = sanitize_key( (string) $args['type'] );
+		if ( 'internal' === $type ) {
+			$where[] = 'p.is_internal = 1';
+		} elseif ( 'sellable' === $type ) {
+			$where[] = 'p.is_internal = 0';
 		}
 
 		$search = trim( (string) $args['s'] );
@@ -311,7 +324,26 @@ class SOM_Products {
 		}
 
 		if ( array_key_exists( 'is_active', $data ) ) {
-			$fields['is_active'] = (int) (bool) $data['is_active'];
+			$want_active = (int) (bool) $data['is_active'];
+			if ( 0 === $want_active && (int) $existing->is_active === 1 ) {
+				$open = self::count_open_production_jobs( $product_id );
+				if ( $open > 0 ) {
+					return new WP_Error(
+						'som_product_open_jobs',
+						sprintf(
+							/* translators: %d: open production order count */
+							_n(
+								'Cannot deactivate: %d open production job uses this product. Complete or cancel it first.',
+								'Cannot deactivate: %d open production jobs use this product. Complete or cancel them first.',
+								$open,
+								'order-machine'
+							),
+							$open
+						)
+					);
+				}
+			}
+			$fields['is_active'] = $want_active;
 			$formats[]           = '%d';
 		}
 
@@ -655,6 +687,11 @@ class SOM_Products {
 			);
 		}
 
+		$graph = self::validate_recipe_nesting( $product_id, array_keys( $seen ) );
+		if ( is_wp_error( $graph ) ) {
+			return $graph;
+		}
+
 		$recipe_t = SOM_DB::table( 'product_materials' );
 		$wpdb->delete( $recipe_t, array( 'product_id' => $product_id ), array( '%d' ) );
 
@@ -668,6 +705,144 @@ class SOM_Products {
 				),
 				array( '%d', '%d', '%f' )
 			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Count incomplete Internal-channel production orders for a product.
+	 *
+	 * @param int $product_id Product PK.
+	 * @return int
+	 */
+	public static function count_open_production_jobs( $product_id ) {
+		global $wpdb;
+
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return 0;
+		}
+
+		$orders_t = SOM_DB::table( 'orders' );
+		$chan_t   = SOM_DB::table( 'channels' );
+		$items_t  = SOM_DB::table( 'order_items' );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT o.id, o.raw_payload
+				FROM {$orders_t} o
+				INNER JOIN {$chan_t} c ON c.id = o.channel_id AND c.slug = %s
+				WHERE o.is_complete = 0
+				AND EXISTS (
+					SELECT 1 FROM {$items_t} oi
+					WHERE oi.order_id = o.id AND oi.product_id = %d
+				)",
+				SOM_Production::CHANNEL_SLUG,
+				$product_id
+			)
+		);
+		if ( ! is_array( $rows ) || ! $rows ) {
+			return 0;
+		}
+
+		$count = 0;
+		foreach ( $rows as $row ) {
+			if ( ! SOM_Orders::is_cancelled( $row->raw_payload, SOM_Production::CHANNEL_SLUG ) ) {
+				++$count;
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Owning internal product for a material (source_product_id or linked_material_id).
+	 *
+	 * @param int $material_id Material PK.
+	 * @return int Product PK or 0.
+	 */
+	public static function internal_product_for_material( $material_id ) {
+		global $wpdb;
+
+		$material_id = (int) $material_id;
+		if ( $material_id < 1 ) {
+			return 0;
+		}
+
+		$material = SOM_Materials::get( $material_id );
+		if ( $material && ! empty( $material->source_product_id ) ) {
+			return (int) $material->source_product_id;
+		}
+
+		$products_t = SOM_DB::table( 'products' );
+		$owner      = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$products_t} WHERE is_internal = 1 AND linked_material_id = %d LIMIT 1",
+				$material_id
+			)
+		);
+
+		return $owner > 0 ? $owner : 0;
+	}
+
+	/**
+	 * Reject recipe cycles and nesting deeper than {@see MAX_RECIPE_NESTING_DEPTH}.
+	 *
+	 * Walks each recipe material through owning internal products' recipes.
+	 *
+	 * @param int   $product_id   Product whose recipe is being saved.
+	 * @param int[] $material_ids Direct recipe material IDs.
+	 * @return true|WP_Error
+	 */
+	public static function validate_recipe_nesting( $product_id, array $material_ids ) {
+		$product_id = (int) $product_id;
+		$max_depth  = self::MAX_RECIPE_NESTING_DEPTH;
+
+		foreach ( $material_ids as $material_id ) {
+			$material_id = (int) $material_id;
+			if ( $material_id < 1 ) {
+				continue;
+			}
+
+			$stack         = array( array( $material_id, 1 ) );
+			$seen_products = array();
+
+			while ( $stack ) {
+				$frame = array_pop( $stack );
+				$mid   = (int) $frame[0];
+				$depth = (int) $frame[1];
+
+				if ( $depth > $max_depth ) {
+					return new WP_Error(
+						'som_recipe_depth',
+						sprintf(
+							/* translators: %d: max nesting depth */
+							__( 'Recipe nesting cannot exceed %d component levels.', 'order-machine' ),
+							$max_depth
+						)
+					);
+				}
+
+				$owner = self::internal_product_for_material( $mid );
+				if ( $owner < 1 ) {
+					continue;
+				}
+				if ( $owner === $product_id ) {
+					return new WP_Error(
+						'som_recipe_cycle',
+						__( 'This recipe would create a cycle through an internal product’s output.', 'order-machine' )
+					);
+				}
+				if ( isset( $seen_products[ $owner ] ) ) {
+					continue;
+				}
+				$seen_products[ $owner ] = true;
+
+				foreach ( self::get_recipe( $owner ) as $row ) {
+					$stack[] = array( (int) $row->material_id, $depth + 1 );
+				}
+			}
 		}
 
 		return true;
