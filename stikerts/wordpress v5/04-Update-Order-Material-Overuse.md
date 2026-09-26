@@ -85,7 +85,7 @@ If a recipe line is a component material (output of an internal product), overus
 
 ## 7. Open items
 
-1. Budget ledger reason: reuse `sale_funding` vs `usage_extra_funding`.
+1. Budget ledger reason: **Settled** — `extra_material_usage` (UI: **Extra material usage**), not reuse of `sale_funding`.
 2. Multi-product orders: single pooled materials list vs per-line attribution (recommend pooled, matching today’s stock summary).
 3. Overuse when original funding was skipped (history import).
 4. Whether unit cost for extras uses current WA at overuse time (recommend **yes**, same as consumption helper) vs original `new_order` unit_cost_at_time.

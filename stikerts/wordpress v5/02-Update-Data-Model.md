@@ -78,7 +78,7 @@ actual = sum( abs(change_qty) ) where order_id=O and material_id=M
 
 ### B2. Budget ledger
 
-No new budget tables. Extra funding uses existing `budget_ledger` with `reason = sale_funding` (or a dedicated `usage_extra_funding` if implementers prefer clearer audit — **open item**). Amount = `extra_qty × unit_cost_at_time` for the material budget linked to that material, following the same material-budget scoping rules as create-time funding.
+No new budget tables. Extra funding uses existing `budget_ledger` with `reason = extra_material_usage` (UI label: **Extra material usage**). Amount = `extra_qty × unit_cost_at_time` for the material budget linked to that material, following the same material-budget scoping rules as create-time funding.
 
 ### B3. Optional summary table (not required for v1)
 
@@ -158,7 +158,7 @@ Uses existing `materials.low_stock_threshold` / low-stock flag on the **linked o
 
 ## Open items (data model)
 
-1. **Budget reason for overuse funding:** reuse `sale_funding` vs new `usage_extra_funding`.
+1. **Budget reason for overuse funding:** **Settled** — `extra_material_usage` (UI: Extra material usage).
 2. **Production channel vs `order_kind` column** — pick one before Internal Products sprint.
 3. **Should production consume-and-fund input material budgets** the same as customer sales?
 4. **`materials.source_product_id`** column vs derive from `products.linked_material_id`.

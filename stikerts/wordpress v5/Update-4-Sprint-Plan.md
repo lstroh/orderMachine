@@ -18,7 +18,7 @@ Open items: answers from planning chat (2026-09-26) locked below. Remaining soft
 | O2 | `03` §5.2 | Hard max length for instruction text | UP4-S1 save validation | **Default:** 5000 chars + soft UI note (unconfirmed; use unless overturned) |
 | O3 | `02`§5 / `03` §5.3 | Orphan overrides when product workflow changes | UP4-S1 product save | **Default:** delete overrides not in the new template (unconfirmed; use unless overturned) |
 | O4 | `03` §5.4 | MCP/REST expose instructions? | UP4-S1 | **Default:** skip v1 (unconfirmed; use unless overturned) |
-| O5 | `02`§1 / `04` §7.1 | Budget ledger label for overuse funding | UP4-S2 funding | **Settled:** distinct ledger reason `usage_extra_funding` (same pot; clearer audit label — see §2 Q5). Separate helper required (O20). |
+| O5 | `02`§1 / `04` §7.1 | Budget ledger label for overuse funding | UP4-S2 funding | **Settled:** distinct ledger reason `extra_material_usage` (UI label: **Extra material usage**) (same pot; clearer audit label — see §2 Q5). Separate helper required (O20). |
 | O6 | `04` §7.2 | Multi-product orders: pooled vs per-line materials | UP4-S2 UI | **Default:** pooled (unconfirmed; use unless overturned) |
 | O7 | `04` §7.3 | Overuse when create-time funding was skipped (history import) | UP4-S2 | **Default:** allow extras if `new_order` exists; else empty panel |
 | O8 | `04` §7.4 | Unit cost for extras | UP4-S2 | **Default:** current WA at overuse time |
@@ -56,8 +56,8 @@ Answers from planning chat — retained after resolution.
 
 ### Overuse + R&D (UP4-S2)
 
-5. **What does `usage_extra_funding` mean?**  
-   **A (explanation + settled):** Budget ledger rows already have a **reason** label (`sale_funding`, `purchase_spend`, etc.). Overuse still funds the **same material budget pot**, but we tag those rows `usage_extra_funding` so the ledger reads as “extra usage on this order” rather than another initial sale fund. It is **not** a second budget. (Also required technically: create-time funding cannot run twice — O20.)
+5. **Ledger label for overuse funding?**  
+   **A:** Reason code `extra_material_usage`, shown as **Extra material usage**. Same material budget pot; clearer history than reusing `sale_funding`. (Create-time funding still cannot run twice — O20.)
 
 6. **Pooled materials on multi-product orders?** — not explicitly answered; **default yes**.
 
@@ -97,7 +97,7 @@ Treat **existing plugin code as ground truth**. None block planning; they shape 
 
 | Spec assumption | Actual code today | Plan impact |
 |---|---|---|
-| Re-fund budgets on overuse via same create path | [`SOM_Budgets::fund_on_create`](../../includes/class-som-budgets.php) returns early if `has_sale_funding_for_order` — **any** prior `sale_funding` blocks all further funding | **New** method e.g. `fund_usage_extras( $order_id, $stock_log_ids )` using reason `usage_extra_funding` (O5/O20) |
+| Re-fund budgets on overuse via same create path | [`SOM_Budgets::fund_on_create`](../../includes/class-som-budgets.php) returns early if `has_sale_funding_for_order` — **any** prior `sale_funding` blocks all further funding | **New** method e.g. `fund_usage_extras( $order_id, $stock_log_ids )` using reason `extra_material_usage` (O5/O20) |
 | Material COGS = all consumption | [`SOM_Analytics::order_material_cogs`](../../includes/class-som-analytics.php) filters `reason = new_order` only | Extend to include `order_usage_extra` |
 | Order stock panel is editable / planned vs actual | [`SOM_Material_Stock::get_order_summary`](../../includes/class-som-material-stock.php) + order-detail view are **read-only** raw lines | New aggregate + POST handler in `handle_orders_actions` |
 | Cancel reversal reverses logged qty | `maybe_reverse_on_cancel` is a **no-op placeholder**; comment already says reverse from logged qty | When D3/A3 lands, include `order_usage_extra` (O9) — out of Package 4 scope |
@@ -129,7 +129,7 @@ Planned(M) = sum abs(change_qty) where reason=new_order
 Extra(M)   = sum abs(change_qty) where reason=order_usage_extra
 Actual(M)  = Planned + Extra
 On save: if Actual_new > Actual_old → adjust_stock(−delta, reason=order_usage_extra)
-         → fund_usage_extras for that log line (reason=usage_extra_funding)
+         → fund_usage_extras for that log line (reason=`extra_material_usage`, label “Extra material usage”)
 Reject Actual_new < Planned
 ```
 
