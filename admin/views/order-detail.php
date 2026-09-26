@@ -793,6 +793,60 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 	</section>
 
+	<?php
+	$order_notes = SOM_Order_Notes::list_for_order( (int) $order->id );
+	?>
+	<section class="som-panel som-panel-notes" id="som-order-notes">
+		<h2><?php echo esc_html__( 'Notes', 'order-machine' ); ?></h2>
+		<p class="description">
+			<?php echo esc_html__( 'Admin-only log for this order. Notes cannot be edited or deleted.', 'order-machine' ); ?>
+		</p>
+		<?php if ( empty( $order_notes ) ) : ?>
+			<p class="description som-muted"><?php echo esc_html__( 'No notes yet.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<ul class="som-order-notes-list">
+				<?php foreach ( $order_notes as $note ) : ?>
+					<li class="som-order-note">
+						<div class="som-order-note-meta">
+							<strong><?php echo esc_html( (string) $note->author_name ); ?></strong>
+							<span class="som-muted">
+								<?php
+								echo esc_html(
+									sprintf(
+										/* translators: %s: UTC datetime */
+										__( '%s UTC', 'order-machine' ),
+										(string) $note->created_at
+									)
+								);
+								?>
+							</span>
+						</div>
+						<div class="som-order-note-body"><?php echo esc_html( (string) $note->body ); ?></div>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		<?php endif; ?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-orders&order_id=' . (int) $order->id ) ); ?>" class="som-order-note-form">
+			<?php wp_nonce_field( 'som_add_order_note', 'som_order_nonce' ); ?>
+			<input type="hidden" name="som_add_order_note" value="1" />
+			<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+			<label for="som_order_note_body" class="screen-reader-text"><?php echo esc_html__( 'New note', 'order-machine' ); ?></label>
+			<textarea id="som_order_note_body" name="som_order_note_body" class="large-text" rows="3" maxlength="<?php echo esc_attr( (string) SOM_Order_Notes::MAX_LENGTH ); ?>" required placeholder="<?php echo esc_attr__( 'Add a note…', 'order-machine' ); ?>"></textarea>
+			<p class="description">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %d: max characters */
+						__( 'Plain text, up to %d characters.', 'order-machine' ),
+						SOM_Order_Notes::MAX_LENGTH
+					)
+				);
+				?>
+			</p>
+			<?php submit_button( __( 'Add note', 'order-machine' ), 'secondary', 'submit', false ); ?>
+		</form>
+	</section>
+
 	<?php if ( '' !== $raw_pretty ) : ?>
 		<details class="som-panel som-raw-payload">
 			<summary><?php echo esc_html__( 'Raw payload (debug)', 'order-machine' ); ?></summary>

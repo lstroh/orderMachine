@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.12.0';
+	const DB_VERSION = '1.13.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -222,6 +222,17 @@ class SOM_DB {
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY order_id (order_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_order_notes (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			order_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			body text NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY order_created (order_id,created_at),
+			KEY user_id (user_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_order_step_progress (

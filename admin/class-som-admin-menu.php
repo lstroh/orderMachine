@@ -426,6 +426,20 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_add_order_note'] ) ) {
+			check_admin_referer( 'som_add_order_note', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$body     = isset( $_POST['som_order_note_body'] ) ? wp_unslash( $_POST['som_order_note_body'] ) : '';
+			$result   = SOM_Order_Notes::add( $order_id, $body );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Note added.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-order-notes' );
+			exit;
+		}
+
 		if ( isset( $_POST['som_save_materials_used'] ) ) {
 			check_admin_referer( 'som_save_materials_used', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
