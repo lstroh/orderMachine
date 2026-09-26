@@ -6,93 +6,88 @@
 
 Settled product decisions in `01-Update-Overview.md` are **locked** (overuse increase-only / recipe-only / order detail; internal make-to-stock; instructions default+override; etc.). This plan does **not** reopen them.
 
-Open items below need confirmation before (or at the start of) the sprint they block. Recommendations are stated explicitly — **not** silently applied until you confirm.
+Open items: answers from planning chat (2026-09-26) locked below. Remaining soft defaults (O2–O4, O6–O8, O10, O15–O17, O19) keep recommendations unless overturned.
 
 ---
 
 ## 1. Consolidated open items
 
-| # | Source | Item | Blocks | Recommendation / status |
+| # | Source | Item | Blocks | Status / decision |
 |---|---|---|---|---|
-| O1 | `03` §5.1 | Show instructions on all progress steps vs current only | UP4-S1 order detail | **Recommend: all steps** in the progress list |
-| O2 | `03` §5.2 | Hard max length for instruction text | UP4-S1 save validation | **Recommend: 5000 chars**; soft UI note |
-| O3 | `02`§5 / `03` §5.3 | Orphan overrides when product workflow changes | UP4-S1 product save | **Recommend: delete** overrides whose `workflow_step_id` is not in the new template |
-| O4 | `03` §5.4 | MCP/REST expose instructions? | UP4-S1 | **Recommend: skip v1** (admin UI only) |
-| O5 | `02`§1 / `04` §7.1 | Budget reason for overuse: `sale_funding` vs `usage_extra_funding` | UP4-S2 funding | **Recommend: `usage_extra_funding`** (clearer audit; `fund_on_create` must not be reused — see §3) |
-| O6 | `04` §7.2 | Multi-product orders: pooled vs per-line materials | UP4-S2 UI | **Recommend: pooled** (matches today’s stock summary) |
-| O7 | `04` §7.3 | Overuse when create-time funding was skipped (history import) | UP4-S2 | **Recommend: allow** stock+funding for extras if `new_order` lines exist; if no reservation, panel empty |
-| O8 | `04` §7.4 | Unit cost for extras: current WA vs original `new_order` cost | UP4-S2 | **Recommend: current WA** at overuse time (`unit_cost_for_consumption`) |
-| O9 | `04` §7.5 | Cancel reversal must include extras | Future D3/A3 (not this package) | **Recorded requirement only** — do not implement cancel reversal in Package 4 |
-| O10 | `05` §5.1–2 | Final R&D wording / Budgets list glossary | UP4-S2 copy | **Recommend:** update material + budget detail help; **no** list glossary |
-| O11 | `02`§2 / `06` §10.1 | Production discrimination: `internal` channel vs `order_kind` | UP4-S3 | **Recommend: synthetic channel `internal`** (mirror existing `external`); no `order_kind` column in v1 |
-| O12 | `02`§7 / `06` §10.2 | Produce N = one order qty N vs N orders | UP4-S3 | **Recommend: one order, qty N** |
-| O13 | `06` §10.3 | Low stock: prompt only vs auto-draft | UP4-S4 | **Recommend: affordance only** (Produce button / notice); no silent auto-create |
-| O14 | `02`§3 / `06` §10.4 | Production start: fund input material budgets? | UP4-S3 | **Recommend: yes** — same `fund_on_create` after input `new_order` (restock pots for vinyl etc. stay honest) |
-| O15 | `02`§6 / `06` §10.5 | Production output costing / WA | UP4-S3 complete hook | **Recommend:** `production_output` log + update material WA/`unit_cost`/`total_value_on_hand` via existing adjust/receive-style helpers where possible |
-| O16 | `02`§4 / `06` §10.6 | `materials.source_product_id` column? | UP4-S3 schema | **Recommend: yes** — UNIQUE nullable inverse of `products.linked_material_id`, kept in sync in app code |
-| O17 | `06` §10.7 | Deactivate internal product with open jobs / stock | UP4-S4 | **Recommend:** block deactivate while open production orders exist; allow deactivate with stock remaining (material stays) |
-| O18 | `06` §10.8 | Production orders in Analytics sales/profit? | UP4-S4 | **Recommend: exclude** channel `internal` from sales/AOV/profit charts |
-| O19 | `06` §10.9 | Max nesting depth | UP4-S4 recipe validation | **Recommend: depth 5** + cycle detection |
-| O20 | Code | `fund_on_create` no-ops if **any** `sale_funding` exists for the order | UP4-S2 | **Must** add a separate funding helper for extras (cannot call `fund_on_create` again) |
-| O21 | Code | `get_order_summary` returns raw log lines, not planned/actual aggregates | UP4-S2 | Add aggregation helper for Materials used UI |
-| O22 | Code | Workflow complete has no action hook today (`advance_after_step` sets `is_complete`) | UP4-S3 | Add a small hook or direct call from complete path for `production_output` — prefer `do_action( 'som_order_completed', $order_id )` for cleanliness |
+| O1 | `03` §5.1 | Show instructions on all progress steps vs current only | UP4-S1 order detail | **Settled:** **all steps**; a step may have **empty** instructions (hide empty — no blank box) |
+| O2 | `03` §5.2 | Hard max length for instruction text | UP4-S1 save validation | **Default:** 5000 chars + soft UI note (unconfirmed; use unless overturned) |
+| O3 | `02`§5 / `03` §5.3 | Orphan overrides when product workflow changes | UP4-S1 product save | **Default:** delete overrides not in the new template (unconfirmed; use unless overturned) |
+| O4 | `03` §5.4 | MCP/REST expose instructions? | UP4-S1 | **Default:** skip v1 (unconfirmed; use unless overturned) |
+| O5 | `02`§1 / `04` §7.1 | Budget ledger label for overuse funding | UP4-S2 funding | **Settled:** distinct ledger reason `usage_extra_funding` (same pot; clearer audit label — see §2 Q5). Separate helper required (O20). |
+| O6 | `04` §7.2 | Multi-product orders: pooled vs per-line materials | UP4-S2 UI | **Default:** pooled (unconfirmed; use unless overturned) |
+| O7 | `04` §7.3 | Overuse when create-time funding was skipped (history import) | UP4-S2 | **Default:** allow extras if `new_order` exists; else empty panel |
+| O8 | `04` §7.4 | Unit cost for extras | UP4-S2 | **Default:** current WA at overuse time |
+| O9 | `04` §7.5 | Cancel reversal must include extras | Future D3/A3 | **Recorded requirement only** — not in Package 4 |
+| O10 | `05` §5.1–2 | R&D wording / Budgets list glossary | UP4-S2 copy | **Default:** material + budget detail help; no list glossary |
+| O11 | `02`§2 / `06` §10.1 | How to mark a production job vs a sales order | UP4-S3 | **Settled:** channel slug **`internal`** (like existing `external`); no `order_kind` column. See §2 Q9. |
+| O12 | `02`§7 / `06` §10.2 | Produce N shape | UP4-S3 | **Settled:** **one order, quantity N** |
+| O13 | `06` §10.3 | Low stock behaviour | UP4-S4 | **Settled:** **no auto-draft**. **Produce / Produce N** on internal product edit (always) and on linked material when low. See §2 Q12. |
+| O14 | `02`§3 / `06` §10.4 | Fund input material budgets on production create? | UP4-S3 | **Settled:** **yes** for internal production inputs |
+| O15 | `02`§6 / `06` §10.5 | Production output costing / WA | UP4-S3 | **Default:** `production_output` + update WA so sellable recipes pick up component cost |
+| O16 | `02`§4 / `06` §10.6 | `materials.source_product_id` column? | UP4-S3 | **Default:** yes (inverse of `linked_material_id`) |
+| O17 | `06` §10.7 | Deactivate rules | UP4-S4 | **Default:** block while open production jobs; allow with stock remaining |
+| O18 | `06` §10.8 | Production in Analytics | UP4-S4 | **Settled:** **exclude** `internal` from sales/AOV/profit **as revenue**. Component **cost** still flows into sellable product/order profit via recipe material COGS/WA after production completes. |
+| O19 | `06` §10.9 | Max nesting depth | UP4-S4 | **Default:** depth 5 + cycle detection |
+| O20 | Code | `fund_on_create` idempotency | UP4-S2 | **Must** separate funding helper for extras |
+| O21 | Code | Stock summary not aggregated | UP4-S2 | Aggregation helper for Materials used UI |
+| O22 | Code | No order-completed hook | UP4-S3 | Add `som_order_completed` (or equivalent) for production output |
 
 ---
 
 ## 2. Clarifying questions (kept visible)
 
-Answer these (or accept the recommendations) before / as each sprint starts. Do **not** re-ask settled decisions from `01-Update-Overview.md`.
+Answers from planning chat — retained after resolution.
 
-### Instructions (before UP4-S1)
+### Instructions (UP4-S1)
 
-1. **Show instructions on all workflow steps on order detail, or only the current step?**  
-   **Recommend:** all steps.
+1. **All steps vs current only?**  
+   **A:** All steps; instructions **may be empty** (show nothing when empty).
 
-2. **Max instruction length 5000 chars OK?**  
-   **Recommend:** yes.
+2. **Max length 5000?** — not explicitly answered; **default yes**.
 
-3. **On workflow reassignment, delete orphan product overrides?**  
-   **Recommend:** yes.
+3. **Delete orphan overrides on workflow change?** — not explicitly answered; **default yes**.
 
-4. **Skip MCP/REST for instructions in v1?**  
-   **Recommend:** yes.
+4. **Skip MCP/REST for instructions?** — not explicitly answered; **default yes**.
 
-### Overuse + R&D (before UP4-S2)
+### Overuse + R&D (UP4-S2)
 
-5. **New ledger reason `usage_extra_funding` vs reuse `sale_funding`?**  
-   **Recommend:** `usage_extra_funding` (required separately from `fund_on_create` anyway — O20).
+5. **What does `usage_extra_funding` mean?**  
+   **A (explanation + settled):** Budget ledger rows already have a **reason** label (`sale_funding`, `purchase_spend`, etc.). Overuse still funds the **same material budget pot**, but we tag those rows `usage_extra_funding` so the ledger reads as “extra usage on this order” rather than another initial sale fund. It is **not** a second budget. (Also required technically: create-time funding cannot run twice — O20.)
 
-6. **Pooled materials on multi-product orders OK?**  
-   **Recommend:** yes.
+6. **Pooled materials on multi-product orders?** — not explicitly answered; **default yes**.
 
-7. **Extras unit cost = current WA at save time OK?**  
-   **Recommend:** yes.
+7. **Extras at current WA?** — not explicitly answered; **default yes**.
 
-8. **R&D copy: material + budget detail only (no Budgets list glossary)?**  
-   **Recommend:** yes.
+8. **R&D copy surfaces?** — not explicitly answered; **default** material + budget detail only.
 
-### Internal products (before UP4-S3 / S4)
+### Internal products (UP4-S3 / S4)
 
-9. **Discriminate production via new channel slug `internal` (like `external`), no `order_kind` column?**  
-   **Recommend:** yes.
+9. **What does channel `internal` mean?**  
+   **A (explanation + settled):** Every order belongs to a **channel** (eBay, Etsy, External). Production jobs are orders too, so they need a channel. We add a local channel **Internal** (no OAuth, never marketplace sync) — same idea as today’s **External** channel. The Orders list/Board show channel “Internal” on those jobs. No separate `order_kind` database field.
 
-10. **Produce N = one order with quantity N?**  
-    **Recommend:** yes.
+10. **Produce N = one order qty N?**  
+    **A:** Yes.
 
-11. **On production create, fund input material budgets via existing `fund_on_create`?**  
-    **Recommend:** yes.
+11. **Fund input material budgets on production?**  
+    **A:** Yes (for internal products’ input materials).
 
-12. **Low stock = Produce affordance only (no auto-draft job)?**  
-    **Recommend:** yes.
+12. **Which button for low stock?**  
+    **A (explanation + settled):** Not an automatic job. A **Produce** / **Produce N** control on:
+    - the **internal product** edit screen (always), and  
+    - the **linked material** when stock is low (shortcut into the same flow).  
+    Operator enters N and confirms → creates the production order.
 
-13. **Exclude `internal` channel from Analytics sales/profit/AOV?**  
-    **Recommend:** yes.
+13. **Exclude internal from Analytics sales?**  
+    **A:** Yes — exclude production jobs from sales/AOV/profit-as-revenue. When a **sellable** product uses the component material, that material’s cost (set when production finishes) **is included** in that sellable product/order’s cost and profit.
 
-14. **Nesting: cycle detection + max depth 5?**  
-    **Recommend:** yes.
+14. **Nesting depth 5?** — not explicitly answered; **default yes**.
 
-15. **Add `materials.source_product_id` as inverse pointer?**  
-    **Recommend:** yes.
+15. **`source_product_id` on materials?** — not explicitly answered; **default yes**.
 
 ---
 
@@ -153,7 +148,7 @@ Complete → if channel=internal && product.is_internal
 ```
 
 - Cycle detection when saving recipes that include component materials.
-- Listings / Analytics exclude internals as decided.
+- Listings exclude internal products; Analytics excludes `internal` channel from sales metrics; component cost still in sellable COGS via WA.
 
 ### 4.4 R&D copy
 
@@ -166,7 +161,7 @@ Complete → if channel=internal && product.is_internal
 ### UP4-S1 — Step instructions
 
 - **Covers:** `03-Update-Step-Instructions.md` + `02` §A  
-- **Open items first:** O1–O4 (confirm or accept recommendations)
+- **Open items first:** O1 settled; O2–O4 defaults unless overturned
 
 **Files (expected):**
 
@@ -185,8 +180,8 @@ Complete → if channel=internal && product.is_internal
 
 **Done when:**
 
-- Can set step default + product override; order detail shows effective text (all steps if O1=all).
-- Changing product workflow cleans orphans (if O3=delete).
+- Can set step default + product override; order detail shows effective text on **all** steps; empty → hidden.
+- Changing product workflow cleans orphans (O3 default delete).
 - wp-env smoke passes; no Board changes.
 
 ---
@@ -278,8 +273,8 @@ Complete → if channel=internal && product.is_internal
 - Cannot list internal product on marketplace mapping.
 - Nested recipe cycle rejected; depth guarded.
 - Low-stock material shows Produce path (no auto job).
-- Analytics ignores production orders.
-- Deactivate rules as confirmed.
+- Analytics excludes production jobs from sales/AOV/revenue profit; sellable orders still include component material COGS.
+- Deactivate rules per O17 default.
 - wp-env smoke passes.
 
 ---
@@ -305,4 +300,4 @@ After each implemented sprint, record verification in **`Update-4-Sprint-Progres
 
 ## 8. Explicit scope of this document
 
-This file is the Package 4 **sprint plan** only. It does not implement features. Implementation starts when you explicitly ask to implement **UP4-S1** (or a later sprint), after confirming the open items that sprint needs.
+This file is the Package 4 **sprint plan** only. It does not implement features. Implementation starts when you explicitly ask to implement **UP4-S1** (or a later sprint). Soft defaults above apply unless overturned before that sprint.
