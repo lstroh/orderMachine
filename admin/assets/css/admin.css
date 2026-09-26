@@ -179,6 +179,18 @@
 	margin-bottom: 20px;
 }
 
+.som-panel-planned-shipping {
+	margin-bottom: 20px;
+}
+
+.som-shipping-over {
+	color: #b32d2e;
+}
+
+.som-shipping-under {
+	color: #007017;
+}
+
 .som-order-notes-list {
 	list-style: none;
 	margin: 0 0 16px;

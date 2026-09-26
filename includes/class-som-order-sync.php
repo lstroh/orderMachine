@@ -419,6 +419,8 @@ class SOM_Order_Sync {
 			self::insert_item( $order_id, $channel_id, $item );
 		}
 
+		self::seed_planned_shipping( $order_id, $channel_id );
+
 		// Reserve inputs (and fund budgets) before workflow assign so a zero-gate
 		// template that completes immediately can credit production output with COGS.
 		if ( $apply_stock ) {
@@ -429,6 +431,63 @@ class SOM_Order_Sync {
 		SOM_Workflow_Engine::assign_on_create( $order_id );
 
 		return 'created';
+	}
+
+	/**
+	 * Seed orders.planned_shipping_gbp on create only (never on re-sync).
+	 *
+	 * Internal channel → leave null. Else sum(product.planned × qty) for matched lines
+	 * that have a planned amount set.
+	 *
+	 * @param int $order_id   Order PK.
+	 * @param int $channel_id Channel PK.
+	 * @return void
+	 */
+	private static function seed_planned_shipping( $order_id, $channel_id ) {
+		global $wpdb;
+
+		$channel_id = (int) $channel_id;
+		$channels_t = SOM_DB::table( 'channels' );
+		$slug       = $wpdb->get_var(
+			$wpdb->prepare( "SELECT slug FROM {$channels_t} WHERE id = %d LIMIT 1", $channel_id )
+		);
+		if ( 'internal' === $slug ) {
+			return;
+		}
+
+		$items_t    = SOM_DB::table( 'order_items' );
+		$products_t = SOM_DB::table( 'products' );
+		$rows       = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT oi.quantity, p.planned_shipping_gbp
+				FROM {$items_t} oi
+				INNER JOIN {$products_t} p ON p.id = oi.product_id
+				WHERE oi.order_id = %d
+					AND oi.product_id IS NOT NULL
+					AND p.planned_shipping_gbp IS NOT NULL",
+				(int) $order_id
+			)
+		);
+
+		if ( ! is_array( $rows ) || empty( $rows ) ) {
+			return;
+		}
+
+		$sum = 0.0;
+		foreach ( $rows as $row ) {
+			$sum += (float) $row->planned_shipping_gbp * max( 1, (int) $row->quantity );
+		}
+
+		$wpdb->update(
+			SOM_DB::table( 'orders' ),
+			array(
+				'planned_shipping_gbp' => number_format( $sum, 2, '.', '' ),
+				'updated_at'           => current_time( 'mysql', true ),
+			),
+			array( 'id' => (int) $order_id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
 	}
 
 	/**

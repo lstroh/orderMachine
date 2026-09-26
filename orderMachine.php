@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.28.0
+ * Version:           0.29.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.28.0' );
+define( 'SOM_VERSION', '0.29.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -37,6 +37,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-materials.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-costing.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-material-goals.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-budgets.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-shipping-packages.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-products.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-stock.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-production.php';
@@ -130,7 +131,7 @@ function som_admin_notices() {
 	}
 
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-	if ( ! in_array( $page, array( 'som-settings', 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
+	if ( ! in_array( $page, array( 'som-settings', 'som-orders', 'som-products', 'som-materials', 'som-suppliers', 'som-shipping-packages', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
 		return;
 	}
 

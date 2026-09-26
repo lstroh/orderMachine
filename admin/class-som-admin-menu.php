@@ -26,6 +26,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_materials_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_budgets_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_suppliers_actions' ) );
+		add_action( 'admin_init', array( __CLASS__, 'handle_shipping_packages_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_purchase_orders_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_batches_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_workflows_actions' ) );
@@ -104,6 +105,15 @@ class SOM_Admin_Menu {
 			'manage_options',
 			'som-suppliers',
 			array( __CLASS__, 'render_suppliers' )
+		);
+
+		add_submenu_page(
+			'som-orders',
+			__( 'Shipping packages', 'order-machine' ),
+			__( 'Shipping packages', 'order-machine' ),
+			'manage_options',
+			'som-shipping-packages',
+			array( __CLASS__, 'render_shipping_packages' )
 		);
 
 		add_submenu_page(
@@ -191,7 +201,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-shipping-packages', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
 			return;
 		}
 
@@ -437,6 +447,20 @@ class SOM_Admin_Menu {
 				self::flash_notice( __( 'Note added.', 'order-machine' ), 'success', 'som_order_saved' );
 			}
 			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-order-notes' );
+			exit;
+		}
+
+		if ( isset( $_POST['som_save_planned_shipping'] ) ) {
+			check_admin_referer( 'som_save_planned_shipping', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$amount   = isset( $_POST['som_planned_shipping_gbp'] ) ? wp_unslash( $_POST['som_planned_shipping_gbp'] ) : '';
+			$result   = SOM_Orders::set_planned_shipping( $order_id, $amount );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Planned shipping saved.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-planned-shipping' );
 			exit;
 		}
 
@@ -712,6 +736,43 @@ class SOM_Admin_Menu {
 		}
 
 		require SOM_PLUGIN_DIR . 'admin/views/suppliers-list.php';
+	}
+
+	/**
+	 * Shipping packages list or edit.
+	 *
+	 * @return void
+	 */
+	public static function render_shipping_packages() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$package_id = isset( $_GET['package_id'] ) ? sanitize_text_field( wp_unslash( $_GET['package_id'] ) ) : '';
+
+		if ( 'new' === $package_id ) {
+			$is_new  = true;
+			$package = null;
+			require SOM_PLUGIN_DIR . 'admin/views/shipping-package-edit.php';
+			return;
+		}
+
+		if ( '' !== $package_id && is_numeric( $package_id ) && (int) $package_id > 0 ) {
+			$package = SOM_Shipping_Packages::get( (int) $package_id );
+			if ( ! $package ) {
+				echo '<div class="wrap"><div class="notice notice-error"><p>';
+				echo esc_html__( 'Package not found.', 'order-machine' );
+				echo '</p></div><p><a href="' . esc_url( SOM_Shipping_Packages::list_url() ) . '">';
+				echo esc_html__( 'Back to packages', 'order-machine' );
+				echo '</a></p></div>';
+				return;
+			}
+			$is_new = false;
+			require SOM_PLUGIN_DIR . 'admin/views/shipping-package-edit.php';
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/shipping-packages-list.php';
 	}
 
 	/**
@@ -1337,6 +1398,9 @@ class SOM_Admin_Menu {
 			'sku'                   => isset( $_POST['som_product_sku'] ) ? wp_unslash( $_POST['som_product_sku'] ) : '',
 			'workflow_template_id'  => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
 			'target_selling_price'  => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
+			'weight_grams'          => isset( $_POST['som_product_weight_g'] ) ? wp_unslash( $_POST['som_product_weight_g'] ) : '',
+			'package_id'            => isset( $_POST['som_product_package_id'] ) ? wp_unslash( $_POST['som_product_package_id'] ) : '',
+			'planned_shipping_gbp'  => isset( $_POST['som_product_planned_shipping'] ) ? wp_unslash( $_POST['som_product_planned_shipping'] ) : '',
 			'is_active'             => ! empty( $_POST['som_product_is_active'] ),
 			'is_internal'           => ! empty( $_POST['som_product_is_internal'] ),
 		);
@@ -1718,6 +1782,72 @@ class SOM_Admin_Menu {
 
 		self::flash_notice( __( 'Supplier saved.', 'order-machine' ), 'success', 'som_supplier_saved' );
 		wp_safe_redirect( SOM_Suppliers::detail_url( $supplier_id ) );
+		exit;
+	}
+
+	/**
+	 * Save / delete shipping packages.
+	 *
+	 * @return void
+	 */
+	public static function handle_shipping_packages_actions() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( 'som-shipping-packages' !== $page || empty( $_POST ) ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_delete_shipping_package'] ) ) {
+			check_admin_referer( 'som_delete_shipping_package', 'som_package_nonce' );
+			$package_id = isset( $_POST['package_id'] ) ? (int) $_POST['package_id'] : 0;
+			$result     = SOM_Shipping_Packages::delete( $package_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_package_error' );
+				wp_safe_redirect( SOM_Shipping_Packages::detail_url( $package_id > 0 ? $package_id : 'new' ) );
+				exit;
+			}
+			self::flash_notice( __( 'Package deleted.', 'order-machine' ), 'success', 'som_package_deleted' );
+			wp_safe_redirect( SOM_Shipping_Packages::list_url() );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_shipping_package'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'som_save_shipping_package', 'som_package_nonce' );
+
+		$package_id = isset( $_POST['package_id'] ) ? (int) $_POST['package_id'] : 0;
+		$data       = array(
+			'name'              => isset( $_POST['som_package_name'] ) ? wp_unslash( $_POST['som_package_name'] ) : '',
+			'length_mm'         => isset( $_POST['som_package_length_mm'] ) ? wp_unslash( $_POST['som_package_length_mm'] ) : '',
+			'width_mm'          => isset( $_POST['som_package_width_mm'] ) ? wp_unslash( $_POST['som_package_width_mm'] ) : '',
+			'height_mm'         => isset( $_POST['som_package_height_mm'] ) ? wp_unslash( $_POST['som_package_height_mm'] ) : '0',
+			'tare_weight_grams' => isset( $_POST['som_package_tare_g'] ) ? wp_unslash( $_POST['som_package_tare_g'] ) : '0',
+			'is_active'         => ! empty( $_POST['som_package_is_active'] ),
+			'is_default'        => ! empty( $_POST['som_package_is_default'] ),
+		);
+
+		if ( $package_id > 0 ) {
+			$result = SOM_Shipping_Packages::update( $package_id, $data );
+		} else {
+			$result = SOM_Shipping_Packages::create( $data );
+			if ( ! is_wp_error( $result ) ) {
+				$package_id = (int) $result;
+			}
+		}
+
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_package_error' );
+			wp_safe_redirect( $package_id > 0 ? SOM_Shipping_Packages::detail_url( $package_id ) : SOM_Shipping_Packages::detail_url( 'new' ) );
+			exit;
+		}
+
+		self::flash_notice( __( 'Package saved.', 'order-machine' ), 'success', 'som_package_saved' );
+		wp_safe_redirect( SOM_Shipping_Packages::detail_url( $package_id ) );
 		exit;
 	}
 

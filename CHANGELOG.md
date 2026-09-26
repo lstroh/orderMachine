@@ -16,6 +16,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - Internal products (make-to-stock): Internal channel, Produce N, linked output material credited on workflow complete (`production_output`); schema 1.12.0
 - Internal products UX/guards: list badges/filters, listing exclude, recipe cycle/depth limits, deactivate with open jobs blocked, analytics exclude production, low-stock Produce on linked materials
 - Order **Notes** threaded log on order detail (admin-only, append-only); schema 1.13.0
+- Shipping **packages** catalogue + product goods weight / package / planned postage; order planned shipping (seeded on create) vs shipment actual variance; Product Costing includes planned shipping; schema 1.14.0
 
 ## [0.23.0] - 2026-09-16
 

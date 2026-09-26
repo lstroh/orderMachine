@@ -211,7 +211,8 @@ class SOM_Products {
 	/**
 	 * Create a product.
 	 *
-	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, is_active, is_internal.
+	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, is_active, is_internal,
+	 *                                   weight_grams, package_id, planned_shipping_gbp.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -240,6 +241,11 @@ class SOM_Products {
 			);
 		}
 
+		$shipping = self::sanitize_shipping_fields( $data, (bool) $is_internal );
+		if ( is_wp_error( $shipping ) ) {
+			return $shipping;
+		}
+
 		$now = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
@@ -249,13 +255,16 @@ class SOM_Products {
 				'sku'                   => $sku,
 				'workflow_template_id'  => $workflow_id,
 				'target_selling_price'  => self::nullable_price( $data, 'target_selling_price' ),
+				'weight_grams'          => $shipping['weight_grams'],
+				'package_id'            => $shipping['package_id'],
+				'planned_shipping_gbp'  => $shipping['planned_shipping_gbp'],
 				'is_internal'           => $is_internal,
 				'linked_material_id'    => null,
 				'is_active'             => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
 				'created_at'            => $now,
 				'updated_at'            => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -353,10 +362,12 @@ class SOM_Products {
 		}
 
 		$became_internal = false;
+		$will_be_internal = ! empty( $existing->is_internal );
 		if ( array_key_exists( 'is_internal', $data ) ) {
 			$is_internal = ! empty( $data['is_internal'] ) ? 1 : 0;
 			$fields['is_internal'] = $is_internal;
 			$formats[]             = '%d';
+			$will_be_internal      = (bool) $is_internal;
 			if ( $is_internal ) {
 				$wf_check = array_key_exists( 'workflow_template_id', $fields )
 					? $fields['workflow_template_id']
@@ -368,6 +379,33 @@ class SOM_Products {
 					);
 				}
 				$became_internal = empty( $existing->is_internal ) || empty( $existing->linked_material_id );
+			}
+		}
+
+		$shipping_keys = array( 'weight_grams', 'package_id', 'planned_shipping_gbp' );
+		$has_shipping  = false;
+		foreach ( $shipping_keys as $sk ) {
+			if ( array_key_exists( $sk, $data ) ) {
+				$has_shipping = true;
+				break;
+			}
+		}
+		if ( $will_be_internal && ( $has_shipping || array_key_exists( 'is_internal', $data ) ) ) {
+			foreach ( $shipping_keys as $sk ) {
+				$fields[ $sk ] = null;
+				$formats[]     = '%s';
+			}
+		} elseif ( ! $will_be_internal && $has_shipping ) {
+			$shipping = self::sanitize_shipping_fields( $data, false );
+			if ( is_wp_error( $shipping ) ) {
+				return $shipping;
+			}
+			foreach ( $shipping_keys as $sk ) {
+				if ( ! array_key_exists( $sk, $data ) ) {
+					continue;
+				}
+				$fields[ $sk ] = $shipping[ $sk ];
+				$formats[]     = '%s';
 			}
 		}
 
@@ -563,12 +601,27 @@ class SOM_Products {
 
 		$fee_costing = SOM_Platform_Fees::product_fee_costing( (int) $product->id, $material_cost, $target );
 
+		$planned_shipping = null;
+		if ( isset( $product->planned_shipping_gbp ) && null !== $product->planned_shipping_gbp && '' !== $product->planned_shipping_gbp ) {
+			$planned_shipping = (float) $product->planned_shipping_gbp;
+		}
+
 		$profit     = $material_profit;
 		$margin_pct = $material_margin;
 		$fee_source = isset( $fee_costing['fee_source'] ) ? (string) $fee_costing['fee_source'] : 'none';
 		if ( null !== $fee_costing['fee_aware_profit'] ) {
 			$profit     = $fee_costing['fee_aware_profit'];
 			$margin_pct = $fee_costing['fee_aware_margin'];
+		}
+
+		if ( null !== $planned_shipping && null !== $profit ) {
+			$profit = SOM_Material_Costing::round4( (float) $profit - $planned_shipping );
+			$rep    = null !== $fee_costing['representative_price']
+				? (float) $fee_costing['representative_price']
+				: $target;
+			if ( null !== $rep && $rep > 0 ) {
+				$margin_pct = round( ( $profit / $rep ) * 100, 2 );
+			}
 		}
 
 		$goal_alerts = array();
@@ -595,6 +648,7 @@ class SOM_Products {
 			'material_cost'           => $material_cost,
 			'material_only_profit'    => $material_profit,
 			'material_only_margin'    => $material_margin,
+			'planned_shipping_gbp'    => $planned_shipping,
 			'platform_fees'           => $fee_costing['platform_fees'],
 			'fee_source'              => $fee_source,
 			'fee_channels'            => $fee_costing['channels'],
@@ -604,6 +658,59 @@ class SOM_Products {
 			'margin_percent'          => $margin_pct,
 			'lines'                   => $lines,
 			'goal_alerts'             => $goal_alerts,
+		);
+	}
+
+	/**
+	 * Sanitize product shipping fields. Internal products always clear them.
+	 *
+	 * @param array<string, mixed> $data        Source.
+	 * @param bool                 $is_internal Whether product is internal.
+	 * @return array{weight_grams: string|null, package_id: int|null, planned_shipping_gbp: string|null}|WP_Error
+	 */
+	private static function sanitize_shipping_fields( array $data, $is_internal ) {
+		if ( $is_internal ) {
+			return array(
+				'weight_grams'         => null,
+				'package_id'           => null,
+				'planned_shipping_gbp' => null,
+			);
+		}
+
+		$weight = null;
+		if ( array_key_exists( 'weight_grams', $data ) ) {
+			$raw = trim( (string) $data['weight_grams'] );
+			if ( '' !== $raw ) {
+				if ( ! is_numeric( $raw ) || (float) $raw < 0 ) {
+					return new WP_Error(
+						'som_product_weight',
+						__( 'Goods weight must be zero or a positive number of grams.', 'order-machine' )
+					);
+				}
+				$weight = number_format( (float) $raw, 2, '.', '' );
+			}
+		}
+
+		$package_id = null;
+		if ( array_key_exists( 'package_id', $data ) ) {
+			$raw = trim( (string) $data['package_id'] );
+			if ( '' !== $raw ) {
+				$package_id = (int) $raw;
+				if ( $package_id < 1 || ! SOM_Shipping_Packages::get( $package_id ) ) {
+					return new WP_Error( 'som_product_package', __( 'Selected shipping package was not found.', 'order-machine' ) );
+				}
+			}
+		}
+
+		$planned = null;
+		if ( array_key_exists( 'planned_shipping_gbp', $data ) ) {
+			$planned = self::nullable_price( $data, 'planned_shipping_gbp' );
+		}
+
+		return array(
+			'weight_grams'         => $weight,
+			'package_id'           => $package_id,
+			'planned_shipping_gbp' => $planned,
 		);
 	}
 

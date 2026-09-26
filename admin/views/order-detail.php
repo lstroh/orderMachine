@@ -151,7 +151,7 @@ if ( ! empty( $order->raw_payload ) ) {
 	</div>
 
 	<?php
-	$shipment      = SOM_Shipments::get_by_order( (int) $order->id );
+	$shipment      = ! empty( $order->shipment ) ? $order->shipment : SOM_Shipments::get_by_order( (int) $order->id );
 	$ship_defaults = SOM_Shipments::defaults();
 	$ship_form     = array(
 		'carrier'            => $shipment ? (string) $shipment->carrier : $ship_defaults['carrier'],
@@ -162,7 +162,66 @@ if ( ! empty( $order->raw_payload ) ) {
 		'click_and_drop_ref' => $shipment && $shipment->click_and_drop_ref ? (string) $shipment->click_and_drop_ref : '',
 	);
 	$ship_status = SOM_Shipments::status_key( (int) $order->id );
+
+	$planned_raw = isset( $order->planned_shipping_gbp ) && null !== $order->planned_shipping_gbp && '' !== $order->planned_shipping_gbp
+		? (string) $order->planned_shipping_gbp
+		: '';
+	$planned_val = '' !== $planned_raw ? (float) $planned_raw : null;
+	$actual_val  = $shipment ? (float) $shipment->postage_paid : null;
+	$variance    = ( null !== $planned_val && null !== $actual_val )
+		? round( $actual_val - $planned_val, 2 )
+		: null;
 	?>
+	<section class="som-panel som-panel-planned-shipping" id="som-planned-shipping">
+		<h2><?php echo esc_html__( 'Planned shipping', 'order-machine' ); ?></h2>
+		<?php if ( 'internal' === (string) $order->channel_slug ) : ?>
+			<p class="som-muted"><?php echo esc_html__( 'Internal production orders do not use planned postage.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<form method="post" action="" class="som-planned-shipping-form">
+				<?php wp_nonce_field( 'som_save_planned_shipping', 'som_order_nonce' ); ?>
+				<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+				<input type="hidden" name="som_save_planned_shipping" value="1" />
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="som_planned_shipping_gbp"><?php echo esc_html__( 'Planned (GBP)', 'order-machine' ); ?></label></th>
+						<td>
+							<input name="som_planned_shipping_gbp" id="som_planned_shipping_gbp" type="number" step="0.01" min="0" class="small-text" value="<?php echo esc_attr( $planned_raw ); ?>" />
+							<p class="description"><?php echo esc_html__( 'Expected postage for this order. Seeded from product defaults on create; editing here is not overwritten by re-sync.', 'order-machine' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Actual postage', 'order-machine' ); ?></th>
+						<td>
+							<?php if ( null !== $actual_val ) : ?>
+								£<?php echo esc_html( number_format_i18n( $actual_val, 2 ) ); ?>
+								<span class="som-muted"><?php echo esc_html__( '(from shipment)', 'order-machine' ); ?></span>
+							<?php else : ?>
+								<span class="som-muted"><?php echo esc_html__( 'Not recorded yet', 'order-machine' ); ?></span>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<?php if ( null !== $variance ) : ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Variance', 'order-machine' ); ?></th>
+							<td>
+								<span class="<?php echo $variance > 0 ? 'som-shipping-over' : ( $variance < 0 ? 'som-shipping-under' : '' ); ?>">
+									<?php
+									printf(
+										/* translators: %s: signed GBP variance */
+										esc_html__( '%s (actual − planned)', 'order-machine' ),
+										esc_html( ( $variance > 0 ? '+' : '' ) . '£' . number_format_i18n( $variance, 2 ) )
+									);
+									?>
+								</span>
+							</td>
+						</tr>
+					<?php endif; ?>
+				</table>
+				<?php submit_button( __( 'Save planned shipping', 'order-machine' ), 'secondary', 'submit', false ); ?>
+			</form>
+		<?php endif; ?>
+	</section>
+
 	<section class="som-panel som-panel-shipment">
 		<h2><?php echo esc_html__( 'Shipment', 'order-machine' ); ?></h2>
 		<?php if ( ! $shipment ) : ?>

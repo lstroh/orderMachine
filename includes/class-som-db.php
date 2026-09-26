@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.13.0';
+	const DB_VERSION = '1.14.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -86,12 +86,31 @@ class SOM_DB {
 			PRIMARY KEY  (id)
 		) {$charset_collate};";
 
+		$sql[] = "CREATE TABLE {$p}som_shipping_packages (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			name varchar(100) NOT NULL,
+			length_mm int(10) unsigned NOT NULL,
+			width_mm int(10) unsigned NOT NULL,
+			height_mm int(10) unsigned NOT NULL DEFAULT 0,
+			tare_weight_grams decimal(10,2) NOT NULL DEFAULT 0.00,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
+			is_default tinyint(1) NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY name (name),
+			KEY is_active (is_active)
+		) {$charset_collate};";
+
 		$sql[] = "CREATE TABLE {$p}som_products (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			sku varchar(50) NULL,
 			workflow_template_id bigint(20) unsigned NULL,
 			target_selling_price decimal(10,2) NULL,
+			weight_grams decimal(10,2) NULL,
+			package_id bigint(20) unsigned NULL,
+			planned_shipping_gbp decimal(10,2) NULL,
 			is_internal tinyint(1) NOT NULL DEFAULT 0,
 			linked_material_id bigint(20) unsigned NULL,
 			is_active tinyint(1) NOT NULL DEFAULT 1,
@@ -100,6 +119,7 @@ class SOM_DB {
 			PRIMARY KEY  (id),
 			KEY workflow_template_id (workflow_template_id),
 			KEY sku (sku),
+			KEY package_id (package_id),
 			UNIQUE KEY linked_material_id (linked_material_id)
 		) {$charset_collate};";
 
@@ -182,6 +202,7 @@ class SOM_DB {
 			order_date datetime NOT NULL,
 			buyer_name varchar(150) NOT NULL DEFAULT '',
 			shipping_address text NULL,
+			planned_shipping_gbp decimal(10,2) NULL,
 			current_step_id bigint(20) unsigned NULL,
 			is_complete tinyint(1) NOT NULL DEFAULT 0,
 			raw_payload longtext NULL,
