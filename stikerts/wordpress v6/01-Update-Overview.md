@@ -74,3 +74,4 @@ Captured so implementers do not re-litigate:
 4. `04-Update-Shipping-Packages.md` — feature spec
 5. `05-Update-Multipacks.md` — conventions (no engine)
 6. `06-Update-Cursor-Prompt.md` — kickoff prompt (**planning → sprint plan**, then implement per sprint)
+7. `Update-5-Sprint-Plan.md` — sprint breakdown (UP5-S1–S3) + open-item defaults
