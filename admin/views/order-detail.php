@@ -584,7 +584,7 @@ if ( ! empty( $order->raw_payload ) ) {
 	</section>
 
 	<section class="som-panel som-panel-stock">
-		<h2><?php echo esc_html__( 'Material stock', 'order-machine' ); ?></h2>
+		<h2><?php echo esc_html__( 'Materials used', 'order-machine' ); ?></h2>
 		<?php
 		$stock = isset( $order->stock_summary ) && is_array( $order->stock_summary )
 			? $order->stock_summary
@@ -594,78 +594,104 @@ if ( ! empty( $order->raw_payload ) ) {
 				'has_new_order'          => false,
 				'has_cancelled_reversal' => false,
 			);
-		$stock_status = isset( $stock['status'] ) ? (string) $stock['status'] : 'none';
-		$stock_lines  = isset( $stock['lines'] ) && is_array( $stock['lines'] ) ? $stock['lines'] : array();
+		$stock_status   = isset( $stock['status'] ) ? (string) $stock['status'] : 'none';
+		$stock_lines    = isset( $stock['lines'] ) && is_array( $stock['lines'] ) ? $stock['lines'] : array();
+		$materials_used = isset( $order->materials_used ) && is_array( $order->materials_used ) ? $order->materials_used : array();
 		?>
-		<?php if ( 'reserved' === $stock_status ) : ?>
+		<?php if ( ! empty( $materials_used ) ) : ?>
 			<p>
-				<span class="som-badge som-badge-stock-reserved"><?php echo esc_html__( 'Stock reserved', 'order-machine' ); ?></span>
+				<?php if ( 'reserved' === $stock_status ) : ?>
+					<span class="som-badge som-badge-stock-reserved"><?php echo esc_html__( 'Stock reserved', 'order-machine' ); ?></span>
+				<?php elseif ( 'reversed' === $stock_status ) : ?>
+					<span class="som-badge som-badge-stock-reversed"><?php echo esc_html__( 'Stock reversed', 'order-machine' ); ?></span>
+				<?php endif; ?>
 			</p>
-			<table class="widefat striped som-stock-table">
-				<thead>
-					<tr>
-						<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
-						<th><?php echo esc_html__( 'Change', 'order-machine' ); ?></th>
-						<th><?php echo esc_html__( 'Reason', 'order-machine' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $stock_lines as $line ) : ?>
+			<p class="description">
+				<?php echo esc_html__( 'Planned amounts come from the product recipe. You can raise Actual if you used more — stock, order profit, and material budgets update by the extra. You cannot go below planned or reduce a previous actual.', 'order-machine' ); ?>
+			</p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-orders&order_id=' . (int) $order->id ) ); ?>" class="som-materials-used-form">
+				<?php wp_nonce_field( 'som_save_materials_used', 'som_order_nonce' ); ?>
+				<input type="hidden" name="som_save_materials_used" value="1" />
+				<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+				<table class="widefat striped som-stock-table som-materials-used-table">
+					<thead>
 						<tr>
-							<td>
-								<?php echo esc_html( (string) $line->material_name ); ?>
-								<?php if ( ! empty( $line->material_unit ) ) : ?>
-									<span class="som-muted">(<?php echo esc_html( (string) $line->material_unit ); ?>)</span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php
-								$change = (float) $line->change_qty;
-								echo esc_html( ( $change > 0 ? '+' : '' ) . number_format_i18n( $change, 2 ) );
-								?>
-							</td>
-							<td><?php echo esc_html( SOM_Materials::reason_label( (string) $line->reason ) ); ?></td>
+							<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Planned', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Extra', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Actual', 'order-machine' ); ?></th>
 						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-			<?php if ( ! empty( $order->is_cancelled ) ) : ?>
+					</thead>
+					<tbody>
+						<?php foreach ( $materials_used as $usage_row ) : ?>
+							<tr>
+								<td>
+									<?php echo esc_html( (string) $usage_row->material_name ); ?>
+									<?php if ( ! empty( $usage_row->material_unit ) ) : ?>
+										<span class="som-muted">(<?php echo esc_html( (string) $usage_row->material_unit ); ?>)</span>
+									<?php endif; ?>
+								</td>
+								<td><?php echo esc_html( number_format_i18n( (float) $usage_row->planned, 2 ) ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( (float) $usage_row->extra, 2 ) ); ?></td>
+								<td>
+									<input
+										type="number"
+										step="0.01"
+										min="<?php echo esc_attr( (string) (float) $usage_row->actual ); ?>"
+										name="som_material_actual[<?php echo esc_attr( (string) (int) $usage_row->material_id ); ?>]"
+										value="<?php echo esc_attr( (string) (float) $usage_row->actual ); ?>"
+										class="small-text"
+										<?php disabled( 'reversed' === $stock_status ); ?>
+									/>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<?php if ( 'reversed' !== $stock_status ) : ?>
+					<p class="submit" style="margin-top:12px;">
+						<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save materials used', 'order-machine' ); ?></button>
+					</p>
+				<?php endif; ?>
+			</form>
+			<?php if ( ! empty( $stock_lines ) ) : ?>
+				<details class="som-stock-log-details" style="margin-top:12px;">
+					<summary><?php echo esc_html__( 'Stock log for this order', 'order-machine' ); ?></summary>
+					<table class="widefat striped som-stock-table" style="margin-top:8px;">
+						<thead>
+							<tr>
+								<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+								<th><?php echo esc_html__( 'Change', 'order-machine' ); ?></th>
+								<th><?php echo esc_html__( 'Reason', 'order-machine' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $stock_lines as $line ) : ?>
+								<tr>
+									<td>
+										<?php echo esc_html( (string) $line->material_name ); ?>
+										<?php if ( ! empty( $line->material_unit ) ) : ?>
+											<span class="som-muted">(<?php echo esc_html( (string) $line->material_unit ); ?>)</span>
+										<?php endif; ?>
+									</td>
+									<td>
+										<?php
+										$change = (float) $line->change_qty;
+										echo esc_html( ( $change > 0 ? '+' : '' ) . number_format_i18n( $change, 2 ) );
+										?>
+									</td>
+									<td><?php echo esc_html( SOM_Materials::reason_label( (string) $line->reason ) ); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				</details>
+			<?php endif; ?>
+			<?php if ( ! empty( $order->is_cancelled ) && 'reversed' !== $stock_status ) : ?>
 				<p class="description">
 					<?php echo esc_html__( 'Order is cancelled — stock reversal is not applied yet (waiting on confirmed live/sandbox cancel payloads).', 'order-machine' ); ?>
 				</p>
 			<?php endif; ?>
-		<?php elseif ( 'reversed' === $stock_status ) : ?>
-			<p>
-				<span class="som-badge som-badge-stock-reversed"><?php echo esc_html__( 'Stock reversed', 'order-machine' ); ?></span>
-			</p>
-			<table class="widefat striped som-stock-table">
-				<thead>
-					<tr>
-						<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
-						<th><?php echo esc_html__( 'Change', 'order-machine' ); ?></th>
-						<th><?php echo esc_html__( 'Reason', 'order-machine' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $stock_lines as $line ) : ?>
-						<tr>
-							<td>
-								<?php echo esc_html( (string) $line->material_name ); ?>
-								<?php if ( ! empty( $line->material_unit ) ) : ?>
-									<span class="som-muted">(<?php echo esc_html( (string) $line->material_unit ); ?>)</span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php
-								$change = (float) $line->change_qty;
-								echo esc_html( ( $change > 0 ? '+' : '' ) . number_format_i18n( $change, 2 ) );
-								?>
-							</td>
-							<td><?php echo esc_html( SOM_Materials::reason_label( (string) $line->reason ) ); ?></td>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
 		<?php else : ?>
 			<p class="som-muted">
 				<?php

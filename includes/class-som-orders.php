@@ -368,8 +368,9 @@ class SOM_Orders {
 			}
 		}
 
-		$order->stock_summary = SOM_Material_Stock::get_order_summary( $order_id );
-		$order->platform_fees = SOM_Platform_Fee_Sync::list_order_fees( $order_id );
+		$order->stock_summary  = SOM_Material_Stock::get_order_summary( $order_id );
+		$order->materials_used = SOM_Material_Stock::get_usage_by_material( $order_id );
+		$order->platform_fees  = SOM_Platform_Fee_Sync::list_order_fees( $order_id );
 
 		return $order;
 	}

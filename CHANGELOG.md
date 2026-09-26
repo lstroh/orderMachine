@@ -11,6 +11,8 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 ### Added
 
 - Workflow step instructions (plain-text defaults) with optional per-product overrides; shown read-only on order detail for every step (schema 1.11.0)
+- Order **Materials used** panel: raise actual recipe material usage (Extra material usage) → stock, COGS/profit, and material budget funding; increase-only
+- Clearer R&D vs Adjust stock help copy (restock pot)
 
 ## [0.23.0] - 2026-09-16
 

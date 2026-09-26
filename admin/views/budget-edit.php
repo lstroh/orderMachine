@@ -310,7 +310,7 @@ $material_row = ( ! $is_new && $budget && 'material' === $budget->type && ! empt
 		<?php if ( 'material' === $budget->type && ! empty( $budget->material_id ) ) : ?>
 			<h2><?php echo esc_html__( 'R&amp;D / non-sale write-off', 'order-machine' ); ?></h2>
 			<p class="description">
-				<?php echo esc_html__( 'Decrements material stock and debits this budget by qty × weighted-average unit cost. Notes are required.', 'order-machine' ); ?>
+				<?php echo esc_html__( 'Removes stock used without a customer sale and reduces this restock pot by quantity × unit cost. Sales fund the pot; purchases and R&D draw it down. Notes are required.', 'order-machine' ); ?>
 			</p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-budgets' ) ); ?>" class="som-budget-writeoff-form">
 				<?php wp_nonce_field( 'som_budget_writeoff', 'som_budget_writeoff_nonce' ); ?>

@@ -493,7 +493,7 @@ class SOM_Materials {
 	 * @param int                  $material_id Material PK.
 	 * @param float                $delta       Positive or negative change.
 	 * @param array<string, mixed> $args        Optional context.
-	 * @return true|WP_Error
+	 * @return int|WP_Error Stock log PK on success.
 	 */
 	public static function adjust_stock( $material_id, $delta, array $args = array() ) {
 		global $wpdb;
@@ -592,7 +592,7 @@ class SOM_Materials {
 			return new WP_Error( 'som_stock_update', __( 'Could not update stock level.', 'order-machine' ) );
 		}
 
-		return true;
+		return (int) $wpdb->insert_id;
 	}
 
 	/**
@@ -603,11 +603,12 @@ class SOM_Materials {
 	 */
 	public static function reason_label( $reason ) {
 		$labels = array(
-			'manual_adjustment' => __( 'Manual adjustment', 'order-machine' ),
-			'new_order'         => __( 'New order', 'order-machine' ),
-			'order_cancelled'   => __( 'Order cancelled', 'order-machine' ),
-			'restock'           => __( 'Restock', 'order-machine' ),
-			'purchase_received' => __( 'Purchase received', 'order-machine' ),
+			'manual_adjustment'  => __( 'Manual adjustment', 'order-machine' ),
+			'new_order'          => __( 'New order', 'order-machine' ),
+			'order_usage_extra'  => __( 'Extra material usage', 'order-machine' ),
+			'order_cancelled'    => __( 'Order cancelled', 'order-machine' ),
+			'restock'            => __( 'Restock', 'order-machine' ),
+			'purchase_received'  => __( 'Purchase received', 'order-machine' ),
 		);
 
 		$reason = sanitize_key( (string) $reason );

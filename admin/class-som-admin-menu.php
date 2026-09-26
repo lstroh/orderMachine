@@ -426,6 +426,30 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_save_materials_used'] ) ) {
+			check_admin_referer( 'som_save_materials_used', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$raw      = isset( $_POST['som_material_actual'] ) && is_array( $_POST['som_material_actual'] )
+				? wp_unslash( $_POST['som_material_actual'] )
+				: array();
+			$actuals  = array();
+			foreach ( $raw as $material_id => $qty ) {
+				$material_id = (int) $material_id;
+				if ( $material_id < 1 || ! is_numeric( $qty ) ) {
+					continue;
+				}
+				$actuals[ $material_id ] = (float) $qty;
+			}
+			$result = SOM_Material_Stock::apply_overuse( $order_id, $actuals );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Materials used saved.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_retry_script'] ) ) {
 			check_admin_referer( 'som_retry_script', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;

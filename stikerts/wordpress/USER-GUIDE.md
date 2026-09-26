@@ -153,7 +153,8 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | Stock didn’t move | History import, cancelled, unmatched-only, or already reserved for that order. |
 | Budget didn’t fund | Same as stock skip reasons; inactive budget; product/workflow scope miss; already funded. |
 | Budget didn’t draw on receive | No active material budget for that material; or you used **Mark received** (shortfall) instead of **Receive**. |
-| Adjust stock didn’t change budget | By design — use **R&D write-off** for stock + budget. |
+| Adjust stock didn’t change budget | By design — Adjust stock is for corrections only. Use **R&D write-off** so the restock pot drops when you burn material without a sale. |
+| Used more material than the recipe | Order detail → **Materials used** → raise Actual → Save (cannot go below planned). |
 | Board card won’t drag | Not in progress / gates blocked / Unassigned / waiting badges. |
 | Card snapped back | Drop must be the **next** step column (or Complete on the last step). |
 | Can’t edit PO lines | Already received once — lock by design. |
