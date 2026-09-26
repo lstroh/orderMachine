@@ -105,7 +105,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Confirmation checklist** panel when the current step has a confirmation kind (print / address / packing) — Save checklist, then Mark done
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete)
-- Material stock impact when reserved
+- **Materials used** — raise Actual above planned when you used more (stock, profit, budget); increase-only
 - **Platform fees** panel when synced fee lines exist
 - Raw channel payload in a collapsed block
 
@@ -180,8 +180,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Preferred supplier
 - Read WA and total value on hand
 - **Unit cost override** — revalues value on hand; logs the change
-- **Manual stock adjust** — delta; does **not** debit budgets
-- **R&D / non-sale write-off** — stock down + budget debit when an active material budget exists (notes required)
+- **Manual stock adjust** — delta; does **not** touch budgets (corrections/counts)
+- **R&D / non-sale write-off** — stock down + restock-pot debit when an active material budget exists (notes required). Sales fund the pot; purchases and R&D draw it down
 - Goal-alert badges; per-workflow breakdown on edit
 - Lead time from past POs; purchase history table; recent stock log
 
@@ -333,7 +333,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **Where:** Order Machine → Budgets
 
-**What it is for:** Pots of money funded from sales and spent on purchases / R&D.
+**What it is for:** Restock pots funded from sales (and Extra material usage on orders) and spent on purchases / R&D.
 
 ### Types
 
@@ -346,13 +346,14 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 - Create / edit (type and linked material immutable after create)
 - Soft-deactivate
-- View ledger (sale_funding, purchase_spend, adjustments)
+- View ledger (sale_funding, Extra material usage, purchase_spend, adjustments)
 - Manual adjustment (notes required)
 - R&D write-off (also on Materials)
 
 **Important rules:**
 
 - Funding runs with stock on incremental create; skipped for history / cancelled / inactive / already funded
+- Raising **Materials used** on an order funds the same material pot again, labelled **Extra material usage**
 - Sold price 0 on a line is treated as 0 (does not fall back to target); empty price can fall back to target
 - `% of profit` may fund a **negative** amount on loss
 - PO receive draws material budgets; Mark received shortfall does not

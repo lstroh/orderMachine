@@ -21,6 +21,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
 | Step instructions (default + product override) | Done (UP4-S1) |
+| Order material overuse (Materials used) | Done (UP4-S2) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |
@@ -178,7 +179,8 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Confirmation checklist** when the current step has a confirmation kind (print / address / packing)
 - **Open on eBay/Etsy** marketplace order link
 - **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete)
-- Material stock impact for this order (when reserved)
+- **Materials used** — planned vs actual recipe materials; raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
+- Stock log for the order available under a details disclosure
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
 - Raw channel payload in a collapsed `<details>` block
 
@@ -218,8 +220,8 @@ Deactivate rather than hard-delete (soft inactive).
 - Set **preferred supplier**
 - See **weighted average (WA)** and **total value on hand** (read-only)
 - Edit **unit cost** as an explicit override — revalues `total_value_on_hand = current_stock × unit_cost` and writes a stock-log row
-- **Manual stock adjust** (positive or negative delta) → `material_stock_log` reason `manual_adjustment` (also maintains value fields). Does **not** debit a material budget — use R&D write-off for linked stock + budget debit
-- **R&D / non-sale write-off** — separate action: decrements stock and, if an active material budget exists, debits it by `qty ×` WA unit cost (`manual_adjustment` ledger); notes required
+- **Manual stock adjust** (positive or negative delta) → `material_stock_log` reason `manual_adjustment` (also maintains value fields). Does **not** change budgets — use R&D write-off for real non-sale consumption so the restock pot stays honest
+- **R&D / non-sale write-off** — separate action: decrements stock and, if an active material budget exists, reduces that restock pot by `qty ×` WA unit cost (`manual_adjustment` ledger); notes required. Sales fund the pot; purchases and R&D draw it down
 - Goal-alert **badges** on the list; full per-workflow breakdown on edit
 - Average **lead time** (overall, from past PO `received_date − order_date`)
 - Dedicated **purchase history** table on edit (date, supplier, qty, landed unit cost, link to PO)

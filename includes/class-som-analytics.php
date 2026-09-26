@@ -382,7 +382,7 @@ class SOM_Analytics {
 	}
 
 	/**
-	 * Material COGS for an order from stock log snapshots (new_order).
+	 * Material COGS for an order from stock log snapshots (planned + extras).
 	 *
 	 * @param int $order_id Order PK.
 	 * @return float
@@ -400,9 +400,10 @@ class SOM_Analytics {
 			$wpdb->prepare(
 				"SELECT change_qty, unit_cost_at_time
 				FROM {$log_t}
-				WHERE order_id = %d AND reason = %s",
+				WHERE order_id = %d AND reason IN (%s, %s)",
 				$order_id,
-				'new_order'
+				'new_order',
+				'order_usage_extra'
 			)
 		);
 

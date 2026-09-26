@@ -142,6 +142,135 @@ class SOM_Material_Stock {
 	}
 
 	/**
+	 * Planned vs actual material usage for an order (pooled across line items).
+	 *
+	 * @param int $order_id Order PK.
+	 * @return array<int, object> material_id => { material_id, material_name, material_unit, planned, extra, actual }
+	 */
+	public static function get_usage_by_material( $order_id ) {
+		$order_id = (int) $order_id;
+		$lines    = self::get_order_log_lines( $order_id );
+		$out      = array();
+
+		foreach ( $lines as $line ) {
+			$reason = (string) $line->reason;
+			if ( 'new_order' !== $reason && 'order_usage_extra' !== $reason ) {
+				continue;
+			}
+			$material_id = (int) $line->material_id;
+			if ( $material_id < 1 ) {
+				continue;
+			}
+			if ( ! isset( $out[ $material_id ] ) ) {
+				$out[ $material_id ] = (object) array(
+					'material_id'   => $material_id,
+					'material_name' => (string) $line->material_name,
+					'material_unit' => (string) $line->material_unit,
+					'planned'       => 0.0,
+					'extra'         => 0.0,
+					'actual'        => 0.0,
+				);
+			}
+			$qty = abs( (float) $line->change_qty );
+			if ( 'new_order' === $reason ) {
+				$out[ $material_id ]->planned += $qty;
+			} else {
+				$out[ $material_id ]->extra += $qty;
+			}
+		}
+
+		foreach ( $out as $row ) {
+			$row->planned = SOM_Material_Costing::round4( $row->planned );
+			$row->extra   = SOM_Material_Costing::round4( $row->extra );
+			$row->actual  = SOM_Material_Costing::round4( $row->planned + $row->extra );
+		}
+
+		ksort( $out );
+		return $out;
+	}
+
+	/**
+	 * Raise actual material usage on an order (increase only; never below planned or current actual).
+	 *
+	 * @param int                  $order_id Order PK.
+	 * @param array<int, float>    $actuals  material_id => desired actual qty (positive).
+	 * @return true|WP_Error
+	 */
+	public static function apply_overuse( $order_id, array $actuals ) {
+		$order_id = (int) $order_id;
+		if ( $order_id < 1 ) {
+			return new WP_Error( 'som_stock_order', __( 'Invalid order.', 'order-machine' ) );
+		}
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order ) {
+			return new WP_Error( 'som_stock_order', __( 'Order not found.', 'order-machine' ) );
+		}
+
+		$usage = self::get_usage_by_material( $order_id );
+		if ( ! $usage ) {
+			return new WP_Error(
+				'som_overuse_none',
+				__( 'No materials were reserved for this order, so usage cannot be adjusted.', 'order-machine' )
+			);
+		}
+
+		$log_ids = array();
+		$epsilon = 0.0000001;
+
+		foreach ( $usage as $material_id => $row ) {
+			$material_id = (int) $material_id;
+			if ( ! array_key_exists( $material_id, $actuals ) ) {
+				continue;
+			}
+			$desired = (float) $actuals[ $material_id ];
+			if ( $desired + $epsilon < (float) $row->planned ) {
+				return new WP_Error(
+					'som_overuse_below_planned',
+					sprintf(
+						/* translators: %s: material name */
+						__( 'Actual usage for %s cannot be less than the planned amount.', 'order-machine' ),
+						(string) $row->material_name
+					)
+				);
+			}
+			if ( $desired + $epsilon < (float) $row->actual ) {
+				return new WP_Error(
+					'som_overuse_decrease',
+					sprintf(
+						/* translators: %s: material name */
+						__( 'Actual usage for %s can only stay the same or increase.', 'order-machine' ),
+						(string) $row->material_name
+					)
+				);
+			}
+			$delta = SOM_Material_Costing::round4( $desired - (float) $row->actual );
+			if ( $delta <= $epsilon ) {
+				continue;
+			}
+
+			$result = SOM_Materials::adjust_stock(
+				$material_id,
+				-1 * $delta,
+				array(
+					'order_id' => $order_id,
+					'reason'   => 'order_usage_extra',
+				)
+			);
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			$log_ids[] = (int) $result;
+		}
+
+		if ( $log_ids ) {
+			SOM_Budgets::fund_usage_extras( $order_id, $log_ids );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Aggregated consumption by material_id from matched line items.
 	 *
 	 * @param array<int, object> $items Order items.

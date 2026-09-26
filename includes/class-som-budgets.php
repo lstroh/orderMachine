@@ -16,9 +16,10 @@ class SOM_Budgets {
 
 	const PER_PAGE = 20;
 
-	const REASON_SALE_FUNDING       = 'sale_funding';
-	const REASON_PURCHASE_SPEND     = 'purchase_spend';
-	const REASON_MANUAL_ADJUSTMENT  = 'manual_adjustment';
+	const REASON_SALE_FUNDING          = 'sale_funding';
+	const REASON_PURCHASE_SPEND        = 'purchase_spend';
+	const REASON_MANUAL_ADJUSTMENT     = 'manual_adjustment';
+	const REASON_EXTRA_MATERIAL_USAGE  = 'extra_material_usage';
 
 	/**
 	 * @param int $id Budget PK.
@@ -648,6 +649,107 @@ class SOM_Budgets {
 	}
 
 	/**
+	 * Fund material budgets for extra usage on an order (after overuse stock logs).
+	 *
+	 * Does not use {@see self::fund_on_create()} — that helper is idempotent once any
+	 * sale_funding exists. Each call funds only the provided stock-log lines.
+	 *
+	 * @param int             $order_id Order PK.
+	 * @param array<int, int> $log_ids  material_stock_log PKs with reason order_usage_extra.
+	 * @return true Always true (ledger failures are logged).
+	 */
+	public static function fund_usage_extras( $order_id, array $log_ids ) {
+		global $wpdb;
+
+		$order_id = (int) $order_id;
+		if ( $order_id < 1 || ! $log_ids ) {
+			return true;
+		}
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order || ! empty( $order->is_cancelled ) ) {
+			return true;
+		}
+
+		$ids = array();
+		foreach ( $log_ids as $id ) {
+			$id = (int) $id;
+			if ( $id > 0 ) {
+				$ids[ $id ] = true;
+			}
+		}
+		if ( ! $ids ) {
+			return true;
+		}
+
+		$log_t   = SOM_DB::table( 'material_stock_log' );
+		$id_list = implode( ',', array_map( 'intval', array_keys( $ids ) ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IDs cast to int.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, material_id, change_qty, unit_cost_at_time, reason
+				FROM {$log_t}
+				WHERE order_id = %d AND id IN ({$id_list})",
+				$order_id
+			)
+		);
+		if ( ! is_array( $rows ) || ! $rows ) {
+			return true;
+		}
+
+		$workflow_id = self::order_workflow_template_id( $order );
+
+		foreach ( $rows as $row ) {
+			if ( 'order_usage_extra' !== (string) $row->reason ) {
+				continue;
+			}
+			$material_id = (int) $row->material_id;
+			$qty         = abs( (float) $row->change_qty );
+			$unit        = (float) $row->unit_cost_at_time;
+			$amount      = SOM_Material_Costing::round4( $qty * $unit );
+			if ( $material_id < 1 || abs( $amount ) < 0.0000001 ) {
+				continue;
+			}
+
+			$budget = self::get_for_material( $material_id, true );
+			if ( ! $budget ) {
+				continue;
+			}
+			if ( ! self::applies_to_workflow( (int) $budget->id, (int) $workflow_id ) ) {
+				continue;
+			}
+
+			$result = self::insert_ledger(
+				(int) $budget->id,
+				$amount,
+				array(
+					'order_id' => $order_id,
+					'reason'   => self::REASON_EXTRA_MATERIAL_USAGE,
+					'notes'    => sprintf(
+						/* translators: %d: stock log id */
+						__( 'Stock log #%d', 'order-machine' ),
+						(int) $row->id
+					),
+				)
+			);
+			if ( is_wp_error( $result ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log(
+					sprintf(
+						'[Order Machine] Extra material usage funding failed for order %d material %d (budget %d): %s',
+						$order_id,
+						$material_id,
+						(int) $budget->id,
+						$result->get_error_message()
+					)
+				);
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Draw down a material budget after a successful PO line receive.
 	 *
 	 * No-op when no active material budget exists or amount rounds to zero.
@@ -811,9 +913,10 @@ class SOM_Budgets {
 	 */
 	public static function reason_label( $reason ) {
 		$labels = array(
-			self::REASON_SALE_FUNDING      => __( 'Sale funding', 'order-machine' ),
-			self::REASON_PURCHASE_SPEND    => __( 'Purchase spend', 'order-machine' ),
-			self::REASON_MANUAL_ADJUSTMENT => __( 'Manual adjustment', 'order-machine' ),
+			self::REASON_SALE_FUNDING         => __( 'Sale funding', 'order-machine' ),
+			self::REASON_PURCHASE_SPEND       => __( 'Purchase spend', 'order-machine' ),
+			self::REASON_MANUAL_ADJUSTMENT    => __( 'Manual adjustment', 'order-machine' ),
+			self::REASON_EXTRA_MATERIAL_USAGE => __( 'Extra material usage', 'order-machine' ),
 		);
 
 		$reason = sanitize_key( (string) $reason );

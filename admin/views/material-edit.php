@@ -221,7 +221,7 @@ $lead_days        = $material && null !== $material->average_lead_time_days ? (f
 		<?php endif; ?>
 
 		<h2><?php echo esc_html__( 'Adjust stock', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Enter a positive or negative delta (e.g. +10 or -2.5). Stock can go negative. This does not debit a material budget — use R&D write-off below for linked stock + budget debit.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Enter a positive or negative delta (e.g. +10 or -2.5) to correct on-hand quantity. Stock can go negative. This does not change any budget. For material used in R&D or other non-sale work, use R&D write-off so the restock budget stays accurate.', 'order-machine' ); ?></p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-materials' ) ); ?>" class="som-stock-adjust-form">
 			<?php wp_nonce_field( 'som_adjust_stock', 'som_adjust_stock_nonce' ); ?>
 			<input type="hidden" name="som_adjust_stock" value="1" />
@@ -233,7 +233,7 @@ $lead_days        = $material && null !== $material->average_lead_time_days ? (f
 
 		<h2><?php echo esc_html__( 'R&amp;D / non-sale write-off', 'order-machine' ); ?></h2>
 		<p class="description">
-			<?php echo esc_html__( 'Decrements stock and, if an active material budget exists, debits it by qty × weighted-average unit cost. Notes are required.', 'order-machine' ); ?>
+			<?php echo esc_html__( 'Removes stock you used without a customer sale and, if this material has an active budget, reduces that restock pot by quantity × unit cost. Sales fund the pot; purchases and R&D draw it down. Notes are required.', 'order-machine' ); ?>
 		</p>
 		<?php
 		$linked_budget = SOM_Budgets::get_for_material( (int) $material->id, true );
