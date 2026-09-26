@@ -20,6 +20,10 @@ $workflow_templates = SOM_Products::list_workflow_templates( $product ? (int) $p
 $material_options   = SOM_Materials::list_active();
 $recipe_rows        = ( $product && ! empty( $product->recipe ) ) ? $product->recipe : array();
 $listings           = ( $product && ! empty( $product->listings ) ) ? $product->listings : array();
+$is_internal        = $product && ! empty( $product->is_internal );
+$linked_material    = ( $product && ! empty( $product->linked_material_id ) )
+	? SOM_Materials::get( (int) $product->linked_material_id )
+	: null;
 
 $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 ?>
@@ -35,6 +39,44 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 	<p>
 		<a href="<?php echo esc_url( SOM_Products::list_url() ); ?>">&larr; <?php echo esc_html__( 'Back to products', 'order-machine' ); ?></a>
 	</p>
+
+	<?php if ( ! $is_new && $product && $is_internal ) : ?>
+		<div class="som-produce-panel">
+			<h2><?php echo esc_html__( 'Produce', 'order-machine' ); ?></h2>
+			<p class="description">
+				<?php echo esc_html__( 'Create a make-to-stock production job on the Internal channel. Input materials are reserved now; the linked output material is credited when the workflow completes.', 'order-machine' ); ?>
+			</p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-products&product_id=' . (int) $product->id ) ); ?>" class="som-produce-form">
+				<?php wp_nonce_field( 'som_produce_product', 'som_produce_nonce' ); ?>
+				<input type="hidden" name="som_produce_product" value="1" />
+				<input type="hidden" name="product_id" value="<?php echo esc_attr( (string) (int) $product->id ); ?>" />
+				<label for="som_produce_qty">
+					<?php echo esc_html__( 'Quantity', 'order-machine' ); ?>
+					<input type="number" min="1" step="1" class="small-text" id="som_produce_qty" name="som_produce_qty" value="1" required />
+				</label>
+				<?php submit_button( __( 'Produce N', 'order-machine' ), 'secondary', 'submit', false ); ?>
+			</form>
+			<?php if ( $linked_material ) : ?>
+				<p class="description">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: 1: material name, 2: current stock, 3: unit */
+							__( 'Output material: %1$s (stock %2$s %3$s)', 'order-machine' ),
+							(string) $linked_material->name,
+							number_format_i18n( (float) $linked_material->current_stock, 2 ),
+							(string) $linked_material->unit
+						)
+					);
+					?>
+					—
+					<a href="<?php echo esc_url( SOM_Materials::detail_url( (int) $linked_material->id ) ); ?>">
+						<?php echo esc_html__( 'View material', 'order-machine' ); ?>
+					</a>
+				</p>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
 
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-products' ) ); ?>" class="som-product-form">
 		<?php wp_nonce_field( 'som_save_product', 'som_product_nonce' ); ?>
@@ -55,6 +97,33 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 				<td>
 					<input type="text" class="regular-text" id="som_product_sku" name="som_product_sku" value="<?php echo esc_attr( $product && $product->sku ? (string) $product->sku : '' ); ?>" />
 					<p class="description"><?php echo esc_html__( 'Optional internal reference.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Type', 'order-machine' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="som_product_is_internal" value="1" <?php checked( $is_internal ); ?> />
+						<?php echo esc_html__( 'Internal product (make-to-stock component)', 'order-machine' ); ?>
+					</label>
+					<p class="description">
+						<?php echo esc_html__( 'Internal products are never sold on eBay/Etsy. They produce a linked material when you run Produce N and complete the workflow.', 'order-machine' ); ?>
+					</p>
+					<?php if ( $linked_material ) : ?>
+						<p class="description">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: material name */
+									__( 'Linked output material: %s', 'order-machine' ),
+									(string) $linked_material->name
+								)
+							);
+							?>
+						</p>
+					<?php elseif ( $is_internal ) : ?>
+						<p class="description"><?php echo esc_html__( 'A linked output material is created automatically when you save.', 'order-machine' ); ?></p>
+					<?php endif; ?>
 				</td>
 			</tr>
 			<tr>
@@ -161,7 +230,13 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 		<?php endif; ?>
 
 		<h2><?php echo esc_html__( 'Material recipe', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Materials consumed per unit sold. Each material can only appear once.', 'order-machine' ); ?></p>
+		<p class="description">
+			<?php
+			echo $is_internal
+				? esc_html__( 'Input materials consumed per unit produced. Each material can only appear once. Do not include this product’s own output material.', 'order-machine' )
+				: esc_html__( 'Materials consumed per unit sold. Each material can only appear once.', 'order-machine' );
+			?>
+		</p>
 
 		<table class="widefat striped som-recipe-table" id="som-recipe-table">
 			<thead>

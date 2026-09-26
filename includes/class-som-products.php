@@ -198,7 +198,7 @@ class SOM_Products {
 	/**
 	 * Create a product.
 	 *
-	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, is_active.
+	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, is_active, is_internal.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -219,6 +219,14 @@ class SOM_Products {
 			return $workflow_id;
 		}
 
+		$is_internal = ! empty( $data['is_internal'] ) ? 1 : 0;
+		if ( $is_internal && null === $workflow_id ) {
+			return new WP_Error(
+				'som_product_internal_workflow',
+				__( 'Internal products require a workflow template.', 'order-machine' )
+			);
+		}
+
 		$now = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
@@ -228,18 +236,29 @@ class SOM_Products {
 				'sku'                   => $sku,
 				'workflow_template_id'  => $workflow_id,
 				'target_selling_price'  => self::nullable_price( $data, 'target_selling_price' ),
+				'is_internal'           => $is_internal,
+				'linked_material_id'    => null,
 				'is_active'             => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
 				'created_at'            => $now,
 				'updated_at'            => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
 			return new WP_Error( 'som_product_create', __( 'Could not create product.', 'order-machine' ) );
 		}
 
-		return (int) $wpdb->insert_id;
+		$product_id = (int) $wpdb->insert_id;
+
+		if ( $is_internal ) {
+			$linked = self::ensure_linked_material( $product_id );
+			if ( is_wp_error( $linked ) ) {
+				return $linked;
+			}
+		}
+
+		return $product_id;
 	}
 
 	/**
@@ -301,6 +320,25 @@ class SOM_Products {
 			$formats[]                      = '%s';
 		}
 
+		$became_internal = false;
+		if ( array_key_exists( 'is_internal', $data ) ) {
+			$is_internal = ! empty( $data['is_internal'] ) ? 1 : 0;
+			$fields['is_internal'] = $is_internal;
+			$formats[]             = '%d';
+			if ( $is_internal ) {
+				$wf_check = array_key_exists( 'workflow_template_id', $fields )
+					? $fields['workflow_template_id']
+					: $existing->workflow_template_id;
+				if ( empty( $wf_check ) ) {
+					return new WP_Error(
+						'som_product_internal_workflow',
+						__( 'Internal products require a workflow template.', 'order-machine' )
+					);
+				}
+				$became_internal = empty( $existing->is_internal ) || empty( $existing->linked_material_id );
+			}
+		}
+
 		$updated = $wpdb->update(
 			SOM_DB::table( 'products' ),
 			$fields,
@@ -317,7 +355,129 @@ class SOM_Products {
 			SOM_Step_Instructions::delete_orphans_for_product( $product_id, $new_workflow );
 		}
 
+		$after = self::get( $product_id );
+		if ( $after && ! empty( $after->is_internal ) && ( $became_internal || empty( $after->linked_material_id ) ) ) {
+			$linked = self::ensure_linked_material( $product_id );
+			if ( is_wp_error( $linked ) ) {
+				return $linked;
+			}
+		}
+
+		if ( $after && ! empty( $after->is_internal ) && ! empty( $after->linked_material_id ) && array_key_exists( 'name', $fields ) ) {
+			self::sync_linked_material_name( $product_id );
+		}
+
 		return true;
+	}
+
+	/**
+	 * Ensure an internal product has a 1:1 linked output material.
+	 *
+	 * @param int $product_id Product PK.
+	 * @return int|WP_Error Linked material ID.
+	 */
+	public static function ensure_linked_material( $product_id ) {
+		global $wpdb;
+
+		$product_id = (int) $product_id;
+		$product    = self::get( $product_id );
+		if ( ! $product ) {
+			return new WP_Error( 'som_product_missing', __( 'Product not found.', 'order-machine' ) );
+		}
+		if ( empty( $product->is_internal ) ) {
+			return new WP_Error(
+				'som_product_not_internal',
+				__( 'Only internal products have a linked output material.', 'order-machine' )
+			);
+		}
+
+		$linked_id = ! empty( $product->linked_material_id ) ? (int) $product->linked_material_id : 0;
+		if ( $linked_id > 0 ) {
+			$material = SOM_Materials::get( $linked_id );
+			if ( $material ) {
+				$wpdb->update(
+					SOM_DB::table( 'materials' ),
+					array(
+						'source_product_id' => $product_id,
+						'updated_at'        => current_time( 'mysql', true ),
+					),
+					array( 'id' => $linked_id ),
+					array( '%d', '%s' ),
+					array( '%d' )
+				);
+				self::sync_linked_material_name( $product_id );
+				return $linked_id;
+			}
+		}
+
+		// Prefer an existing material already pointing at this product.
+		$materials_t = SOM_DB::table( 'materials' );
+		$existing_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$materials_t} WHERE source_product_id = %d LIMIT 1",
+				$product_id
+			)
+		);
+		if ( $existing_id > 0 ) {
+			$wpdb->update(
+				SOM_DB::table( 'products' ),
+				array(
+					'linked_material_id' => $existing_id,
+					'updated_at'         => current_time( 'mysql', true ),
+				),
+				array( 'id' => $product_id ),
+				array( '%d', '%s' ),
+				array( '%d' )
+			);
+			self::sync_linked_material_name( $product_id );
+			return $existing_id;
+		}
+
+		$created = SOM_Materials::create(
+			array(
+				'name'              => (string) $product->name,
+				'unit'              => 'each',
+				'is_active'         => 1,
+				'source_product_id' => $product_id,
+			)
+		);
+		if ( is_wp_error( $created ) ) {
+			return $created;
+		}
+
+		$material_id = (int) $created;
+		$ok          = $wpdb->update(
+			SOM_DB::table( 'products' ),
+			array(
+				'linked_material_id' => $material_id,
+				'updated_at'         => current_time( 'mysql', true ),
+			),
+			array( 'id' => $product_id ),
+			array( '%d', '%s' ),
+			array( '%d' )
+		);
+		if ( false === $ok ) {
+			return new WP_Error( 'som_product_link', __( 'Could not link output material.', 'order-machine' ) );
+		}
+
+		return $material_id;
+	}
+
+	/**
+	 * Keep linked material name in sync with the internal product name.
+	 *
+	 * @param int $product_id Product PK.
+	 * @return void
+	 */
+	public static function sync_linked_material_name( $product_id ) {
+		$product = self::get( (int) $product_id );
+		if ( ! $product || empty( $product->linked_material_id ) ) {
+			return;
+		}
+		SOM_Materials::update(
+			(int) $product->linked_material_id,
+			array( 'name' => (string) $product->name )
+		);
 	}
 
 	/**
@@ -445,9 +605,12 @@ class SOM_Products {
 		global $wpdb;
 
 		$product_id = (int) $product_id;
-		if ( $product_id < 1 || ! self::get( $product_id ) ) {
+		$product    = $product_id > 0 ? self::get( $product_id ) : null;
+		if ( $product_id < 1 || ! $product ) {
 			return new WP_Error( 'som_product_missing', __( 'Product not found.', 'order-machine' ) );
 		}
+
+		$linked_material_id = ! empty( $product->linked_material_id ) ? (int) $product->linked_material_id : 0;
 
 		$seen       = array();
 		$normalized = array();
@@ -468,6 +631,13 @@ class SOM_Products {
 				return new WP_Error(
 					'som_recipe_qty',
 					__( 'Each recipe line needs a material and a quantity greater than zero.', 'order-machine' )
+				);
+			}
+
+			if ( $linked_material_id > 0 && $material_id === $linked_material_id ) {
+				return new WP_Error(
+					'som_recipe_self',
+					__( 'An internal product cannot consume its own output material.', 'order-machine' )
 				);
 			}
 

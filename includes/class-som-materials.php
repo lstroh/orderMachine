@@ -292,6 +292,14 @@ class SOM_Materials {
 
 		$now = current_time( 'mysql', true );
 
+		$source_product_id = null;
+		if ( array_key_exists( 'source_product_id', $data ) && null !== $data['source_product_id'] && '' !== $data['source_product_id'] ) {
+			$source_product_id = (int) $data['source_product_id'];
+			if ( $source_product_id < 1 ) {
+				$source_product_id = null;
+			}
+		}
+
 		$inserted = $wpdb->insert(
 			SOM_DB::table( 'materials' ),
 			array(
@@ -301,11 +309,12 @@ class SOM_Materials {
 				'low_stock_threshold'   => self::nullable_decimal( $data, 'low_stock_threshold' ),
 				'unit_cost'             => self::nullable_decimal( $data, 'unit_cost', 4 ),
 				'preferred_supplier_id' => $preferred,
+				'source_product_id'     => $source_product_id,
 				'is_active'             => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
 				'created_at'            => $now,
 				'updated_at'            => $now,
 			),
-			array( '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%s', '%s' )
+			array( '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -381,6 +390,18 @@ class SOM_Materials {
 		if ( array_key_exists( 'is_active', $data ) ) {
 			$fields['is_active'] = (int) (bool) $data['is_active'];
 			$formats[]           = '%d';
+		}
+
+		if ( array_key_exists( 'source_product_id', $data ) ) {
+			$source = null;
+			if ( null !== $data['source_product_id'] && '' !== $data['source_product_id'] ) {
+				$source = (int) $data['source_product_id'];
+				if ( $source < 1 ) {
+					$source = null;
+				}
+			}
+			$fields['source_product_id'] = $source;
+			$formats[]                   = null === $source ? '%s' : '%d';
 		}
 
 		$updated = $wpdb->update(
@@ -606,6 +627,7 @@ class SOM_Materials {
 			'manual_adjustment'  => __( 'Manual adjustment', 'order-machine' ),
 			'new_order'          => __( 'New order', 'order-machine' ),
 			'order_usage_extra'  => __( 'Extra material usage', 'order-machine' ),
+			'production_output'  => __( 'Production output', 'order-machine' ),
 			'order_cancelled'    => __( 'Order cancelled', 'order-machine' ),
 			'restock'            => __( 'Restock', 'order-machine' ),
 			'purchase_received'  => __( 'Purchase received', 'order-machine' ),

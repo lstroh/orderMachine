@@ -47,7 +47,7 @@ Top-level: **Order Machine**
 |---|---|
 | **Orders** | List and open order detail (buyer, items, workflow, fees) |
 | **Orders Board** | Kanban of open orders by current step; drag to advance |
-| **Products** | Catalogue, recipes, workflow assignment, Product Costing |
+| **Products** | Catalogue, recipes, workflow assignment, Product Costing; internal Produce N |
 | **Materials** | Stock, WA / value, preferred supplier, R&D write-off |
 | **Budgets** | Material + manual budgets, ledger, adjustments |
 | **Suppliers** | Supplier contacts (no delete) |
