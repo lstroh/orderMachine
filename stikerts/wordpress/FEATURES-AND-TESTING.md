@@ -25,6 +25,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Internal products core (Produce N) | Done (UP4-S3) |
 | Internal products UX / guards / analytics | Done (UP4-S4) |
 | Order notes (threaded log) | Done (UP5-S1) |
+| Shipping packages + planned postage | Done (UP5-S2) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |

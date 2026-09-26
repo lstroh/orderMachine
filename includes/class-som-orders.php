@@ -371,8 +371,54 @@ class SOM_Orders {
 		$order->stock_summary  = SOM_Material_Stock::get_order_summary( $order_id );
 		$order->materials_used = SOM_Material_Stock::get_usage_by_material( $order_id );
 		$order->platform_fees  = SOM_Platform_Fee_Sync::list_order_fees( $order_id );
+		$order->shipment       = SOM_Shipments::get_by_order( $order_id );
 
 		return $order;
+	}
+
+	/**
+	 * Set or clear order planned shipping (GBP).
+	 *
+	 * @param int             $order_id Order PK.
+	 * @param string|float|null $amount Empty string or null clears.
+	 * @return true|WP_Error
+	 */
+	public static function set_planned_shipping( $order_id, $amount ) {
+		global $wpdb;
+
+		$order_id = (int) $order_id;
+		if ( $order_id < 1 || ! self::get( $order_id ) ) {
+			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
+		}
+
+		$value = null;
+		if ( null !== $amount && '' !== trim( (string) $amount ) ) {
+			$raw = trim( (string) $amount );
+			if ( ! is_numeric( $raw ) || (float) $raw < 0 ) {
+				return new WP_Error(
+					'som_planned_shipping',
+					__( 'Planned shipping must be zero or a positive amount in GBP.', 'order-machine' )
+				);
+			}
+			$value = number_format( (float) $raw, 2, '.', '' );
+		}
+
+		$ok = $wpdb->update(
+			SOM_DB::table( 'orders' ),
+			array(
+				'planned_shipping_gbp' => $value,
+				'updated_at'           => current_time( 'mysql', true ),
+			),
+			array( 'id' => $order_id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $ok ) {
+			return new WP_Error( 'som_planned_shipping_save', __( 'Could not save planned shipping.', 'order-machine' ) );
+		}
+
+		return true;
 	}
 
 	/**

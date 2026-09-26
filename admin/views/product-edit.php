@@ -167,6 +167,69 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 					<p class="description"><?php echo esc_html__( 'Competition-driven target price. Profit and margin use live material cost plus platform fees (estimate until actuals sync).', 'order-machine' ); ?></p>
 				</td>
 			</tr>
+			<?php if ( ! $is_internal ) : ?>
+				<?php
+				$packages       = SOM_Shipping_Packages::list_active();
+				$default_pkg    = SOM_Shipping_Packages::get_default();
+				$selected_pkg   = $product && ! empty( $product->package_id ) ? (int) $product->package_id : 0;
+				if ( $is_new && ! $selected_pkg && $default_pkg ) {
+					$selected_pkg = (int) $default_pkg->id;
+				}
+				// Keep inactive assigned package visible on edit.
+				if ( $product && $selected_pkg > 0 ) {
+					$assigned = SOM_Shipping_Packages::get( $selected_pkg );
+					if ( $assigned && empty( $assigned->is_active ) ) {
+						array_unshift( $packages, $assigned );
+					}
+				}
+				?>
+				<tr>
+					<th scope="row"><label for="som_product_weight_g"><?php echo esc_html__( 'Goods weight', 'order-machine' ); ?></label></th>
+					<td>
+						<input type="number" step="0.1" min="0" class="small-text" id="som_product_weight_g" name="som_product_weight_g" value="<?php echo esc_attr( $product && null !== $product->weight_grams && '' !== $product->weight_grams ? (string) $product->weight_grams : '' ); ?>" />
+						<span class="som-muted"><?php echo esc_html__( 'grams (contents only, not package tare)', 'order-machine' ); ?></span>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_product_package_id"><?php echo esc_html__( 'Default package', 'order-machine' ); ?></label></th>
+					<td>
+						<select id="som_product_package_id" name="som_product_package_id">
+							<option value=""><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
+							<?php foreach ( $packages as $pkg ) : ?>
+								<option value="<?php echo esc_attr( (string) (int) $pkg->id ); ?>" <?php selected( $selected_pkg, (int) $pkg->id ); ?>>
+									<?php
+									echo esc_html( (string) $pkg->name );
+									if ( empty( $pkg->is_active ) ) {
+										echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+									} elseif ( ! empty( $pkg->is_default ) ) {
+										echo ' (' . esc_html__( 'default', 'order-machine' ) . ')';
+									}
+									?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">
+							<?php
+							echo wp_kses_post(
+								sprintf(
+									/* translators: %s: packages admin link */
+									__( 'Manage mailers/boxes under %s.', 'order-machine' ),
+									'<a href="' . esc_url( SOM_Shipping_Packages::list_url() ) . '">' . esc_html__( 'Shipping packages', 'order-machine' ) . '</a>'
+								)
+							);
+							?>
+						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_product_planned_shipping"><?php echo esc_html__( 'Planned shipping', 'order-machine' ); ?></label></th>
+					<td>
+						<input type="number" step="0.01" min="0" class="small-text" id="som_product_planned_shipping" name="som_product_planned_shipping" value="<?php echo esc_attr( $product && null !== $product->planned_shipping_gbp && '' !== $product->planned_shipping_gbp ? (string) $product->planned_shipping_gbp : '' ); ?>" />
+						<span class="som-muted">GBP</span>
+						<p class="description"><?php echo esc_html__( 'Flat expected postage for this SKU. Seeds new orders (sum × qty) and appears in Product Costing. Actual postage is recorded on the shipment.', 'order-machine' ); ?></p>
+					</td>
+				</tr>
+			<?php endif; ?>
 			<tr>
 				<th scope="row"><?php echo esc_html__( 'Status', 'order-machine' ); ?></th>
 				<td>
@@ -360,6 +423,14 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 							<?php endif; ?>
 						<?php else : ?>
 							<span class="som-muted">—</span>
+						<?php endif; ?>
+					</li>
+					<li>
+						<strong><?php echo esc_html__( 'Planned shipping', 'order-machine' ); ?>:</strong>
+						<?php if ( null !== $costing['planned_shipping_gbp'] ) : ?>
+							£<?php echo esc_html( number_format_i18n( (float) $costing['planned_shipping_gbp'], 2 ) ); ?>
+						<?php else : ?>
+							<span class="som-muted"><?php echo esc_html__( 'Not set', 'order-machine' ); ?></span>
 						<?php endif; ?>
 					</li>
 					<li>

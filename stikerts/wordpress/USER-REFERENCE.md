@@ -108,6 +108,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Materials used** — raise Actual above planned when you used more (stock, profit, budget); increase-only
 - **Platform fees** panel when synced fee lines exist
 - **Notes** — admin-only append-only log (cannot edit/delete); not synced to marketplaces
+- **Planned shipping** — expected postage (seeded from product defaults on create; editable; re-sync does not overwrite). Variance vs shipment **postage paid** when recorded. Internal orders leave planned null
 - Raw channel payload in a collapsed block
 
 **Important rules:**
@@ -158,7 +159,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order)
 - Assign workflow template
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
-- Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, fee-aware profit/margin, goal alerts, listing prices)
+- Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, planned shipping when set, fee-aware profit/margin, goal alerts, listing prices)
+- For sellable products: goods weight (g), default **shipping package**, flat **planned shipping** £ (hidden on internal products)
 - Follow links to related Listings (internal products are excluded from marketplace listing pickers)
 
 **List columns:** target price, material cost, fee-aware margin with Est./Actual fees badge, goal alerts, Internal badge; type filter sellable/internal.
@@ -169,6 +171,16 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 - Primary product on an order is the first matched line — that product’s workflow applies to the whole order.
 - Representative price for fee %: target for estimates; listing price when a channel listing is linked.
+
+---
+
+## 5b. Shipping packages
+
+**Where:** Order Machine → Shipping packages
+
+**What it is for:** Catalogue of outer mailers/boxes (L×W×H mm, tare grams). Assign on sellable products with goods weight and flat planned postage. Actual postage is recorded on the order shipment, not here.
+
+**Main actions:** Create / edit; set one **default** for new products; deactivate (prefer over delete); delete blocked while products still reference the package.
 
 ---
 
