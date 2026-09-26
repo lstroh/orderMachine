@@ -397,6 +397,14 @@ class SOM_Workflows {
 				$script = null;
 			}
 
+			$instructions = '';
+			if ( array_key_exists( 'instructions', $row ) ) {
+				$instructions = SOM_Step_Instructions::sanitize( $row['instructions'] );
+				if ( is_wp_error( $instructions ) ) {
+					return $instructions;
+				}
+			}
+
 			$normalized[] = array(
 				'id'                      => $step_id,
 				'step_order'              => $order,
@@ -406,6 +414,7 @@ class SOM_Workflows {
 				'script_config'           => $script,
 				'batch_group_id'          => $batch_group_id,
 				'confirmation_kind'       => $confirmation_kind,
+				'instructions'            => '' !== $instructions ? $instructions : null,
 			);
 		}
 
@@ -430,6 +439,7 @@ class SOM_Workflows {
 				'script_config'           => $row['script_config'],
 				'batch_group_id'          => $row['batch_group_id'],
 				'confirmation_kind'       => $row['confirmation_kind'],
+				'instructions'            => $row['instructions'],
 				'updated_at'              => $now,
 			);
 
@@ -441,7 +451,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -455,7 +465,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -467,6 +477,7 @@ class SOM_Workflows {
 			if ( isset( $kept_ids[ $old_id ] ) ) {
 				continue;
 			}
+			SOM_Step_Instructions::delete_for_step( (int) $old_id );
 			$wpdb->delete(
 				$table,
 				array(

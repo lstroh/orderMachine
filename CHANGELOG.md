@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Workflow step instructions (plain-text defaults) with optional per-product overrides; shown read-only on order detail for every step (schema 1.11.0)
+
 ## [0.23.0] - 2026-09-16
 
 ### Added

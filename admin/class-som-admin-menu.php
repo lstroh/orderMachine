@@ -1308,6 +1308,20 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		$product_row = SOM_Products::get( $product_id );
+		$template_id = $product_row && ! empty( $product_row->workflow_template_id )
+			? (int) $product_row->workflow_template_id
+			: 0;
+		$instr_rows  = isset( $_POST['som_step_instructions'] ) && is_array( $_POST['som_step_instructions'] )
+			? wp_unslash( $_POST['som_step_instructions'] )
+			: array();
+		$instr_result = SOM_Step_Instructions::sync_for_product( $product_id, $template_id, $instr_rows );
+		if ( is_wp_error( $instr_result ) ) {
+			self::flash_notice( $instr_result->get_error_message(), 'error', 'som_instructions_error' );
+			wp_safe_redirect( SOM_Products::detail_url( $product_id ) );
+			exit;
+		}
+
 		self::flash_notice( __( 'Product saved.', 'order-machine' ), 'success', 'som_product_saved' );
 		wp_safe_redirect( SOM_Products::detail_url( $product_id ) );
 		exit;

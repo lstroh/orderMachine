@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.10.0';
+	const DB_VERSION = '1.11.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -150,11 +150,24 @@ class SOM_DB {
 			script_config text NULL,
 			batch_group_id bigint(20) unsigned NULL,
 			confirmation_kind varchar(40) NULL,
+			instructions text NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY workflow_template_id (workflow_template_id),
 			KEY batch_group_id (batch_group_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_product_step_instructions (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			product_id bigint(20) unsigned NOT NULL,
+			workflow_step_id bigint(20) unsigned NOT NULL,
+			instructions text NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY product_step (product_id,workflow_step_id),
+			KEY workflow_step_id (workflow_step_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_orders (

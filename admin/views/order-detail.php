@@ -410,11 +410,18 @@ if ( ! empty( $order->raw_payload ) ) {
 				</div>
 			<?php endif; ?>
 
+			<?php
+			$primary_product_id = SOM_Workflow_Engine::primary_product_id( $order );
+			?>
 			<ol class="som-workflow-progress">
 				<?php foreach ( $order->workflow_progress as $row ) : ?>
 					<?php
 					$is_current = (int) $row->workflow_step_id === (int) $order->current_step_id;
 					$status     = (string) $row->status;
+					$step_instructions = SOM_Step_Instructions::effective(
+						$primary_product_id ? (int) $primary_product_id : 0,
+						(int) $row->workflow_step_id
+					);
 					$step_obj   = (object) array(
 						'name'                    => $row->step_name,
 						'timer_seconds'           => $row->timer_seconds,
@@ -466,6 +473,12 @@ if ( ! empty( $order->raw_payload ) ) {
 								<span class="som-badge som-badge-confirm"><?php echo esc_html__( 'Confirm', 'order-machine' ); ?></span>
 							<?php endif; ?>
 						</div>
+						<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
+							<div class="som-step-instructions">
+								<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
+								<div class="som-step-instructions-body"><?php echo esc_html( $step_instructions ); ?></div>
+							</div>
+						<?php endif; ?>
 						<?php if ( $is_current && $timer_ready ) : ?>
 							<p class="som-timer-countdown som-timer-ready description" data-som-timer-ready-msg>
 								<?php echo esc_html__( 'Timer ready — you can Mark done.', 'order-machine' ); ?>

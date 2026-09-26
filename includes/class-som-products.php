@@ -253,9 +253,12 @@ class SOM_Products {
 		global $wpdb;
 
 		$product_id = (int) $product_id;
-		if ( $product_id < 1 || ! self::get( $product_id ) ) {
+		$existing   = self::get( $product_id );
+		if ( $product_id < 1 || ! $existing ) {
 			return new WP_Error( 'som_product_missing', __( 'Product not found.', 'order-machine' ) );
 		}
+
+		$prev_workflow = isset( $existing->workflow_template_id ) ? (int) $existing->workflow_template_id : 0;
 
 		$fields  = array(
 			'updated_at' => current_time( 'mysql', true ),
@@ -277,6 +280,7 @@ class SOM_Products {
 			$formats[]     = '%s';
 		}
 
+		$new_workflow = null;
 		if ( array_key_exists( 'workflow_template_id', $data ) ) {
 			$workflow_id = self::sanitize_workflow_id( $data );
 			if ( is_wp_error( $workflow_id ) ) {
@@ -284,6 +288,7 @@ class SOM_Products {
 			}
 			$fields['workflow_template_id'] = $workflow_id;
 			$formats[]                      = null === $workflow_id ? '%s' : '%d';
+			$new_workflow                   = null === $workflow_id ? 0 : (int) $workflow_id;
 		}
 
 		if ( array_key_exists( 'is_active', $data ) ) {
@@ -306,6 +311,10 @@ class SOM_Products {
 
 		if ( false === $updated ) {
 			return new WP_Error( 'som_product_update', __( 'Could not update product.', 'order-machine' ) );
+		}
+
+		if ( null !== $new_workflow && $new_workflow !== $prev_workflow ) {
+			SOM_Step_Instructions::delete_orphans_for_product( $product_id, $new_workflow );
 		}
 
 		return true;

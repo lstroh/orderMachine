@@ -110,6 +110,56 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 			</tr>
 		</table>
 
+		<?php
+		$workflow_id_for_steps = $product && ! empty( $product->workflow_template_id )
+			? (int) $product->workflow_template_id
+			: 0;
+		$instruction_steps     = $workflow_id_for_steps > 0 ? SOM_Workflows::get_steps( $workflow_id_for_steps ) : array();
+		$instruction_overrides = $product ? SOM_Step_Instructions::get_overrides_for_product( (int) $product->id ) : array();
+		?>
+		<?php if ( ! empty( $instruction_steps ) ) : ?>
+			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
+			<p class="description">
+				<?php echo esc_html__( 'Optional overrides for this product. Leave blank to use the workflow step default. Empty overrides are not stored.', 'order-machine' ); ?>
+			</p>
+			<table class="widefat striped som-step-instructions-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Step', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Override', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $instruction_steps as $istep ) : ?>
+						<?php
+						$sid      = (int) $istep->id;
+						$override = isset( $instruction_overrides[ $sid ] ) ? (string) $instruction_overrides[ $sid ] : '';
+						$default  = ! empty( $istep->instructions ) ? (string) $istep->instructions : '';
+						?>
+						<tr>
+							<td>
+								<strong><?php echo esc_html( (string) $istep->name ); ?></strong>
+								<?php if ( '' !== trim( $default ) ) : ?>
+									<p class="description som-step-default-preview">
+										<?php echo esc_html__( 'Default:', 'order-machine' ); ?>
+										<?php echo esc_html( $default ); ?>
+									</p>
+								<?php else : ?>
+									<p class="description som-muted"><?php echo esc_html__( 'No workflow default.', 'order-machine' ); ?></p>
+								<?php endif; ?>
+							</td>
+							<td>
+								<textarea class="large-text" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php elseif ( $product && empty( $product->workflow_template_id ) ) : ?>
+			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
+			<p class="description"><?php echo esc_html__( 'Assign a workflow template to set per-step instruction overrides.', 'order-machine' ); ?></p>
+		<?php endif; ?>
+
 		<h2><?php echo esc_html__( 'Material recipe', 'order-machine' ); ?></h2>
 		<p class="description"><?php echo esc_html__( 'Materials consumed per unit sold. Each material can only appear once.', 'order-machine' ); ?></p>
 

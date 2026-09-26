@@ -13,13 +13,14 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 
 | Area | Status |
 |---|---|
-| Database schema (25 `wp_som_*` tables) | Done |
+| Database schema (26 `wp_som_*` tables) | Done |
 | Channel settings + OAuth / dummy credentials | Done |
 | Order sync (incremental + history import) | Done |
 | Orders list + detail UI | Done |
 | Orders Board (Kanban + gated DnD) | Done (U2-4 / U2-5) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
+| Step instructions (default + product override) | Done (UP4-S1) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |
@@ -248,6 +249,7 @@ Deactivate rather than hard-delete (soft inactive).
 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
+- Set **Instructions (default)** plain text per step (optional); products may override per step on the product edit screen
 - Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer, script, or batch
 - Set **timer** (seconds via friendly min/hr/day UI)
 - Configure **script_config** (form fields + raw JSON fallback for `local` / `api` / `n8n`)
