@@ -51,6 +51,7 @@ Top-level: **Order Machine**
 | **Materials** | Stock, WA / value, preferred supplier, R&D write-off |
 | **Budgets** | Material + manual budgets, ledger, adjustments |
 | **Suppliers** | Supplier contacts (no delete) |
+| **Shipping packages** | Outer mailers/boxes (mm + tare g); assign on sellable products with planned postage |
 | **Purchase Orders** | Create / receive POs, Preview Impact |
 | **Batches** | Collecting / release / mark done for batch steps |
 | **Workflows** | Templates and step editor (timers, batch groups, goals) |
@@ -123,6 +124,23 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Dummy mode** | `SOM_USE_DUMMY_CREDENTIALS` — fixture sync, seed catalogue, no real OAuth. |
 | **Sync now** | Incremental pull of new/updated orders; new matched creates get workflow + stock + budget funding. |
 | **Import history** | Backfill of past orders; does **not** assign workflow / reserve stock / fund budgets like a live create. |
+| **Multipack** | N identical units sold as one SKU (e.g. a 4-pack). Model as a **separate product** with its own recipe and shipping defaults — not a multiplier on a base SKU. |
+
+---
+
+## Pack sizes (multipacks)
+
+Sell pack sizes as **separate catalogue products**. There is no pack→base inventory explosion and no `units_per_pack` link in Order Machine.
+
+| Do | Don’t |
+|---|---|
+| One product per pack size (1-pack, 4-pack, 10-pack, …) | Expect one SKU to “multiply” into N loose units |
+| Recipe = materials for **one sold unit** of that pack | Create a phantom loose-unit SKU unless you actually sell singles |
+| Set goods weight, default package, and planned shipping **per SKU** | Share one planned postage across all pack sizes |
+
+**Naming (seed style):** name like `Bin Sticker Set — 4-pack`, SKU like `BIN-SET-4PK`. Heavier packs usually need a larger package and higher planned postage. Link each pack SKU to its own marketplace listing.
+
+Order notes, planned vs actual postage, and the shipping-packages catalogue are covered in [`USER-REFERENCE.md`](USER-REFERENCE.md).
 
 ---
 
@@ -174,12 +192,12 @@ More detail: [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) §7.
 
 When dummy mode seeds successfully you typically get:
 
-- Product **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`) with vinyl + laminate recipe  
+- Product **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`) with vinyl + laminate recipe — a **multipack SKU** (materials for one 4-pack sold unit)  
 - Workflow **Bin Sticker Production** (Print → Dry → Laminate → Cut → Pack → Ship → Thank-you batch → Review)  
 - Batch groups **thank_you_card** (script) and **shipping_label** (manual), size 4  
 - Fixture listing matches so some synced lines resolve to that product  
 
-Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
+No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
 
 ---
 
