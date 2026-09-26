@@ -10,7 +10,7 @@
 |---|---|---|---|
 | UP5-S1 | Order notes | Done | Schema 1.13.0; plugin 0.28.0 |
 | UP5-S2 | Shipping packages / planned postage | Done | Schema 1.14.0; plugin 0.29.0 |
-| UP5-S3 | Multipack conventions / docs | Not started | |
+| UP5-S3 | Multipack conventions / docs | Done | Docs only; no schema bump |
 
 ---
 
@@ -114,3 +114,36 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 ```
 
 Then in wp-admin: **Shipping packages** → add a package → product edit set weight/package/planned £ → create test order → confirm planned = sum×qty → edit planned → save shipment postage → check variance.
+
+---
+
+## UP5-S3 — Multipack conventions / docs
+
+- **Status:** Done
+- **Completed:** 2026-09-26
+- **Verified on:** Docs review (no runtime smoke; no DDL).
+
+### Decisions applied
+
+| Topic | Decision |
+|---|---|
+| Catalogue | Separate SKU per pack size |
+| Seed | No second pack SKU (O14) |
+| Schema / behaviour | Unchanged |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `stikerts/wordpress/USER-GUIDE.md` | Pack sizes section; menu + seed notes |
+| `stikerts/wordpress/USER-REFERENCE.md` | Multipacks under Products; packages pointer |
+| `stikerts/wordpress/FEATURES-AND-TESTING.md` | Feature row + §3.4 + Test 2b |
+| `stikerts/wordpress/Sprint-Progress.md` | Package 5 complete |
+| `Update-5-Sprint-Progress.md` | This section |
+
+### Done-when checklist
+
+| Criterion | Result |
+|---|---|
+| Docs state multipack = separate SKUs with own recipe/shipping | Pass |
+| No schema or behaviour change | Pass |

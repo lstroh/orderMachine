@@ -26,6 +26,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Internal products UX / guards / analytics | Done (UP4-S4) |
 | Order notes (threaded log) | Done (UP5-S1) |
 | Shipping packages + planned postage | Done (UP5-S2) |
+| Multipack conventions (docs; separate SKUs) | Done (UP5-S3) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |
@@ -208,12 +209,17 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Produce N** on internal products → Internal-channel production order; inputs reserved now; linked material credited on workflow complete (`production_output`)
 - Assign a **workflow template**
 - Edit the **material recipe** (material + quantity per unit; inputs for internal products)
-- Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, fee-aware profit / margin, goal alerts, listing prices side by side)
+- Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, **planned shipping** when set, fee-aware profit / margin, goal alerts, listing prices side by side)
+- For sellable products: **goods weight (g)**, default **shipping package**, flat **planned shipping** £
 - See linked listings (links through to **Listings** admin)
 
 **Products list** also shows costing columns: target price, material cost, **fee-aware margin** with Est. fees / Actual fees badge, goal-alert badges, **Internal** badge, and type filter (sellable / internal).
 
 Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while open Internal production jobs exist.
+
+**Multipacks (pack sizes):** model each pack size as its **own product SKU** with its own recipe and shipping defaults (e.g. seed `BIN-SET-4PK`). There is no pack→base multiplier or inventory explosion. See [`USER-GUIDE.md`](USER-GUIDE.md) (Pack sizes) and [`USER-REFERENCE.md`](USER-REFERENCE.md) §5.
+
+**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one default for new products.
 
 ---
 
@@ -614,7 +620,7 @@ Work top-to-bottom. Each section builds on the previous. Checkboxes are for your
 ### Test 1 — Foundation & menu
 
 1. Open **Order Machine** in the left admin menu.
-2. Confirm submenus: Orders, Orders Board, Products, Materials, Budgets, Suppliers, Purchase Orders, Batches, Workflows, Listings, Analytics, Channel Fee Estimates, Recurring Platform Expenses, Settings.
+2. Confirm submenus: Orders, Orders Board, Products, Materials, Budgets, Suppliers, Shipping packages, Purchase Orders, Batches, Workflows, Listings, Analytics, Channel Fee Estimates, Recurring Platform Expenses, Settings.
 
 - [ ] Menu present and all screens load without PHP errors
 
@@ -633,13 +639,30 @@ Expect DB version `1.8.0`, plugin `0.22.0`, and **25** `wp_som_*` tables (includ
 ### Test 2 — Seeded catalogue (before first sync)
 
 1. **Products** → open **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`).
-2. Confirm workflow template **Bin Sticker Production** is assigned; note costing panel fields.
-3. Confirm recipe rows: vinyl + laminate (~1 each).
-4. **Materials** → both sheets show stock (seed starts at 25), WA / value on hand, threshold 5.
-5. **Workflows** → open **Bin Sticker Production** → steps as in §3.6 (fresh seeds include confirmation steps); Thank-you has batch group (not per-order thank-you script).
-6. **Batches** → confirm two batch groups exist (thank_you_card / shipping_label, size 4).
+2. Confirm workflow template **Bin Sticker Production** is assigned; note costing panel fields (incl. planned shipping line when set).
+3. Confirm recipe rows: vinyl + laminate (~1 each) — materials for **one 4-pack sold unit** (multipack = separate SKU; no second pack size is seeded).
+4. Optionally set goods weight / default package / planned £ on that product; confirm **Shipping packages** menu can add a mailer.
+5. **Materials** → both sheets show stock (seed starts at 25), WA / value on hand, threshold 5.
+6. **Workflows** → open **Bin Sticker Production** → steps as in §3.6 (fresh seeds include confirmation steps); Thank-you has batch group (not per-order thank-you script).
+7. **Batches** → confirm two batch groups exist (thank_you_card / shipping_label, size 4).
 
 - [ ] Product, recipe, materials, workflow, batch groups all present without manual create
+
+### Test 2b — Package 5 quick verify (notes + shipping + multipack convention)
+
+1. Open a matched order → **Notes** → add a note → confirm author + timestamp (append-only).
+2. **Shipping packages** → add/edit a package → assign it on a sellable product with planned postage.
+3. Create a test order (or Sync) → order detail **Planned shipping** seeded from product × qty; edit it; save a shipment postage → variance shows.
+4. Mentally confirm: a 10-pack would be a **new product**, not a qty multiplier on `BIN-SET-4PK`.
+
+- [ ] Notes, packages/planned postage, and multipack-as-separate-SKU convention understood
+
+Smoke (wp-env):
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up5-s1-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up5-s2-smoke.php
+```
 
 ---
 

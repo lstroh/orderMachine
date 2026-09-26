@@ -13,7 +13,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 2. [Order sync behaviour](#2-order-sync-behaviour)
 3. [Orders list & detail](#3-orders-list--detail)
 4. [Orders Board](#4-orders-board)
-5. [Products](#5-products)
+5. [Products](#5-products) (incl. multipacks / pack sizes)
+5b. [Shipping packages](#5b-shipping-packages)
 6. [Materials & stock](#6-materials--stock)
 7. [Workflows](#7-workflows)
 8. [Workflow engine (how progress moves)](#8-workflow-engine-how-progress-moves)
@@ -172,6 +173,21 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Primary product on an order is the first matched line — that product’s workflow applies to the whole order.
 - Representative price for fee %: target for estimates; listing price when a channel listing is linked.
 
+### Multipacks (pack sizes)
+
+A **multipack** is N identical units sold as one listing/SKU (e.g. bin sticker **4-pack**). Bundles of different products are out of scope.
+
+| Topic | Convention |
+|---|---|
+| Catalogue | **Separate product** per pack size (1-pack, 4-pack, 10-pack, …) |
+| Recipe | Materials for **one sold unit** of that pack (qty per unit already scales) |
+| Shipping | Own goods weight, default package, and planned postage per SKU |
+| Engine | No `base_product_id` / `units_per_pack` — deferred; no pack→base inventory explosion |
+
+**Naming:** e.g. `Bin Sticker Set — 4-pack` / `BIN-SET-4PK` (seed style). Do **not** create a phantom loose-unit SKU unless you sell singles. Seed ships one sample 4-pack only — add other sizes as normal products when needed.
+
+Also see order **Notes** (§3) and **Planned shipping** on order detail (§3) / packages below.
+
 ---
 
 ## 5b. Shipping packages
@@ -181,6 +197,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 **What it is for:** Catalogue of outer mailers/boxes (L×W×H mm, tare grams). Assign on sellable products with goods weight and flat planned postage. Actual postage is recorded on the order shipment, not here.
 
 **Main actions:** Create / edit; set one **default** for new products; deactivate (prefer over delete); delete blocked while products still reference the package.
+
+**With multipacks:** each pack-size SKU usually gets its own package and planned £ (heavier packs → larger mailer/box and higher planned postage).
 
 ---
 
