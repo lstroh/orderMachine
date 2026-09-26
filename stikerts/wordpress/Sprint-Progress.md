@@ -995,3 +995,5 @@ Admin: Settings → MCP checkbox + REST API key; Orders detail → Mark done use
 ## Next
 
 Planned sprints **0–11** (roadmap Phases **1–12**) are complete in code. Remaining follow-ups are operational/manual or earlier deferrals: live OAuth, cancel stock reversal (D3/A3), thank-you field mapping / batching, Cursor Application Password + Claude live connector.
+
+**Update Package 4 (design):** see [`../wordpress v5/01-Update-Overview.md`](../wordpress%20v5/01-Update-Overview.md) — Step Instructions, Order Material Overuse, R&D/budget copy, Internal Products. Kickoff planning via [`../wordpress v5/07-Update-Cursor-Prompt.md`](../wordpress%20v5/07-Update-Cursor-Prompt.md) (produces `Update-4-Sprint-Plan.md`; no plugin code until a sprint is explicitly implemented).
