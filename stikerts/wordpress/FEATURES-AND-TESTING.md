@@ -3,7 +3,7 @@
 *Operators running the shop day to day: start with [`USER-GUIDE.md`](USER-GUIDE.md) (hub), [`USER-WORKFLOWS.md`](USER-WORKFLOWS.md), and [`USER-REFERENCE.md`](USER-REFERENCE.md).*
 
 *Review guide for everything shipped through base Sprints 1–11, Update Package 1 (U1–U7), Update Package 2 (U2-1–U2-5), **and** Update Package 3 (UP3-S1–S4) — plugin **v0.22.0**, schema **1.8.0**.*  
-*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md), [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md), [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md), [`../wordpress v4/Update-3-Sprint-Plan.md`](../wordpress%20v4/Update-3-Sprint-Plan.md), [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md), [`../wordpress v5/01-Update-Overview.md`](../wordpress%20v5/01-Update-Overview.md), [`../wordpress v5/Update-4-Sprint-Plan.md`](../wordpress%20v5/Update-4-Sprint-Plan.md), [`../wordpress v5/Update-4-Sprint-Progress.md`](../wordpress%20v5/Update-4-Sprint-Progress.md) (Package 4 — UP4-S1–S4 done).*
+*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md), [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md), [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md), [`../wordpress v4/Update-3-Sprint-Plan.md`](../wordpress%20v4/Update-3-Sprint-Plan.md), [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md), [`../wordpress v5/01-Update-Overview.md`](../wordpress%20v5/01-Update-Overview.md), [`../wordpress v5/Update-4-Sprint-Plan.md`](../wordpress%20v5/Update-4-Sprint-Plan.md), [`../wordpress v5/Update-4-Sprint-Progress.md`](../wordpress%20v5/Update-4-Sprint-Progress.md) (Package 4 done), [`../wordpress v6/Update-5-Sprint-Plan.md`](../wordpress%20v6/Update-5-Sprint-Plan.md) (Package 5 — UP5-S1 done; S2–S3 next).*
 
 ---
 
@@ -24,6 +24,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Order material overuse (Materials used) | Done (UP4-S2) |
 | Internal products core (Produce N) | Done (UP4-S3) |
 | Internal products UX / guards / analytics | Done (UP4-S4) |
+| Order notes (threaded log) | Done (UP5-S1) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |
@@ -184,6 +185,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Materials used** — planned vs actual recipe materials; raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
 - Stock log for the order available under a details disclosure
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
+- **Notes** — admin-only append-only thread (author, time, plain text); not on Board/list; not via REST/MCP
 - Raw channel payload in a collapsed `<details>` block
 
 **Workflow rules on the order:**

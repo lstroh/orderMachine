@@ -998,4 +998,4 @@ Planned sprints **0–11** (roadmap Phases **1–12**) are complete in code. Rem
 
 **Update Package 4:** design + plan in [`../wordpress v5/`](../wordpress%20v5/); progress in [`../wordpress v5/Update-4-Sprint-Progress.md`](../wordpress%20v5/Update-4-Sprint-Progress.md). **UP4-S1–S4** complete through plugin **0.27.0** / schema **1.12.0**.
 
-**Update Package 5:** design + plan in [`../wordpress v6/`](../wordpress%20v6/) (`Update-5-Sprint-Plan.md`). Order notes → shipping packages/planned postage → multipack docs. Soft defaults in plan unless overturned. Next: implement **UP5-S1** when kicked off.
+**Update Package 5:** design + plan in [`../wordpress v6/`](../wordpress%20v6/); progress in [`../wordpress v6/Update-5-Sprint-Progress.md`](../wordpress%20v6/Update-5-Sprint-Progress.md). **UP5-S1** (order notes) done in plugin **0.28.0** / schema **1.13.0**. Next: **UP5-S2** (shipping packages / planned postage).
