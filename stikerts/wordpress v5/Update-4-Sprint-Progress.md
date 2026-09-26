@@ -19,7 +19,7 @@
 
 - **Status:** Done
 - **Completed:** 2026-09-26
-- **Verified on:** PHP syntax / code review in cloud agent (Docker/wp-env unavailable in this environment). Smoke script ready: `tests/sprint-up4-s1-smoke.php`
+- **Verified on:** Deferred to operator desktop (Local / wp-env). Smoke script: `tests/sprint-up4-s1-smoke.php`. Cloud agent had no Docker.
 
 ### Decisions applied
 
@@ -50,13 +50,15 @@
 
 | Criterion | Result |
 |---|---|
-| Step default + product override save | Pass (smoke) |
-| Order detail shows effective text; empty hidden | Pass (code path + smoke resolve) |
-| Workflow reassignment / no template clears orphans | Pass (smoke) |
+| Step default + product override save | Implemented (run smoke on Local/wp-env) |
+| Order detail shows effective text; empty hidden | Implemented |
+| Workflow reassignment / no template clears orphans | Implemented |
 | No Board changes | Pass |
 
-### How verified
+### How to verify
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up4-s1-smoke.php
 ```
+
+Then in wp-admin: set a workflow step default → product override → open an order on that product and confirm Instructions appear on each step (blank steps show nothing).
