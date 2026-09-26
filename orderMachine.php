@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.25.0
+ * Version:           0.26.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.25.0' );
+define( 'SOM_VERSION', '0.26.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -39,6 +39,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-material-goals.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-budgets.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-products.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-stock.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-production.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflows.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-step-instructions.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-local-actions.php';
@@ -94,6 +95,7 @@ function som_init() {
 	SOM_Channel_Fee_Estimates::ensure_defaults();
 	SOM_Batch_Groups::ensure_rows();
 	SOM_Cron::init();
+	SOM_Production::init();
 	SOM_REST_API::init();
 	SOM_Abilities::init();
 	SOM_Seed::maybe_load_dummy_credentials();

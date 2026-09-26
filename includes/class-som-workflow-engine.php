@@ -1071,6 +1071,12 @@ class SOM_Workflow_Engine {
 				array( '%s', '%d', '%s' ),
 				array( '%d' )
 			);
+			/**
+			 * Fires after an order workflow is marked complete.
+			 *
+			 * @param int $order_id Order PK.
+			 */
+			do_action( SOM_Production::HOOK_ORDER_COMPLETED, (int) $order_id );
 			return true;
 		}
 

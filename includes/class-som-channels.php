@@ -22,13 +22,14 @@ class SOM_Channels {
 			'ebay'     => 'eBay',
 			'etsy'     => 'Etsy',
 			'external' => 'External',
+			'internal' => 'Internal',
 		);
 	}
 
 	/**
-	 * Ensure ebay / etsy / external rows exist (idempotent).
+	 * Ensure ebay / etsy / external / internal rows exist (idempotent).
 	 *
-	 * External is active by default (REST create path; no OAuth).
+	 * External and Internal are active by default (no OAuth).
 	 *
 	 * @return void
 	 */
@@ -46,8 +47,10 @@ class SOM_Channels {
 				)
 			);
 
+			$always_active = in_array( $slug, array( 'external', 'internal' ), true );
+
 			if ( $existing ) {
-				if ( 'external' === $slug ) {
+				if ( $always_active ) {
 					$wpdb->update(
 						$table,
 						array(
@@ -67,7 +70,7 @@ class SOM_Channels {
 				array(
 					'slug'          => $slug,
 					'display_name'  => $display_name,
-					'is_active'     => ( 'external' === $slug ) ? 1 : 0,
+					'is_active'     => $always_active ? 1 : 0,
 					'credentials'   => null,
 					'last_synced_at'=> null,
 					'created_at'    => $now,

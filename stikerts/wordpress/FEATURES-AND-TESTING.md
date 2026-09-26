@@ -3,7 +3,7 @@
 *Operators running the shop day to day: start with [`USER-GUIDE.md`](USER-GUIDE.md) (hub), [`USER-WORKFLOWS.md`](USER-WORKFLOWS.md), and [`USER-REFERENCE.md`](USER-REFERENCE.md).*
 
 *Review guide for everything shipped through base Sprints 1–11, Update Package 1 (U1–U7), Update Package 2 (U2-1–U2-5), **and** Update Package 3 (UP3-S1–S4) — plugin **v0.22.0**, schema **1.8.0**.*  
-*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md), [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md), [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md), [`../wordpress v4/Update-3-Sprint-Plan.md`](../wordpress%20v4/Update-3-Sprint-Plan.md), [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md), [`../wordpress v5/01-Update-Overview.md`](../wordpress%20v5/01-Update-Overview.md), [`../wordpress v5/Update-4-Sprint-Plan.md`](../wordpress%20v5/Update-4-Sprint-Plan.md) (Package 4 design + sprint plan — not implemented yet).*
+*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md), [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md), [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md), [`../wordpress v4/Update-3-Sprint-Plan.md`](../wordpress%20v4/Update-3-Sprint-Plan.md), [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md), [`../wordpress v5/01-Update-Overview.md`](../wordpress%20v5/01-Update-Overview.md), [`../wordpress v5/Update-4-Sprint-Plan.md`](../wordpress%20v5/Update-4-Sprint-Plan.md), [`../wordpress v5/Update-4-Sprint-Progress.md`](../wordpress%20v5/Update-4-Sprint-Progress.md) (Package 4 — UP4-S1–S3 done; S4 next).*
 
 ---
 
@@ -22,6 +22,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Workflow templates + step editor | Done |
 | Step instructions (default + product override) | Done (UP4-S1) |
 | Order material overuse (Materials used) | Done (UP4-S2) |
+| Internal products core (Produce N) | Done (UP4-S3) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | Done (Sprint 9) |
@@ -199,12 +200,14 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 **What you can do:**
 
 - Create / edit name, SKU, active flag
+- Mark as **Internal product** (make-to-stock component) — auto-creates a linked output material; never sold on marketplaces
+- **Produce N** on internal products → Internal-channel production order; inputs reserved now; linked material credited on workflow complete (`production_output`)
 - Assign a **workflow template**
-- Edit the **material recipe** (material + quantity per unit)
+- Edit the **material recipe** (material + quantity per unit; inputs for internal products)
 - Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, fee-aware profit / margin, goal alerts, listing prices side by side)
 - See linked listings (links through to **Listings** admin)
 
-**Products list** also shows costing columns: target price, material cost, **fee-aware margin** with Est. fees / Actual fees badge, goal-alert badges.
+**Products list** also shows costing columns: target price, material cost, **fee-aware margin** with Est. fees / Actual fees badge, goal-alert badges. (Internal badge/filter → UP4-S4.)
 
 Deactivate rather than hard-delete (soft inactive).
 

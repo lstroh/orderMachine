@@ -419,12 +419,14 @@ class SOM_Order_Sync {
 			self::insert_item( $order_id, $channel_id, $item );
 		}
 
-		SOM_Workflow_Engine::assign_on_create( $order_id );
-
+		// Reserve inputs (and fund budgets) before workflow assign so a zero-gate
+		// template that completes immediately can credit production output with COGS.
 		if ( $apply_stock ) {
 			SOM_Material_Stock::decrement_on_create( $order_id );
 			SOM_Budgets::fund_on_create( $order_id );
 		}
+
+		SOM_Workflow_Engine::assign_on_create( $order_id );
 
 		return 'created';
 	}

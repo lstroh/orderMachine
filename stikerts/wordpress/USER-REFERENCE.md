@@ -154,6 +154,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 **Main actions:**
 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
+- Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order)
 - Assign workflow template
 - Edit material recipe (material + qty per unit)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, fee-aware profit/margin, goal alerts, listing prices)

@@ -1284,7 +1284,34 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( 'som-products' !== $page || ! isset( $_POST['som_save_product'] ) ) {
+		if ( 'som-products' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_produce_product'] ) ) {
+			check_admin_referer( 'som_produce_product', 'som_produce_nonce' );
+			$product_id = isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0;
+			$qty        = isset( $_POST['som_produce_qty'] ) ? (int) $_POST['som_produce_qty'] : 0;
+			$result     = SOM_Production::produce( $product_id, $qty );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_produce_error' );
+				wp_safe_redirect( SOM_Products::detail_url( $product_id > 0 ? $product_id : 'new' ) );
+				exit;
+			}
+			self::flash_notice(
+				sprintf(
+					/* translators: %d: order ID */
+					__( 'Production order #%d created.', 'order-machine' ),
+					(int) $result
+				),
+				'success',
+				'som_produce_ok'
+			);
+			wp_safe_redirect( SOM_Orders::detail_url( (int) $result ) );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_product'] ) ) {
 			return;
 		}
 
@@ -1297,6 +1324,7 @@ class SOM_Admin_Menu {
 			'workflow_template_id'  => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
 			'target_selling_price'  => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
 			'is_active'             => ! empty( $_POST['som_product_is_active'] ),
+			'is_internal'           => ! empty( $_POST['som_product_is_internal'] ),
 		);
 
 		if ( $product_id > 0 ) {

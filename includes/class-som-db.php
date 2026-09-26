@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.11.0';
+	const DB_VERSION = '1.12.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -67,11 +67,13 @@ class SOM_DB {
 			unit_cost decimal(10,4) NULL,
 			total_value_on_hand decimal(12,4) NOT NULL DEFAULT 0.0000,
 			preferred_supplier_id bigint(20) unsigned NULL,
+			source_product_id bigint(20) unsigned NULL,
 			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
-			KEY preferred_supplier_id (preferred_supplier_id)
+			KEY preferred_supplier_id (preferred_supplier_id),
+			UNIQUE KEY source_product_id (source_product_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_workflow_templates (
@@ -90,12 +92,15 @@ class SOM_DB {
 			sku varchar(50) NULL,
 			workflow_template_id bigint(20) unsigned NULL,
 			target_selling_price decimal(10,2) NULL,
+			is_internal tinyint(1) NOT NULL DEFAULT 0,
+			linked_material_id bigint(20) unsigned NULL,
 			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY workflow_template_id (workflow_template_id),
-			KEY sku (sku)
+			KEY sku (sku),
+			UNIQUE KEY linked_material_id (linked_material_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_product_materials (

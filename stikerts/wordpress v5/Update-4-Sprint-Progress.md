@@ -10,7 +10,7 @@
 |---|---|---|---|
 | UP4-S1 | Step instructions | Done | Schema 1.11.0; plugin 0.24.0 |
 | UP4-S2 | Order material overuse + R&D copy | Done | Plugin 0.25.0; no schema bump |
-| UP4-S3 | Internal products core | Not started | |
+| UP4-S3 | Internal products core | Done | Schema 1.12.0; plugin 0.26.0 |
 | UP4-S4 | Internal products UX / guards | Not started | |
 
 ---
@@ -116,3 +116,57 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 ```
 
 Then in wp-admin: open an order that reserved materials → **Materials used** → raise Actual → confirm stock, order profit/COGS, and material budget ledger show **Extra material usage**. Confirm Actual cannot go below planned.
+
+---
+
+## UP4-S3 — Internal products core
+
+- **Status:** Done
+- **Completed:** 2026-09-26
+- **Verified on:** Deferred to operator desktop (Local / wp-env). Smoke script: `tests/sprint-up4-s3-smoke.php`. Cloud agent had no Docker.
+
+### Decisions applied
+
+| Topic | Decision |
+|---|---|
+| Discrimination | Channel slug `internal` (no `order_kind` column) |
+| Produce N | One order, quantity N |
+| Input budgets | Fund on create (same `sale_funding` path as sales) |
+| Output costing | `production_output` + WA/`unit_cost` sync from input COGS / N |
+| Inverse link | `materials.source_product_id` |
+| Completion | `som_order_completed` after `is_complete` |
+| Schema | **1.12.0** |
+
+### Files delivered
+
+| File | Purpose |
+|---|---|
+| `includes/class-som-db.php` | `products.is_internal` / `linked_material_id`; `materials.source_product_id`; DB **1.12.0** |
+| `includes/class-som-channels.php` | `internal` channel (always active) |
+| `includes/class-som-production.php` | `produce()`, `on_order_completed` / credit output |
+| `includes/class-som-products.php` | Internal flag, ensure/sync linked material, recipe self-output reject |
+| `includes/class-som-materials.php` | `source_product_id`; `production_output` label |
+| `includes/class-som-order-sync.php` | Reserve/fund before workflow assign |
+| `includes/class-som-workflow-engine.php` | Fire `som_order_completed` |
+| `admin/views/product-edit.php` | Internal toggle, Produce N, linked material |
+| `admin/class-som-admin-menu.php` | Produce + save `is_internal` |
+| `orderMachine.php` | Require + init + version **0.26.0** |
+| `tests/sprint-up4-s3-smoke.php` | Produce N → inputs → complete → output |
+
+### Done-when checklist
+
+| Criterion | Result |
+|---|---|
+| Internal product Produce N | Implemented (run smoke on Local/wp-env) |
+| Job on Internal channel / Orders | Implemented |
+| Complete → linked material +N with input cost | Implemented |
+| Inputs decremented; input budgets funded | Implemented |
+| Thank-you batch untouched | Pass |
+
+### How to verify
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up4-s3-smoke.php
+```
+
+Then in wp-admin: edit an internal product (workflow + recipe) → **Produce N** → open the Internal order → complete remaining steps if any → confirm linked material stock rose and input stock fell.
