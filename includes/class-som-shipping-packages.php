@@ -86,7 +86,7 @@ class SOM_Shipping_Packages {
 		global $wpdb;
 		$table = SOM_DB::table( 'shipping_packages' );
 		$rows  = $wpdb->get_results(
-			"SELECT id, name, length_mm, width_mm, height_mm, tare_weight_grams, is_default
+			"SELECT id, name, length_mm, width_mm, height_mm, tare_weight_grams, is_active, is_default
 			FROM {$table}
 			WHERE is_active = 1
 			ORDER BY is_default DESC, name ASC, id ASC"
