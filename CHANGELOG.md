@@ -19,6 +19,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - Shipping **packages** catalogue + product goods weight / package / planned postage; order planned shipping (seeded on create) vs shipment actual variance; Product Costing includes planned shipping; schema 1.14.0
 - Operator docs: multipack pack sizes = separate SKUs (own recipe + shipping); Package 5 complete (UP5-S1–S3)
 
+### Fixed
+
+- Product edit package dropdown no longer labels active packages as inactive (and shows Default again); hide Planned shipping on internal Product Costing
+
 ## [0.23.0] - 2026-09-16
 
 ### Added

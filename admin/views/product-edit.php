@@ -425,14 +425,16 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 							<span class="som-muted">—</span>
 						<?php endif; ?>
 					</li>
-					<li>
-						<strong><?php echo esc_html__( 'Planned shipping', 'order-machine' ); ?>:</strong>
-						<?php if ( null !== $costing['planned_shipping_gbp'] ) : ?>
-							£<?php echo esc_html( number_format_i18n( (float) $costing['planned_shipping_gbp'], 2 ) ); ?>
-						<?php else : ?>
-							<span class="som-muted"><?php echo esc_html__( 'Not set', 'order-machine' ); ?></span>
-						<?php endif; ?>
-					</li>
+					<?php if ( empty( $product->is_internal ) ) : ?>
+						<li>
+							<strong><?php echo esc_html__( 'Planned shipping', 'order-machine' ); ?>:</strong>
+							<?php if ( null !== $costing['planned_shipping_gbp'] ) : ?>
+								£<?php echo esc_html( number_format_i18n( (float) $costing['planned_shipping_gbp'], 2 ) ); ?>
+							<?php else : ?>
+								<span class="som-muted"><?php echo esc_html__( 'Not set', 'order-machine' ); ?></span>
+							<?php endif; ?>
+						</li>
+					<?php endif; ?>
 					<li>
 						<strong><?php echo esc_html__( 'Profit', 'order-machine' ); ?>:</strong>
 						<?php
