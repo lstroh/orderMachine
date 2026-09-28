@@ -15,7 +15,7 @@ class SOM_Item_Make {
 	/**
 	 * Assign per-line make progress for a newly created order.
 	 *
-	 * Does not create order-level pack progress (UP6-S2). Skips if the order
+	 * Pack bind is separate (`SOM_Pack::bind_on_create`). Skips if the order
 	 * already has item make progress or legacy order_step_progress.
 	 *
 	 * @param int $order_id Order PK.

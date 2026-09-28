@@ -160,6 +160,9 @@ if ( ! empty( $order->raw_payload ) ) {
 		'service'            => $shipment ? (string) $shipment->service : $ship_defaults['service'],
 		'shipped_at'         => $shipment ? SOM_Shipments::shipped_at_date_local( (string) $shipment->shipped_at ) : $ship_defaults['shipped_at'],
 		'postage_paid'       => $shipment ? (string) $shipment->postage_paid : $ship_defaults['postage_paid'],
+		'pack_weight_grams'  => $shipment && isset( $shipment->pack_weight_grams ) && null !== $shipment->pack_weight_grams && '' !== $shipment->pack_weight_grams
+			? (string) $shipment->pack_weight_grams
+			: '',
 		'tracking_number'    => $shipment && $shipment->tracking_number ? (string) $shipment->tracking_number : '',
 		'click_and_drop_ref' => $shipment && $shipment->click_and_drop_ref ? (string) $shipment->click_and_drop_ref : '',
 	);
@@ -271,6 +274,13 @@ if ( ! empty( $order->raw_payload ) ) {
 				<tr>
 					<th scope="row"><label for="som_ship_postage"><?php echo esc_html__( 'Postage paid (GBP)', 'order-machine' ); ?></label></th>
 					<td><input name="som_ship_postage_paid" id="som_ship_postage" type="number" step="0.01" min="0" class="small-text" value="<?php echo esc_attr( $ship_form['postage_paid'] ); ?>" required /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_ship_pack_weight"><?php echo esc_html__( 'Pack weight (g)', 'order-machine' ); ?></label></th>
+					<td>
+						<input name="som_ship_pack_weight_grams" id="som_ship_pack_weight" type="number" step="0.01" min="0" class="small-text" value="<?php echo esc_attr( $ship_form['pack_weight_grams'] ); ?>" />
+						<p class="description"><?php echo esc_html__( 'Optional actual packed weight (goods + package). Does not change postage.', 'order-machine' ); ?></p>
+					</td>
 				</tr>
 				<tr>
 					<th scope="row"><label for="som_ship_tracking"><?php echo esc_html__( 'Tracking number', 'order-machine' ); ?></label></th>
@@ -492,9 +502,157 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 	</section>
 
+	<?php
+	$is_pack_bound = ! empty( $order->pack_workflow_template_id );
+	$buyer_note    = SOM_Pack::buyer_note( $order );
+	$ship_block    = $is_pack_bound || SOM_Production::CHANNEL_SLUG !== (string) $order->channel_slug
+		? SOM_Pack::ship_blocked_reason( $order )
+		: '';
+	$packages_active = SOM_Shipping_Packages::list_active();
+	?>
+	<?php if ( SOM_Production::CHANNEL_SLUG !== (string) $order->channel_slug ) : ?>
+	<section class="som-panel som-panel-pack" id="som-pack">
+		<h2><?php echo esc_html__( 'Pack & Ship', 'order-machine' ); ?></h2>
+		<p class="description">
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=som-pack-board' ) ); ?>"><?php echo esc_html__( 'Open Pack Board', 'order-machine' ); ?></a>
+		</p>
+
+		<?php if ( empty( $order->pack_workflow_template_id ) ) : ?>
+			<div class="notice notice-warning inline">
+				<p><?php echo esc_html__( 'No Pack workflow bound. Choose a default Pack template under Settings (kind Pack), then create new orders — or wait for the migrate repair in UP6-S3.', 'order-machine' ); ?></p>
+			</div>
+		<?php endif; ?>
+
+		<p>
+			<?php if ( SOM_Pack::order_is_make_ready( $order ) ) : ?>
+				<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Make ready', 'order-machine' ); ?></span>
+			<?php else : ?>
+				<span class="som-badge som-badge-needs-workflow"><?php echo esc_html__( 'Waiting for make', 'order-machine' ); ?></span>
+			<?php endif; ?>
+			<?php if ( SOM_Pack::is_held( $order ) ) : ?>
+				<span class="som-badge som-badge-error"><?php echo esc_html__( 'Held', 'order-machine' ); ?></span>
+			<?php endif; ?>
+			<?php if ( '' !== $ship_block ) : ?>
+				<span class="description"><?php echo esc_html( $ship_block ); ?></span>
+			<?php endif; ?>
+		</p>
+
+		<?php if ( ! empty( $order->packed_at ) ) : ?>
+			<p class="description">
+				<?php
+				$packer = ! empty( $order->packed_by_user_id ) ? get_userdata( (int) $order->packed_by_user_id ) : null;
+				printf(
+					/* translators: 1: user display name, 2: datetime */
+					esc_html__( 'Packed by %1$s at %2$s UTC', 'order-machine' ),
+					esc_html( $packer ? $packer->display_name : __( 'Unknown', 'order-machine' ) ),
+					esc_html( (string) $order->packed_at )
+				);
+				?>
+			</p>
+		<?php endif; ?>
+
+		<?php if ( '' !== $buyer_note ) : ?>
+			<div class="som-pack-buyer-note">
+				<h3><?php echo esc_html__( 'Buyer / channel note', 'order-machine' ); ?></h3>
+				<p><?php echo nl2br( esc_html( $buyer_note ) ); ?></p>
+			</div>
+		<?php endif; ?>
+
+		<form method="post" action="" class="som-pack-package-form">
+			<?php wp_nonce_field( 'som_save_pack_package', 'som_order_nonce' ); ?>
+			<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+			<input type="hidden" name="som_save_pack_package" value="1" />
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="som_shipping_package_id"><?php echo esc_html__( 'Shipping package', 'order-machine' ); ?></label></th>
+					<td>
+						<select name="som_shipping_package_id" id="som_shipping_package_id">
+							<option value="0"><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+							<?php foreach ( $packages_active as $pkg ) : ?>
+								<option value="<?php echo esc_attr( (string) (int) $pkg->id ); ?>" <?php selected( (int) ( $order->shipping_package_id ?? 0 ), (int) $pkg->id ); ?>>
+									<?php echo esc_html( (string) $pkg->name ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php echo esc_html__( 'Required before Ship. Product default is a suggestion only.', 'order-machine' ); ?></p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button( __( 'Save package', 'order-machine' ), 'secondary', 'submit', false ); ?>
+		</form>
+
+		<form method="post" action="" class="som-pack-hold-form" style="margin-top:1em;">
+			<?php wp_nonce_field( 'som_save_pack_hold', 'som_order_nonce' ); ?>
+			<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+			<?php if ( SOM_Pack::is_held( $order ) ) : ?>
+				<input type="hidden" name="som_clear_pack_hold" value="1" />
+				<p><strong><?php echo esc_html__( 'Hold reason:', 'order-machine' ); ?></strong> <?php echo esc_html( (string) $order->pack_hold_reason ); ?></p>
+				<?php submit_button( __( 'Clear hold', 'order-machine' ), 'secondary', 'submit', false ); ?>
+			<?php else : ?>
+				<input type="hidden" name="som_set_pack_hold" value="1" />
+				<label for="som_pack_hold_reason"><?php echo esc_html__( 'Hold pack', 'order-machine' ); ?></label>
+				<input type="text" class="regular-text" name="som_pack_hold_reason" id="som_pack_hold_reason" placeholder="<?php echo esc_attr__( 'Reason (required)', 'order-machine' ); ?>" />
+				<?php submit_button( __( 'Hold pack', 'order-machine' ), 'secondary', 'submit', false ); ?>
+			<?php endif; ?>
+		</form>
+
+		<div class="som-pack-print" style="margin-top:1.5em;">
+			<button type="button" class="button" onclick="window.print();"><?php echo esc_html__( 'Print pack list', 'order-machine' ); ?></button>
+			<div class="som-pack-print-sheet">
+				<h3><?php echo esc_html__( 'Pack list', 'order-machine' ); ?></h3>
+				<p>
+					<code><?php echo esc_html( (string) $order->external_order_id ); ?></code>
+					· <?php echo esc_html( (string) $order->channel_name ); ?>
+					· <?php echo esc_html( (string) $order->buyer_name ); ?>
+				</p>
+				<?php if ( '' !== $address_text ) : ?>
+					<address><?php echo nl2br( esc_html( $address_text ) ); ?></address>
+				<?php endif; ?>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Qty', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Item', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Personalisation', 'order-machine' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $order->items as $item ) : ?>
+							<tr>
+								<td><?php echo esc_html( (string) (int) $item->quantity ); ?></td>
+								<td><?php echo esc_html( ! empty( $item->product_name ) ? (string) $item->product_name : __( 'Unmatched', 'order-machine' ) ); ?></td>
+								<td><?php echo esc_html( isset( $item->personalisation_text ) ? (string) $item->personalisation_text : '' ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<p>☐ <?php echo esc_html__( 'Thank-you included', 'order-machine' ); ?></p>
+				<?php if ( '' !== $buyer_note ) : ?>
+					<p><strong><?php echo esc_html__( 'Buyer note:', 'order-machine' ); ?></strong> <?php echo esc_html( $buyer_note ); ?></p>
+				<?php endif; ?>
+			</div>
+		</div>
+	</section>
+	<style>
+		@media print {
+			body * { visibility: hidden !important; }
+			.som-pack-print-sheet, .som-pack-print-sheet * { visibility: visible !important; }
+			.som-pack-print-sheet { position: absolute; left: 0; top: 0; width: 100%; }
+		}
+	</style>
+	<?php endif; ?>
+
 	<?php if ( ! empty( $order->workflow_progress ) ) : ?>
 	<section class="som-panel som-panel-workflow">
-		<h2><?php echo esc_html__( 'Workflow (legacy order-level)', 'order-machine' ); ?></h2>
+		<h2>
+			<?php
+			echo esc_html(
+				$is_pack_bound
+					? __( 'Pack workflow', 'order-machine' )
+					: __( 'Workflow (legacy order-level)', 'order-machine' )
+			);
+			?>
+		</h2>
 		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
 			<p class="description"><?php echo esc_html__( 'Cancelled — workflow actions are blocked.', 'order-machine' ); ?></p>
 		<?php elseif ( ! empty( $order->is_complete ) ) : ?>
@@ -597,7 +755,7 @@ if ( ! empty( $order->raw_payload ) ) {
 							</label>
 
 						<?php elseif ( SOM_Step_Confirmations::KIND_PACKING_ITEMS === $current_confirm_kind ) : ?>
-							<p class="description"><?php echo esc_html__( 'Tick each line once it is in the package.', 'order-machine' ); ?></p>
+							<p class="description"><?php echo esc_html__( 'Tick each line once it is in the package, plus thank-you included.', 'order-machine' ); ?></p>
 							<?php
 							$items_checked = isset( $current_confirm_state['items'] ) && is_array( $current_confirm_state['items'] )
 								? $current_confirm_state['items']
@@ -613,6 +771,12 @@ if ( ! empty( $order->raw_payload ) ) {
 										</label>
 									</li>
 								<?php endforeach; ?>
+								<li>
+									<label class="som-confirm-check">
+										<input type="checkbox" name="som_confirm[thank_you_included]" value="1" <?php checked( ! empty( $current_confirm_state['thank_you_included'] ) ); ?> />
+										<?php echo esc_html__( 'Thank-you included', 'order-machine' ); ?>
+									</label>
+								</li>
 							</ul>
 						<?php endif; ?>
 

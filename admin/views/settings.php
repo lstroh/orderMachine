@@ -18,6 +18,33 @@ $ebay_creds     = SOM_Channels::get_credentials( 'ebay' );
 $etsy_creds     = SOM_Channels::get_credentials( 'etsy' );
 $callback_ebay  = SOM_Settings::oauth_callback_url( 'ebay' );
 $callback_etsy  = SOM_Settings::oauth_callback_url( 'etsy' );
+$pack_tpl_id    = SOM_Pack::default_template_id();
+$pack_templates = SOM_Workflows::query(
+	array(
+		'status'   => 'active',
+		'kind'     => 'pack',
+		'per_page' => 200,
+	)
+);
+$pack_template_rows = isset( $pack_templates['templates'] ) && is_array( $pack_templates['templates'] )
+	? $pack_templates['templates']
+	: array();
+// Keep current selection visible even if inactive.
+if ( $pack_tpl_id > 0 ) {
+	$found = false;
+	foreach ( $pack_template_rows as $row ) {
+		if ( (int) $row->id === $pack_tpl_id ) {
+			$found = true;
+			break;
+		}
+	}
+	if ( ! $found ) {
+		$current_pack = SOM_Workflows::get( $pack_tpl_id );
+		if ( $current_pack ) {
+			array_unshift( $pack_template_rows, $current_pack );
+		}
+	}
+}
 
 $connect_ebay_url = wp_nonce_url(
 	add_query_arg(
@@ -239,6 +266,40 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 
 		<h2><?php echo esc_html__( 'General', 'order-machine' ); ?></h2>
 		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="som_pack_workflow_template_id"><?php echo esc_html__( 'Default Pack workflow', 'order-machine' ); ?></label></th>
+				<td>
+					<select name="som_pack_workflow_template_id" id="som_pack_workflow_template_id">
+						<option value="0"><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
+						<?php foreach ( $pack_template_rows as $pack_tpl ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $pack_tpl->id ); ?>" <?php selected( $pack_tpl_id, (int) $pack_tpl->id ); ?>>
+								<?php
+								$label = (string) $pack_tpl->name;
+								if ( empty( $pack_tpl->is_active ) ) {
+									$label .= ' ' . __( '(inactive)', 'order-machine' );
+								}
+								echo esc_html( $label );
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description">
+						<?php
+						echo esc_html__(
+							'Bound on new non-Internal orders (Pack board / Ship gates). Create a workflow with kind Pack under Workflows. Seed rewrite (UP6-S3) will ship a default Pack template.',
+							'order-machine'
+						);
+						?>
+					</p>
+					<?php if ( empty( $pack_template_rows ) ) : ?>
+						<p class="description">
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=som-workflows' ) ); ?>">
+								<?php echo esc_html__( 'Open Workflows to create a Pack template', 'order-machine' ); ?>
+							</a>
+						</p>
+					<?php endif; ?>
+				</td>
+			</tr>
 			<tr>
 				<th scope="row"><label for="som_n8n_base_url"><?php echo esc_html__( 'n8n base URL', 'order-machine' ); ?></label></th>
 				<td>
