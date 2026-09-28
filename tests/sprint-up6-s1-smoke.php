@@ -115,10 +115,15 @@ $item_count = (int) $wpdb->get_var(
 );
 $assert( 2 === $item_count, 'make_progress_on_2_sellable_lines' );
 
+// Pack bind writes order_step_progress. Legacy means a make template on that table.
 $legacy_count = (int) $wpdb->get_var(
 	$wpdb->prepare(
-		'SELECT COUNT(*) FROM ' . SOM_DB::table( 'order_step_progress' ) . ' WHERE order_id = %d',
-		$order_id
+		'SELECT COUNT(*) FROM ' . SOM_DB::table( 'order_step_progress' ) . ' osp
+		INNER JOIN ' . SOM_DB::table( 'workflow_steps' ) . ' s ON s.id = osp.workflow_step_id
+		INNER JOIN ' . SOM_DB::table( 'workflow_templates' ) . ' t ON t.id = s.workflow_template_id
+		WHERE osp.order_id = %d AND t.kind = %s',
+		$order_id,
+		'make'
 	)
 );
 $assert( 0 === $legacy_count, 'no_legacy_order_progress_on_new_order' );

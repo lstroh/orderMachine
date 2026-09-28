@@ -609,6 +609,8 @@ class SOM_Orders {
 		}
 		$legacy_where[] = "EXISTS (SELECT 1 FROM {$progress_t} osp WHERE osp.order_id = o.id)";
 		$legacy_where[] = "NOT EXISTS (SELECT 1 FROM {$item_prog} ip WHERE ip.order_id = o.id)";
+		// Pack-bound orders use order_step_progress for Pack, not a make chain.
+		$legacy_where[] = 'o.pack_workflow_template_id IS NULL';
 		$legacy_sql     = implode( ' AND ', $legacy_where );
 
 		$legacy_list = "SELECT

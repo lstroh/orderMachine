@@ -639,8 +639,10 @@ class SOM_Item_Make {
 			return '';
 		}
 
-		// Legacy order-level progress still counts as assigned.
-		if ( SOM_Workflow_Engine::has_progress( (int) $order->id ) ) {
+		// Legacy monolithic progress counts as assigned. Pack progress does not —
+		// unmatched lines must still flag needs_mapping after Pack bind.
+		$pack_bound = ! empty( $order->pack_workflow_template_id );
+		if ( ! $pack_bound && SOM_Workflow_Engine::has_progress( (int) $order->id ) ) {
 			return '';
 		}
 
