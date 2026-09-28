@@ -1,6 +1,8 @@
 <?php
 /**
- * Orders Board (Kanban read UI).
+ * Make Board (Kanban of order lines) — Package 6 / UP6-S1.
+ *
+ * Route slug remains som-orders-board.
  *
  * @package OrderMachine
  */
@@ -16,7 +18,7 @@ $product_id  = isset( $_GET['som_product'] ) ? (int) $_GET['som_product'] : 0;
 $workflow_id = isset( $_GET['som_workflow'] ) ? (int) $_GET['som_workflow'] : 0;
 $search      = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 
-$board = SOM_Orders::query_board(
+$board = SOM_Orders::query_make_board(
 	array(
 		'channel'              => $channel,
 		'product_id'           => $product_id,
@@ -25,13 +27,51 @@ $board = SOM_Orders::query_board(
 	)
 );
 
-$orders      = $board['orders'];
-$total       = (int) $board['total'];
-$capped      = ! empty( $board['capped'] );
-$warn        = ! empty( $board['warn'] );
-$columns     = SOM_Orders::board_columns( $orders );
-$pinned_ids  = SOM_Orders::get_board_pinned_ids();
-$pinned_set  = array_fill_keys( $pinned_ids, true );
+$orders         = $board['orders'];
+$total          = (int) $board['total'];
+$capped         = ! empty( $board['capped'] );
+$warn           = ! empty( $board['warn'] );
+$workflow_steps = isset( $board['workflow_steps'] ) ? $board['workflow_steps'] : array();
+$columns        = SOM_Orders::board_columns( $orders );
+$pinned_ids     = SOM_Orders::get_board_pinned_ids();
+$pinned_set     = array_fill_keys( $pinned_ids, true );
+
+// When a make template is selected, show all its make steps as columns (O7).
+if ( $workflow_id > 0 && ! empty( $workflow_steps ) ) {
+	$forced = array();
+	foreach ( $workflow_steps as $step ) {
+		$name = trim( (string) $step->name );
+		if ( '' !== $name ) {
+			$forced[ $name ] = array(
+				'key'   => $name,
+				'label' => $name,
+			);
+		}
+	}
+	foreach ( $columns as $col ) {
+		if ( ! isset( $forced[ $col['key'] ] ) && SOM_Orders::BOARD_UNASSIGNED_KEY !== $col['key'] ) {
+			$forced[ $col['key'] ] = $col;
+		}
+	}
+	// Keep unassigned first if present.
+	$has_unassigned = false;
+	foreach ( $columns as $col ) {
+		if ( SOM_Orders::BOARD_UNASSIGNED_KEY === $col['key'] ) {
+			$has_unassigned = true;
+			break;
+		}
+	}
+	$columns = array_values( $forced );
+	if ( $has_unassigned ) {
+		array_unshift(
+			$columns,
+			array(
+				'key'   => SOM_Orders::BOARD_UNASSIGNED_KEY,
+				'label' => __( 'Unassigned', 'order-machine' ),
+			)
+		);
+	}
+}
 
 $need_complete_zone = false;
 foreach ( $orders as $order ) {
@@ -65,6 +105,7 @@ $products = $products_q['products'];
 $workflows_q = SOM_Workflows::query(
 	array(
 		'status'   => 'active',
+		'kind'     => 'make',
 		'per_page' => 200,
 		'paged'    => 1,
 	)
@@ -74,14 +115,14 @@ $workflows = $workflows_q['templates'];
 $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !== $search );
 ?>
 <div class="wrap som-orders-board-wrap">
-	<h1 class="wp-heading-inline"><?php echo esc_html__( 'Orders Board', 'order-machine' ); ?></h1>
+	<h1 class="wp-heading-inline"><?php echo esc_html__( 'Make Board', 'order-machine' ); ?></h1>
 	<a href="<?php echo esc_url( SOM_Orders::list_url() ); ?>" class="page-title-action">
 		<?php echo esc_html__( 'Orders list', 'order-machine' ); ?>
 	</a>
 	<hr class="wp-header-end" />
 
 	<p class="description">
-		<?php echo esc_html__( 'Open orders only. Completed and cancelled orders stay on the Orders list.', 'order-machine' ); ?>
+		<?php echo esc_html__( 'Production queue by order line. Filter by make workflow to fix columns to that template’s steps. Pack & Ship lands in a later sprint — make-complete lines leave this board.', 'order-machine' ); ?>
 		<a href="<?php echo esc_url( SOM_Orders::list_url( array( 'som_status' => 'complete' ) ) ); ?>">
 			<?php echo esc_html__( 'View history', 'order-machine' ); ?>
 		</a>
@@ -92,8 +133,8 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 			<p>
 				<?php
 				printf(
-					/* translators: 1: total matching orders, 2: hard cap */
-					esc_html__( 'Showing the oldest %2$d of %1$d matching open orders. Narrow filters to see the rest.', 'order-machine' ),
+					/* translators: 1: total matching lines, 2: hard cap */
+					esc_html__( 'Showing the oldest %2$d of %1$d matching open lines. Narrow filters to see the rest.', 'order-machine' ),
 					(int) $total,
 					(int) SOM_Orders::BOARD_CAP
 				);
@@ -105,8 +146,8 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 			<p>
 				<?php
 				printf(
-					/* translators: 1: matching order count, 2: warn threshold */
-					esc_html__( '%1$d open orders match these filters (warning at %2$d). Consider narrowing filters.', 'order-machine' ),
+					/* translators: 1: matching line count, 2: warn threshold */
+					esc_html__( '%1$d open lines match these filters (warning at %2$d). Consider narrowing filters.', 'order-machine' ),
 					(int) $total,
 					(int) SOM_Orders::BOARD_WARN
 				);
@@ -138,9 +179,9 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 			<?php endforeach; ?>
 		</select>
 
-		<label class="screen-reader-text" for="som-board-workflow"><?php echo esc_html__( 'Workflow', 'order-machine' ); ?></label>
+		<label class="screen-reader-text" for="som-board-workflow"><?php echo esc_html__( 'Make workflow', 'order-machine' ); ?></label>
 		<select name="som_workflow" id="som-board-workflow">
-			<option value="0"><?php echo esc_html__( 'All workflows', 'order-machine' ); ?></option>
+			<option value="0"><?php echo esc_html__( 'All make workflows', 'order-machine' ); ?></option>
 			<?php foreach ( $workflows as $wf ) : ?>
 				<option value="<?php echo esc_attr( (string) (int) $wf->id ); ?>" <?php selected( $workflow_id, (int) $wf->id ); ?>>
 					<?php echo esc_html( (string) $wf->name ); ?>
@@ -154,7 +195,7 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 			name="s"
 			id="som-board-search"
 			value="<?php echo esc_attr( $search ); ?>"
-			placeholder="<?php echo esc_attr__( 'Buyer, order ID, personalisation…', 'order-machine' ); ?>"
+			placeholder="<?php echo esc_attr__( 'Buyer, order ID, product, personalisation…', 'order-machine' ); ?>"
 		/>
 
 		<?php submit_button( __( 'Filter', 'order-machine' ), 'secondary', '', false ); ?>
@@ -176,7 +217,7 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 		$shown = count( $orders );
 		printf(
 			/* translators: 1: cards shown, 2: total matching */
-			esc_html__( 'Showing %1$d of %2$d matching open orders', 'order-machine' ),
+			esc_html__( 'Showing %1$d of %2$d matching open lines', 'order-machine' ),
 			(int) $shown,
 			(int) $total
 		);
@@ -184,7 +225,7 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 	</p>
 
 	<?php if ( empty( $columns ) && ! $need_complete_zone ) : ?>
-		<p><?php echo esc_html__( 'No open orders match these filters.', 'order-machine' ); ?></p>
+		<p><?php echo esc_html__( 'No open make lines match these filters.', 'order-machine' ); ?></p>
 	<?php else : ?>
 		<div class="som-board-scroll" data-som-board>
 			<div class="som-board-row">
@@ -208,18 +249,21 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 						<div class="som-board-cards" data-som-sortable-list>
 							<?php foreach ( $col_cards as $order ) : ?>
 								<?php
-								$oid             = (int) $order->id;
+								$oid             = (int) $order->order_id;
+								$item_id         = (int) $order->order_item_id;
 								$detail_url      = SOM_Orders::detail_url( $oid );
 								$is_pinned       = isset( $pinned_set[ $oid ] );
-								$person          = SOM_Orders::truncate_personalisation( (string) $order->personalisation_summary );
+								$person_src      = isset( $order->personalisation_text ) ? (string) $order->personalisation_text : '';
+								$person          = SOM_Orders::truncate_personalisation( $person_src );
 								$status          = (string) $order->progress_status;
 								$timer_ready     = ! empty( $order->timer_ready );
 								$timer_ends_ts   = ! empty( $order->timer_ends_ts ) ? (int) $order->timer_ends_ts : 0;
 								$display_status  = $timer_ready ? 'timer_ready' : $status;
 								$display_slug    = preg_replace( '/[^a-z0-9_]/', '', $display_status );
 								$time_label      = SOM_Orders::format_time_in_step( $order->step_started_at );
-								$product_id_card = ! empty( $order->primary_product_id ) ? (int) $order->primary_product_id : 0;
+								$product_id_card = ! empty( $order->product_id ) ? (int) $order->product_id : 0;
 								$product_url     = $product_id_card > 0 ? SOM_Products::detail_url( $product_id_card ) : '';
+								$product_label   = isset( $order->product_name ) ? (string) $order->product_name : '';
 								$can_advance     = ! empty( $order->can_advance );
 								$is_last_step    = ! empty( $order->is_last_step );
 								$next_step_name  = (string) ( $order->next_step_name ?? '' );
@@ -227,8 +271,8 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 									trim(
 										(string) $order->buyer_name . ' ' .
 										(string) $order->external_order_id . ' ' .
-										(string) $order->products_summary . ' ' .
-										(string) $order->personalisation_summary
+										$product_label . ' ' .
+										$person_src
 									)
 								);
 								$card_classes = 'som-board-card';
@@ -245,6 +289,7 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 								<article
 									class="<?php echo esc_attr( $card_classes ); ?>"
 									data-som-order-id="<?php echo esc_attr( (string) $oid ); ?>"
+									data-som-order-item-id="<?php echo esc_attr( (string) $item_id ); ?>"
 									data-som-pinned="<?php echo $is_pinned ? '1' : '0'; ?>"
 									data-som-channel="<?php echo esc_attr( (string) $order->channel_slug ); ?>"
 									data-som-search="<?php echo esc_attr( $search_blob ); ?>"
@@ -277,6 +322,11 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 										<a href="<?php echo esc_url( $detail_url ); ?>">
 											<code><?php echo esc_html( (string) $order->external_order_id ); ?></code>
 										</a>
+										<?php if ( $item_id > 0 ) : ?>
+											<span class="som-muted"> · <?php echo esc_html( sprintf( /* translators: %d: line id */ __( 'Line #%d', 'order-machine' ), $item_id ) ); ?></span>
+										<?php else : ?>
+											<span class="som-muted"> · <?php echo esc_html__( 'Legacy', 'order-machine' ); ?></span>
+										<?php endif; ?>
 									</div>
 
 									<div class="som-board-card-buyer"><?php echo esc_html( (string) $order->buyer_name ); ?></div>
@@ -284,10 +334,13 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 									<div class="som-board-card-product">
 										<?php if ( $product_url ) : ?>
 											<a href="<?php echo esc_url( $product_url ); ?>">
-												<?php echo esc_html( (string) $order->products_summary ); ?>
+												<?php echo esc_html( $product_label ); ?>
 											</a>
 										<?php else : ?>
-											<?php echo esc_html( (string) $order->products_summary ); ?>
+											<?php echo esc_html( $product_label !== '' ? $product_label : __( 'Unmatched', 'order-machine' ) ); ?>
+										<?php endif; ?>
+										<?php if ( ! empty( $order->quantity ) && (int) $order->quantity > 1 ) : ?>
+											<span class="som-muted"> ×<?php echo esc_html( (string) (int) $order->quantity ); ?></span>
 										<?php endif; ?>
 									</div>
 
@@ -361,7 +414,7 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 						</div>
 					</section>
 				<?php endforeach; ?>
-			</div>
+				</div>
 
 				<?php if ( $need_complete_zone ) : ?>
 					<section
@@ -371,12 +424,12 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 					>
 						<header class="som-board-column-header">
 							<div class="som-board-column-title">
-								<strong><?php echo esc_html__( 'Complete', 'order-machine' ); ?></strong>
+								<strong><?php echo esc_html__( 'Ready to pack', 'order-machine' ); ?></strong>
 								<span class="som-board-column-count">0</span>
 							</div>
 						</header>
 						<div class="som-board-cards" data-som-sortable-list>
-							<p class="som-muted som-board-complete-hint" data-som-complete-hint><?php echo esc_html__( 'Drop final-step orders here to complete.', 'order-machine' ); ?></p>
+							<p class="som-muted som-board-complete-hint" data-som-complete-hint><?php echo esc_html__( 'Drop final make-step lines here to mark make-complete.', 'order-machine' ); ?></p>
 						</div>
 					</section>
 				<?php endif; ?>

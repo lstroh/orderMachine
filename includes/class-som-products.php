@@ -996,15 +996,23 @@ class SOM_Products {
 		}
 
 		global $wpdb;
-		$exists = (int) $wpdb->get_var(
+		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT id FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
+				'SELECT id, kind FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
 				$id
 			)
 		);
 
-		if ( ! $exists ) {
+		if ( ! $row ) {
 			return new WP_Error( 'som_workflow_missing', __( 'Selected workflow template was not found.', 'order-machine' ) );
+		}
+
+		$kind = isset( $row->kind ) ? sanitize_key( (string) $row->kind ) : 'make';
+		if ( 'pack' === $kind ) {
+			return new WP_Error(
+				'som_workflow_kind',
+				__( 'Products can only use Make workflow templates.', 'order-machine' )
+			);
 		}
 
 		return $id;

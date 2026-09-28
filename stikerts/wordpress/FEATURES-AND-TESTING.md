@@ -17,7 +17,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Channel settings + OAuth / dummy credentials | Done |
 | Order sync (incremental + history import) | Done |
 | Orders list + detail UI | Done |
-| Orders Board (Kanban + gated DnD) | Done (U2-4 / U2-5) |
+| Make Board (line Kanban + gated DnD) | Done (UP6-S1; was Orders Board) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
 | Step instructions (default + product override) | Done (UP4-S1) |
@@ -95,7 +95,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 |---|---|---|
 | **Orders** | `som-orders` | List, filters, badges; open a row for detail |
 | Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
-| **Orders Board** | `som-orders-board` | Kanban of open orders by current step; pins, filters, gated drag-and-drop |
+| **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop (Pack board = UP6-S2) |
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, recipe, Product Costing |
 | **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history, R&D write-off |
 | **Budgets** | `som-budgets` | Material + manual budgets; balances, ledger, adjustments, R&D write-off |
@@ -192,7 +192,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 **Workflow rules on the order:**
 
-- One workflow per order, from the **primary product** = first line item with a non-null `product_id`
+- **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Pack & Ship binding = UP6-S2. Legacy open orders may still show order-level progress.
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
 - Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
 

@@ -30,9 +30,32 @@ class SOM_Workflows {
 	}
 
 	/**
+	 * Allowed template kinds.
+	 *
+	 * @return array<string, string> kind => label
+	 */
+	public static function kind_choices() {
+		return array(
+			'make' => __( 'Make', 'order-machine' ),
+			'pack' => __( 'Pack', 'order-machine' ),
+		);
+	}
+
+	/**
+	 * Sanitize template kind.
+	 *
+	 * @param mixed $kind Raw kind.
+	 * @return string make|pack
+	 */
+	public static function sanitize_kind( $kind ) {
+		$kind = sanitize_key( (string) $kind );
+		return 'pack' === $kind ? 'pack' : 'make';
+	}
+
+	/**
 	 * Query templates for the admin list.
 	 *
-	 * @param array<string, mixed> $args Filters: status, s, paged, per_page.
+	 * @param array<string, mixed> $args Filters: status, kind, s, paged, per_page.
 	 * @return array{templates: array<int, object>, total: int, pages: int, paged: int}
 	 */
 	public static function query( array $args = array() ) {
@@ -40,6 +63,7 @@ class SOM_Workflows {
 
 		$defaults = array(
 			'status'   => 'active',
+			'kind'     => '',
 			's'        => '',
 			'paged'    => 1,
 			'per_page' => self::PER_PAGE,
@@ -58,6 +82,12 @@ class SOM_Workflows {
 			$where[] = 't.is_active = 1';
 		} elseif ( 'inactive' === $status ) {
 			$where[] = 't.is_active = 0';
+		}
+
+		$kind = sanitize_key( (string) $args['kind'] );
+		if ( 'make' === $kind || 'pack' === $kind ) {
+			$where[]  = 't.kind = %s';
+			$params[] = $kind;
 		}
 
 		$search = trim( (string) $args['s'] );
@@ -109,7 +139,7 @@ class SOM_Workflows {
 	}
 
 	/**
-	 * Active templates for product assignment dropdowns.
+	 * Active templates for product assignment dropdowns (make kind only).
 	 *
 	 * @param int $include_id Also include this template even if inactive (current assignment).
 	 * @return array<int, object>
@@ -123,16 +153,16 @@ class SOM_Workflows {
 		if ( $include_id > 0 ) {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT id, name, is_active FROM {$table}
-					WHERE is_active = 1 OR id = %d
+					"SELECT id, name, is_active, kind FROM {$table}
+					WHERE ( ( is_active = 1 AND kind = 'make' ) OR id = %d )
 					ORDER BY is_active DESC, name ASC, id ASC",
 					$include_id
 				)
 			);
 		} else {
 			$rows = $wpdb->get_results(
-				"SELECT id, name, is_active FROM {$table}
-				WHERE is_active = 1
+				"SELECT id, name, is_active, kind FROM {$table}
+				WHERE is_active = 1 AND kind = 'make'
 				ORDER BY name ASC, id ASC"
 			);
 		}
@@ -222,7 +252,7 @@ class SOM_Workflows {
 	/**
 	 * Create a template (optionally with initial steps).
 	 *
-	 * @param array<string, mixed> $data Fields: name, description, is_active.
+	 * @param array<string, mixed> $data Fields: name, description, is_active, kind.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -234,6 +264,7 @@ class SOM_Workflows {
 		}
 
 		$description = isset( $data['description'] ) ? sanitize_textarea_field( (string) $data['description'] ) : '';
+		$kind        = self::sanitize_kind( isset( $data['kind'] ) ? $data['kind'] : 'make' );
 		$now         = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
@@ -241,11 +272,12 @@ class SOM_Workflows {
 			array(
 				'name'        => $name,
 				'description' => '' !== $description ? $description : null,
+				'kind'        => $kind,
 				'is_active'   => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
 				'created_at'  => $now,
 				'updated_at'  => $now,
 			),
-			array( '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -303,6 +335,17 @@ class SOM_Workflows {
 			$format[]            = '%d';
 		}
 
+		if ( array_key_exists( 'kind', $data ) ) {
+			$fields['kind'] = self::sanitize_kind( $data['kind'] );
+			$format[]       = '%s';
+			if ( 'pack' === $fields['kind'] && (int) $existing->product_count > 0 ) {
+				return new WP_Error(
+					'som_workflow_kind_pack',
+					__( 'Cannot set kind to Pack while products still use this template.', 'order-machine' )
+				);
+			}
+		}
+
 		$updated = $wpdb->update(
 			SOM_DB::table( 'workflow_templates' ),
 			$fields,
@@ -329,12 +372,14 @@ class SOM_Workflows {
 		global $wpdb;
 
 		$template_id = (int) $template_id;
-		if ( ! self::get( $template_id ) ) {
+		$template    = self::get( $template_id );
+		if ( ! $template ) {
 			return new WP_Error( 'som_workflow_missing', __( 'Workflow template not found.', 'order-machine' ) );
 		}
 
-		$normalized = array();
-		$order      = 0;
+		$template_kind = self::sanitize_kind( isset( $template->kind ) ? $template->kind : 'make' );
+		$normalized    = array();
+		$order         = 0;
 
 		foreach ( $steps as $row ) {
 			if ( ! is_array( $row ) ) {
@@ -362,6 +407,13 @@ class SOM_Workflows {
 			$batch_group_id = self::resolve_batch_group_id( $row, $step_id, $template_id );
 			if ( is_wp_error( $batch_group_id ) ) {
 				return $batch_group_id;
+			}
+
+			if ( $batch_group_id && 'make' === $template_kind ) {
+				return new WP_Error(
+					'som_make_no_batch',
+					__( 'Make templates cannot use batch groups. Remove the batch assignment from this step.', 'order-machine' )
+				);
 			}
 
 			$manual = ! empty( $row['requires_manual_confirm'] ) ? 1 : 0;

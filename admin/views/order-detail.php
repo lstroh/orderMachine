@@ -97,9 +97,11 @@ if ( ! empty( $order->raw_payload ) ) {
 			<p>
 				<?php
 				if ( 'needs_mapping' === $order->workflow_unassigned ) {
-					echo esc_html__( 'No workflow assigned: no matched product on this order (primary product rule).', 'order-machine' );
+					echo esc_html__( 'No make workflow: one or more lines have no matched product.', 'order-machine' );
+				} elseif ( 'partial' === $order->workflow_unassigned ) {
+					echo esc_html__( 'Some lines are unmatched or missing a make template — Ship will stay blocked for those lines until fixed.', 'order-machine' );
 				} else {
-					echo esc_html__( 'No workflow assigned: the primary product has no workflow template. Assign one on the product edit screen.', 'order-machine' );
+					echo esc_html__( 'No make workflow: matched products have no make template. Assign one on the product edit screen.', 'order-machine' );
 				}
 				?>
 			</p>
@@ -325,14 +327,178 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 	</section>
 
+	<section class="som-panel som-panel-make">
+		<h2><?php echo esc_html__( 'Make', 'order-machine' ); ?></h2>
+		<p class="description">
+			<a href="<?php echo esc_url( SOM_Orders::board_url() ); ?>"><?php echo esc_html__( 'Open Make Board', 'order-machine' ); ?></a>
+			— <?php echo esc_html__( 'Pack & Ship controls arrive in UP6-S2.', 'order-machine' ); ?>
+		</p>
+		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
+			<p class="description"><?php echo esc_html__( 'Cancelled — make actions are blocked.', 'order-machine' ); ?></p>
+		<?php elseif ( empty( $order->make_lines ) ) : ?>
+			<p class="som-muted"><?php echo esc_html__( 'No line items on this order.', 'order-machine' ); ?></p>
+		<?php else : ?>
+			<?php foreach ( $order->make_lines as $make_item ) : ?>
+				<?php
+				$line_id       = (int) $make_item->id;
+				$line_product  = (string) ( $make_item->product_name ?? '' );
+				$line_person   = isset( $make_item->personalisation_text ) ? trim( (string) $make_item->personalisation_text ) : '';
+				$is_internal_l = ! empty( $make_item->product_is_internal );
+				$line_complete = ! empty( $make_item->make_complete );
+				$line_progress = isset( $make_item->make_progress ) && is_array( $make_item->make_progress ) ? $make_item->make_progress : array();
+				$line_current  = isset( $make_item->make_current ) ? $make_item->make_current : null;
+				$product_id_l  = isset( $make_item->product_id ) ? (int) $make_item->product_id : 0;
+				?>
+				<div class="som-make-line" data-som-order-item-id="<?php echo esc_attr( (string) $line_id ); ?>">
+					<h3>
+						<?php
+						printf(
+							/* translators: 1: quantity, 2: product name */
+							esc_html__( '%1$d× %2$s', 'order-machine' ),
+							(int) $make_item->quantity,
+							$line_product !== '' ? $line_product : __( 'Unmatched item', 'order-machine' )
+						);
+						?>
+						<?php if ( $is_internal_l ) : ?>
+							<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Pack-ready (internal)', 'order-machine' ); ?></span>
+						<?php elseif ( $line_complete ) : ?>
+							<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Ready to pack', 'order-machine' ); ?></span>
+						<?php elseif ( empty( $line_progress ) ) : ?>
+							<span class="som-badge som-badge-needs-workflow"><?php echo esc_html__( 'No make progress', 'order-machine' ); ?></span>
+						<?php endif; ?>
+					</h3>
+					<?php if ( '' !== $line_person ) : ?>
+						<p class="som-personalisation-snippet"><?php echo esc_html( $line_person ); ?></p>
+					<?php endif; ?>
+
+					<?php if ( $is_internal_l || $line_complete || empty( $line_progress ) ) : ?>
+						<?php /* status badge above is enough */ ?>
+					<?php else : ?>
+						<?php
+						$line_confirm_kind  = null;
+						$line_confirm_state = array();
+						if ( $line_current ) {
+							$line_confirm_kind  = SOM_Step_Confirmations::sanitize_kind(
+								isset( $line_current->confirmation_kind ) ? $line_current->confirmation_kind : null
+							);
+							$line_confirm_state = SOM_Step_Confirmations::decode_state( $line_current );
+						}
+						?>
+						<?php if ( $line_confirm_kind && empty( $order->is_cancelled ) && empty( $order->is_complete ) ) : ?>
+							<div class="som-confirmation-panel">
+								<h4><?php echo esc_html__( 'Confirmation checklist', 'order-machine' ); ?></h4>
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>">
+									<?php wp_nonce_field( 'som_save_confirmation', 'som_order_nonce' ); ?>
+									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+									<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
+									<input type="hidden" name="som_save_confirmation" value="1" />
+									<?php if ( SOM_Step_Confirmations::KIND_PRINT_VS_REQUEST === $line_confirm_kind ) : ?>
+										<label class="som-confirm-check">
+											<input type="checkbox" name="som_confirm[print_matches_request]" value="1" <?php checked( ! empty( $line_confirm_state['print_matches_request'] ) ); ?> />
+											<?php echo esc_html__( 'I confirmed the print matches the client request', 'order-machine' ); ?>
+										</label>
+									<?php endif; ?>
+									<?php
+									submit_button( __( 'Save checklist', 'order-machine' ), 'secondary', 'submit', false );
+									$line_confirm_ok = $line_current && SOM_Step_Confirmations::is_complete( $line_confirm_kind, $line_confirm_state, $order );
+									?>
+									<?php if ( $line_confirm_ok ) : ?>
+										<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Checklist complete', 'order-machine' ); ?></span>
+									<?php endif; ?>
+								</form>
+							</div>
+						<?php endif; ?>
+
+						<ol class="som-workflow-progress">
+							<?php foreach ( $line_progress as $row ) : ?>
+								<?php
+								$is_current = $line_current && (int) $row->id === (int) $line_current->id;
+								$status     = (string) $row->status;
+								$step_instructions = SOM_Step_Instructions::effective(
+									$product_id_l,
+									(int) $row->workflow_step_id
+								);
+								$step_obj = (object) array(
+									'name'                    => $row->step_name,
+									'timer_seconds'           => $row->timer_seconds,
+									'requires_manual_confirm' => $row->requires_manual_confirm,
+									'script_config'           => $row->script_config,
+									'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
+									'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
+								);
+								$can_done    = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
+								$timer_ends  = ! empty( $row->timer_ends_at ) ? (string) $row->timer_ends_at : '';
+								$ends_ts     = $timer_ends ? strtotime( $timer_ends . ' UTC' ) : 0;
+								if ( ! $ends_ts && $timer_ends ) {
+									$ends_ts = strtotime( $timer_ends );
+								}
+								$timer_ready  = $is_current && SOM_Workflow_Engine::is_timer_ready( $row );
+								$badge_status = $timer_ready ? 'timer_ready' : $status;
+								$step_classes = 'som-workflow-step';
+								if ( $is_current ) {
+									$step_classes .= ' is-current';
+								}
+								$step_classes .= ' status-' . $status;
+								?>
+								<li class="<?php echo esc_attr( $step_classes ); ?>">
+									<div class="som-workflow-step-main">
+										<strong><?php echo esc_html( (string) $row->step_name ); ?></strong>
+										<span class="som-badge som-badge-step-<?php echo esc_attr( preg_replace( '/[^a-z0-9_]/', '', $badge_status ) ); ?>">
+											<?php echo esc_html( SOM_Orders::progress_status_label( $badge_status ) ); ?>
+										</span>
+									</div>
+									<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
+										<div class="som-step-instructions">
+											<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
+											<div class="som-step-instructions-body"><?php echo esc_html( $step_instructions ); ?></div>
+										</div>
+									<?php endif; ?>
+									<?php if ( $is_current && $timer_ready ) : ?>
+										<p class="description"><?php echo esc_html__( 'Timer ready — you can Mark done.', 'order-machine' ); ?></p>
+									<?php elseif ( $is_current && 'waiting_timer' === $status && $ends_ts ) : ?>
+										<p class="description">
+											<?php
+											printf(
+												/* translators: %s: datetime */
+												esc_html__( 'Unlocks at %s UTC', 'order-machine' ),
+												esc_html( gmdate( 'Y-m-d H:i:s', $ends_ts ) )
+											);
+											?>
+										</p>
+									<?php endif; ?>
+									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && 'waiting_script' !== $status ) : ?>
+										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
+											<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
+											<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+											<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
+											<input type="hidden" name="som_mark_step_done" value="1" />
+											<?php
+											submit_button(
+												__( 'Mark done', 'order-machine' ),
+												'primary',
+												'submit',
+												false,
+												$can_done ? array() : array( 'disabled' => 'disabled' )
+											);
+											?>
+										</form>
+									<?php endif; ?>
+								</li>
+							<?php endforeach; ?>
+						</ol>
+					<?php endif; ?>
+				</div>
+			<?php endforeach; ?>
+		<?php endif; ?>
+	</section>
+
+	<?php if ( ! empty( $order->workflow_progress ) ) : ?>
 	<section class="som-panel som-panel-workflow">
-		<h2><?php echo esc_html__( 'Workflow', 'order-machine' ); ?></h2>
+		<h2><?php echo esc_html__( 'Workflow (legacy order-level)', 'order-machine' ); ?></h2>
 		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
 			<p class="description"><?php echo esc_html__( 'Cancelled — workflow actions are blocked.', 'order-machine' ); ?></p>
 		<?php elseif ( ! empty( $order->is_complete ) ) : ?>
 			<p><span class="som-badge som-badge-complete"><?php echo esc_html__( 'Workflow complete', 'order-machine' ); ?></span></p>
-		<?php elseif ( empty( $order->workflow_progress ) ) : ?>
-			<p class="som-muted"><?php echo esc_html__( 'No workflow progress for this order.', 'order-machine' ); ?></p>
 		<?php else : ?>
 			<?php
 			$current_confirm_kind  = null;
@@ -641,6 +807,7 @@ if ( ! empty( $order->raw_payload ) ) {
 			</ol>
 		<?php endif; ?>
 	</section>
+	<?php endif; ?>
 
 	<section class="som-panel som-panel-stock">
 		<h2><?php echo esc_html__( 'Materials used', 'order-machine' ); ?></h2>

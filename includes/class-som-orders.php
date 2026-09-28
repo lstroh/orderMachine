@@ -368,6 +368,32 @@ class SOM_Orders {
 			}
 		}
 
+		// Per-line make (Package 6).
+		$order->uses_item_make = SOM_Item_Make::has_item_progress( $order_id );
+		$order->make_lines     = array();
+		if ( ! empty( $order->items ) && is_array( $order->items ) ) {
+			global $wpdb;
+			$products_t = SOM_DB::table( 'products' );
+			foreach ( $order->items as $item ) {
+				$product_id = isset( $item->product_id ) ? (int) $item->product_id : 0;
+				$product    = null;
+				if ( $product_id > 0 ) {
+					$product = $wpdb->get_row(
+						$wpdb->prepare(
+							"SELECT id, name, is_internal, workflow_template_id FROM {$products_t} WHERE id = %d LIMIT 1",
+							$product_id
+						)
+					);
+				}
+				$item->product_name       = $product ? (string) $product->name : '';
+				$item->product_is_internal = $product && ! empty( $product->is_internal );
+				$item->make_progress      = SOM_Item_Make::get_item_progress( (int) $item->id );
+				$item->make_current       = SOM_Item_Make::current_item_progress( (int) $item->id );
+				$item->make_complete      = SOM_Item_Make::item_is_make_complete( $item, $product );
+				$order->make_lines[]      = $item;
+			}
+		}
+
 		$order->stock_summary  = SOM_Material_Stock::get_order_summary( $order_id );
 		$order->materials_used = SOM_Material_Stock::get_usage_by_material( $order_id );
 		$order->platform_fees  = SOM_Platform_Fee_Sync::list_order_fees( $order_id );
@@ -433,7 +459,7 @@ class SOM_Orders {
 	}
 
 	/**
-	 * Admin URL for the Order Board.
+	 * Admin URL for the Make Board (repurposed Orders Board route).
 	 *
 	 * @param array<string, scalar> $args Extra query args.
 	 * @return string
@@ -441,6 +467,298 @@ class SOM_Orders {
 	public static function board_url( array $args = array() ) {
 		$args = array_merge( array( 'page' => 'som-orders-board' ), $args );
 		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
+
+	/**
+	 * Make board: open order lines with in-progress make (Package 6).
+	 *
+	 * Also includes legacy order-level cards (order_item_id = 0) for open orders
+	 * that still have order_step_progress and no item make rows.
+	 *
+	 * @param array<string, mixed> $args Filters: channel, product_id, workflow_template_id, s.
+	 * @return array{orders: array<int, object>, total: int, capped: bool, warn: bool, workflow_steps: array<int, object>}
+	 */
+	public static function query_make_board( array $args = array() ) {
+		global $wpdb;
+
+		$defaults = array(
+			'channel'              => '',
+			'product_id'           => 0,
+			'workflow_template_id' => 0,
+			's'                    => '',
+		);
+		$args     = wp_parse_args( $args, $defaults );
+
+		$orders_t   = SOM_DB::table( 'orders' );
+		$channels_t = SOM_DB::table( 'channels' );
+		$items_t    = SOM_DB::table( 'order_items' );
+		$products_t = SOM_DB::table( 'products' );
+		$steps_t    = SOM_DB::table( 'workflow_steps' );
+		$item_prog  = SOM_DB::table( 'order_item_step_progress' );
+		$progress_t = SOM_DB::table( 'order_step_progress' );
+
+		$cancelled = self::cancelled_sql( 'o', 'c' );
+		$where     = array( 'o.is_complete = 0', "NOT {$cancelled}" );
+		$params    = array();
+
+		$channel = sanitize_key( (string) $args['channel'] );
+		if ( $channel && isset( SOM_Channels::known()[ $channel ] ) ) {
+			$where[]  = 'c.slug = %s';
+			$params[] = $channel;
+		}
+
+		$product_id = (int) $args['product_id'];
+		if ( $product_id > 0 ) {
+			$where[]  = 'oi.product_id = %d';
+			$params[] = $product_id;
+		}
+
+		$workflow_id = (int) $args['workflow_template_id'];
+		if ( $workflow_id > 0 ) {
+			$where[]  = 'p.workflow_template_id = %d';
+			$params[] = $workflow_id;
+		}
+
+		$search = trim( (string) $args['s'] );
+		if ( '' !== $search ) {
+			$like     = '%' . $wpdb->esc_like( $search ) . '%';
+			$where[]  = '( o.buyer_name LIKE %s OR o.external_order_id LIKE %s OR oi.personalisation_text LIKE %s OR p.name LIKE %s )';
+			$params[] = $like;
+			$params[] = $like;
+			$params[] = $like;
+			$params[] = $like;
+		}
+
+		$where_sql = implode( ' AND ', $where );
+		$cap       = self::BOARD_CAP;
+
+		// Current make step = first non-done progress row by step_order.
+		$list_sql = "SELECT
+				o.id AS order_id,
+				oi.id AS order_item_id,
+				o.channel_id,
+				o.external_order_id,
+				o.order_date,
+				o.buyer_name,
+				o.is_complete,
+				c.slug AS channel_slug,
+				c.display_name AS channel_name,
+				oi.product_id,
+				oi.quantity,
+				oi.personalisation_text,
+				p.name AS product_name,
+				p.is_internal AS product_is_internal,
+				p.workflow_template_id,
+				cur.workflow_step_id AS current_step_id,
+				cur.status AS progress_status,
+				cur.timer_ends_at,
+				cur.started_at AS step_started_at,
+				s.name AS current_step_name,
+				s.step_order AS current_step_order,
+				s.confirmation_kind
+			FROM {$item_prog} cur
+			INNER JOIN {$items_t} oi ON oi.id = cur.order_item_id
+			INNER JOIN {$orders_t} o ON o.id = oi.order_id
+			INNER JOIN {$channels_t} c ON c.id = o.channel_id
+			LEFT JOIN {$products_t} p ON p.id = oi.product_id
+			INNER JOIN {$steps_t} s ON s.id = cur.workflow_step_id
+			WHERE {$where_sql}
+				AND cur.status <> 'done'
+				AND cur.id = (
+					SELECT p2.id FROM {$item_prog} p2
+					INNER JOIN {$steps_t} s2 ON s2.id = p2.workflow_step_id
+					WHERE p2.order_item_id = cur.order_item_id
+						AND p2.status <> 'done'
+					ORDER BY s2.step_order ASC, s2.id ASC
+					LIMIT 1
+				)
+			ORDER BY o.order_date ASC, o.id ASC, oi.id ASC
+			LIMIT %d";
+
+		$list_params = array_merge( $params, array( $cap ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$lines = $wpdb->get_results( $wpdb->prepare( $list_sql, $list_params ) );
+		if ( ! is_array( $lines ) ) {
+			$lines = array();
+		}
+
+		// Legacy bridge: order-level progress without item make.
+		$legacy_where = array( 'o.is_complete = 0', "NOT {$cancelled}" );
+		$legacy_params = array();
+		if ( $channel && isset( SOM_Channels::known()[ $channel ] ) ) {
+			$legacy_where[]  = 'c.slug = %s';
+			$legacy_params[] = $channel;
+		}
+		if ( $product_id > 0 ) {
+			$legacy_where[]  = "EXISTS (SELECT 1 FROM {$items_t} oi_pf WHERE oi_pf.order_id = o.id AND oi_pf.product_id = %d)";
+			$legacy_params[] = $product_id;
+		}
+		if ( $workflow_id > 0 ) {
+			$legacy_where[]  = "EXISTS (
+				SELECT 1 FROM {$items_t} oi_wf
+				INNER JOIN {$products_t} p_wf ON p_wf.id = oi_wf.product_id
+				WHERE oi_wf.order_id = o.id AND p_wf.workflow_template_id = %d
+			)";
+			$legacy_params[] = $workflow_id;
+		}
+		if ( '' !== $search ) {
+			$like = '%' . $wpdb->esc_like( $search ) . '%';
+			$legacy_where[]  = '( o.buyer_name LIKE %s OR o.external_order_id LIKE %s )';
+			$legacy_params[] = $like;
+			$legacy_params[] = $like;
+		}
+		$legacy_where[] = "EXISTS (SELECT 1 FROM {$progress_t} osp WHERE osp.order_id = o.id)";
+		$legacy_where[] = "NOT EXISTS (SELECT 1 FROM {$item_prog} ip WHERE ip.order_id = o.id)";
+		$legacy_sql     = implode( ' AND ', $legacy_where );
+
+		$legacy_list = "SELECT
+				o.id AS order_id,
+				0 AS order_item_id,
+				o.channel_id,
+				o.external_order_id,
+				o.order_date,
+				o.buyer_name,
+				o.is_complete,
+				o.current_step_id,
+				c.slug AS channel_slug,
+				c.display_name AS channel_name,
+				( SELECT oi_p.product_id FROM {$items_t} oi_p
+					WHERE oi_p.order_id = o.id AND oi_p.product_id IS NOT NULL
+					ORDER BY oi_p.id ASC LIMIT 1 ) AS product_id,
+				1 AS quantity,
+				( SELECT GROUP_CONCAT( NULLIF( oi_x.personalisation_text, '' ) ORDER BY oi_x.id SEPARATOR ' / ' )
+					FROM {$items_t} oi_x WHERE oi_x.order_id = o.id ) AS personalisation_text,
+				( SELECT GROUP_CONCAT( COALESCE( p.name, 'Unmatched' ) ORDER BY oi_p.id SEPARATOR ', ' )
+					FROM {$items_t} oi_p
+					LEFT JOIN {$products_t} p ON p.id = oi_p.product_id
+					WHERE oi_p.order_id = o.id ) AS product_name,
+				0 AS product_is_internal,
+				( SELECT p_prim.workflow_template_id FROM {$items_t} oi_prim
+					INNER JOIN {$products_t} p_prim ON p_prim.id = oi_prim.product_id
+					WHERE oi_prim.order_id = o.id AND oi_prim.product_id IS NOT NULL
+					ORDER BY oi_prim.id ASC LIMIT 1 ) AS workflow_template_id,
+				( SELECT s.name FROM {$steps_t} s WHERE s.id = o.current_step_id LIMIT 1 ) AS current_step_name,
+				( SELECT s.step_order FROM {$steps_t} s WHERE s.id = o.current_step_id LIMIT 1 ) AS current_step_order,
+				( SELECT s.confirmation_kind FROM {$steps_t} s WHERE s.id = o.current_step_id LIMIT 1 ) AS confirmation_kind,
+				( SELECT osp.status FROM {$progress_t} osp
+					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
+					LIMIT 1 ) AS progress_status,
+				( SELECT osp.timer_ends_at FROM {$progress_t} osp
+					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
+					LIMIT 1 ) AS timer_ends_at,
+				( SELECT osp.started_at FROM {$progress_t} osp
+					WHERE osp.order_id = o.id AND osp.workflow_step_id = o.current_step_id
+					LIMIT 1 ) AS step_started_at
+			FROM {$orders_t} o
+			INNER JOIN {$channels_t} c ON c.id = o.channel_id
+			WHERE {$legacy_sql}
+			ORDER BY o.order_date ASC, o.id ASC
+			LIMIT %d";
+
+		$legacy_params[] = $cap;
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$legacy_rows = $wpdb->get_results( $wpdb->prepare( $legacy_list, $legacy_params ) );
+		if ( is_array( $legacy_rows ) ) {
+			foreach ( $legacy_rows as $row ) {
+				$lines[] = $row;
+			}
+		}
+
+		$total = count( $lines );
+		if ( $total > $cap ) {
+			$lines = array_slice( $lines, 0, $cap );
+		}
+
+		$cards = array();
+		foreach ( $lines as $line ) {
+			$card = $line;
+			// Normalize id for pin/legacy helpers that expect ->id.
+			$card->id = (int) $line->order_id;
+			$step_name = trim( (string) ( $line->current_step_name ?? '' ) );
+			$card->column_key = ( empty( $line->current_step_id ) || '' === $step_name )
+				? self::BOARD_UNASSIGNED_KEY
+				: $step_name;
+			$card->batch         = null;
+			$card->timer_ends_ts = 0;
+			$card->timer_ready   = false;
+			$card->can_advance   = false;
+			$card->next_step_name = '';
+			$card->is_last_step  = false;
+			$card->make_complete = false;
+
+			if ( ! empty( $line->timer_ends_at ) ) {
+				$ends = strtotime( (string) $line->timer_ends_at . ' UTC' );
+				if ( ! $ends ) {
+					$ends = strtotime( (string) $line->timer_ends_at );
+				}
+				$card->timer_ends_ts = $ends ? (int) $ends : 0;
+			}
+
+			$item_id = (int) $line->order_item_id;
+			if ( $item_id > 0 ) {
+				if ( 'waiting_timer' === (string) $line->progress_status
+					&& $card->timer_ends_ts > 0
+					&& time() >= $card->timer_ends_ts ) {
+					SOM_Item_Make::unlock_elapsed_for_item( $item_id );
+					$status = SOM_Item_Make::progress_status_for_api( (int) $line->order_id, $item_id );
+					if ( ! is_wp_error( $status ) ) {
+						$card->progress_status = (string) ( $status['status'] ?? $card->progress_status );
+						$card->timer_ready     = ! empty( $status['timer_ready'] );
+						$card->can_advance     = ! empty( $status['can_advance'] );
+						$card->next_step_name  = (string) ( $status['next_step_name'] ?? '' );
+						$card->is_last_step    = ! empty( $status['is_last_step'] );
+						$card->current_step_name = (string) ( $status['step_name'] ?? $card->current_step_name );
+					}
+				} else {
+					$meta = SOM_Item_Make::board_dnd_meta( (int) $line->order_id, $item_id );
+					$card->can_advance    = ! empty( $meta['can_advance'] );
+					$card->next_step_name = (string) $meta['next_step_name'];
+					$card->is_last_step   = ! empty( $meta['is_last_step'] );
+					if ( 'in_progress' === (string) $card->progress_status
+						&& $card->timer_ends_ts > 0
+						&& time() >= $card->timer_ends_ts ) {
+						$card->timer_ready = true;
+					}
+				}
+			} else {
+				// Legacy order-level card.
+				$card->id = (int) $line->order_id;
+				if ( 'waiting_timer' === (string) $line->progress_status
+					&& $card->timer_ends_ts > 0
+					&& time() >= $card->timer_ends_ts ) {
+					$status = SOM_Workflow_Engine::progress_status_for_api( (int) $line->order_id );
+					if ( ! is_wp_error( $status ) ) {
+						$card->progress_status = (string) ( $status['status'] ?? $card->progress_status );
+						$card->timer_ready     = ! empty( $status['timer_ready'] );
+						$card->can_advance     = ! empty( $status['can_advance'] );
+						$card->next_step_name  = (string) ( $status['next_step_name'] ?? '' );
+						$card->is_last_step    = ! empty( $status['is_last_step'] );
+					} else {
+						self::attach_board_dnd_meta( $card );
+					}
+				} else {
+					self::attach_board_dnd_meta( $card );
+				}
+				if ( 'waiting_batch' === (string) $card->progress_status ) {
+					$card->batch = SOM_Batches::find_for_order( (int) $card->order_id );
+				}
+			}
+
+			$cards[] = $card;
+		}
+
+		$workflow_steps = array();
+		if ( $workflow_id > 0 ) {
+			$workflow_steps = SOM_Item_Make::filter_make_steps( SOM_Workflows::get_steps( $workflow_id ) );
+		}
+
+		return array(
+			'orders'          => $cards,
+			'total'           => $total,
+			'capped'          => $total > $cap,
+			'warn'            => $total >= self::BOARD_WARN,
+			'workflow_steps'  => $workflow_steps,
+		);
 	}
 
 	/**

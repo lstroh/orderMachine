@@ -161,15 +161,19 @@ class SOM_Step_Confirmations {
 	/**
 	 * Sanitize and persist ticks for the order's current confirmation step.
 	 *
-	 * @param int                  $order_id Order PK.
-	 * @param array<string, mixed> $input    Posted ticks.
+	 * When $order_item_id > 0, saves against per-line make progress (Package 6).
+	 *
+	 * @param int                  $order_id      Order PK.
+	 * @param array<string, mixed> $input         Posted ticks.
+	 * @param int                  $order_item_id Optional order item PK for make lines.
 	 * @return true|WP_Error
 	 */
-	public static function save_for_order( $order_id, array $input ) {
+	public static function save_for_order( $order_id, array $input, $order_item_id = 0 ) {
 		global $wpdb;
 
-		$order_id = (int) $order_id;
-		$order    = SOM_Orders::get( $order_id );
+		$order_id      = (int) $order_id;
+		$order_item_id = (int) $order_item_id;
+		$order         = SOM_Orders::get( $order_id );
 		if ( ! $order ) {
 			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
 		}
@@ -178,6 +182,42 @@ class SOM_Step_Confirmations {
 		}
 		if ( ! empty( $order->is_complete ) ) {
 			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
+		}
+
+		if ( $order_item_id > 0 ) {
+			$current = SOM_Item_Make::current_item_progress( $order_item_id );
+			if ( ! $current ) {
+				return new WP_Error( 'som_no_workflow', __( 'This line has no active make step.', 'order-machine' ) );
+			}
+			$step = $wpdb->get_row(
+				$wpdb->prepare(
+					'SELECT * FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d LIMIT 1',
+					(int) $current->workflow_step_id
+				)
+			);
+			$kind = self::kind_from_step( $step );
+			if ( null === $kind ) {
+				return new WP_Error( 'som_no_confirmation', __( 'The current step has no confirmation checklist.', 'order-machine' ) );
+			}
+			$state = self::build_state_from_input( $kind, $input, $order );
+			$json  = wp_json_encode( $state );
+			if ( false === $json ) {
+				return new WP_Error( 'som_confirm_encode', __( 'Could not encode confirmation state.', 'order-machine' ) );
+			}
+			$updated = $wpdb->update(
+				SOM_DB::table( 'order_item_step_progress' ),
+				array(
+					'confirmation_state' => $json,
+					'updated_at'         => current_time( 'mysql', true ),
+				),
+				array( 'id' => (int) $current->id ),
+				array( '%s', '%s' ),
+				array( '%d' )
+			);
+			if ( false === $updated ) {
+				return new WP_Error( 'som_confirm_save', __( 'Could not save confirmation checklist.', 'order-machine' ) );
+			}
+			return true;
 		}
 
 		$current_step_id = (int) $order->current_step_id;

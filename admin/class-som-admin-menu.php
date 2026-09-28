@@ -64,8 +64,8 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
-			__( 'Orders Board', 'order-machine' ),
-			__( 'Orders Board', 'order-machine' ),
+			__( 'Make Board', 'order-machine' ),
+			__( 'Make Board', 'order-machine' ),
 			'manage_options',
 			'som-orders-board',
 			array( __CLASS__, 'render_orders_board' )
@@ -422,11 +422,12 @@ class SOM_Admin_Menu {
 
 		if ( isset( $_POST['som_save_confirmation'] ) ) {
 			check_admin_referer( 'som_save_confirmation', 'som_order_nonce' );
-			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
-			$input    = isset( $_POST['som_confirm'] ) && is_array( $_POST['som_confirm'] )
+			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$order_item_id = isset( $_POST['som_order_item_id'] ) ? (int) $_POST['som_order_item_id'] : 0;
+			$input         = isset( $_POST['som_confirm'] ) && is_array( $_POST['som_confirm'] )
 				? wp_unslash( $_POST['som_confirm'] )
 				: array();
-			$result   = SOM_Step_Confirmations::save_for_order( $order_id, $input );
+			$result        = SOM_Step_Confirmations::save_for_order( $order_id, $input, $order_item_id );
 			if ( is_wp_error( $result ) ) {
 				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
 			} else {
@@ -577,8 +578,13 @@ class SOM_Admin_Menu {
 
 		check_admin_referer( 'som_mark_step_done', 'som_order_nonce' );
 
-		$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
-		$result   = SOM_Workflow_Engine::mark_done( $order_id );
+		$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+		$order_item_id = isset( $_POST['som_order_item_id'] ) ? (int) $_POST['som_order_item_id'] : 0;
+		if ( $order_item_id > 0 ) {
+			$result = SOM_Item_Make::mark_done( $order_id, $order_item_id );
+		} else {
+			$result = SOM_Workflow_Engine::mark_done( $order_id );
+		}
 
 		if ( is_wp_error( $result ) ) {
 			self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
@@ -1214,6 +1220,7 @@ class SOM_Admin_Menu {
 			'name'        => isset( $_POST['som_workflow_name'] ) ? wp_unslash( $_POST['som_workflow_name'] ) : '',
 			'description' => isset( $_POST['som_workflow_description'] ) ? wp_unslash( $_POST['som_workflow_description'] ) : '',
 			'is_active'   => ! empty( $_POST['som_workflow_is_active'] ),
+			'kind'        => isset( $_POST['som_workflow_kind'] ) ? wp_unslash( $_POST['som_workflow_kind'] ) : 'make',
 		);
 
 		if ( $template_id > 0 ) {

@@ -314,11 +314,15 @@
 		}
 	}
 
-	function fetchProgress(orderId) {
+	function fetchProgress(orderId, itemId) {
 		if (!cfg.restUrl) {
 			return Promise.reject(new Error('no rest'));
 		}
-		return fetch(cfg.restUrl + 'orders/' + encodeURIComponent(orderId) + '/progress', {
+		var url = cfg.restUrl + 'orders/' + encodeURIComponent(orderId) + '/progress';
+		if (itemId && Number(itemId) > 0) {
+			url += (url.indexOf('?') >= 0 ? '&' : '?') + 'order_item_id=' + encodeURIComponent(itemId);
+		}
+		return fetch(url, {
 			method: 'GET',
 			credentials: 'same-origin',
 			headers: {
@@ -377,20 +381,22 @@
 
 	function unlockBoardCard(card) {
 		var orderId = card.getAttribute('data-som-order-id');
-		if (!orderId || unlockingTimers[orderId]) {
+		var itemId = card.getAttribute('data-som-order-item-id') || '0';
+		var unlockKey = String(orderId) + ':' + String(itemId);
+		if (!orderId || unlockingTimers[unlockKey]) {
 			return;
 		}
-		unlockingTimers[orderId] = true;
-		fetchProgress(orderId)
+		unlockingTimers[unlockKey] = true;
+		fetchProgress(orderId, itemId)
 			.then(function (result) {
-				unlockingTimers[orderId] = false;
+				unlockingTimers[unlockKey] = false;
 				if (!result.ok || !result.data) {
 					return;
 				}
 				applyTimerReadyOnCard(card, result.data);
 			})
 			.catch(function () {
-				unlockingTimers[orderId] = false;
+				unlockingTimers[unlockKey] = false;
 			});
 	}
 
@@ -457,7 +463,7 @@
 	}
 
 	function placeCardAfterAdvance(card, data) {
-		if (!data || Number(data.is_complete) === 1) {
+		if (!data || Number(data.is_complete) === 1 || data.make_complete) {
 			if (card.parentNode) {
 				card.parentNode.removeChild(card);
 			}
@@ -481,9 +487,13 @@
 		applyPinnedFilter();
 	}
 
-	function advanceStep(orderId) {
+	function advanceStep(orderId, itemId) {
 		if (!cfg.restUrl) {
 			return Promise.reject(new Error('missing rest'));
+		}
+		var body = {};
+		if (itemId && Number(itemId) > 0) {
+			body.order_item_id = Number(itemId);
 		}
 		return fetch(cfg.restUrl + 'orders/' + encodeURIComponent(orderId) + '/advance-step', {
 			method: 'POST',
@@ -492,7 +502,7 @@
 				'Content-Type': 'application/json',
 				'X-WP-Nonce': cfg.restNonce || ''
 			},
-			body: '{}'
+			body: JSON.stringify(body)
 		}).then(function (res) {
 			return res.json().then(function (data) {
 				return { ok: res.ok, status: res.status, data: data };
@@ -505,21 +515,23 @@
 		var fromList = evt.from;
 		var oldIndex = evt.oldIndex;
 		var orderId = card.getAttribute('data-som-order-id');
+		var itemId = card.getAttribute('data-som-order-item-id') || '0';
+		var advanceKey = String(orderId) + ':' + String(itemId);
 
 		if (!validDropTarget(card, evt.to)) {
 			restoreCard(card, fromList, oldIndex);
 			return;
 		}
 
-		if (!orderId || advancing[orderId]) {
+		if (!orderId || advancing[advanceKey]) {
 			restoreCard(card, fromList, oldIndex);
 			return;
 		}
 
-		advancing[orderId] = true;
+		advancing[advanceKey] = true;
 		card.classList.add('is-advancing');
 
-		advanceStep(orderId)
+		advanceStep(orderId, itemId)
 			.then(function (result) {
 				if (!result.ok || !result.data || !result.data.ok) {
 					var msg =
@@ -539,7 +551,7 @@
 				card.classList.remove('is-advancing');
 			})
 			.finally(function () {
-				delete advancing[orderId];
+				delete advancing[advanceKey];
 			});
 	}
 

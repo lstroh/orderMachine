@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Order Machine
  * Description:       Aggregates eBay/Etsy orders, tracks production workflows, and manages material stock.
- * Version:           0.29.1
+ * Version:           0.30.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Order Machine
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SOM_VERSION', '0.29.1' );
+define( 'SOM_VERSION', '0.30.0' );
 define( 'SOM_PLUGIN_FILE', __FILE__ );
 define( 'SOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -47,6 +47,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-local-actions.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-script-dispatch.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-step-confirmations.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-engine.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-item-make.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-notes.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-shipments.php';
