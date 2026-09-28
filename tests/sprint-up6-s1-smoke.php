@@ -44,18 +44,26 @@ $templates_t = SOM_DB::table( 'workflow_templates' );
 $kind_col    = $wpdb->get_row( "SHOW COLUMNS FROM {$templates_t} LIKE 'kind'" );
 $assert( ! empty( $kind_col ), 'column_workflow_templates_kind' );
 
-$products_t = SOM_DB::table( 'products' );
-$sellable   = $wpdb->get_row(
-	"SELECT id, workflow_template_id FROM {$products_t}
-	WHERE is_active = 1 AND is_internal = 0 AND workflow_template_id IS NOT NULL
-	ORDER BY id ASC LIMIT 1"
+$products_t  = SOM_DB::table( 'products' );
+$templates_t = SOM_DB::table( 'workflow_templates' );
+// Prefer seed SKU; require a live make template row (dirty volumes may have orphan workflow_template_id).
+$sellable = $wpdb->get_row(
+	$wpdb->prepare(
+		"SELECT p.id, p.workflow_template_id FROM {$products_t} p
+		INNER JOIN {$templates_t} t ON t.id = p.workflow_template_id AND t.kind = 'make'
+		WHERE p.is_active = 1 AND p.is_internal = 0
+		ORDER BY ( p.sku = %s ) DESC, p.id ASC
+		LIMIT 1",
+		SOM_Seed::SAMPLE_PRODUCT_SKU
+	)
 );
 $assert( $sellable && (int) $sellable->id > 0, 'has_sellable_product' );
 
 $internal = $wpdb->get_row(
-	"SELECT id, workflow_template_id FROM {$products_t}
-	WHERE is_active = 1 AND is_internal = 1 AND workflow_template_id IS NOT NULL
-	ORDER BY id ASC LIMIT 1"
+	"SELECT p.id, p.workflow_template_id FROM {$products_t} p
+	INNER JOIN {$templates_t} t ON t.id = p.workflow_template_id AND t.kind = 'make'
+	WHERE p.is_active = 1 AND p.is_internal = 1
+	ORDER BY p.id ASC LIMIT 1"
 );
 $assert( $internal && (int) $internal->id > 0, 'has_internal_product' );
 
