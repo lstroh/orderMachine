@@ -552,4 +552,27 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 			</button>
 		</form>
 	</p>
+
+	<hr />
+
+	<h2><?php echo esc_html__( 'Migrate — Pack binding', 'order-machine' ); ?></h2>
+	<p class="description">
+		<?php
+		echo esc_html__(
+			'After upgrading to Package 6, open non-Internal orders created before Pack binding may lack a Pack workflow. This assigns the Default Pack workflow and creates pack progress without changing per-line make rows. Orders that still use a legacy monolithic order-level workflow are skipped — finish those manually. Thank-you Batches for new orders are no longer on the Pack path; clear any collecting thank-you batches under Batches if needed.',
+			'order-machine'
+		);
+		?>
+	</p>
+	<p>
+		<form method="post" action="" style="display:inline;" onsubmit="return confirm('<?php echo esc_js( __( 'Bind the Default Pack workflow on open orders that are missing pack progress?', 'order-machine' ) ); ?>');">
+			<?php wp_nonce_field( 'som_repair_pack_binding', 'som_seed_nonce' ); ?>
+			<button type="submit" name="som_repair_pack_binding" value="1" class="button" <?php disabled( SOM_Pack::default_template_id() < 1 ); ?>>
+				<?php echo esc_html__( 'Repair pack binding', 'order-machine' ); ?>
+			</button>
+		</form>
+	</p>
+	<?php if ( SOM_Pack::default_template_id() < 1 ) : ?>
+		<p class="description"><?php echo esc_html__( 'Choose a Default Pack workflow above (or Restore seed) before running repair.', 'order-machine' ); ?></p>
+	<?php endif; ?>
 </div>

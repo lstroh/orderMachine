@@ -67,9 +67,9 @@ Dummy mode auto-seeds:
 - Encrypted fake eBay + Etsy credentials
 - Sample product **BIN-SET-4PK** with vinyl + laminate recipe
 - Listing matches so some fixture lines resolve to that product
-- Workflow template **Bin Sticker Production** (11 steps on fresh seed) assigned to the product
-- Batch groups **thank_you_card** (script) and **shipping_label** (manual_confirm), both size 4
-- Thank-you steps auto-converted to `batch_group_id` (per-order thank-you `script_config` cleared)
+- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) on the product
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review); set as Default Pack when unset
+- Batch groups **thank_you_card** / **shipping_label** still seeded for compatibility; **not** attached to Pack seed steps
 
 More commands: [`WP-ENV.md`](../../WP-ENV.md). Clean reset: `npx @wordpress/env destroy` then `start` again.
 
@@ -133,6 +133,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Import history** — 30 or 90 days (history creates orders but skips workflow assignment and stock reservation)
 - **Platform fee sync** — last-run / cursor status, **Sync fees now**, reconnect notice when live eBay token lacks Finances scope
 - **Remove seed data** / **Restore seed data** — clear or recreate the demo catalogue + dummy tokens (Settings → Seed data). Restore requires `SOM_USE_DUMMY_CREDENTIALS`. Does not delete your own products, suppliers, or POs.
+- **Repair pack binding** — assign Default Pack + pack progress on open non-Internal orders missing bind (skips legacy order-level progress)
 
 **Background jobs (WP-Cron):**
 
@@ -196,7 +197,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 **Workflow rules on the order:**
 
 - **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Legacy open orders may still show order-level progress.
-- **Pack (UP6-S2):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Seed Pack template + migrate repair = UP6-S3.
+- **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship**. Settings → **Repair pack binding** for open unbound orders.
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
 - Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
 
@@ -279,7 +280,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 - Per-material target / approaching thresholds for this workflow
 - Saved with the template (`sync_for_workflow`); alerts surface on Materials + Product Costing after PO receives change WA
 
-**Seeded template — Bin Sticker Production (fresh seeds only; existing templates untouched):**
+**Seeded make — Bin Sticker Make** (fresh seeds / Restore; existing Local templates are not auto-truncated):
 
 | # | Step | Gates |
 |---|---|---|
@@ -288,14 +289,20 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 | 3 | Dry | Timer 15 minutes |
 | 4 | Laminate | Manual confirm |
 | 5 | Cut | Manual confirm |
-| 6 | Confirm pack | Confirmation `packing_items` |
-| 7 | Pack | Manual confirm |
-| 8 | Confirm address | Confirmation `shipping_address` |
-| 9 | Ship | Manual confirm |
-| 10 | Thank-you | Batch group `thank_you_card` (auto-converted on activate; script runs once for the whole batch) |
-| 11 | Review reminder | Timer 7 days + manual confirm |
 
-Opt-in: assign **shipping_label** to a Ship (or other) step via the editor — no bulk convert of existing Ship steps.
+**Seeded pack — Order Pack & Ship** (`kind=pack`; Default Pack when unset):
+
+| # | Step | Gates |
+|---|---|---|
+| 1 | Confirm pack | Confirmation `packing_items` (all lines + thank-you tick) |
+| 2 | Confirm address | Confirmation `shipping_address` |
+| 3 | Package | Manual confirm (app also requires `shipping_package_id` before Ship) |
+| 4 | Ship | Manual confirm + shipment row |
+| 5 | Review reminder | Timer 7 days + manual confirm |
+
+No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shipping_label` remain for optional custom use; `convert_thankyou_steps` skips Pack templates.
+
+**Existing-site migrate:** (1) Upgrade plugin. (2) Ensure Pack template exists (Restore seed or create kind=Pack + Settings default). (3) Trim or replace legacy **Bin Sticker Production** pack/ship steps (or Restore seed). (4) Settings → **Repair pack binding** for open unbound orders (skips legacy monolithic progress). (5) Clear collecting thank-you batches under Batches if you no longer use that path.
 
 ---
 
@@ -624,11 +631,11 @@ Expect DB version `1.8.0`, plugin `0.22.0`, and **25** `wp_som_*` tables (includ
 ### Test 2 — Seeded catalogue (before first sync)
 
 1. **Products** → open **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`).
-2. Confirm workflow template **Bin Sticker Production** is assigned; note costing panel fields (incl. planned shipping line when set).
+2. Confirm workflow template **Bin Sticker Make** is assigned; note costing panel fields (incl. planned shipping line when set).
 3. Confirm recipe rows: vinyl + laminate (~1 each) — materials for **one 4-pack sold unit** (multipack = separate SKU; no second pack size is seeded).
 4. Optionally set goods weight / default package / planned £ on that product; confirm **Shipping packages** menu can add a mailer.
 5. **Materials** → both sheets show stock (seed starts at 25), WA / value on hand, threshold 5.
-6. **Workflows** → open **Bin Sticker Production** → steps as in §3.6 (fresh seeds include confirmation steps); Thank-you has batch group (not per-order thank-you script).
+6. **Workflows** → open **Bin Sticker Make** (ends at Cut) and **Order Pack & Ship** (checklist thank-you, no batch).
 7. **Batches** → confirm two batch groups exist (thank_you_card / shipping_label, size 4).
 
 - [ ] Product, recipe, materials, workflow, batch groups all present without manual create

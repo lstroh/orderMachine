@@ -21,7 +21,7 @@
 
 ## 3. Seeded make template — Bin Sticker Production (make)
 
-Name may stay `Bin Sticker Production` or become `Bin Sticker Make` — **open item** (recommend rename to **Bin Sticker Make** and keep old name only if migrate maps it).
+**Settled (UP6-S3):** rename seed to **Bin Sticker Make**; look up by option / legacy name `Bin Sticker Production` for idempotency.
 
 | Order | Step | Gates |
 |---|---|---|

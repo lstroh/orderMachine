@@ -200,6 +200,8 @@ class SOM_Batch_Groups {
 	/**
 	 * Convert existing thank-you script steps to batch_group_id (idempotent).
 	 *
+	 * Skips steps on Pack templates (UP6-S3 / O20) — Pack thank-you is checklist-only.
+	 *
 	 * @return int Number of steps converted.
 	 */
 	public static function convert_thankyou_steps() {
@@ -211,9 +213,12 @@ class SOM_Batch_Groups {
 			return 0;
 		}
 
-		$steps_t = SOM_DB::table( 'workflow_steps' );
-		$steps   = $wpdb->get_results(
-			"SELECT id, script_config, batch_group_id FROM {$steps_t}"
+		$steps_t     = SOM_DB::table( 'workflow_steps' );
+		$templates_t = SOM_DB::table( 'workflow_templates' );
+		$steps       = $wpdb->get_results(
+			"SELECT s.id, s.script_config, s.batch_group_id, t.kind AS template_kind
+			FROM {$steps_t} s
+			INNER JOIN {$templates_t} t ON t.id = s.workflow_template_id"
 		);
 		if ( ! is_array( $steps ) ) {
 			return 0;
@@ -225,6 +230,9 @@ class SOM_Batch_Groups {
 
 		foreach ( $steps as $step ) {
 			if ( ! empty( $step->batch_group_id ) ) {
+				continue;
+			}
+			if ( 'pack' === SOM_Workflows::sanitize_kind( isset( $step->template_kind ) ? $step->template_kind : '' ) ) {
 				continue;
 			}
 			$raw = isset( $step->script_config ) ? (string) $step->script_config : '';

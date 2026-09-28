@@ -51,6 +51,66 @@ class SOM_Pack {
 	}
 
 	/**
+	 * Repair open non-Internal orders missing pack bind (UP6-S3 / O6).
+	 *
+	 * Skips Internal, complete/cancelled, already bound, and orders with
+	 * legacy order-level progress (finish those manually — see migrate docs).
+	 *
+	 * @return array{repaired:int,skipped:int,errors:int}
+	 */
+	public static function repair_unbound_orders() {
+		global $wpdb;
+
+		$orders_t   = SOM_DB::table( 'orders' );
+		$channels_t = SOM_DB::table( 'channels' );
+		$cancelled  = SOM_Orders::cancelled_sql( 'o', 'c' );
+		$slug       = esc_sql( SOM_Production::CHANNEL_SLUG );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- cancelled_sql is alias-safe; slug escaped.
+		$rows = $wpdb->get_results(
+			"SELECT o.id FROM {$orders_t} o
+			INNER JOIN {$channels_t} c ON c.id = o.channel_id
+			WHERE o.is_complete = 0
+				AND NOT {$cancelled}
+				AND c.slug <> '{$slug}'
+				AND o.pack_workflow_template_id IS NULL
+			ORDER BY o.id ASC"
+		);
+		if ( ! is_array( $rows ) ) {
+			$rows = array();
+		}
+
+		$repaired = 0;
+		$skipped  = 0;
+		$errors   = 0;
+
+		foreach ( $rows as $row ) {
+			$order_id = (int) $row->id;
+			if ( SOM_Workflow_Engine::has_progress( $order_id ) ) {
+				++$skipped;
+				continue;
+			}
+			$result = self::bind_on_create( $order_id );
+			if ( is_wp_error( $result ) ) {
+				++$errors;
+				continue;
+			}
+			$order = SOM_Orders::get( $order_id );
+			if ( $order && ! empty( $order->pack_workflow_template_id ) ) {
+				++$repaired;
+			} else {
+				++$skipped; // Soft-flag: no default Pack template configured.
+			}
+		}
+
+		return array(
+			'repaired' => $repaired,
+			'skipped'  => $skipped,
+			'errors'   => $errors,
+		);
+	}
+
+	/**
 	 * Bind pack workflow on create for non-internal orders.
 	 *
 	 * Soft-flags when no default Pack template (O14). Idempotent.

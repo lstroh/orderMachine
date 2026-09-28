@@ -2148,6 +2148,10 @@ class SOM_Admin_Menu {
 			self::handle_restore_seed();
 			return;
 		}
+		if ( isset( $_POST['som_repair_pack_binding'] ) ) {
+			self::handle_repair_pack_binding();
+			return;
+		}
 
 		// Save settings form.
 		if ( isset( $_POST['som_settings_nonce'] ) ) {
@@ -2183,6 +2187,38 @@ class SOM_Admin_Menu {
 			$message = isset( $result['message'] ) ? (string) $result['message'] : __( 'Seed data restored.', 'order-machine' );
 			self::flash_notice( $message, 'success', 'som_seed_restored' );
 		}
+		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Bind default Pack workflow on open non-Internal orders missing pack bind (UP6-S3).
+	 *
+	 * @return void
+	 */
+	private static function handle_repair_pack_binding() {
+		check_admin_referer( 'som_repair_pack_binding', 'som_seed_nonce' );
+
+		if ( SOM_Pack::default_template_id() < 1 ) {
+			self::flash_notice(
+				__( 'Set a Default Pack workflow under Settings before running Repair pack binding.', 'order-machine' ),
+				'error',
+				'som_repair_pack_no_template'
+			);
+			wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+			exit;
+		}
+
+		$result  = SOM_Pack::repair_unbound_orders();
+		$message = sprintf(
+			/* translators: 1: repaired count, 2: skipped count, 3: error count */
+			__( 'Repair pack binding: %1$d repaired, %2$d skipped (legacy progress or already handled), %3$d errors.', 'order-machine' ),
+			(int) $result['repaired'],
+			(int) $result['skipped'],
+			(int) $result['errors']
+		);
+		$type = ( (int) $result['errors'] > 0 ) ? 'warning' : 'success';
+		self::flash_notice( $message, $type, 'som_repair_pack_done' );
 		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
 		exit;
 	}
