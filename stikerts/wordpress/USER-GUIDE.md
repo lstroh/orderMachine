@@ -80,10 +80,10 @@ define( 'SOM_ENCRYPTION_KEY', 'your-local-dev-key-here' ); // keep stable once s
 
 3. Open any Order Machine admin screen so seed data can run.
 4. **Settings** → confirm eBay and Etsy show as connected (dummy).
-5. Confirm seed catalogue: sample product **BIN-SET-4PK**, materials, workflow **Bin Sticker Production**, batch groups.
+5. Confirm seed catalogue: sample product **BIN-SET-4PK**, materials, make **Bin Sticker Make**, Pack **Order Pack & Ship**.
 6. **Settings → Sync now** to pull fixture orders. Optionally **Sync fees now** for fee fixtures.
 
-**Seed tools:** Settings → Seed data — **Remove seed data** / **Restore seed data** (restore needs dummy mode on). Does not delete your own products, suppliers, or POs.
+**Seed tools:** Settings → Seed data — **Remove seed data** / **Restore seed data** (restore needs dummy mode on). After a Package 6 upgrade, use **Repair pack binding** for open orders missing Pack. Does not delete your own products, suppliers, or POs.
 
 Deactivating the plugin does **not** wipe tables. Uninstall also keeps `som_*` data by design.
 
@@ -194,8 +194,9 @@ More detail: [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) §7.
 When dummy mode seeds successfully you typically get:
 
 - Product **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`) with vinyl + laminate recipe — a **multipack SKU** (materials for one 4-pack sold unit)  
-- Workflow **Bin Sticker Production** (Print → Dry → Laminate → Cut → Pack → Ship → Thank-you batch → Review)  
-- Batch groups **thank_you_card** (script) and **shipping_label** (manual), size 4  
+- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut)  
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review)  
+- Batch groups still seeded for optional use; thank-you is checklist-only on Pack (not a batch gate)  
 - Fixture listing matches so some synced lines resolve to that product  
 
 No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).

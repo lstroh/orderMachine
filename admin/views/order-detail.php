@@ -519,7 +519,7 @@ if ( ! empty( $order->raw_payload ) ) {
 
 		<?php if ( empty( $order->pack_workflow_template_id ) ) : ?>
 			<div class="notice notice-warning inline">
-				<p><?php echo esc_html__( 'No Pack workflow bound. Choose a default Pack template under Settings (kind Pack), then create new orders — or wait for the migrate repair in UP6-S3.', 'order-machine' ); ?></p>
+				<p><?php echo esc_html__( 'No Pack workflow bound. Choose a default Pack template under Settings (kind Pack), then run Repair pack binding — or create new orders after the template is set.', 'order-machine' ); ?></p>
 			</div>
 		<?php endif; ?>
 

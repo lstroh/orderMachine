@@ -253,6 +253,7 @@ class SOM_Seed {
 
 		self::maybe_seed_materials( $product_id );
 		self::maybe_seed_workflow( $product_id );
+		self::maybe_seed_pack_workflow();
 		self::maybe_seed_internal_product( $product_id );
 	}
 
@@ -366,11 +367,58 @@ class SOM_Seed {
 		);
 	}
 
-	/** Seed workflow template name. */
-	const WORKFLOW_NAME = 'Bin Sticker Production';
+	/** Seed make workflow template name (Package 6). */
+	const WORKFLOW_NAME = 'Bin Sticker Make';
+
+	/** Legacy seed make name (pre-UP6-S3); used for idempotent lookup / rename. */
+	const WORKFLOW_NAME_LEGACY = 'Bin Sticker Production';
+
+	/** Seed Pack workflow template name. */
+	const PACK_WORKFLOW_NAME = 'Order Pack & Ship';
 
 	/**
-	 * Seed sample workflow template + steps and assign to the demo product.
+	 * Resolve seed make template id (option, new name, or legacy name).
+	 *
+	 * @return int
+	 */
+	private static function resolve_make_workflow_id() {
+		global $wpdb;
+
+		$templates_t = SOM_DB::table( 'workflow_templates' );
+		$template_id = (int) get_option( 'som_seed_workflow_id', 0 );
+		if ( $template_id > 0 ) {
+			$still = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE id = %d LIMIT 1",
+					$template_id
+				)
+			);
+			if ( $still ) {
+				return $template_id;
+			}
+			delete_option( 'som_seed_workflow_id' );
+		}
+
+		foreach ( array( self::WORKFLOW_NAME, self::WORKFLOW_NAME_LEGACY ) as $name ) {
+			$id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE name = %s ORDER BY id ASC LIMIT 1",
+					$name
+				)
+			);
+			if ( $id > 0 ) {
+				return $id;
+			}
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Seed make workflow template + steps (Print…Cut) and assign to the demo product.
+	 *
+	 * Existing sites with an already-populated legacy template keep their steps
+	 * (migrate manually or Restore seed). Empty templates get the Package 6 shape.
 	 *
 	 * @param int $product_id Product PK.
 	 * @return void
@@ -386,50 +434,41 @@ class SOM_Seed {
 		$templates_t = SOM_DB::table( 'workflow_templates' );
 		$steps_t     = SOM_DB::table( 'workflow_steps' );
 		$products_t  = SOM_DB::table( 'products' );
-
-		$template_id = (int) get_option( 'som_seed_workflow_id', 0 );
-		if ( $template_id > 0 ) {
-			$still = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT id FROM {$templates_t} WHERE id = %d LIMIT 1",
-					$template_id
-				)
-			);
-			if ( ! $still ) {
-				$template_id = 0;
-				delete_option( 'som_seed_workflow_id' );
-			}
-		}
+		$now         = current_time( 'mysql', true );
+		$template_id = self::resolve_make_workflow_id();
 
 		if ( $template_id < 1 ) {
-			$template_id = (int) $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT id FROM {$templates_t} WHERE name = %s ORDER BY id ASC LIMIT 1",
-					self::WORKFLOW_NAME
-				)
-			);
-		}
-
-		$now = current_time( 'mysql', true );
-
-		if ( $template_id < 1 ) {
-			$wpdb->insert(
-				$templates_t,
+			$created = SOM_Workflows::create(
 				array(
 					'name'        => self::WORKFLOW_NAME,
-					'description' => 'Sample production workflow for bin sticker sets (seed).',
+					'description' => 'Sample make workflow for bin sticker sets (seed). Ends at Cut — pack/ship is Order Pack & Ship.',
+					'kind'        => 'make',
 					'is_active'   => 1,
-					'created_at'  => $now,
-					'updated_at'  => $now,
-				),
-				array( '%s', '%s', '%d', '%s', '%s' )
+				)
 			);
-			$template_id = (int) $wpdb->insert_id;
+			if ( is_wp_error( $created ) ) {
+				return;
+			}
+			$template_id = (int) $created;
 		}
 
 		if ( $template_id < 1 ) {
 			return;
 		}
+
+		// Rename legacy seed name + ensure kind=make (O16).
+		$wpdb->update(
+			$templates_t,
+			array(
+				'name'        => self::WORKFLOW_NAME,
+				'description' => 'Sample make workflow for bin sticker sets (seed). Ends at Cut — pack/ship is Order Pack & Ship.',
+				'kind'        => 'make',
+				'updated_at'  => $now,
+			),
+			array( 'id' => $template_id ),
+			array( '%s', '%s', '%s', '%s' ),
+			array( '%d' )
+		);
 
 		update_option( 'som_seed_workflow_id', $template_id, false );
 
@@ -441,46 +480,35 @@ class SOM_Seed {
 		);
 
 		if ( $step_count < 1 ) {
-			$thankyou = wp_json_encode(
+			$saved = SOM_Workflows::save_steps(
+				$template_id,
 				array(
-					'type'   => 'local',
-					'action' => 'run_thankyou_card_script',
-					'params' => array(),
+					array(
+						'name'                    => 'Print',
+						'requires_manual_confirm' => 1,
+					),
+					array(
+						'name'                    => 'Confirm print',
+						'requires_manual_confirm' => 1,
+						'confirmation_kind'       => 'print_vs_request',
+					),
+					array(
+						'name'        => 'Dry',
+						'timer_value' => 15,
+						'timer_unit'  => 'minutes',
+					),
+					array(
+						'name'                    => 'Laminate',
+						'requires_manual_confirm' => 1,
+					),
+					array(
+						'name'                    => 'Cut',
+						'requires_manual_confirm' => 1,
+					),
 				)
 			);
-
-			$seed_steps = array(
-				array( 'Print', 1, null, null, null ),
-				array( 'Confirm print', 1, null, null, 'print_vs_request' ),
-				array( 'Dry', 0, 15 * MINUTE_IN_SECONDS, null, null ),
-				array( 'Laminate', 1, null, null, null ),
-				array( 'Cut', 1, null, null, null ),
-				array( 'Confirm pack', 1, null, null, 'packing_items' ),
-				array( 'Pack', 1, null, null, null ),
-				array( 'Confirm address', 1, null, null, 'shipping_address' ),
-				array( 'Ship', 1, null, null, null ),
-				array( 'Thank-you', 0, null, $thankyou, null ),
-				array( 'Review reminder', 1, 7 * DAY_IN_SECONDS, null, null ),
-			);
-
-			$order = 0;
-			foreach ( $seed_steps as $row ) {
-				++$order;
-				$wpdb->insert(
-					$steps_t,
-					array(
-						'workflow_template_id'    => $template_id,
-						'step_order'              => $order,
-						'name'                    => $row[0],
-						'requires_manual_confirm' => $row[1],
-						'timer_seconds'           => $row[2],
-						'script_config'           => $row[3],
-						'confirmation_kind'       => $row[4],
-						'created_at'              => $now,
-						'updated_at'              => $now,
-					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s' )
-				);
+			if ( is_wp_error( $saved ) ) {
+				return;
 			}
 		}
 
@@ -502,6 +530,124 @@ class SOM_Seed {
 				array( '%d', '%s' ),
 				array( '%d' )
 			);
+		}
+	}
+
+	/**
+	 * Seed Pack template Order Pack & Ship; set site default when unset (O18).
+	 *
+	 * @return void
+	 */
+	public static function maybe_seed_pack_workflow() {
+		global $wpdb;
+
+		$templates_t = SOM_DB::table( 'workflow_templates' );
+		$steps_t     = SOM_DB::table( 'workflow_steps' );
+
+		$template_id = (int) get_option( 'som_seed_pack_workflow_id', 0 );
+		if ( $template_id > 0 ) {
+			$still = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE id = %d LIMIT 1",
+					$template_id
+				)
+			);
+			if ( ! $still ) {
+				$template_id = 0;
+				delete_option( 'som_seed_pack_workflow_id' );
+			}
+		}
+
+		if ( $template_id < 1 ) {
+			$template_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE name = %s ORDER BY id ASC LIMIT 1",
+					self::PACK_WORKFLOW_NAME
+				)
+			);
+		}
+
+		if ( $template_id < 1 ) {
+			$created = SOM_Workflows::create(
+				array(
+					'name'        => self::PACK_WORKFLOW_NAME,
+					'description' => 'Seed pack & ship workflow (order-level). Thank-you is on the Confirm pack checklist — no batch gate.',
+					'kind'        => 'pack',
+					'is_active'   => 1,
+				)
+			);
+			if ( is_wp_error( $created ) ) {
+				return;
+			}
+			$template_id = (int) $created;
+		}
+
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		$now = current_time( 'mysql', true );
+		$wpdb->update(
+			$templates_t,
+			array(
+				'name'        => self::PACK_WORKFLOW_NAME,
+				'kind'        => 'pack',
+				'description' => 'Seed pack & ship workflow (order-level). Thank-you is on the Confirm pack checklist — no batch gate.',
+				'is_active'   => 1,
+				'updated_at'  => $now,
+			),
+			array( 'id' => $template_id ),
+			array( '%s', '%s', '%s', '%d', '%s' ),
+			array( '%d' )
+		);
+
+		update_option( 'som_seed_pack_workflow_id', $template_id, false );
+
+		$step_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$steps_t} WHERE workflow_template_id = %d",
+				$template_id
+			)
+		);
+
+		if ( $step_count < 1 ) {
+			$saved = SOM_Workflows::save_steps(
+				$template_id,
+				array(
+					array(
+						'name'                    => 'Confirm pack',
+						'requires_manual_confirm' => 1,
+						'confirmation_kind'       => 'packing_items',
+					),
+					array(
+						'name'                    => 'Confirm address',
+						'requires_manual_confirm' => 1,
+						'confirmation_kind'       => 'shipping_address',
+					),
+					array(
+						'name'                    => 'Package',
+						'requires_manual_confirm' => 1,
+					),
+					array(
+						'name'                    => 'Ship',
+						'requires_manual_confirm' => 1,
+					),
+					array(
+						'name'                    => 'Review reminder',
+						'requires_manual_confirm' => 1,
+						'timer_value'             => 7,
+						'timer_unit'              => 'days',
+					),
+				)
+			);
+			if ( is_wp_error( $saved ) ) {
+				return;
+			}
+		}
+
+		// Set site default Pack template when unset (O18).
+		if ( SOM_Pack::default_template_id() < 1 ) {
+			SOM_Pack::set_default_template_id( $template_id );
 		}
 	}
 
@@ -707,14 +853,16 @@ class SOM_Seed {
 	}
 
 	/**
-	 * Resolve known seed entity IDs (product, workflow, materials, listings).
+	 * Resolve known seed entity IDs (product, workflows, materials, listings).
 	 *
 	 * @return array{
 	 *   product_id:int,
 	 *   workflow_id:int,
+	 *   pack_workflow_id:int,
 	 *   material_ids:array<int,int>,
 	 *   listing_ids:array<int,int>,
-	 *   step_ids:array<int,int>
+	 *   step_ids:array<int,int>,
+	 *   pack_step_ids:array<int,int>
 	 * }
 	 */
 	public static function resolve_seed_ids() {
@@ -730,12 +878,25 @@ class SOM_Seed {
 			);
 		}
 
-		$workflow_id = (int) get_option( 'som_seed_workflow_id', 0 );
-		if ( $workflow_id < 1 ) {
-			$workflow_id = (int) $wpdb->get_var(
+		$workflow_id = self::resolve_make_workflow_id();
+
+		$pack_workflow_id = (int) get_option( 'som_seed_pack_workflow_id', 0 );
+		if ( $pack_workflow_id > 0 ) {
+			$still = $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
+					$pack_workflow_id
+				)
+			);
+			if ( ! $still ) {
+				$pack_workflow_id = 0;
+			}
+		}
+		if ( $pack_workflow_id < 1 ) {
+			$pack_workflow_id = (int) $wpdb->get_var(
 				$wpdb->prepare(
 					'SELECT id FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
-					self::WORKFLOW_NAME
+					self::PACK_WORKFLOW_NAME
 				)
 			);
 		}
@@ -788,12 +949,27 @@ class SOM_Seed {
 			}
 		}
 
+		$pack_step_ids = array();
+		if ( $pack_workflow_id > 0 ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = %d',
+					$pack_workflow_id
+				)
+			);
+			if ( is_array( $rows ) ) {
+				$pack_step_ids = array_map( 'intval', $rows );
+			}
+		}
+
 		return array(
-			'product_id'   => $product_id,
-			'workflow_id'  => $workflow_id,
-			'material_ids' => $material_ids,
-			'listing_ids'  => $listing_ids,
-			'step_ids'     => $step_ids,
+			'product_id'       => $product_id,
+			'workflow_id'      => $workflow_id,
+			'pack_workflow_id' => $pack_workflow_id,
+			'material_ids'     => $material_ids,
+			'listing_ids'      => $listing_ids,
+			'step_ids'         => $step_ids,
+			'pack_step_ids'    => $pack_step_ids,
 		);
 	}
 
@@ -827,7 +1003,7 @@ class SOM_Seed {
 			++$summary['listings'];
 		}
 
-		// Goals on seed workflow.
+		// Goals on seed make workflow.
 		if ( $ids['workflow_id'] > 0 ) {
 			$wpdb->delete(
 				SOM_DB::table( 'workflow_material_goals' ),
@@ -847,20 +1023,28 @@ class SOM_Seed {
 			$summary['products'] = 1;
 		}
 
-		// Workflow steps then template (progress already cleared with orders).
-		if ( $ids['workflow_id'] > 0 ) {
-			if ( ! empty( $ids['step_ids'] ) ) {
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				$wpdb->query(
-					'DELETE FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = ' . (int) $ids['workflow_id']
-				);
+		// Clear site default Pack if it pointed at the seed Pack template.
+		$seed_pack_id = (int) ( $ids['pack_workflow_id'] ?? 0 );
+		if ( $seed_pack_id > 0 && SOM_Pack::default_template_id() === $seed_pack_id ) {
+			SOM_Pack::set_default_template_id( 0 );
+		}
+
+		// Workflow steps then templates (progress already cleared with orders).
+		foreach ( array( 'workflow_id', 'pack_workflow_id' ) as $key ) {
+			$wf_id = (int) ( $ids[ $key ] ?? 0 );
+			if ( $wf_id < 1 ) {
+				continue;
 			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->query(
+				'DELETE FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = ' . $wf_id
+			);
 			$wpdb->delete(
 				SOM_DB::table( 'workflow_templates' ),
-				array( 'id' => $ids['workflow_id'] ),
+				array( 'id' => $wf_id ),
 				array( '%d' )
 			);
-			$summary['workflows'] = 1;
+			++$summary['workflows'];
 		}
 
 		// Materials (only if unused by other recipes / POs).
@@ -905,6 +1089,7 @@ class SOM_Seed {
 
 		delete_option( 'som_seed_product_id' );
 		delete_option( 'som_seed_workflow_id' );
+		delete_option( 'som_seed_pack_workflow_id' );
 
 		$summary['message'] = sprintf(
 			/* translators: 1: orders, 2: listings, 3: products, 4: materials, 5: workflows */
@@ -967,10 +1152,11 @@ class SOM_Seed {
 
 		$ids = self::resolve_seed_ids();
 		return array(
-			'removed'     => $removed,
-			'product_id'  => $ids['product_id'],
-			'workflow_id' => $ids['workflow_id'],
-			'message'     => __( 'Seed catalogue and dummy channel credentials restored. Use Sync now to reload fixture orders.', 'order-machine' ),
+			'removed'          => $removed,
+			'product_id'       => $ids['product_id'],
+			'workflow_id'      => $ids['workflow_id'],
+			'pack_workflow_id' => $ids['pack_workflow_id'],
+			'message'          => __( 'Seed catalogue and dummy channel credentials restored (Bin Sticker Make + Order Pack & Ship). Use Sync now to reload fixture orders.', 'order-machine' ),
 		);
 	}
 
@@ -1010,8 +1196,13 @@ class SOM_Seed {
 			}
 		}
 
-		if ( ! empty( $ids['step_ids'] ) ) {
-			$in = implode( ',', array_map( 'intval', $ids['step_ids'] ) );
+		$all_step_ids = array_merge(
+			isset( $ids['step_ids'] ) ? (array) $ids['step_ids'] : array(),
+			isset( $ids['pack_step_ids'] ) ? (array) $ids['pack_step_ids'] : array()
+		);
+		$all_step_ids = array_values( array_unique( array_filter( array_map( 'intval', $all_step_ids ) ) ) );
+		if ( ! empty( $all_step_ids ) ) {
+			$in = implode( ',', $all_step_ids );
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$rows = $wpdb->get_col(
 				"SELECT DISTINCT id FROM {$orders_t} WHERE current_step_id IN ({$in})"
@@ -1023,6 +1214,19 @@ class SOM_Seed {
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$rows = $wpdb->get_col(
 				"SELECT DISTINCT order_id FROM {$progress_t} WHERE workflow_step_id IN ({$in})"
+			);
+			if ( is_array( $rows ) ) {
+				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );
+			}
+		}
+
+		$pack_wf = (int) ( $ids['pack_workflow_id'] ?? 0 );
+		if ( $pack_wf > 0 ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT id FROM {$orders_t} WHERE pack_workflow_template_id = %d",
+					$pack_wf
+				)
 			);
 			if ( is_array( $rows ) ) {
 				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );

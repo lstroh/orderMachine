@@ -51,6 +51,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Import history** — 30 or 90 days backfill
 - **Platform fee sync** — status, **Sync fees now**, eBay Finances reconnect notice when needed
 - **Remove seed data** / **Restore seed data** (restore requires dummy mode)
+- **Repair pack binding** — bind Default Pack on open unbound non-Internal orders (skips legacy monolithic progress); clear leftover thank-you batches under Batches manually if needed
 
 **Important rules:**
 
@@ -161,7 +162,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **Important rules:**
 
-- New non-Internal orders bind the Settings **Default Pack workflow** (kind Pack). If unset, orders soft-flag and **Ship stays blocked** until a Pack template is configured (migrate repair in UP6-S3).
+- New non-Internal orders bind the Settings **Default Pack workflow** (kind Pack). If unset, orders soft-flag and **Ship stays blocked** until a Pack template is configured — then Settings → **Repair pack binding**.
 - **Ship** stays blocked until: all sellable lines make-complete, no pack hold, shipping package selected, packing checklist + thank-you tick, address confirm, and shipment row recorded.
 - Packed-by / packed-at stamps once when the packing checklist first completes; optional pack weight (g) on the shipment.
 - Browser print on order detail renders a pack list (buyer, address, lines, notes).
@@ -271,7 +272,8 @@ Also see order **Notes** (§3) and **Planned shipping** on order detail (§3) / 
 - Assign **batch group** (batch-only step in v1; combo with other gates is rejected)
 - Template-level **material cost goals**
 
-**Seeded example — Bin Sticker Production (new seeds only):** Print → Confirm print → Dry (timer) → Laminate → Cut → Confirm pack → Pack → Confirm address → Ship → Thank-you (batch `thank_you_card`) → Review (timer + manual). Existing Local templates are not rewritten. Shipping label batch is opt-in via editor.
+**Seeded make — Bin Sticker Make:** Print → Confirm print → Dry → Laminate → Cut.  
+**Seeded pack — Order Pack & Ship:** Confirm pack (lines + thank-you) → Confirm address → Package → Ship → Review reminder. No thank-you batch on Pack. Existing Local templates are not auto-truncated — Restore seed or edit manually, then **Repair pack binding**.
 
 ---
 
