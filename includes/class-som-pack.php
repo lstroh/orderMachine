@@ -559,7 +559,7 @@ class SOM_Pack {
 		if ( '' !== $search ) {
 			$like     = '%' . $wpdb->esc_like( $search ) . '%';
 			$where[]  = '( o.buyer_name LIKE %s OR o.external_order_id LIKE %s OR EXISTS (
-				SELECT 1 FROM {$items_t} oi_s WHERE oi_s.order_id = o.id AND oi_s.personalisation_text LIKE %s
+				SELECT 1 FROM ' . $items_t . ' oi_s WHERE oi_s.order_id = o.id AND oi_s.personalisation_text LIKE %s
 			) )';
 			$params[] = $like;
 			$params[] = $like;
