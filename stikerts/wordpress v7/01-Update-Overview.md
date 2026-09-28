@@ -97,4 +97,4 @@ Do **not** re-litigate:
 4. `04-Update-Pack-Ship.md` — Pack board, checklist, hold, package, print, ship gates  
 5. `05-Update-Seed-Migration.md` — seed rewrite + Local migrate notes  
 6. `06-Update-Cursor-Prompt.md` — kickoff (**planning → sprint plan**, then implement per sprint)  
-7. `Update-6-Sprint-Plan.md` — created when you ask to **Run** the sprint plan (not in this design pass)
+7. `Update-6-Sprint-Plan.md` — sprint plan (UP6-S1–S3); soft defaults for open items
