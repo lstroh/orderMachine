@@ -24,13 +24,28 @@ class SOM_Workflow_Engine {
 	/**
 	 * Assign workflow progress for a newly created order.
 	 *
-	 * Package 6: per-line make via SOM_Item_Make (pack binding lands in UP6-S2).
+	 * Package 6: per-line make + order-level pack bind.
 	 *
 	 * @param int $order_id Order PK.
 	 * @return true|WP_Error
 	 */
 	public static function assign_on_create( $order_id ) {
-		return SOM_Item_Make::assign_on_create( $order_id );
+		$result = SOM_Item_Make::assign_on_create( $order_id );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return SOM_Pack::bind_on_create( $order_id );
+	}
+
+	/**
+	 * Public wrapper to enter a step (used by pack bind).
+	 *
+	 * @param int $order_id Order PK.
+	 * @param int $step_id  Workflow step PK.
+	 * @return true|WP_Error
+	 */
+	public static function enter_step_public( $order_id, $step_id ) {
+		return self::enter_step( (int) $order_id, (int) $step_id );
 	}
 
 	/**
@@ -67,11 +82,17 @@ class SOM_Workflow_Engine {
 			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
 		}
 
-		if ( SOM_Shipments::is_ship_step( $step ) && ! SOM_Shipments::has_required( $order_id ) ) {
-			return new WP_Error(
-				'som_shipment_required',
-				__( 'Record the shipment (carrier, service, ship date, postage) before marking Ship done.', 'order-machine' )
-			);
+		if ( SOM_Shipments::is_ship_step( $step ) ) {
+			$blocked = SOM_Pack::ship_blocked_reason( $order );
+			if ( '' !== $blocked ) {
+				return new WP_Error( 'som_ship_blocked', $blocked );
+			}
+			if ( ! SOM_Shipments::has_required( $order_id ) ) {
+				return new WP_Error(
+					'som_shipment_required',
+					__( 'Record the shipment (carrier, service, ship date, postage) before marking Ship done.', 'order-machine' )
+				);
+			}
 		}
 
 		if ( SOM_Step_Confirmations::has_confirmation( $step )
@@ -397,7 +418,11 @@ class SOM_Workflow_Engine {
 
 		if ( SOM_Shipments::is_ship_step( $step ) ) {
 			$order_id = isset( $progress->order_id ) ? (int) $progress->order_id : 0;
-			if ( $order_id > 0 && ! SOM_Shipments::has_required( $order_id ) ) {
+			$order    = $order_id > 0 ? SOM_Orders::get( $order_id ) : null;
+			if ( ! $order || '' !== SOM_Pack::ship_blocked_reason( $order ) ) {
+				return false;
+			}
+			if ( ! SOM_Shipments::has_required( $order_id ) ) {
 				return false;
 			}
 		}

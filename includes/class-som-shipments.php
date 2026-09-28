@@ -148,6 +148,7 @@ class SOM_Shipments {
 			'service'            => self::DEFAULT_SERVICE,
 			'shipped_at'         => $today,
 			'postage_paid'       => '',
+			'pack_weight_grams'  => '',
 			'tracking_number'    => '',
 			'click_and_drop_ref' => '',
 		);
@@ -166,6 +167,7 @@ class SOM_Shipments {
 		$postage = isset( $input['postage_paid'] ) ? wp_unslash( $input['postage_paid'] ) : '';
 		$tracking = isset( $input['tracking_number'] ) ? sanitize_text_field( (string) $input['tracking_number'] ) : '';
 		$cad_ref  = isset( $input['click_and_drop_ref'] ) ? sanitize_text_field( (string) $input['click_and_drop_ref'] ) : '';
+		$weight   = isset( $input['pack_weight_grams'] ) ? wp_unslash( $input['pack_weight_grams'] ) : '';
 
 		if ( '' === $carrier ) {
 			return new WP_Error( 'som_shipment_carrier', __( 'Carrier is required.', 'order-machine' ) );
@@ -187,6 +189,14 @@ class SOM_Shipments {
 			return new WP_Error( 'som_shipment_postage', __( 'Postage paid cannot be negative.', 'order-machine' ) );
 		}
 
+		$pack_weight = null;
+		if ( '' !== trim( (string) $weight ) ) {
+			if ( ! is_numeric( $weight ) || (float) $weight < 0 ) {
+				return new WP_Error( 'som_pack_weight', __( 'Pack weight must be zero or a positive number of grams.', 'order-machine' ) );
+			}
+			$pack_weight = round( (float) $weight, 2 );
+		}
+
 		$tracking = '' !== $tracking ? $tracking : null;
 		$cad_ref  = '' !== $cad_ref ? $cad_ref : null;
 
@@ -195,6 +205,7 @@ class SOM_Shipments {
 			'service'            => $service,
 			'shipped_at'         => $shipped_at,
 			'postage_paid'       => $postage_paid,
+			'pack_weight_grams'  => $pack_weight,
 			'tracking_number'    => $tracking,
 			'click_and_drop_ref' => $cad_ref,
 		);
@@ -260,6 +271,7 @@ class SOM_Shipments {
 			'service'            => $validated['service'],
 			'shipped_at'         => $validated['shipped_at'],
 			'postage_paid'       => $validated['postage_paid'],
+			'pack_weight_grams'  => $validated['pack_weight_grams'],
 			'tracking_number'    => $validated['tracking_number'],
 			'click_and_drop_ref' => $validated['click_and_drop_ref'],
 			'updated_at'         => $now,

@@ -12,7 +12,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 1. [Settings & channels](#1-settings--channels)
 2. [Order sync behaviour](#2-order-sync-behaviour)
 3. [Orders list & detail](#3-orders-list--detail)
-4. [Orders Board](#4-orders-board)
+4. [Make Board](#4-make-board)
+4b. [Pack Board](#4b-pack-board)
 5. [Products](#5-products) (incl. multipacks / pack sizes)
 5b. [Shipping packages](#5b-shipping-packages)
 6. [Materials & stock](#6-materials--stock)
@@ -33,6 +34,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 ## 1. Settings & channels
 
 **Where:** Order Machine → Settings
+
+**Pack:** choose **Default Pack workflow** (active templates with kind Pack). Bound on new non-Internal orders for the Pack Board and Ship gates. Create Pack templates under Workflows.
 
 **What it is for:** Connect marketplaces, pull orders and fees, tune background intervals, manage API/MCP access, and (in dummy mode) seed data tools.
 
@@ -121,30 +124,49 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 ---
 
-## 4. Orders Board
+## 4. Make Board
 
-**Where:** Order Machine → Orders Board
+**Where:** Order Machine → Make Board
 
-**What it is for:** Day-to-day production queue as a Kanban of open orders.
+**What it is for:** Day-to-day **make** queue as a Kanban of open **order lines** (per-line make progress).
 
 **Main actions:**
 
-- View columns by current step name (+ **Unassigned**)
-- Reorder columns ←/→ (per-user preference)
-- Pin cards; filter Pinned only
-- Filter channel / product / workflow / free-text
-- Drag advanceable cards to the next step or **Complete** zone
-- Open order / product via dedicated links only
+- Filter by make workflow template; columns = that template’s steps (+ **Unassigned**)
+- Pin cards; filter channel / free-text
+- Drag advanceable line cards to the next make step
+- Open order detail (Make section) via card links
 
 **Important rules:**
 
-- Incomplete, non-cancelled only; completed history stays on Orders.
-- Only cards that could Mark done are draggable; waiting / error / Unassigned locked.
-- Valid drop = next-step column (or Complete on last step); wrong drop snaps back.
-- Warn around 200 open matching orders; hard cap 500 (oldest kept).
-- Horizontal scroll on narrow screens (no stacked mobile layout).
+- Cards are **lines**, not whole orders. Advancing one line does not advance sibling lines.
+- Internal Produce N lines appear here; they never go to the Pack Board.
+- Incomplete / non-cancelled only; completed history stays on Orders.
 
-**You will not find:** Completed orders on the Board; free drag to arbitrary past steps.
+**You will not find:** Pack/ship columns (use Pack Board); free drag to arbitrary past steps.
+
+---
+
+## 4b. Pack Board
+
+**Where:** Order Machine → Pack Board
+
+**What it is for:** Pack & ship queue as a Kanban of open **orders** (not Internal).
+
+**Main actions:**
+
+- Columns include **Waiting for make**, **Held**, then current pack step names
+- Filter channel / free-text; open Pack panel on order detail
+- Drag advanceable cards when make-ready and not held
+
+**Important rules:**
+
+- New non-Internal orders bind the Settings **Default Pack workflow** (kind Pack). If unset, orders soft-flag and **Ship stays blocked** until a Pack template is configured (migrate repair in UP6-S3).
+- **Ship** stays blocked until: all sellable lines make-complete, no pack hold, shipping package selected, packing checklist + thank-you tick, address confirm, and shipment row recorded.
+- Packed-by / packed-at stamps once when the packing checklist first completes; optional pack weight (g) on the shipment.
+- Browser print on order detail renders a pack list (buyer, address, lines, notes).
+
+**You will not find:** Internal / Produce N orders; make-line cards (use Make Board).
 
 ---
 

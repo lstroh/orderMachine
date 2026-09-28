@@ -45,8 +45,9 @@ Top-level: **Order Machine**
 
 | Screen | Purpose |
 |---|---|
-| **Orders** | List and open order detail (buyer, items, workflow, fees) |
-| **Orders Board** | Kanban of open orders by current step; drag to advance |
+| **Orders** | List and open order detail (buyer, items, make/pack, fees) |
+| **Make Board** | Kanban of open **order lines** by make step; drag to advance |
+| **Pack Board** | Kanban of open **orders** in pack & ship (not Internal) |
 | **Products** | Catalogue, recipes, workflow assignment, Product Costing; internal Produce N |
 | **Materials** | Stock, WA / value, preferred supplier, R&D write-off |
 | **Budgets** | Material + manual budgets, ledger, adjustments |
@@ -150,7 +151,7 @@ Order notes, planned vs actual postage, and the shipping-packages catalogue are 
 |---|---|
 | Cancelled orders | Status is shown; **material stock is not reversed** yet when an order cancels later. |
 | Currency | **GBP only** (fee amounts stored as returned and treated as GBP; no FX conversion). |
-| Orders Board | **Open / incomplete** orders only. Completed history stays on **Orders** (use View history). |
+| Make / Pack Boards | **Open / incomplete** only. Make = line cards; Pack = order cards (excludes Internal). Completed history stays on **Orders**. |
 | Batch steps | In v1 a step is **batch-only** (not combined with timer/script/manual on the same step). |
 | PO after first receive | Line quantities/costs **lock**; notes stay editable. Corrections via stock/value adjustment, not rewriting old receives. |
 | Negative stock / budgets | Allowed as a shortage / overspend signal. |

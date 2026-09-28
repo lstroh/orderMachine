@@ -136,6 +136,10 @@ class SOM_Step_Confirmations {
 					return false;
 				}
 			}
+			// Package 6: thank-you included required on pack checklist.
+			if ( empty( $state['thank_you_included'] ) ) {
+				return false;
+			}
 			return true;
 		}
 
@@ -264,6 +268,10 @@ class SOM_Step_Confirmations {
 			return new WP_Error( 'som_confirm_save', __( 'Could not save confirmation checklist.', 'order-machine' ) );
 		}
 
+		if ( self::KIND_PACKING_ITEMS === $kind ) {
+			SOM_Pack::maybe_stamp_packed( $order_id );
+		}
+
 		return true;
 	}
 
@@ -298,7 +306,10 @@ class SOM_Step_Confirmations {
 				$id = (string) (int) $item->id;
 				$items_state[ $id ] = ! empty( $posted[ $id ] ) || ! empty( $posted[ (int) $item->id ] );
 			}
-			return array( 'items' => $items_state );
+			return array(
+				'items'              => $items_state,
+				'thank_you_included' => ! empty( $input['thank_you_included'] ),
+			);
 		}
 		return array();
 	}

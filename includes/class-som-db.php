@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.15.0';
+	const DB_VERSION = '1.16.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -205,6 +205,13 @@ class SOM_DB {
 			buyer_name varchar(150) NOT NULL DEFAULT '',
 			shipping_address text NULL,
 			planned_shipping_gbp decimal(10,2) NULL,
+			pack_workflow_template_id bigint(20) unsigned NULL,
+			shipping_package_id bigint(20) unsigned NULL,
+			pack_hold_reason text NULL,
+			pack_held_at datetime NULL,
+			pack_held_by bigint(20) unsigned NULL,
+			packed_by_user_id bigint(20) unsigned NULL,
+			packed_at datetime NULL,
 			current_step_id bigint(20) unsigned NULL,
 			is_complete tinyint(1) NOT NULL DEFAULT 0,
 			raw_payload longtext NULL,
@@ -213,7 +220,9 @@ class SOM_DB {
 			PRIMARY KEY  (id),
 			UNIQUE KEY channel_order (channel_id,external_order_id),
 			KEY order_date (order_date),
-			KEY current_step_id (current_step_id)
+			KEY current_step_id (current_step_id),
+			KEY pack_workflow_template_id (pack_workflow_template_id),
+			KEY shipping_package_id (shipping_package_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_order_items (
@@ -236,6 +245,7 @@ class SOM_DB {
 			service varchar(100) NOT NULL,
 			shipped_at datetime NOT NULL,
 			postage_paid decimal(10,2) NOT NULL,
+			pack_weight_grams decimal(10,2) NULL,
 			tracking_number varchar(100) NULL,
 			click_and_drop_ref varchar(100) NULL,
 			tracking_pushed_at datetime NULL,
@@ -504,6 +514,7 @@ class SOM_DB {
 		self::upgrade_progress_status_enum();
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_workflow_template_kind();
+		self::upgrade_pack_columns();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -612,6 +623,66 @@ class SOM_DB {
 	}
 
 	/**
+	 * Add Package 6 pack columns on orders / shipments when missing.
+	 *
+	 * @return void
+	 */
+	private static function upgrade_pack_columns() {
+		global $wpdb;
+
+		$orders = self::table( 'orders' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $orders ) ) === $orders ) {
+			$order_cols = array(
+				'pack_workflow_template_id' => 'bigint(20) unsigned NULL',
+				'shipping_package_id'       => 'bigint(20) unsigned NULL',
+				'pack_hold_reason'          => 'text NULL',
+				'pack_held_at'              => 'datetime NULL',
+				'pack_held_by'              => 'bigint(20) unsigned NULL',
+				'packed_by_user_id'         => 'bigint(20) unsigned NULL',
+				'packed_at'                 => 'datetime NULL',
+			);
+			foreach ( $order_cols as $name => $def ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$has = $wpdb->get_row( "SHOW COLUMNS FROM {$orders} LIKE '{$name}'" );
+				if ( ! $has ) {
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$wpdb->query( "ALTER TABLE {$orders} ADD COLUMN {$name} {$def}" );
+				}
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$indexes = $wpdb->get_results( "SHOW INDEX FROM {$orders}" );
+			$have    = array();
+			if ( is_array( $indexes ) ) {
+				foreach ( $indexes as $idx ) {
+					if ( isset( $idx->Key_name ) ) {
+						$have[ $idx->Key_name ] = true;
+					}
+				}
+			}
+			if ( empty( $have['pack_workflow_template_id'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$orders} ADD KEY pack_workflow_template_id (pack_workflow_template_id)" );
+			}
+			if ( empty( $have['shipping_package_id'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$orders} ADD KEY shipping_package_id (shipping_package_id)" );
+			}
+		}
+
+		$shipments = self::table( 'shipments' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $shipments ) ) === $shipments ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$shipments} LIKE 'pack_weight_grams'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$shipments} ADD COLUMN pack_weight_grams decimal(10,2) NULL AFTER postage_paid" );
+			}
+		}
+	}
+
+	/**
 	 * Ensure workflow_templates.kind exists (dbDelta ENUM add can be flaky).
 	 *
 	 * @return void
@@ -678,6 +749,7 @@ class SOM_DB {
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_progress_status_enum();
 		self::upgrade_workflow_template_kind();
+		self::upgrade_pack_columns();
 	}
 
 	/**

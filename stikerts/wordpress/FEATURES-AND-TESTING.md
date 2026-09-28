@@ -18,6 +18,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Order sync (incremental + history import) | Done |
 | Orders list + detail UI | Done |
 | Make Board (line Kanban + gated DnD) | Done (UP6-S1; was Orders Board) |
+| Pack Board + Ship gates | Done (UP6-S2) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
 | Step instructions (default + product override) | Done (UP4-S1) |
@@ -95,7 +96,8 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 |---|---|---|
 | **Orders** | `som-orders` | List, filters, badges; open a row for detail |
 | Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
-| **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop (Pack board = UP6-S2) |
+| **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop |
+| **Pack Board** | `som-pack-board` | Kanban of open **orders** in pack/ship; Waiting for make + Held; Internal excluded |
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, recipe, Product Costing |
 | **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history, R&D write-off |
 | **Budgets** | `som-budgets` | Material + manual budgets; balances, ledger, adjustments, R&D write-off |
@@ -103,12 +105,12 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | **Purchase Orders** | `som-purchase-orders` | Create/edit POs, Preview Impact, receive, mark-received / cancel |
 | **Batches** | `som-batches` | Open batches list; release / mark done / retry; edit batch groups |
 | Batch deep-link | `som-batches&batch_id=N` | Scrolls/expands that batch |
-| **Workflows** | `som-workflows` | Templates + step editor (gates, batch group, material cost goals) |
+| **Workflows** | `som-workflows` | Templates + step editor (gates, batch group, material cost goals; kind Make/Pack) |
 | **Listings** | `som-listings` | Cached marketplace listings; refresh + push price/qty/description |
 | **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV charts (Chart.js) |
 | **Channel Fee Estimates** | `som-channel-fee-estimates` | Per-channel estimated fee components (tiers, optional ads) |
 | **Recurring Platform Expenses** | `som-recurring-platform-expenses` | Non-order-linked fees (e.g. Etsy listing fees) |
-| **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key |
+| **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key, default Pack workflow |
 
 ---
 
@@ -126,6 +128,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Set **n8n base URL** (used when a step’s `script_config` type is `n8n`)
 - Configure intervals: order poll, engine tick, token refresh, **fee poll** (default 30 minutes, min 5)
 - Toggle **MCP / Abilities** registration and manage the **REST API key**
+- Choose **Default Pack workflow** (kind Pack) for new non-Internal orders
 - **Sync now** — incremental pull (fixtures when credentials are dummy)
 - **Import history** — 30 or 90 days (history creates orders but skips workflow assignment and stock reservation)
 - **Platform fee sync** — last-run / cursor status, **Sync fees now**, reconnect notice when live eBay token lacks Finances scope
@@ -192,7 +195,8 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 **Workflow rules on the order:**
 
-- **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Pack & Ship binding = UP6-S2. Legacy open orders may still show order-level progress.
+- **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Legacy open orders may still show order-level progress.
+- **Pack (UP6-S2):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Seed Pack template + migrate repair = UP6-S3.
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
 - Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
 
@@ -490,32 +494,13 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 
 ---
 
-### 3.14 Orders Board
+### 3.14 Make Board & Pack Board
 
-**Where:** Order Machine → Orders Board (submenu immediately after Orders)
+**Make Board** (`som-orders-board`, UP6-S1): Kanban of open **order lines** by make step. Filter by make workflow; columns = that template’s steps. Advancing a card advances that line only. Internal Produce N lines appear here.
 
-**Population:** Incomplete, non-cancelled orders only. Completed history stays on the Orders list (**View history** link). Horizontal scroll on narrow screens (no stacked mobile layout).
+**Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings).
 
-**Columns & cards:**
-
-- Columns = distinct current step names among loaded orders, plus **Unassigned** when any open order has no `current_step_id`
-- Empty columns are also **prefilled** for reachable next-step names of advanceable cards (so there is somewhere to drop)
-- Column order: per-user meta (`som_board_column_order`) merged with auto lowest-`step_order` heuristic; **←/→** on headers; new names append via heuristic
-- Cards (oldest `order_date` first): channel badge, buyer, personalisation preview, step, time in step, progress badges (`waiting_timer` / `waiting_script` / `waiting_batch` / `error` / etc.), batch link when waiting on a batch, pin ★
-- Links only on **order ID**, **product name(s)**, and **View** — card body is not one big click target
-
-**Filters:** channel, product, workflow template (two independent dropdowns), free-text (buyer / external order ID / personalisation), client **Pinned only**
-
-**Volume:** warn at ≥ **200** matching open orders; hard **cap 500** (oldest kept when capped)
-
-**Gated drag-and-drop (SortableJS 1.15.6 CDN):**
-
-- Only cards that could Mark done (`in_progress` + gates clear) are draggable; waiting / error / pending / Unassigned are locked
-- Valid drop = next-step column, or ephemeral **Complete** zone when the card is on its last step
-- Within-column reorder disabled; drop POSTs `POST /som/v1/orders/{id}/advance-step` with `{}`
-- Success places/removes the card from the API response (`current_step_name` / `is_complete`), not blindly from the drop-target name; badges update from extended `progress_status` (+ batch summary when applicable)
-- Invalid drop or API/network error → snap-back (+ alert on failure)
-- Complete zone is not persisted in column-order meta
+**Shared board behaviour:** Incomplete / non-cancelled only; warn ≥200 / cap 500; gated SortableJS DnD for advanceable cards; horizontal scroll on narrow screens. Completed history stays on Orders.
 
 ---
 
@@ -620,7 +605,7 @@ Work top-to-bottom. Each section builds on the previous. Checkboxes are for your
 ### Test 1 — Foundation & menu
 
 1. Open **Order Machine** in the left admin menu.
-2. Confirm submenus: Orders, Orders Board, Products, Materials, Budgets, Suppliers, Shipping packages, Purchase Orders, Batches, Workflows, Listings, Analytics, Channel Fee Estimates, Recurring Platform Expenses, Settings.
+2. Confirm submenus: Orders, Make Board, Pack Board, Products, Materials, Budgets, Suppliers, Shipping packages, Purchase Orders, Batches, Workflows, Listings, Analytics, Channel Fee Estimates, Recurring Platform Expenses, Settings.
 
 - [ ] Menu present and all screens load without PHP errors
 
@@ -876,7 +861,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 If you use the Local `ordermachine` site:
 
-- [ ] Plugin activates; menus load (incl. Analytics, Channel Fee Estimates, Recurring Platform Expenses, Orders Board, Budgets, …)
+- [ ] Plugin activates; menus load (incl. Analytics, Channel Fee Estimates, Recurring Platform Expenses, Make Board, Pack Board, Budgets, …)
 - [ ] After first admin load with Package 3 code, `som_db_version` is `1.8.0` and fee tables exist
 - [ ] With dummy constant: Sync now + Sync fees now behave like wp-env
 - [ ] Without dummy: Settings accepts app keys; Connect shows correct callback URLs; live eBay may show Finances reconnect after scope expand
@@ -904,9 +889,9 @@ If you use the Local `ordermachine` site:
 
 ---
 
-### Test 17 — Orders Board
+### Test 17 — Make Board & Pack Board
 
-1. **Orders Board** (under Orders). Confirm open incomplete orders as cards in step columns (+ Unassigned if any need workflow/mapping).
+1. **Make Board** (under Orders). Confirm open incomplete **lines** as cards in make-step columns. **Pack Board**: order cards; Waiting for make / Held when applicable.
 2. Reorder columns with ←/→; refresh → order persists. Pin a card; toggle **Pinned only**; unpin.
 3. Filter by channel, product, workflow, and personalisation search.
 4. Confirm progress badges / batch link when waiting; only order ID / product / View are links.
@@ -1009,7 +994,7 @@ Beyond “does it click,” please watch for:
 9. **Batches list** — expandable rows + deep-link good enough vs a separate detail page?
 10. **Thank-you batching** — size 4 and cross-workflow pooling feel right?
 11. **Budgets** — material vs manual funding / scopes understandable? Low/overspent badges useful? Does fee-aware `percent_of_profit` feel right?
-12. **Orders Board** — column names / DnD gates / Complete zone feel natural for day-to-day production?
+12. **Make / Pack Boards** — line vs order cards, Waiting for make / Held, Ship gates feel natural for day-to-day production?
 13. **Fee estimates** — seeded rates / tiers / optional ads defaults sensible? Costing estimate vs actual comparison useful?
 14. **Analytics** — filters + five charts enough for weekly ops? Stock multi-select UX clear?
 
