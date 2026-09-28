@@ -998,4 +998,6 @@ Planned sprints **0–11** (roadmap Phases **1–12**) are complete in code. Rem
 
 **Update Package 4:** design + plan in [`../wordpress v5/`](../wordpress%20v5/); progress in [`../wordpress v5/Update-4-Sprint-Progress.md`](../wordpress%20v5/Update-4-Sprint-Progress.md). **UP4-S1–S4** complete through plugin **0.27.0** / schema **1.12.0**.
 
-**Update Package 5:** design + plan in [`../wordpress v6/`](../wordpress%20v6/); progress in [`../wordpress v6/Update-5-Sprint-Progress.md`](../wordpress%20v6/Update-5-Sprint-Progress.md). **UP5-S1–S3 complete** (notes, shipping packages / planned postage, multipack docs) through plugin **0.29.0** / schema **1.14.0**.
+**Update Package 5:** design + plan in [`../wordpress v6/`](../wordpress%20v6/); progress in [`../wordpress v6/Update-5-Sprint-Progress.md`](../wordpress%20v6/Update-5-Sprint-Progress.md). **UP5-S1–S3 complete** (notes, shipping packages / planned postage, multipack docs) through plugin **0.29.1** / schema **1.14.0** (desktop verified).
+
+**Update Package 6:** design in [`../wordpress v7/`](../wordpress%20v7/) — make/pack separation (per-line make + Pack board). Sprint plan when kicked off via `06-Update-Cursor-Prompt.md`.
