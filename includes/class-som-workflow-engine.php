@@ -22,87 +22,15 @@ class SOM_Workflow_Engine {
 	const HOOK_TIMER_UNLOCKED = 'som_timer_unlocked';
 
 	/**
-	 * Assign workflow progress for a newly created order (primary product rule).
+	 * Assign workflow progress for a newly created order.
+	 *
+	 * Package 6: per-line make via SOM_Item_Make (pack binding lands in UP6-S2).
 	 *
 	 * @param int $order_id Order PK.
 	 * @return true|WP_Error
 	 */
 	public static function assign_on_create( $order_id ) {
-		global $wpdb;
-
-		$order_id = (int) $order_id;
-		$order    = SOM_Orders::get( $order_id );
-		if ( ! $order ) {
-			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
-		}
-
-		if ( ! empty( $order->is_cancelled ) ) {
-			return true;
-		}
-
-		if ( self::has_progress( $order_id ) ) {
-			return true;
-		}
-
-		$product_id = self::primary_product_id( $order );
-		if ( ! $product_id ) {
-			return true;
-		}
-
-		$products_t  = SOM_DB::table( 'products' );
-		$template_id = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT workflow_template_id FROM {$products_t} WHERE id = %d LIMIT 1",
-				$product_id
-			)
-		);
-
-		if ( $template_id < 1 ) {
-			return true;
-		}
-
-		$steps = SOM_Workflows::get_steps( $template_id );
-		if ( empty( $steps ) ) {
-			return true;
-		}
-
-		$now        = current_time( 'mysql', true );
-		$progress_t = SOM_DB::table( 'order_step_progress' );
-
-		foreach ( $steps as $step ) {
-			$inserted = $wpdb->insert(
-				$progress_t,
-				array(
-					'order_id'         => $order_id,
-					'workflow_step_id' => (int) $step->id,
-					'status'           => 'pending',
-					'timer_ends_at'    => null,
-					'retry_count'      => 0,
-					'last_error'       => null,
-					'started_at'       => null,
-					'completed_at'     => null,
-				),
-				array( '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' )
-			);
-			if ( ! $inserted ) {
-				return new WP_Error( 'som_progress_create', __( 'Could not create workflow progress rows.', 'order-machine' ) );
-			}
-		}
-
-		$first_step_id = (int) $steps[0]->id;
-		$wpdb->update(
-			SOM_DB::table( 'orders' ),
-			array(
-				'current_step_id' => $first_step_id,
-				'is_complete'     => 0,
-				'updated_at'      => $now,
-			),
-			array( 'id' => $order_id ),
-			array( '%d', '%d', '%s' ),
-			array( '%d' )
-		);
-
-		return self::enter_step( $order_id, $first_step_id );
+		return SOM_Item_Make::assign_on_create( $order_id );
 	}
 
 	/**
@@ -374,6 +302,7 @@ class SOM_Workflow_Engine {
 		}
 
 		$batches = SOM_Batches::process_due_retries();
+		$unlocked += SOM_Item_Make::tick_unlock_timers();
 
 		return array(
 			'unlocked' => $unlocked,
@@ -735,28 +664,10 @@ class SOM_Workflow_Engine {
 
 	/**
 	 * @param object $order Order from SOM_Orders::get().
-	 * @return string needs_mapping|no_template|empty
+	 * @return string needs_mapping|no_template|partial|empty
 	 */
 	public static function unassigned_reason( $order ) {
-		if ( ! empty( $order->is_complete ) || self::has_progress( (int) $order->id ) ) {
-			return '';
-		}
-
-		$product_id = self::primary_product_id( $order );
-		if ( ! $product_id ) {
-			return 'needs_mapping';
-		}
-
-		global $wpdb;
-		$products_t  = SOM_DB::table( 'products' );
-		$template_id = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT workflow_template_id FROM {$products_t} WHERE id = %d LIMIT 1",
-				$product_id
-			)
-		);
-
-		return $template_id > 0 ? '' : 'no_template';
+		return SOM_Item_Make::unassigned_reason( $order );
 	}
 
 	/**

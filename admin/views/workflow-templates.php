@@ -12,12 +12,14 @@ if ( ! current_user_can( 'manage_options' ) ) {
 }
 
 $status = isset( $_GET['som_status'] ) ? sanitize_key( wp_unslash( $_GET['som_status'] ) ) : 'active';
+$kind   = isset( $_GET['som_kind'] ) ? sanitize_key( wp_unslash( $_GET['som_kind'] ) ) : '';
 $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 $paged  = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
 $result    = SOM_Workflows::query(
 	array(
 		'status' => $status,
+		'kind'   => $kind,
 		's'      => $search,
 		'paged'  => $paged,
 	)
@@ -51,6 +53,14 @@ $status_options = array(
 				</option>
 			<?php endforeach; ?>
 		</select>
+		<select name="som_kind">
+			<option value=""><?php echo esc_html__( 'All kinds', 'order-machine' ); ?></option>
+			<?php foreach ( SOM_Workflows::kind_choices() as $kind_key => $kind_label ) : ?>
+				<option value="<?php echo esc_attr( $kind_key ); ?>" <?php selected( $kind, $kind_key ); ?>>
+					<?php echo esc_html( $kind_label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
 		<button type="submit" class="button"><?php echo esc_html__( 'Filter', 'order-machine' ); ?></button>
 	</form>
 
@@ -68,6 +78,7 @@ $status_options = array(
 		<thead>
 			<tr>
 				<th scope="col" class="column-name"><?php echo esc_html__( 'Name', 'order-machine' ); ?></th>
+				<th scope="col" class="column-kind"><?php echo esc_html__( 'Kind', 'order-machine' ); ?></th>
 				<th scope="col" class="column-steps"><?php echo esc_html__( 'Steps', 'order-machine' ); ?></th>
 				<th scope="col" class="column-products"><?php echo esc_html__( 'Products', 'order-machine' ); ?></th>
 				<th scope="col" class="column-status"><?php echo esc_html__( 'Status', 'order-machine' ); ?></th>
@@ -76,7 +87,7 @@ $status_options = array(
 		<tbody>
 			<?php if ( empty( $templates ) ) : ?>
 				<tr>
-					<td colspan="4"><?php echo esc_html__( 'No workflow templates found.', 'order-machine' ); ?></td>
+					<td colspan="5"><?php echo esc_html__( 'No workflow templates found.', 'order-machine' ); ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $templates as $template ) : ?>
@@ -90,6 +101,13 @@ $status_options = array(
 							<?php if ( ! empty( $template->description ) ) : ?>
 								<p class="description som-muted"><?php echo esc_html( wp_trim_words( (string) $template->description, 12 ) ); ?></p>
 							<?php endif; ?>
+						</td>
+						<td class="column-kind">
+							<?php
+							$tk = SOM_Workflows::sanitize_kind( isset( $template->kind ) ? $template->kind : 'make' );
+							$labels = SOM_Workflows::kind_choices();
+							echo esc_html( isset( $labels[ $tk ] ) ? $labels[ $tk ] : $tk );
+							?>
 						</td>
 						<td class="column-steps">
 							<?php echo esc_html( (string) (int) $template->step_count ); ?>

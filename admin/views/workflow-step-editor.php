@@ -259,6 +259,29 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 				</td>
 			</tr>
 			<tr>
+				<th scope="row"><label for="som_workflow_kind"><?php echo esc_html__( 'Kind', 'order-machine' ); ?></label></th>
+				<td>
+					<?php
+					$current_kind = $template && ! empty( $template->kind )
+						? SOM_Workflows::sanitize_kind( $template->kind )
+						: 'make';
+					?>
+					<select id="som_workflow_kind" name="som_workflow_kind" <?php disabled( $in_use && 'make' === $current_kind ); ?>>
+						<?php foreach ( SOM_Workflows::kind_choices() as $kind_key => $kind_label ) : ?>
+							<option value="<?php echo esc_attr( $kind_key ); ?>" <?php selected( $current_kind, $kind_key ); ?>>
+								<?php echo esc_html( $kind_label ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<?php if ( $in_use && 'make' === $current_kind ) : ?>
+						<input type="hidden" name="som_workflow_kind" value="make" />
+						<p class="description"><?php echo esc_html__( 'Kind is locked to Make while products use this template.', 'order-machine' ); ?></p>
+					<?php else : ?>
+						<p class="description"><?php echo esc_html__( 'Make templates assign to products. Pack templates are for the order Pack board (Package 6).', 'order-machine' ); ?></p>
+					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><?php echo esc_html__( 'Status', 'order-machine' ); ?></th>
 				<td>
 					<label>

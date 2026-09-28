@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.14.0';
+	const DB_VERSION = '1.15.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -80,10 +80,12 @@ class SOM_DB {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			description text NULL,
+			kind enum('make','pack') NOT NULL DEFAULT 'make',
 			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
-			PRIMARY KEY  (id)
+			PRIMARY KEY  (id),
+			KEY kind (kind)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_shipping_packages (
@@ -268,6 +270,27 @@ class SOM_DB {
 			started_at datetime NULL,
 			completed_at datetime NULL,
 			PRIMARY KEY  (id),
+			KEY order_id (order_id),
+			KEY workflow_step_id (workflow_step_id),
+			KEY status (status)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_order_item_step_progress (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			order_id bigint(20) unsigned NOT NULL,
+			order_item_id bigint(20) unsigned NOT NULL,
+			workflow_step_id bigint(20) unsigned NOT NULL,
+			status enum('pending','in_progress','waiting_timer','waiting_script','waiting_batch','error','done') NOT NULL DEFAULT 'pending',
+			timer_ends_at datetime NULL,
+			retry_count int(11) NOT NULL DEFAULT 0,
+			last_error text NULL,
+			confirmation_state text NULL,
+			started_at datetime NULL,
+			completed_at datetime NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY order_item_step (order_item_id,workflow_step_id),
 			KEY order_id (order_id),
 			KEY workflow_step_id (workflow_step_id),
 			KEY status (status)
@@ -480,6 +503,7 @@ class SOM_DB {
 
 		self::upgrade_progress_status_enum();
 		self::upgrade_batch_groups_key_column();
+		self::upgrade_workflow_template_kind();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -588,6 +612,35 @@ class SOM_DB {
 	}
 
 	/**
+	 * Ensure workflow_templates.kind exists (dbDelta ENUM add can be flaky).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_template_kind() {
+		global $wpdb;
+
+		$table = self::table( 'workflow_templates' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $exists !== $table ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'kind'" );
+		if ( $col ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$table}
+			ADD COLUMN kind enum('make','pack') NOT NULL DEFAULT 'make' AFTER description,
+			ADD KEY kind (kind)"
+		);
+	}
+
+	/**
 	 * Seed total_value_on_hand from existing unit_cost × current_stock (idempotent).
 	 *
 	 * Only rows still at the column default (0) with a known unit_cost are updated,
@@ -624,6 +677,7 @@ class SOM_DB {
 		// Idempotent repairs when already on current version (e.g. mid-WIP column rename).
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_progress_status_enum();
+		self::upgrade_workflow_template_kind();
 	}
 
 	/**

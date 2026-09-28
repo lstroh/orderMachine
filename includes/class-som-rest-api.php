@@ -470,7 +470,19 @@ class SOM_REST_API {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public static function get_order_progress( $request ) {
-		$result = SOM_Workflow_Engine::progress_status_for_api( (int) $request['id'] );
+		$order_id      = (int) $request['id'];
+		$order_item_id = (int) $request->get_param( 'order_item_id' );
+		if ( $order_item_id < 1 ) {
+			$params = $request->get_query_params();
+			if ( isset( $params['order_item_id'] ) ) {
+				$order_item_id = (int) $params['order_item_id'];
+			}
+		}
+		if ( $order_item_id > 0 ) {
+			$result = SOM_Item_Make::progress_status_for_api( $order_id, $order_item_id );
+		} else {
+			$result = SOM_Workflow_Engine::progress_status_for_api( $order_id );
+		}
 		if ( is_wp_error( $result ) ) {
 			return self::error_response( $result );
 		}
@@ -549,7 +561,42 @@ class SOM_REST_API {
 		global $wpdb;
 
 		$order_id = (int) $request['id'];
-		$result   = SOM_Workflow_Engine::mark_done( $order_id );
+		$params   = $request->get_json_params();
+		if ( ! is_array( $params ) ) {
+			$params = array();
+		}
+		$order_item_id = isset( $params['order_item_id'] ) ? (int) $params['order_item_id'] : 0;
+		if ( $order_item_id < 1 ) {
+			$order_item_id = (int) $request->get_param( 'order_item_id' );
+		}
+
+		if ( $order_item_id > 0 ) {
+			$result = SOM_Item_Make::mark_done( $order_id, $order_item_id );
+			if ( is_wp_error( $result ) ) {
+				return self::error_response( $result );
+			}
+
+			$order   = SOM_Orders::get( $order_id );
+			$current = SOM_Item_Make::current_item_progress( $order_item_id );
+			$dnd     = SOM_Item_Make::board_dnd_meta( $order_id, $order_item_id );
+			$payload = array(
+				'ok'                => true,
+				'order_id'          => $order_id,
+				'order_item_id'     => $order_item_id,
+				'current_step_id'   => $current ? (int) $current->workflow_step_id : 0,
+				'current_step_name' => $current ? (string) $current->step_name : '',
+				'is_complete'       => $order ? (int) $order->is_complete : 0,
+				'make_complete'     => ! $current,
+				'progress_status'   => $current ? (string) $current->status : 'done',
+				'batch'             => null,
+				'can_advance'       => ! empty( $dnd['can_advance'] ),
+				'next_step_name'    => (string) $dnd['next_step_name'],
+				'is_last_step'      => ! empty( $dnd['is_last_step'] ),
+			);
+			return rest_ensure_response( $payload );
+		}
+
+		$result = SOM_Workflow_Engine::mark_done( $order_id );
 		if ( is_wp_error( $result ) ) {
 			return self::error_response( $result );
 		}
@@ -558,9 +605,11 @@ class SOM_REST_API {
 		$payload = array(
 			'ok'                => true,
 			'order_id'          => $order_id,
+			'order_item_id'     => 0,
 			'current_step_id'   => $order ? (int) $order->current_step_id : 0,
 			'current_step_name' => $order ? (string) $order->current_step_name : '',
 			'is_complete'       => $order ? (int) $order->is_complete : 0,
+			'make_complete'     => false,
 			'progress_status'   => '',
 			'batch'             => null,
 			'can_advance'       => false,

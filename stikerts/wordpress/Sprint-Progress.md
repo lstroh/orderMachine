@@ -2,6 +2,8 @@
 
 *Companion to [`Sprint-Plan.md`](Sprint-Plan.md). Plan stays the source of scope; this file records what shipped and how it was verified.*
 
+**Update Package 6:** see [`../wordpress v7/Update-6-Sprint-Progress.md`](../wordpress%20v7/Update-6-Sprint-Progress.md) (UP6-S1 make / pack separation).
+
 ---
 
 ## Status overview
