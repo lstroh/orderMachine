@@ -4,7 +4,7 @@
 
 *Trading name: **Doorstep Studio** (confirmed Sep 2026; domain doorstepstudio.co.uk). The earlier working name "Kerbside Craft Co." is retired.*
 
-*Prepared July 2026 · Last revised September 2026 (synced to cost sheet StickerBinStickersCosts_v4.xlsx) · Starting configuration: Tier 1 equipment*
+*Prepared July 2026 · Last revised September 2026 (synced to cost sheet StickerBinStickersCosts_v4.xlsx, including the 20% eBay-fee VAT correction applied via Claude in Excel) · Starting configuration: Tier 1 equipment*
 
 ## 1. Executive Summary
 
@@ -65,12 +65,21 @@ Per-pack production cost for the bin sticker 4-pack is about **£2.21** all-in: 
 
 ## 6. Pricing & Margins
 
-| Platform | Sale Price | Fees | Net After Fees | Direct Cost per Pack | Profit per Pack (before overhead) |
+*Updated Sep 2026 — 20% VAT on eBay business-seller fees (Final Value Fee, per-order fee, regulatory fee, and Promoted Listings if used) applied via Claude in Excel to `StickerBinStickersCosts_v4.xlsx`. This VAT is non-recoverable, since the business is not VAT-registered.*
+
+| Platform | Sale Price | Fees (incl. 20% VAT) | Net After Fees | Direct Cost per Pack | Profit per Pack (before overhead) |
 |---|---|---|---|---|---|
-| eBay (business seller) | £4.00 | ≈£0.99 (~25%: 12.8% final value fee + 0.4% regulatory fee + 30p per-order fee + 4% Promoted Listings) | £3.01 | £2.21 | £0.80 |
+| eBay (business seller), Letter postage | £4.00 | ≈£1.19 (12.8% final value fee + 0.4% regulatory fee + 30p per-order fee + 4% Promoted Listings if available, all +20% VAT) | £2.81 | £2.21 | £0.60 |
+| eBay (business seller), Large Letter postage | £4.00 | ≈£1.19 | £2.81 | £2.85 | **−£0.04 (a loss)** |
 | Own website (placeholder price) | £6.00 | ≈£0.32 (~2% + fixed, not yet modelled in the cost sheet) | £5.68 | £2.21 | £3.47 |
 
-Direct cost per pack (£2.21, from cost sheet v4) is materials £0.80 + packaging £0.25 + postage £0.91 + address label £0.09 + thank-you card £0.16. **Postage assumes the Letter rate (£0.91), which only applies if the packed order measures under 5mm and 100g — Test 6 is still to confirm this.** If it turns out to be Large Letter (£1.55), direct cost rises to £2.85 and eBay profit per pack falls to £0.16. The eBay price is set at £4.00 per 4-pack (Sep 2026); the own-website price has not been set, so that row is a placeholder. eBay fees at other prices: £3 → £0.82, £5 → £1.16, £6 → £1.33. Recurring overhead (£83.22/month) is a fixed monthly cost, not a per-pack cost — see Section 9.
+**⚠️ Critical finding (Sep 2026 VAT correction):** at Large Letter postage, £4.00 no longer clears even direct costs — a genuine loss on every pack sold, before a penny of overhead is counted. This makes Test 6 (confirming the packed order stays under 5mm/100g for the Letter rate — see Section 8 and `Bin-Sticker-Shipping-Plan.md`) the single highest-priority open item in the whole plan, not a routine confirmation step.
+
+Direct cost per pack (£2.21, from cost sheet v4) is materials £0.80 + packaging £0.25 + postage £0.91 + address label £0.09 + thank-you card £0.16. **Postage assumes the Letter rate (£0.91), which only applies if the packed order measures under 5mm and 100g — Test 6 is still to confirm this.** If it turns out to be Large Letter (£1.55), direct cost rises to £2.85 (see loss finding above). The eBay price is set at £4.00 per 4-pack (Sep 2026); the own-website price has not been set, so that row is a placeholder.
+
+**eBay fees at other prices, VAT-inclusive, at the Letter rate** (£3.50 and £4.00 confirmed directly from the corrected sheet; £3/£5/£6 estimated by applying the same ~20% VAT uplift to the pre-correction figures and flagged for exact reconfirmation against the live sheet): £3 → ≈£0.99 (was £0.82), £3.50 → £1.08 (confirmed), £4 → £1.19 (confirmed), £5 → ≈£1.39 (was £1.16), £6 → ≈£1.60 (was £1.33).
+
+Recurring overhead (£83.22/month) is a fixed monthly cost, not a per-pack cost — see Section 9.
 
 Bundling products (e.g. a 4-pack bin sticker set, or a full name-label sheet at £8–£10 instead of a single £6 item) is the single biggest lever for improving per-order profit, since material and packaging cost barely increases while revenue rises.
 
@@ -119,34 +128,38 @@ eBay cannot charge different postage per variation within one listing, so for th
 
 Shipping is a per-order cost, not a per-item cost — a bundled order (e.g. 4 bin stickers or a mixed decal pack) still ships in a single Large Letter for the same postage cost, which is a further reason bundling improves margin (see Section 9).
 
-## 9. Break-Even Analysis (rebuilt from cost sheet v4, Sep 2026)
+## 9. Break-Even Analysis (rebuilt from cost sheet v4, Sep 2026 — 20% VAT correction applied)
 
-Source: the Break-Even Calculator on the Tier 1 sheet of `StickerBinStickersCosts_v4.xlsx`. Baseline product: 140×100mm 4-pack sold on eBay at £4.00.
+Source: the Break-Even Calculator on the Tier 1 sheet of `StickerBinStickersCosts_v4.xlsx`, corrected via Claude in Excel to include 20% VAT on eBay business-seller fees. Baseline product: 140×100mm 4-pack sold on eBay at £4.00.
 
 **Sunk startup cost: £955** — core equipment £853 + R&D test materials £102 (Section 5).
 
 **Recurring overhead: £83.22/month** — Midjourney £8.90, lovart £14.09, bookkeeping software £32.40, gmail £7.00, virtual office £20.83 (£250 a year ÷ 12). These are fixed whatever the sales, and several are placeholders.
 
-**Per-pack economics on eBay at £4.00:**
+**Per-pack economics on eBay at £4.00 (VAT-corrected):**
 
 | | Letter postage (£0.91) | Large Letter postage (£1.55) |
 |---|---|---|
 | Sale price | £4.00 | £4.00 |
-| eBay fees incl. 4% ads | £0.99 | £0.99 |
+| eBay fees incl. 20% VAT (and 4% ads, if available) | £1.19 | £1.19 |
 | Direct cost per pack | £2.21 | £2.85 |
-| **Profit per pack before overhead** | **£0.80** | **£0.16** |
-| Packs to recover the £955 startup cost | ≈ 1,190 | ≈ 5,900 |
-| Packs per month to cover £83 overhead | ≈ 104 | ≈ 514 |
+| **Profit per pack before overhead** | **£0.60** | **−£0.04 (a loss)** |
+| Packs to recover the £955 startup cost | ≈ 1,592 | **Not achievable — every pack sold at Large Letter loses money, regardless of volume** |
+| Packs per month to cover £83.22 overhead | ≈ 139 | **Not achievable, same reason** |
 
-**Volume scenarios (from the overhead sheet):** conservative 10 stickers/month (2.5 packs), base 40 (10 packs), capacity ceiling ≈115 (about 29 packs, at one production hour a week). At the Letter rate the monthly result after overhead is about **−£81, −£75 and −£60** respectively — none of the modelled volumes covers overhead at £4.
+**At £3.50** (confirmed directly from the corrected sheet, not part of the fixed £3/£4/£5/£6 sensitivity table): Letter £0.21 profit/pack; Large Letter **−£0.43 (a loss)**.
+
+**Volume scenarios (from the overhead sheet), recalculated at the new £0.60/pack Letter-rate figure:** conservative 10 stickers/month (2.5 packs) → **−£81.72**/month; base 40 stickers/month (10 packs) → **−£77.22**/month; capacity ceiling ≈115 stickers/month (≈29 packs, one production hour/week) → **−£65.82**/month. None of the modelled volumes covers overhead at £4 — worse than the pre-VAT-correction figures (previously −£81, −£75, −£60), though the shape of the conclusion is unchanged: overhead needs cutting, price needs raising, or volume needs to go well beyond the capacity-ceiling scenario, most likely some combination of the three.
+
+**At Large Letter, all three volume scenarios are now guaranteed losses regardless of how the numbers above are read** — more volume makes the monthly loss larger, not smaller, since every individual pack sold loses money before overhead is even counted.
 
 **What would change this:**
-- **Price.** Profit per pack before overhead at the Letter rate: £3 → −£0.03, £4 → £0.80, £5 → £1.63, £6 → £2.46 (eBay fees scale with price, apart from the flat 30p). The zero-profit price is about £3.03 at the Letter rate and £3.80 at Large Letter.
-- **Postage tier.** Letter vs Large Letter is worth £0.64 a pack — the single biggest cost lever, and it hangs on Test 6 (the backing-card comparator measured 4mm against the 5mm limit).
+- **Price.** Profit per pack before overhead at the Letter rate (£3.50/£4.00 confirmed from the corrected sheet; £3/£5/£6 estimated by applying the same VAT uplift to the pre-correction figures, pending exact reconfirmation): £3 → ≈−£0.20, £3.50 → £0.21, £4 → £0.60, £5 → ≈£1.40, £6 → ≈£2.19. The zero-profit price, estimated by interpolating between the two confirmed data points, is approximately **£3.23 at the Letter rate and £4.05 at Large Letter** — both higher than the pre-correction figures (£3.03 / £3.80), and worth confirming precisely against the live sheet rather than treating this estimate as final.
+- **Postage tier.** Letter vs Large Letter is worth £0.64 a pack — now the difference between a real (if thin) profit and a guaranteed loss, not just "the single biggest cost lever." Hangs entirely on Test 6 (the backing-card comparator measured 4mm against the 5mm limit).
 - **Overhead.** Placeholder subscriptions and the virtual office (£20.83/month) are the largest fixed items to challenge.
 - **Bundling.** Postage, envelope, address label and thank-you card are per order, so more items per order lifts profit disproportionately. Bundle scenarios are not yet modelled in the cost sheet.
 
-The Medium and Large tiers cost about £1.59 and £3.19 per sticker before overhead (Section 12); their prices are not set yet. Paid shipping upgrades (Tracked, Next Working Day) are priced to roughly cover their extra postage plus a small margin, not as a profit centre.
+The Medium and Large tiers cost about £1.59 and £3.19 per sticker before overhead (Section 12); their prices are not set yet, and their eBay-fee figures have not yet had the VAT correction applied (they use different postage/envelope assumptions than the Small tier — recalculate once those are sourced). Paid shipping upgrades (Tracked, Next Working Day) are priced to roughly cover their extra postage plus a small margin, not as a profit centre.
 
 ## 10. Production Workflow
 
@@ -168,7 +181,7 @@ Launch sequence: **eBay first, then Etsy, then Amazon.** The own website is a la
 
 | Channel | Pros | Cons |
 |---|---|---|
-| 1. eBay (business seller) | Existing traffic, fast to list | Fee stack ≈13% + 30p per-order fee + 4% Promoted Listings ≈ 25% of a £4 sale (see Section 6); requires clear VAT-exempt small-business status if trading regularly. Coded coupons need a paid Shop subscription |
+| 1. eBay (business seller) | Existing traffic, fast to list | Fee stack ≈13% + 30p per-order fee + 4% Promoted Listings + 20% VAT on all fees (non-recoverable) ≈ 30% of a £4 sale (see Section 6, updated Sep 2026); requires clear VAT-exempt small-business status if trading regularly. Coded coupons need a paid Shop subscription |
 | 2. Etsy | Craft-focused buyer audience, strong for personalised/niche items | Listing fees + transaction fees, similar to eBay overall. Promo codes must resolve on Etsy |
 | 3. Amazon (later) | Very large audience | Ads need the ~£25/month Professional plan; referral fee 8–15% plus 2% Digital Services Tax pass-through; strictest rules on review requests and inserts. See Amazon-Marketing-Guide.md |
 | Own website (doorstepstudio.co.uk) | Lowest fees, full brand control, only channel where a discount code on the thank-you card is fully clean | No built-in traffic — requires marketing effort. Timing TBD |
@@ -225,7 +238,7 @@ Licensed characters (Disney, Harry Potter, etc.) are not usable — copyright/tr
 - Ink/material choice is critical to durability — dye-based ink or skipping lamination risks poor-quality, smearing products and negative reviews.
 - Turnover must be tracked against the VAT threshold on a rolling 12-month basis as the business scales.
 - Seasonal products (back-to-school labels, wedding favours) will see demand fluctuate — a mixed product line smooths this out.
-- Unit margin at £4 is thin: about £0.80 a pack before overhead at the Letter rate, and £0.16 at Large Letter (Section 9). The postage tier (Test 6), the price and the fixed overhead all need settling before launch volume is planned.
+- **Unit margin at £4 is thin and postage-dependent: about £0.60 a pack before overhead at the Letter rate, and a genuine LOSS of £0.04 a pack at Large Letter (Section 9, updated Sep 2026 with the 20% eBay-fee VAT correction).** The postage tier (Test 6) is no longer just a margin lever — it now decides whether the £4 price point is viable at all. This, the final price, and the fixed overhead all need settling before launch volume is planned.
 - Royal Mail prices change periodically (last updated 7 April 2026 in this plan) — shipping charges should be reviewed against current rates before finalising listing prices.
 
 *— End of plan —*
