@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.32.2] - 2026-09-29
+
+First GitHub Release since 0.23.0. Plugin versions 0.24–0.32.1 were in `main` but not tagged.
+
 ### Added
 
 - Workflow step instructions (plain-text defaults) with optional per-product overrides; shown read-only on order detail for every step (schema 1.11.0)
@@ -17,11 +21,22 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - Internal products UX/guards: list badges/filters, listing exclude, recipe cycle/depth limits, deactivate with open jobs blocked, analytics exclude production, low-stock Produce on linked materials
 - Order **Notes** threaded log on order detail (admin-only, append-only); schema 1.13.0
 - Shipping **packages** catalogue + product goods weight / package / planned postage; order planned shipping (seeded on create) vs shipment actual variance; Product Costing includes planned shipping; schema 1.14.0
-- Operator docs: multipack pack sizes = separate SKUs (own recipe + shipping); Package 5 complete (UP5-S1–S3)
+- Operator docs: multipack pack sizes = separate SKUs (own recipe + shipping)
+- Make and Pack split: per-line Make workflows and Make board; order-level Pack workflow, Pack board, and ship gates (schema 1.15.0 / 1.16.0)
+- Seeded **Bin Sticker Make** (Print through Cut) and **Order Pack & Ship**; Settings default Pack workflow; **Repair pack binding** for open orders missing Pack (skips legacy monolithic progress)
+- Thank-you on Pack is a packing checklist item, not a batch gate
 
 ### Fixed
 
 - Product edit package dropdown no longer labels active packages as inactive (and shows Default again); hide Planned shipping on internal Product Costing
+- Pack board search no longer hits a database error
+- Unmatched lines still flag needs mapping after Pack bind; the Make board no longer treats pack progress as a make chain
+
+### Notes
+
+- Schema stays **1.16.0** for this patch
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.32.2.zip`, not the repository source zipball
 
 ## [0.23.0] - 2026-09-16
 
