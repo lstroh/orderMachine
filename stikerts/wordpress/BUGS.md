@@ -19,7 +19,30 @@
 
 ## Open
 
-*(None right now — add new `BUG-NNN` entries here as testing continues.)*
+### BUG-003 — Make step shows Done before work; checklist not tied to step
+
+| | |
+|---|---|
+| **Severity** | Major / UX |
+| **Status** | Open |
+| **Found in** | Order detail → MAKE (post Package 6) |
+| **Env** | Operator testing; screenshot 2026-10-01 |
+
+**Symptoms**
+
+- First make step (e.g. **Create PDF**) badge **Done** before any Mark done.  
+- Confirmation checklist (“print matches the client request”) appears above the step list while a later step (**Print…**) is In progress with Mark done disabled.  
+- Make panel still shows stale copy: “Pack & Ship controls arrive in UP6-S2.”
+
+**Likely cause**
+
+Zero-gate auto-complete on ungated steps (`enter_item_step`), plus checklist UI rendered above the list for the **current** step (not nested under it). Verify whether Create PDF actually had `requires_manual_confirm` / `confirmation_kind` set.
+
+**Plan**
+
+Update Package 7 / **UP7-S1** — see `stikerts/wordpress v8/04-Update-Make-Step-Gate-UX.md` and `Update-7-Sprint-Plan.md`.
+
+**Related (not this bug):** Package materials live on **shipping packages** (not workflows); see Package 7 `03-Update-Package-Materials.md`.
 
 ---
 
