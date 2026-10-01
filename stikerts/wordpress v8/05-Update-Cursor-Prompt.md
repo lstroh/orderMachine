@@ -21,7 +21,7 @@
 |---|---|
 | UP7-S1 | `04-Update-Make-Step-Gate-UX.md` + BUG-003 |
 | UP7-S2 | `03-Update-Package-Materials.md` (materials + Materials used) |
-| UP7-S3 | `03` §4 package suggestion (1 vs 2+) + seed/docs |
+| UP7-S3 | `03` §4 package suggestion (1 vs 2+ / mixed) + multi-line test orders + seed/docs |
 
 ## Done discipline
 

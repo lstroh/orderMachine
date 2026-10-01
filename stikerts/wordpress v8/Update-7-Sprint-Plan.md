@@ -27,6 +27,8 @@
 | O7 | `04` | Hard-block ungated first make step? | UP7-S1 | **Default:** **warn only** |
 | O8 | `04` | Create PDF: misconfig vs engine bug | UP7-S1 | **Verify first** |
 | O9 | Seed | Small + large packages with materials | UP7-S3 | **Default:** yes |
+| O10 | `03` §4 mixed | Mixed SKUs disagree on package | UP7-S3 | **Default:** site default + Pack UI flag; operator confirms |
+| O11 | `03` §4 test | Multi-line Create test order | UP7-S3 | **Default:** addable rows (product + qty [+ price/personalisation]) |
 
 ---
 
@@ -97,21 +99,23 @@
 
 ---
 
-### UP7-S3 — Order-based package suggestion (1 vs 2+) + seed/docs
+### UP7-S3 — Order package suggestion (1 vs 2+ / mixed) + multi-line test orders + seed/docs
 
-- **Covers:** `03` §4 selection; O1/O2/O9  
+- **Covers:** `03` §4 selection; O1/O2/O9/O10/O11  
 - **Schema:** optional `products.package_id_multi`  
 
 | Work | Detail |
 |---|---|
-| Product fields | `package_id` = single-pack default; `package_id_multi` when total sellable qty ≥ 2 |
+| Product fields | `package_id` = single-pack default; `package_id_multi` when order total sellable qty ≥ 2 |
 | Suggest on create/bind | Pre-fill `shipping_package_id` from rule; operator can override |
+| Mixed SKUs | If candidate packages agree → use it; if not → site default + Pack flag (O10) |
+| Create test order | Repeatable lines: product + qty (+ optional unit price / personalisation); same `create_from_external` path |
 | Seed | Small + large packages with materials; wire sample product defaults |
-| Docs | USER-GUIDE / REFERENCE / FEATURES — package BOM vs product recipe; 1 vs 2+ |
+| Docs | USER-GUIDE / REFERENCE / FEATURES — package BOM; 1 vs 2+; mixed orders; multi-line test |
 | Optional | Product Costing packaging line (O6) |
-| Tests | `tests/sprint-up7-s3-smoke.php` — qty 1 → small; qty 2 → large |
+| Tests | `tests/sprint-up7-s3-smoke.php` — qty 1 → small; qty 2 → large; mixed conflict → default; multi-line test create |
 
-**Done when:** one 4-pack order suggests package A; two packs suggest package B; materials still follow whatever package is selected; docs + smoke pass.
+**Done when:** one 4-pack → package A; two packs → package B; mixed conflict flagged; test order can create 2+ different products/qtys; materials follow selected package; docs + smoke pass.
 
 ---
 
@@ -159,5 +163,7 @@ Planning only. Implement when you ask for **UP7-S1** (or later). Soft defaults a
 
 ### UP7-S3
 - [ ] 1 pack vs 2+ package suggestion
+- [ ] Mixed-product package agree / conflict → default + flag
+- [ ] Multi-line Create test order (different products + qtys)
 - [ ] Seed small/large packages + docs
 - [ ] Smoke

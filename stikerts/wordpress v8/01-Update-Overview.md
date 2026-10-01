@@ -20,9 +20,10 @@ Baseline: plugin **v0.32.2**.
 |---|---|
 | Where packaging materials live | On the **shipping package** (same idea as product → recipe) |
 | Pack / make workflows | **Steps only** — no material BOM on workflows |
-| Package choice | Based on the **order** (e.g. **1×** 4-pack → package A; **2+** packs → package B) |
+| Package choice | Based on the **order** (e.g. **1×** 4-pack → package A; **2+** packs → package B). Mixed SKUs → one package (agree / else site default + confirm). |
 | Actual usage | Order detail **Materials used** — planned vs actual, like product recipe materials |
 | Thank-you cardstock | Belongs on the **package** materials list (qty per that package), not on the product recipe |
+| Test orders | Multi-line create (different products + qtys) on Orders list |
 
 ## What's in this update
 

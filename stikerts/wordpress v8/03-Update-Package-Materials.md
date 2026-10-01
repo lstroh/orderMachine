@@ -36,21 +36,40 @@ Packaging materials are defined **on the shipping package**, the same way make m
 
 ## 4. Package selection on the order
 
-**Intent:** package follows the order, not the Pack workflow.
+**Intent:** package follows the **order** (one outbound ship-together), not the Pack workflow and not one package per line.
+
+### Single-product orders
 
 | Order shape | Expected package |
 |---|---|
-| One sold pack unit (e.g. qty **1** of a 4-pack SKU) | Small / single package |
-| Two or more pack units (qty **≥ 2**, or multiple pack lines) | Larger / multi package |
+| One sold pack unit (e.g. qty **1** of a 4-pack SKU) | Product `package_id` (small / single) |
+| Two or more of the **same** product (qty **≥ 2**) | Product `package_id_multi` (larger) |
 
-**Soft default (overturn before S3):**
+### Mixed-product orders (different SKUs on one order)
 
-- Keep product `package_id` as the **single-pack** suggestion (qty 1).  
-- Add product `package_id_multi` (or equivalent) as the suggestion when that line’s qty ≥ 2, or when **total sellable pack qty** on the order ≥ 2.  
-- On create / pack bind: pre-select suggestion into `orders.shipping_package_id` (already used before Ship).  
-- Operator can still change package on Pack panel; materials reverse/re-reserve on change.
+Still **one** shipping package for the whole order (Package 6 ship-together).
 
-**Open:** exact multi rule = per-line qty vs sum of all sellable qty (recommend **sum of sellable line qtys**).
+| Step | Rule (soft default) |
+|---|---|
+| 1. Total sellable qty | Sum of quantities on matched non-internal lines |
+| 2. Pick candidate per line | If **order total qty = 1**: that line’s `package_id`. If **total ≥ 2**: each line’s `package_id_multi` if set, else that line’s `package_id` |
+| 3. Agreement | If all candidates are the **same** package → suggest it |
+| 4. Conflict | Products disagree → suggest **site default** package and flag in Pack UI (“Mixed products — confirm package”) |
+| 5. Override | Operator always chooses final `orders.shipping_package_id` on Pack panel |
+
+**Make / Pack / materials still compose cleanly:**
+
+| Concern | Mixed-order behaviour |
+|---|---|
+| Make | Each line runs **its product’s** make workflow |
+| Pack steps | One site Pack workflow for the order |
+| Make materials | Each line’s product recipe × that line’s qty |
+| Shipping materials | **Once**, from the **selected** package BOM |
+| Planned postage | Existing sum of product planned shipping × qty (unchanged) |
+
+### Test orders (multi-line)
+
+Create test order must support **several product lines** (product + qty + optional price/personalisation per row) so mixed and multi-qty cases are easy to exercise without channel sync. Same create path as today (`create_from_external`).
 
 ## 5. Behaviour
 
@@ -102,8 +121,10 @@ Same save path as today’s overuse (`order_usage_extra` + Extra material usage 
 
 ## 8. Open items
 
-1. Multi-pack suggestion: `package_id_multi` on product vs site-level rules.  
-2. Multi rule: sum of sellable qtys vs primary line only.  
-3. Reserve timing if package pre-selected on create vs only when operator confirms on Pack. **Default:** reserve when `shipping_package_id` is saved (including auto-suggest on create if set).  
-4. Product Costing: include default package materials? **Default:** defer or optional S3.  
-5. Same material on recipe and package: separate Materials used rows by Source.  
+1. Multi-pack suggestion: `package_id_multi` on product vs site-level rules. **Default:** product fields.  
+2. Multi rule: **sum of sellable qtys** (settled soft default).  
+3. Mixed-product package conflict: site default + UI flag (settled soft default above).  
+4. Reserve timing: when `shipping_package_id` is saved (including auto-suggest on create if set).  
+5. Product Costing: include default package materials? **Default:** defer or optional S3.  
+6. Same material on recipe and package: separate Materials used rows by Source.  
+7. Test order UI: max lines / whether unit price required per row — **Default:** up to ~5 addable rows; price optional.  
