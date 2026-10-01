@@ -42,6 +42,8 @@ Zero-gate auto-complete on ungated steps (`enter_item_step`), plus checklist UI 
 
 Update Package 7 / **UP7-S1** — see `stikerts/wordpress v8/04-Update-Make-Step-Gate-UX.md` and `Update-7-Sprint-Plan.md`.
 
+**Related (not this bug):** Package materials live on **shipping packages** (not workflows); see Package 7 `03-Update-Package-Materials.md`.
+
 ---
 
 ## Closed / fixed

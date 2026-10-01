@@ -1,31 +1,28 @@
 # Update Package 7 — Cursor kickoff prompt
 
-*Use when starting implementation of UP7-S1 / S2 / S3. Planning docs live in this folder.*
+*Use when starting UP7-S1 / S2 / S3. Planning docs in this folder.*
 
-## Context
+## Locked model
 
-Order Machine has make/pack split (Package 6), product recipes + Materials used overuse (Package 4), and shipping packages without stock (Package 5). Operators need **per-pack** materials (thank-you, packaging) and a fix for Make step **zero-gate / checklist UX** (BUG-003).
+- **Shipping package** owns packaging materials (like **product** owns make recipe).  
+- **Workflows** = steps only — do **not** add materials to Pack templates.  
+- Order selects a package (1 pack vs 2+); Materials used reports actuals like today.  
 
 ## Rules
 
-- Read `01-Update-Overview.md`, the feature doc for the sprint, `02-Update-Data-Model.md` if schema, and **`Update-7-Sprint-Plan.md`** settled defaults.  
-- Do **not** silently overturn open items — follow soft defaults or ask.  
-- Plugin SemVer stays `0.x.y`; bump Version + `SOM_VERSION` together when releasing.  
-- Plain PHP admin UI; no React.  
-- No eval of DB strings; pack material qty is data only.  
-- Do not put pack materials on product recipes as the solution.
+- Read `01-Update-Overview.md`, the sprint’s feature doc, `02` if schema, and **`Update-7-Sprint-Plan.md`**.  
+- Do not put thank-you / envelope on product recipes as the packaging solution.  
+- Do not reintroduce `workflow_pack_materials`.  
+- SemVer stays `0.x.y`. Plain PHP admin UI.
 
 ## Sprint entry points
 
 | Sprint | Start with |
 |---|---|
 | UP7-S1 | `04-Update-Make-Step-Gate-UX.md` + BUG-003 |
-| UP7-S2 | `03-Update-Pack-Order-Materials.md` pack-template half + `02` §A |
-| UP7-S3 | Package materials half + seed/docs |
+| UP7-S2 | `03-Update-Package-Materials.md` (materials + Materials used) |
+| UP7-S3 | `03` §4 package suggestion (1 vs 2+) + seed/docs |
 
 ## Done discipline
 
-- Implement only the requested sprint.  
-- Add/adjust smoke under `tests/sprint-up7-sN-smoke.php`.  
-- Update `Update-7-Sprint-Progress.md` when verifying.  
-- Commit, push, open/update PR per cloud agent rules.  
+- One sprint at a time; smoke `tests/sprint-up7-sN-smoke.php`; update progress doc; commit/push/PR.  

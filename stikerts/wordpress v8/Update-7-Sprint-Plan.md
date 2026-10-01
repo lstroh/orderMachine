@@ -1,16 +1,16 @@
 # Update Package 7 — Sprint Plan
 
-*Planning only — no plugin code in this pass. Specs: `01`–`05` in this folder. Baseline: plugin **v0.32.2** (Package 6 complete).*
+*Planning only — no plugin code in this pass. Specs: `01`–`05` in this folder. Baseline: plugin **v0.32.2**.*
 
-**Sequencing:** Make gate / confirmation UX → Pack materials core → Package materials + seed/docs. Matches `01-Update-Overview.md`.
+**Sequencing:** Make gate UX → Package materials + Materials used → Order package suggestion (1 vs 2+) + seed/docs.
 
-Operator decisions already captured:
+## Locked decisions (operator)
 
-- Thank-you / packing supplies are **per pack (order)**, not per product recipe qty.  
-- Need **Materials used** (planned vs actual) for those materials too.  
-- Create PDF showing **Done** before work + checklist placement is broken/confusing (**BUG-003**).
-
-Open items: soft defaults below apply unless overturned before the relevant sprint kickoff.
+- Packaging materials live on the **shipping package** (like product recipes on products).  
+- **Workflows = steps only** — no material BOM on Pack/Make templates.  
+- Package depends on the **order**: **1 pack** → one package; **2+ packs** → a different package.  
+- On the order, report actual materials used **the same way as product Materials used**.  
+- BUG-003 (Create PDF Done + checklist placement) fixed in S1.
 
 ---
 
@@ -18,43 +18,37 @@ Open items: soft defaults below apply unless overturned before the relevant spri
 
 | # | Source | Item | Blocks | Status / decision |
 |---|---|---|---|---|
-| O1 | `03` §7.4 | When to reserve pack materials | UP7-S2 | **Default:** on **pack bind** (create/repair), not wait for make-ready |
-| O2 | `02` §F1 / `03` §7.1 | Package change after reserve | UP7-S3 | **Default:** reverse prior `package_reserve`, then reserve new |
-| O3 | `02` §F3 / `03` §7.2 | Same material, multiple sources in Materials used | UP7-S2 | **Default:** **separate rows** by Source (Recipe / Pack / Package) |
-| O4 | `03` §7.3 | Product Costing packaging line | UP7-S3 | **Default:** **optional in S3**; S2 leaves costing recipe-only |
-| O5 | `03` §7.5 | Budget scope for pack materials | UP7-S2 | **Default:** active material budgets; Pack template workflow scope if budget is workflow-scoped |
-| O6 | `02` §C | Distinct stock reasons vs reuse `new_order` | UP7-S2 | **Default:** `pack_reserve` + `package_reserve` |
-| O7 | `04` §4 | Hard-block ungated first make step? | UP7-S1 | **Default:** **warn only**, do not hard-block |
-| O8 | `04` §2 | Create PDF: misconfig vs engine bug | UP7-S1 | **Verify first**; fix engine only if gates were set and still auto-done |
-| O9 | Docs | Seed thank-you material + package envelope | UP7-S3 | **Default:** yes, idempotent seed rows |
+| O1 | `03` §8.1 | Multi package suggestion storage | UP7-S3 | **Default:** product `package_id` = qty 1; add `package_id_multi` for qty ≥ 2 |
+| O2 | `03` §8.2 | Multi rule: sum sellable qty vs primary line | UP7-S3 | **Default:** **sum of sellable line quantities** |
+| O3 | `03` §8.3 | When to reserve package materials | UP7-S2 | **Default:** when `shipping_package_id` is set/changed |
+| O4 | `02` §F3 | Package change | UP7-S2 | **Default:** reverse prior `package_reserve`, reserve new |
+| O5 | `03` §8.5 | Materials used rows by source | UP7-S2 | **Default:** separate Recipe / Package rows |
+| O6 | `03` §8.4 | Product Costing packaging line | UP7-S3 | **Default:** optional / defer |
+| O7 | `04` | Hard-block ungated first make step? | UP7-S1 | **Default:** **warn only** |
+| O8 | `04` | Create PDF: misconfig vs engine bug | UP7-S1 | **Verify first** |
+| O9 | Seed | Small + large packages with materials | UP7-S3 | **Default:** yes |
 
 ---
 
-## 2. Clarifying questions (defaults unless overturned)
+## 2. Clarifying questions (defaults)
 
-1. **Pack materials on Pack workflow template?** — default yes.  
-2. **Extra materials on shipping package?** — default yes (S3).  
-3. **Reserve pack materials at pack bind?** — default yes (O1).  
-4. **Separate Materials used rows by source?** — default yes (O3).  
-5. **Product Costing packaging this package?** — default S3 optional (O4).  
-6. **Warn (not block) zero-gate steps in editor?** — default yes (O7).
-
-Overturn any of these before kickoff if needed.
+1. **Materials on shipping package only (not workflow)?** — **locked yes**.  
+2. **`package_id_multi` on product?** — default yes (O1).  
+3. **Multi = total sellable qty ≥ 2?** — default yes (O2).  
+4. **Warn (not block) zero-gate steps?** — default yes (O7).
 
 ---
 
-## 3. Spec ↔ codebase discrepancies
+## 3. Spec ↔ codebase
 
-Treat **existing plugin code as ground truth**.
-
-| Area | Today | Package 7 direction |
+| Area | Today | Package 7 |
 |---|---|---|
-| Material BOM | `product_materials` only | Add pack-template + package BOMs |
-| Materials used | Planned from `new_order` only | Also `pack_reserve` / `package_reserve` |
-| Shipping packages | Dims/tare/postage only | Optional material rows |
-| Thank-you | Pack checklist tick only | + stocked pack material |
-| Zero-gate | Auto-done on enter (make + pack engines) | Keep; warn in editor; fix UX |
-| Make panel copy | Still says “Pack & Ship controls arrive in UP6-S2” | Remove |
+| Make BOM | Product recipe | Unchanged |
+| Pack materials | None | **Shipping package** material recipe |
+| Workflows | Steps (+ cost goals on make) | Steps only for materials (cost goals unchanged if present) |
+| Package select | Product suggestion + Pack panel | Suggestion from **1 vs 2+** packs; materials follow selection |
+| Materials used | Recipe only | Recipe + Package |
+| Zero-gate / checklist | BUG-003 | S1 fix |
 
 ---
 
@@ -67,74 +61,57 @@ Treat **existing plugin code as ground truth**.
 
 | Work | Detail |
 |---|---|
-| Reproduce | Open operator make template; confirm gates on **Create PDF** vs **Print** (`requires_manual_confirm`, `confirmation_kind`) |
-| Engine | If Create PDF had gates and still auto-completed → fix `SOM_Item_Make::enter_item_step` (and pack `enter_step` if same path) |
-| Workflow editor | On save / live: warn when a step has zero gates (“will auto-complete when entered”) |
-| New step default | Soft default: check **Requires manual confirm** on newly added step cards (JS), so Create PDF–style steps don’t silently zero-gate |
-| Order detail UX | Nest confirmation checklist **under the current make/pack step**; heading includes step name |
-| Copy | Remove “Pack & Ship controls arrive in UP6-S2” from Make panel (`order-detail.php`) |
-| Docs | USER-REFERENCE / FEATURES: zero-gate note; BUG-003 → Fixed when done |
-| Tests | `tests/sprint-up7-s1-smoke.php` — ungated auto-done; gated first step stays `in_progress`; checklist gates Mark done |
+| Reproduce | Confirm Create PDF vs Print gates in the operator template |
+| Engine | Fix `enter_item_step` only if a gated step still auto-dones |
+| Workflow editor | Warn on zero-gate steps; default manual confirm on new step cards |
+| Order detail | Nest checklist under current step; heading includes step name |
+| Copy | Remove Make panel “Pack & Ship controls arrive in UP6-S2” |
+| Docs / tests | Zero-gate note; `tests/sprint-up7-s1-smoke.php`; close BUG-003 |
 
-**Done when:**
-
-- Operator can see which step the checklist belongs to.  
-- Ungated steps are warned in the editor.  
-- Gated first steps stay In progress on new orders.  
-- Stale UP6-S2 Make copy is gone.  
-- Smoke passes.
+**Done when:** gated first steps stay In progress; checklist is clearly for the current step; stale copy gone; smoke passes.
 
 ---
 
-### UP7-S2 — Pack workflow materials + Materials used
+### UP7-S2 — Package materials + Materials used (mirror product recipe)
 
-- **Covers:** `03` pack-template half; `02` §A + §C (`pack_reserve`)  
-- **Schema:** `workflow_pack_materials`; stock reason `pack_reserve`; bump `som_db_version`  
-
-| Work | Detail |
-|---|---|
-| Schema / DB | `dbDelta` + version bump for `wp_som_workflow_pack_materials` |
-| Model class | e.g. `SOM_Pack_Materials` — list/sync for template; validate pack kind only |
-| Workflow UI | Pack template editor section: material + qty per pack (add/remove rows); save via `sync_for_workflow` pattern (like material goals) |
-| Reserve | On `SOM_Pack::bind_on_create` / repair: idempotent `pack_reserve` stock decrement + budget fund |
-| Materials used | Extend `SOM_Material_Stock::get_usage_by_material` (or successor) to include pack reserves; **Source** column on order detail |
-| Overuse | Reuse `apply_overuse` / `order_usage_extra` / `fund_usage_extras` for pack lines (increase-only) |
-| Analytics COGS | Ensure pack reserves + extras included in order material COGS |
-| REST / Abilities | Optional read of pack materials (mirror goals) — only if cheap; else defer |
-| Tests | `tests/sprint-up7-s2-smoke.php` — bind reserves 1× thank-you; qty 2 order still 1 card; overuse raises Actual |
-
-**Done when:**
-
-- Pack template can define thank-you (etc.) qty **per pack**.  
-- New non-Internal orders reserve those materials once.  
-- Materials used shows Pack source + allows Actual ↑.  
-- Smoke passes.
-
----
-
-### UP7-S3 — Shipping package materials + seed / docs / polish
-
-- **Covers:** `03` package half; `02` §B; O2/O4/O9  
+- **Covers:** `03` materials/reserve/usage; `02` §A + §C  
 - **Schema:** `shipping_package_materials`; reason `package_reserve`  
 
 | Work | Detail |
 |---|---|
-| Schema | `wp_som_shipping_package_materials` |
-| Package admin UI | Materials rows on package edit |
-| Reserve on select | When order `shipping_package_id` set/changed: reserve / reverse+reserve (O2) |
-| Materials used | Package source rows |
-| Seed | Thank-you cardstock material on Pack template; sample envelope material on default/seed package |
-| Product Costing | Optional packaging cost line if O4 kept |
-| Docs | USER-GUIDE / USER-REFERENCE / FEATURES / UAT — pack vs recipe materials; Materials used sources |
-| BUGS / Progress | Close BUG-003 if not closed in S1; `Update-7-Sprint-Progress.md` |
-| Tests | `tests/sprint-up7-s3-smoke.php` — package select reserves; change package reverses |
+| Schema | `wp_som_shipping_package_materials` via `dbDelta` |
+| Package UI | Recipe-like rows on shipping package edit (same pattern as product recipe) |
+| Reserve | On set/change of order `shipping_package_id`: idempotent `package_reserve` + budget fund; reverse on change (O4) |
+| Materials used | Extend usage panel: Source Recipe / Package; planned/actual/overuse like today |
+| COGS | Include `package_reserve` + extras in order material COGS |
+| Tests | `tests/sprint-up7-s2-smoke.php` — package with thank-you+envelope; select package → planned; raise Actual |
 
 **Done when:**
 
-- Selecting a shipping package reserves its materials.  
-- Seed demo shows pack + package materials path.  
-- Operator docs explain recipe vs pack vs package.  
+- You define materials on a package like on a product.  
+- Selecting that package on an order reserves those qtys once.  
+- Materials used lets you report actuals the same way as recipe materials.  
 - Smoke passes.
+
+**Not in S2:** auto 1-vs-2+ suggestion (that’s S3). S2 works with today’s manual/default package selection.
+
+---
+
+### UP7-S3 — Order-based package suggestion (1 vs 2+) + seed/docs
+
+- **Covers:** `03` §4 selection; O1/O2/O9  
+- **Schema:** optional `products.package_id_multi`  
+
+| Work | Detail |
+|---|---|
+| Product fields | `package_id` = single-pack default; `package_id_multi` when total sellable qty ≥ 2 |
+| Suggest on create/bind | Pre-fill `shipping_package_id` from rule; operator can override |
+| Seed | Small + large packages with materials; wire sample product defaults |
+| Docs | USER-GUIDE / REFERENCE / FEATURES — package BOM vs product recipe; 1 vs 2+ |
+| Optional | Product Costing packaging line (O6) |
+| Tests | `tests/sprint-up7-s3-smoke.php` — qty 1 → small; qty 2 → large |
+
+**Done when:** one 4-pack order suggests package A; two packs suggest package B; materials still follow whatever package is selected; docs + smoke pass.
 
 ---
 
@@ -143,57 +120,44 @@ Treat **existing plugin code as ground truth**.
 | After sprint | Plugin (approx) | Schema |
 |---|---|---|
 | UP7-S1 | 0.33.0 | unchanged |
-| UP7-S2 | 0.34.0 | 1.17.0 (confirm at kickoff) |
-| UP7-S3 | 0.35.0 | 1.18.0 |
-
-Exact bumps follow `RELEASE.md` when cutting tags.
+| UP7-S2 | 0.34.0 | 1.17.0 |
+| UP7-S3 | 0.35.0 | 1.18.0 if `package_id_multi` |
 
 ---
 
-## 6. Out of scope (this package)
+## 6. Out of scope
 
-- Decrease below planned usage  
+- Materials on Pack workflow templates  
+- Thank-you on product recipes as the packaging solution  
+- Decrease below planned  
 - Multi-carton / split shipments  
-- Thank-you PDF generation as a stock gate  
-- Moving product make materials onto workflows  
-- Redesigning Material cost goals (workflow £ ceilings)  
-- Auto-rewriting existing product recipes that mistakenly include thank-you × unit  
 
 ---
 
-## 7. Progress tracking
+## 7. Progress
 
-After each implemented sprint, record verification in **`Update-7-Sprint-Progress.md`** (create on first implementation sprint).
-
----
-
-## 8. Explicit scope of this document
-
-This file is the Package 7 **sprint plan** only. It does not implement features. Implementation starts when you explicitly ask to implement **UP7-S1** (or a later sprint). Soft defaults above apply unless overturned before that sprint.
+Record verification in **`Update-7-Sprint-Progress.md`** when implementation starts.
 
 ---
 
-## 9. Sprint checklist summary (quick list)
+## 8. Scope of this document
 
-### UP7-S1 — Bug / UX
-- [ ] Verify Create PDF gates (BUG-003)
-- [ ] Fix engine if gated step still auto-dones
-- [ ] Workflow editor zero-gate warning
-- [ ] Default manual confirm on new step cards
-- [ ] Nest checklist under current step (+ step name in heading)
-- [ ] Remove Make panel UP6-S2 placeholder
-- [ ] Docs + smoke
+Planning only. Implement when you ask for **UP7-S1** (or later). Soft defaults apply unless overturned.
 
-### UP7-S2 — Pack materials
-- [ ] Table `workflow_pack_materials` + CRUD/UI on Pack templates
-- [ ] Reserve on pack bind (`pack_reserve`), idempotent
-- [ ] Materials used: Source=Pack, planned/actual/overuse
-- [ ] COGS + budget funding
-- [ ] Smoke (1 card per pack even if qty>1)
+---
 
-### UP7-S3 — Package materials + polish
-- [ ] Table `shipping_package_materials` + package UI
-- [ ] Reserve/reverse on package select change
-- [ ] Seed thank-you + envelope examples
-- [ ] Optional Product Costing packaging line
-- [ ] Operator docs + UAT + smoke
+## 9. Quick checklist
+
+### UP7-S1
+- [ ] BUG-003: nest checklist; zero-gate warning; remove UP6-S2 copy; smoke
+
+### UP7-S2
+- [ ] Package material recipe UI + table
+- [ ] Reserve/reverse on package select
+- [ ] Materials used (Package source) like product overuse
+- [ ] Smoke
+
+### UP7-S3
+- [ ] 1 pack vs 2+ package suggestion
+- [ ] Seed small/large packages + docs
+- [ ] Smoke
