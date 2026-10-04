@@ -1,6 +1,6 @@
 # Midjourney Guide for Doorstep Studio — Beginner Walkthrough
 
-*Written for someone with no Midjourney account and no prior experience. Covers signing up, generating your first image, understanding the prompt format used in this project, and the full prompt for P02. Checked July 2026.*
+*Written for someone with no Midjourney account and no prior experience. Covers signing up, generating your first image, understanding the prompt format used in this project, and the full prompt for P02. Checked July 2026; corrected 1 Oct 2026 (free trial, model version, Omni Reference — see §8).*
 
 ---
 
@@ -19,13 +19,15 @@ Midjourney used to require a Discord account. **It doesn't anymore** — there's
 3. Choose **Continue with Google** (simplest option — use your existing Google/Gmail account, no new password to remember)
 4. You'll land on the Midjourney web app
 
-**New accounts get 25 free image generations** to try it out before paying anything.
+~~New accounts get 25 free image generations~~ — **corrected Oct 2026: there is no free trial.** Midjourney ended it in 2023; its own free-trials page says none is available on the website or Discord. You must subscribe before generating anything.
 
 ### Paying for it (once you're past the free trial)
 - Click your account icon → **Subscribe**
 - Choose the **Basic plan** — $10/month (or $96/year, cheaper per month if paid annually)
 - This includes full **commercial usage rights** for a business under $1 million/year revenue, which comfortably covers this project — confirmed in our earlier research, still accurate
 - You don't need Standard or Pro — those are for much higher usage volumes than a handful of sticker icons
+- Basic gives 3.3 hours of Fast GPU time a month and has **no Relax mode**, so once it runs out you can't generate until next month
+- Everything generated on Basic is **publicly visible** in the Midjourney gallery (private Stealth mode needs Pro). Fine for decorative art, but worth knowing before generating unreleased sticker designs
 
 ---
 
@@ -97,8 +99,19 @@ Send me that final PNG and I'll drop it into the script and generate the WC/CV c
 | Image includes a shadow or background texture | Add "plain flat white background, no shadow" to the prompt |
 | Proportions look off (e.g. house too small vs. flowers) | Add a note like "house icon larger and centred, flowers smaller" and rerun |
 | Can't find the Upscale button | Click directly on one of the 4 grid images first — the option appears once you're viewing a single image, not the grid |
-| Ran out of the 25 free generations | You'll be prompted to subscribe — Basic plan ($10/month) as described in §2 |
+| Ran out of Fast GPU time | Basic has no Relax mode — buy extra GPU time or wait for next month's allowance |
 
 ---
 
 *Once P02 is done and you're happy with the WC/CV comparison, the same process (steps 3, 5, and 6) applies to any other icon from the idea board — just swap in a new prompt each time.*
+
+
+---
+
+## 8. Changes since July 2026 (checked 1 Oct 2026)
+
+- **Default model is now V8.2** (since 24 July 2026), per Midjourney's Version docs. Prompts in this guide were written for V7.
+- **`--style raw` may need to become `--raw`.** One 2026 third-party guide says V7 used `--style raw` and the V8 family uses `--raw`. Not yet confirmed against Midjourney's own Raw page — check that before the next generation, or add `--v 7` to keep the old behaviour.
+- **Omni Reference (`--oref`, `--ow`) is V7-only.** Midjourney's docs say V8.2's new Edit Model replaces Omni Reference, Character Reference and Retexture; the Edit Model accepts up to 4 reference images. On V7, Omni Reference costs 2× GPU time and takes one image.
+- **Not a fit for eBay listing photos.** Omni Reference puts a reference object into generated scenes, so using it on the sticker would produce AI product photos, which conflicts with eBay's rule that photos must accurately represent the item. Photo consistency across the 13 designs comes from the shooting setup instead. For keeping *artwork* consistent, use Style Reference (`--sref`), which still works on V8.2.
+- **Midjourney's role on eBay is now small.** eBay's Picture Policy bans added artwork on listing photos, so Midjourney output can't decorate the photos. It remains the tool for the sticker artwork itself.

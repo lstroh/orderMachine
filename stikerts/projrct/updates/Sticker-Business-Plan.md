@@ -57,7 +57,7 @@ Full item-by-item details and purchase links are provided in the companion file:
 | R&D / testing materials (vinyl, laminate, packaging candidates, labels — one-off, sunk) | £102 |
 | **TOTAL SUNK STARTUP COST** | **≈ £955** |
 
-Per-pack production cost for the bin sticker 4-pack is about **£2.21** all-in: £0.80 materials (vinyl £0.35 + laminate £0.35 + ink £0.10) + £0.25 packaging + £0.91 postage + £0.09 address label + £0.16 thank-you card — see Section 6. That is about £0.55 per individual sticker. Vinyl, laminate and packaging test stock are budgeted under R&D materials above; backup Epson 101/102 ink bottles are not currently budgeted (£13–38 if bought).
+Per-pack production cost for the bin sticker 4-pack is about **£2.12** all-in (Oct 2026: address labels are now printed free at the Post Office via Click & Drop, removing the £0.09 label; was £2.21): £0.80 materials (vinyl £0.35 + laminate £0.35 + ink £0.10) + £0.25 packaging + £0.91 postage + £0.16 thank-you card — see Section 6. That is about £0.53 per individual sticker. This excludes machine consumables (£0.32) and the logo sticker (£0.06), which the cost sheet's landed-cost line includes (£2.49 in v5). Vinyl, laminate and packaging test stock are budgeted under R&D materials above; backup Epson 101/102 ink bottles are not currently budgeted (£13–38 if bought).
 
 *Not in the totals: corner rounder punch (£7), Slice cutter (£5) and self-healing mat (£4) are on hold — likely superseded by Cricut cut-only (Section 10); decide after test cuts. Cricut Access (£96/year) is optional and not needed for custom text/number designs.*
 
@@ -75,7 +75,7 @@ Per-pack production cost for the bin sticker 4-pack is about **£2.21** all-in: 
 
 **⚠️ Critical finding (Sep 2026 VAT correction):** at Large Letter postage, £4.00 no longer clears even direct costs — a genuine loss on every pack sold, before a penny of overhead is counted. This makes Test 6 (confirming the packed order stays under 5mm/100g for the Letter rate — see Section 8 and `Bin-Sticker-Shipping-Plan.md`) the single highest-priority open item in the whole plan, not a routine confirmation step.
 
-Direct cost per pack (£2.21, from cost sheet v4) is materials £0.80 + packaging £0.25 + postage £0.91 + address label £0.09 + thank-you card £0.16. **Postage assumes the Letter rate (£0.91), which only applies if the packed order measures under 5mm and 100g — Test 6 is still to confirm this.** If it turns out to be Large Letter (£1.55), direct cost rises to £2.85 (see loss finding above). The eBay price is set at £4.00 per 4-pack (Sep 2026); the own-website price has not been set, so that row is a placeholder.
+Direct cost per pack (£2.12 from Oct 2026; was £2.21 in cost sheet v4 with a £0.09 address label, now £0 because labels print free at the Post Office) is materials £0.80 + packaging £0.25 + postage £0.91 + thank-you card £0.16. **Postage assumes the Letter rate (£0.91), which only applies if the packed order measures under 5mm and 100g — Test 6 is still to confirm this.** If it turns out to be Large Letter (£1.55), direct cost rises to £2.76 (£2.85 before the label change). **Note (Oct 2026): the loss finding above and the Section 9 tables were derived at £2.21/£2.85; with the label removed, profit per pack at £4.00 is about £0.69 at the Letter rate and about £0.05 at Large Letter — still thin, but no longer a loss. The other £4.00 figures below have not been re-derived.** The eBay price is set at £4.00 per 4-pack (Sep 2026); the own-website price has not been set, so that row is a placeholder.
 
 **eBay fees at other prices, VAT-inclusive, at the Letter rate** (£3.50 and £4.00 confirmed directly from the corrected sheet; £3/£5/£6 estimated by applying the same ~20% VAT uplift to the pre-correction figures and flagged for exact reconfirmation against the live sheet): £3 → ≈£0.99 (was £0.82), £3.50 → £1.08 (confirmed), £4 → £1.19 (confirmed), £5 → ≈£1.39 (was £1.16), £6 → ≈£1.60 (was £1.33).
 
@@ -97,7 +97,7 @@ Packaging approach varies by product to match its use case and physical requirem
 
 Bin stickers require a board-backed envelope rather than a standard kraft mailer, to prevent creasing/folding in transit. This is a functional requirement, not an upsell. **Note:** the bin sticker size was reduced from the original 30×20cm to 140×100mm (see StickerBinStickersCosts_v4.xlsx, "Bin Stickers 100x140 4pk" sheet), so the envelope size dropped accordingly from **C4 to A6/C6** — smaller and cheaper than the original C4 assumption, though the per-unit cost happens to land in the same ≈£0.23–0.25 range. **A6/C6 applies to the 140×100mm baseline only:** the Medium (202×140mm) and Large (280×200mm) tiers (Section 12) are too big for it and would need roughly C5 and C4 board-backed envelopes respectively — not yet sourced or costed. The A6/C6 choice is confirmed but still to be validated in the post by Test 6 (transit stress, see Bin-Sticker-Material-Test-Plan.md).
 
-**Open question — multi-item orders:** not yet resolved how to package orders containing more than one product, or more than one set of the same product. A single A6/C6 envelope may not accommodate multiple packs within Royal Mail's Large Letter thickness limit — needs a dedicated decision (see Section 8 for the thickness constraint this interacts with).
+**Multi-pack orders (resolved Oct 2026 for the same product):** a single pack ships in the A6/C6 board-backed envelope (Letter, £0.91). Orders of 2–4 packs ship loose in the AKAR white A6/C6 Large Letter box (23mm external, about 84g with 4 packs and tape, Large Letter £1.55). Cap the box at 4 packs: a fifth would land near 97g, too close to the 100g band. Postage vs separate Letters: £0.27 saved at 2 packs, £1.18 at 3, £2.09 at 4; one pack is cheaper in the envelope. Box price and tape cost are still to be added in the cost sheet. **Still open:** orders mixing different products (for example name labels plus bin stickers).
 
 Two packaging elements cost next to nothing extra: the seal sticker and backing cards are produced on the same printer/cutter already used for the products themselves, using offcut vinyl and cardstock rather than purchased pre-made items.
 
@@ -105,7 +105,7 @@ Two packaging elements cost next to nothing extra: the seal sticker and backing 
 
 Competitor research shows a consistent pattern: free standard (untracked) shipping baked into the item price is the default across nearly every seller in this space (Stikins, wheelie bin sticker Etsy shops, My Nametags), with tracked delivery offered as a paid checkout upgrade. No competitor found offers a genuinely guaranteed next-day service — this is an open gap.
 
-Stickers and labels are thin and flat, qualifying for Royal Mail's Large Letter format (up to 25mm thick) rather than Small Parcel — packaging should be kept flat to preserve this rate, since Small Parcel format roughly doubles postage cost. If the packed order measures under 5mm it may qualify for the cheaper Letter rate; this is being measured in Test 6 (the backing-card comparator measured 4mm and 36g in Aug 2026 — Letter-eligible but close to the limit; the board-backed envelope is not yet measured).
+Stickers and labels are thin and flat, qualifying for Royal Mail's Large Letter format (up to 25mm thick) rather than Small Parcel — packaging should be kept flat to preserve this rate, since Small Parcel format roughly doubles postage cost. If the packed order measures under 5mm it may qualify for the cheaper Letter rate; this is being measured in Test 6 (the backing-card comparator measured 4mm and 36g in Aug 2026; the board-backed envelope measured 31g packed with tape in Oct 2026, with thickness reported under 4mm and still to be confirmed at the Post Office gauge). Labels are printed free at the Post Office through Click & Drop's QR code option, so there is no label cost.
 
 | Service | Format | Price (2026) | Speed |
 |---|---|---|---|
@@ -134,7 +134,7 @@ Source: the Break-Even Calculator on the Tier 1 sheet of `StickerBinStickersCost
 
 **Sunk startup cost: £955** — core equipment £853 + R&D test materials £102 (Section 5).
 
-**Recurring overhead: £83.22/month** — Midjourney £8.90, lovart £14.09, bookkeeping software £32.40, gmail £7.00, virtual office £20.83 (£250 a year ÷ 12). These are fixed whatever the sales, and several are placeholders.
+**Recurring overhead: £83.22/month** — Midjourney £8.90, lovart £14.09, bookkeeping software £32.40, gmail £7.00, virtual office £20.83 (£250 a year ÷ 12). These are fixed whatever the sales, and several are placeholders. Photoroom Pro (roughly £8–11/month, not yet adopted) has its own £0 row in the cost sheet from v6 onwards; if adopted, this total rises accordingly.
 
 **Per-pack economics on eBay at £4.00 (VAT-corrected):**
 

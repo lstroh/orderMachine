@@ -9,7 +9,7 @@
 **Product structure**
 - Listing A: 13 solo designs, one listing, **Design** variation. Designs grouped into 3 style clusters (Wreaths & Florals / Classic & Formal / Minimal & Modern) for main image and description organisation — not split into separate listings at launch.
 - Listing B: Animal Family packs (Duck/Dog/Cat), separate listing, **Species** variation. Fixed set of 4 different scenes per family (not buyer-configurable).
-- Both listings adding **Size** as a second variation attribute: Small (4 stickers) / Medium (2 stickers) / Large (1 sticker) — fixed pairing, not independent size+quantity dropdowns like some competitors use.
+- Both listings adding **Size** as a second variation attribute *(launch timing for Medium/Large still open — see below)*: Small (4 stickers) / Medium (2 stickers) / Large (1 sticker) — fixed pairing, not independent size+quantity dropdowns like some competitors use.
 - Base size stays 140×100mm (deliberate — 6 of 7 logged competitors use 150×100mm, flagged once, decision made to stay differentiated).
 
 **Pricing & shipping**
@@ -27,8 +27,10 @@
 
 **Tools**
 - eBay's free Listings Assistant for a first-draft title/description/item specifics.
-- Canva (free tier) for image composites, size-comparison graphics, personalisation explainer.
-- Photopea (free) for perspective-warp compositing and Clone Stamp/Spot Healing touch-ups.
+- ~~Canva (free tier) for image composites, size-comparison graphics, personalisation explainer.~~ **Dropped for eBay photos (Oct 2026)** — eBay's Picture Policy bans added text, artwork, marketing, borders, badges and watermarks on listing photos (see Photo plan below). Canva may still suit Etsy/own website, rules not yet checked.
+- Photoroom — background clean-up on real photos. **Not yet adopted.** Free plan watermarks every export and bans commercial use, so only Pro is usable for eBay. Try eBay's free built-in background tool on the same photos first; subscribe only if it struggles (e.g. black bin edges). Cost sheet v6 has a £0 placeholder row.
+- Midjourney — sticker artwork only. Not used to decorate or fake listing photos. Omni Reference checked and rejected for this use (V7-only, generates AI product scenes); see `Midjourney-Beginner-Guide.md` §8.
+- Photopea (free) for Clone Stamp/Spot Healing touch-ups on real photos. ~~Perspective-warp compositing~~ — avoid compositing a sticker onto a bin it was never on; photos must accurately represent the item.
 - eBay's native AI background-enhancement tool (iOS) for flat-lay clean-up.
 - 3Dsellers / Frooition — cross-sell template tools, worth revisiting once both listings are live and can cross-promote each other; not needed at launch.
 - Rejected: Kittl (wrong product category), Zeely.ai (billing complaint red flags, wrong use case).
@@ -47,12 +49,25 @@
 - [ ] Multi-order discount % — needs real combined-pack weight check (does 2× Small together stay under 100g, or tip into Large Letter?) before setting a number.
 - [ ] Packaging final decision (envelope+card vs box) and a real packed weight on a kitchen scale — still outstanding from the original launch checklist.
 
+**Medium/Large launch timing (recommendation, Oct 2026 — not yet decided)**
+- [ ] Only Small exists in photos so far and Medium/Large have no start date. Recommendation: **create the Size attribute at launch with only the Small value**, then add Medium/Large as new values later. Reason: eBay locks a variation listing's structure after its first sale — new *values* can be added to an existing attribute, but adding a whole new attribute afterwards generally means ending the listing and starting a new one, losing its sales history.
+- [ ] Check in the listing form: (a) eBay accepts an attribute with one value; (b) "Size" isn't reserved as an item specific in the chosen category (if it is, use e.g. "Sticker Size"). Fallback if (a) fails: launch Design-only and accept a new listing when Medium/Large arrive.
+- [ ] When Medium/Large launch: add one shared photo showing all three sizes side by side (photos can only attach to the Design attribute, so sizes can't have their own photos), update title/description, re-check pricing from the cost sheet.
+
 **Production & photos**
 - [ ] Sticker placement on the black bin still needs adjusting (currently leaves Merton/Sutton logo partially visible) — reposition physically before next reshoot rather than repeatedly editing leftovers.
 - [ ] Real bin hero shot not yet finalised — in progress.
 - [ ] Remaining 12 of 13 solo designs not yet photographed (flat/hand shots) — only Central Avenue Arrow Circlet done and approved.
 - [ ] Overhead phone stand not yet purchased (recommended fix for angle/perspective issues).
 - [ ] Privacy: confirm all final listing images are cropped tight to the bin, with no house front, door, or doorbell camera in frame.
+
+**Photo plan (compliant with eBay Picture Policy, Oct 2026)**
+- Policy read directly (ebay.co.uk help, id=4370): no added text, artwork, marketing material, borders, badges, logos or watermarks; no placeholder images conveying messages; photos must accurately represent the item; min 500px longest side, eBay recommends ~1600×1600, 1:1 or 16:9.
+- Enforcement is inconsistent (C1, C2, C5 and others break it), but a new account under selling limits shouldn't take the risk. **Decision: clean, real photos only.**
+- Per design: real on-the-bin shot, flat-lay of the sticker, flat-lay of 4 stickers fanned out (shows the pack count without text). Shared shots: size reference with a ruler/coin/hand in frame, application in progress.
+- Variation photos attach to **Design only**, up to 12 per design. Whether these count toward the 24-photo listing cap is unclear (sources conflict) — check in the listing form.
+- Consistency across 13 designs comes from the setup: same bin, angle, light, crop and backdrop.
+- Size, pack count, personalisation, postage and discounts go in title, item specifics and description.
 
 **Account & operations**
 - [ ] HMRC sole trader registration — status not confirmed.
@@ -86,7 +101,7 @@
 - Splitting Listing A into 3 style-based listings: 1 of 3 recommends this now; 2 of 3 plus our own prior research favour staying consolidated at launch.
 
 **Worth checking before building further:**
-- [ ] Canva text-overlay photo composites may violate eBay's Picture Policy (no added text/artwork on listing images) — read the policy directly before finalising the photo plan.
+- [x] ~~Canva text-overlay photo composites may violate eBay's Picture Policy~~ — **confirmed Oct 2026, they do.** Policy read directly; plan switched to clean real photos (see Photo plan above).
 - [ ] Order Size Discount may require a paid Shop subscription; Bundle Discounts may be the correct no-Shop tool — verify in Seller Hub.
 - [ ] HMRC registration trigger is the £1,000 trading allowance, not the £90k VAT threshold — separate rules, don't conflate them.
 - [ ] Choose the eBay category deliberately before finalising price — it sets the fee rate, the per-order fee band, and whether the Personalisation field is available at all.
