@@ -89,7 +89,7 @@ normal work on it:
 
 | Skill | Fires for |
 |---|---|
-| `xlsx` | Any spreadsheet work — e.g. `StickerBinStickersCosts_v4.xlsx` edits, cost/pricing models with live formulas |
+| `xlsx` | Any spreadsheet work — e.g. `StickerBinStickersCosts_v13.xlsx` edits, cost/pricing models with live formulas |
 | `pdf` | Creating or filling PDFs — e.g. `thankyou_cards_sample_sheet.pdf`-style outputs, watermarking, merging |
 | `pdf-reading` | Reading/extracting content from an uploaded PDF that isn't already visible in context |
 | `docx` | Producing a Word document — only if you explicitly want a `.docx`, not for ordinary written answers |

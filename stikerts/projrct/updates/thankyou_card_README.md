@@ -1,131 +1,81 @@
 # Thank-you card generator — `thankyou_card.py`
 
-Generates print-ready A6 thank-you cards, 4-up on a single A4 sheet, as a PDF.
-This is the core rendering logic the future order-intake skill will call —
-today you call it directly with order details as input.
+Makes print-ready thank-you cards for Doorstep Studio bin sticker orders, as a PDF.
+Rewritten Oct 2026: **one card for every order and channel.** No buyer name, no
+discount code and no review request, so the same card is safe on eBay, Etsy,
+Amazon and the own website. The personal touch (the customer's name) is on the
+personal wrap instead (`sticker_wrap.py`).
 
-## What it produces
+## What's on the card
 
-- One PDF page per call to `render_sheet()`, sized A4.
-- Up to 4 cards per page, arranged 2x2 (each cell is exactly A6, 105 x 148.5mm
-  — a quarter of A4, so cutting is two straight lines, not a contour cut).
-- Each card has a front half (flower motif + "Thank you" + brand name) and a
-  back half (personalised thank-you line + care instructions + social handle
-  + optional discount code block).
-- Thin cut-guide lines and corner tick marks print in light ink so you can
-  trim accurately with a paper trimmer/guillotine.
+- **Front:** a confetti scatter, "Thank you!" and the Doorstep Studio logo with the
+  brand name.
+- **Back:** "How to apply your sticker", six numbered steps written for the
+  peel-tab back cut:
+  1. Clean the bin with soapy water and dry it fully. Best above about 10°C.
+  2. Bend the sticker at the back cut and peel off the narrow strip of backing.
+  3. Line up that edge and press the exposed strip onto the bin.
+  4. Pull the rest of the backing away slowly, smoothing the sticker down from the stuck edge as you go.
+  5. Press firmly along all edges and corners.
+  6. Leave it 3 days before washing or scrubbing. Ordinary rain is fine.
+- **Footer:** `@doorstepstudiouk · Made by hand in the UK`.
 
-## Not compatible with
+Step 6 deliberately asks customers not to *wash or scrub* rather than to avoid
+rain: they can't control the weather, and vinyl guidance treats deliberate water
+contact, not ordinary rain, as the risk while the adhesive cures.
 
-**Cricut Print Then Cut.** The cut-guide marks in this PDF are a visual
-trim reference only. Cricut's Print Then Cut feature requires its own
-proprietary registration marks, which Design Space inserts automatically
-only when printing from within a live Design Space session — a PDF
-generated and printed outside that flow will not be read correctly by the
-machine's sensor. Since A6 is an exact quarter of A4, cutting is two
-straight lines — a paper trimmer is faster than the Cricut here anyway and
-keeps the Cricut free for sticker cutting. If you ever want a non-rectangular
-card shape, that would need to be built directly in Design Space instead of
-this script.
+To change the wording, edit `APPLICATION_STEPS` near the top of the script, then
+re-render and check that nothing wraps onto a single-word line or reaches the footer.
 
-## Requirements
+## Sizes (match the envelope)
 
-```
-pip install reportlab
-```
+| `size=` | Card | Envelope | Per A4 sheet | Layout |
+|---|---|---|---|---|
+| `"A6"` (default) | 105 × 148.5mm portrait | C6 | 4 (2 × 2) | Front on top, steps below |
+| `"A5_landscape"` | 210 × 148.5mm | C5 | 2 (stacked) | Confetti left, steps right, plus a diagram of step 4 |
+| `"A5"` | 148 × 210mm portrait | C5 | 1 (page = card) | Scaled-up A6 |
+| `"A4"` | 210 × 297mm portrait | C4 | 1 (page = card) | Scaled-up A6 |
 
-Everything else (`pdfmetrics`, `canvas`, `colors`) ships with reportlab.
+A5 landscape is the one to use for C5: two cards tile onto A4 exactly, so it's one
+guillotine cut. Portrait A5 doesn't divide evenly into A4.
 
-## How the paper setting works — important
-
-`order["paper"]` (`"white"` or `"kraft"`) changes **ink colour only** — it
-does **not** draw a coloured background. The PDF page is always left
-transparent/unfilled where the card sits; the paper's actual colour comes
-from whichever physical cardstock (white or kraft) is loaded in the printer.
-This is deliberate: printing a solid coloured rectangle to fake the kraft
-look would waste ink and defeat the point of buying coloured stock. Text and
-line colours are simply chosen to stay legible on each stock (dark charcoal
-on white, dark brown on kraft).
-
-## Usage
+## How to call it
 
 ```python
 from thankyou_card import render_sheet
 
-orders = [
-    {
-        "buyer_name": "Priya",
-        "product": "bin sticker set",
-        "care_line": "laminated for weatherproof durability",
-        "channel": "etsy",              # "ebay" | "etsy" | "website"
-        "paper": "white",               # "white" | "kraft" — ink colour only, see above
-        "flower_color": "blush",        # key into FLOWER_COLORS
-        "brand_name": "Doorstep Studio",
-        "handle": "doorstepstudio",
-        "discount_code": None,          # only ever rendered when channel == "website"
-    },
-    # ...up to 4 orders per sheet. Fewer than 4 is fine — remaining cells
-    # are simply left blank, no placeholder printed.
-]
-
-render_sheet(orders, "cards_today.pdf")
+order = {
+    "channel": "ebay",            # kept for records; the card no longer varies by channel
+    "paper": "white",             # "white" or "kraft" — ink colours only; load matching cardstock
+    "confetti_color": "multi",    # "multi" or one of: blush, sage, dusty_blue, terracotta, lavender
+    "brand_name": "Doorstep Studio",
+    "handle": "doorstepstudiouk",
+}
+render_sheet([order] * 4, "cards_A6.pdf", size="A6")
+render_sheet([order] * 2, "cards_A5.pdf", size="A5_landscape")
 ```
 
-### `order` dict — field reference
+`confetti_color` also colours the step numbers and the diagram.
 
-| Field           | Type          | Notes |
-|-----------------|---------------|-------|
-| `buyer_name`    | str           | First name only recommended (keeps the greeting line short enough to fit two wrapped lines) |
-| `product`       | str           | Feeds into the greeting sentence: "your **{product}** is {care_line}" |
-| `care_line`     | str           | Product-specific durability/care claim — keep in sync with what you actually test/claim (e.g. Bin-Sticker-Material-Test-Plan results) |
-| `channel`       | `"ebay"` / `"etsy"` / `"website"` | Controls whether a discount code block can render at all — see platform rules below |
-| `paper`         | `"white"` / `"kraft"` | Ink colour theme only, see above — must match the cardstock physically loaded |
-| `flower_color`  | key in `FLOWER_COLORS` | See palette below |
-| `brand_name`    | str           | Printed on the card front |
-| `handle`        | str           | Printed without the `@` — script adds it |
-| `discount_code` | str or `None` | Only rendered if `channel == "website"`, even if set — eBay/Etsy have no compliant way to carry a code on this card at present (see chat history: eBay's coded coupons need a paid Shop subscription; Etsy's own promo-code tool is a possible future addition but isn't wired in here yet) |
+## Files it needs
 
-### Built-in flower colours (`FLOWER_COLORS`)
+```
+thankyou_card.py
+assets/icons/confetti_multi.png        (and confetti_<colour>.png for each accent)
+assets/icons/doorstep_studio_mark.png
+```
 
-| Key           | Petal    | Centre   |
-|---------------|----------|----------|
-| `blush`       | `#D4537E`| `#993556`|
-| `sage`        | `#639922`| `#3B6D11`|
-| `dusty_blue`  | `#378ADD`| `#185FA5`|
-| `terracotta`  | `#D85A30`| `#993C1D`|
-| `lavender`    | `#7F77DD`| `#534AB7`|
+The confetti PNGs were made from a Midjourney render: 69 shapes separated and
+recoloured with the icon-silhouette-extraction tools, pre-baked once per colour.
 
-Adding a new colour is a one-line addition to the `FLOWER_COLORS` dict at the
-top of the file — no new artwork, no design tool. The flower itself is drawn
-procedurally in `draw_flower()` (4 ellipse petals + a centre circle), so any
-hex colour works immediately.
+## Printing
 
-## Key functions
+- Print from the PDF at **100% / actual size**, on 250gsm white or kraft cardstock.
+- The card background is never printed. The paper colour shows through, and `paper`
+  only switches the ink colours so they stay legible on kraft.
+- Thin cut guides and corner ticks are printed for the guillotine.
 
-| Function | Purpose |
-|---|---|
-| `draw_flower(c, cx, cy, size, petal_hex, center_hex)` | Draws the flower motif at a given point/size/colour. Pure vector, no external assets. |
-| `wrap_text(text, font, size, max_width)` | Simple word-wrap helper so the greeting line fits the card width regardless of name/product length. |
-| `draw_card(c, ox, oy, order)` | Draws one full A6 card (front + back + cut guides) at a given page position. |
-| `render_sheet(orders, out_path)` | Top-level entry point — lays out up to 4 `draw_card()` calls in a 2x2 grid on one A4 page and saves the PDF. |
+## Planned
 
-## Cost per card (materials only)
-
-Based on July 2026 UK pricing research:
-
-- A4 250gsm white cardstock: ~£0.08/sheet ÷ 4 cards ≈ **£0.02/card**
-- A4 250gsm kraft cardstock: ~£0.15–0.30/sheet ÷ 4 cards ≈ **£0.04–0.08/card**
-- Ink (light coverage — line art + text): ~**£0.01/card**
-
-The cost sheet (`StickerBinStickersCosts_v4.xlsx`, "Bin Stickers 100x140 4pk" sheet, thank-you card block) now carries **£0.16 per card**: £0.06 cardstock (kraft-level estimate) + £0.10 ink (a deliberately conservative placeholder, well above the ~£0.01 estimated above). That is above the older £0.15 budget by a penny, and the true cost is likely lower once ink use is measured.
-
-## Known limitations / not yet built
-
-- No CSV or marketplace-export input — orders are passed in directly as
-  Python dicts for now, per current workflow.
-- No automatic mapping from product → flower colour/theme yet (you're not
-  sure of your design lines yet — `flower_color` is set manually per order
-  for now; once you settle on real design families this can become a lookup
-  table keyed by product/listing).
-- No handling for order lists longer than 4 (i.e. multiple sheets in one
-  call) — call `render_sheet()` once per batch of up to 4 for now.
+- Hand-drawn Midjourney illustrations for each step may replace the vector
+  diagram on the A5 landscape card (prompts in the chat history, Oct 2026).

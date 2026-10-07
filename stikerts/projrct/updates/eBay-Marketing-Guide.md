@@ -1,8 +1,8 @@
 # eBay Marketing Guide — Bin Sticker Side Hustle
 
-*Prepared August 2026 · Last revised September 2026 · UK eBay, business seller · Companion to `Sticker-Business-Plan.md` and `StickerBinStickersCosts_v4.xlsx` (see the "Ebay costs" sheet for live fee-stack calculations)*
+*Prepared August 2026 · Last revised September 2026 · UK eBay, business seller · Companion to `Sticker-Business-Plan.md` and `StickerBinStickersCosts_v13.xlsx` (see the "Ebay costs" sheet for live fee-stack calculations)*
 
-**Status: reference guide for later use.** The eBay price is now set at £4.00 per 4-pack (Sep 2026); monthly volume is still a placeholder (see Open Items). Re-check current UK rates before acting on this — eBay's fee/ad structure has changed multiple times in 2026 already.
+**Status: reference guide for later use.** The eBay launch price is £5.00 per 4-pack with Letter postage (Oct 2026; it was £4.00 in Sep 2026); monthly volume is still a placeholder (see Open Items). Re-check current UK rates before acting on this — eBay's fee/ad structure has changed multiple times in 2026 already.
 
 **⚠️ Correction (external review, Sep 2026):** the "turn on Promoted Listings from day one" recommendation in Section 4 below assumed access that a brand-new account may not have. One review found a newly created UK business account reported not seeing the Promoted Listings option at all — access may require Above Standard/Top Rated seller status and account history. **Check whether Promoted Listings (General) is actually available in Seller Hub before building it into the launch plan or the fee model.** If unavailable, the 4% ad-cost line can be removed from the break-even figures entirely, which improves the numbers.
 
@@ -56,9 +56,9 @@ Promoted Listings fees are **additional to**, not included in, standard selling 
 | **VAT on all business-seller fees** | **+20%, confirmed Sep 2026, unreclaimable (not VAT-registered)** | Applies to FVF, per-order fee, regulatory fee, and Promoted Listings if used |
 | Promoted Listings (General) | Your chosen ad rate, e.g. 2-4%, if available on the account | Only charged on a sale via a promoted click |
 
-**The fee stack in this table now needs the 20% VAT line applied and the worked example below recalculated — flagged Sep 2026, not yet done.** The previous worked example (£4.00, 4% ads, ~24.7% total) understated the true cost by omitting VAT on fees.
+**The 20% VAT line is now applied in the cost sheet (Sep–Oct 2026).** At £5.00 with 4% ads the all-in eBay fee is £1.39, about 27.8% of the price (£1.19 and 29.6% at the old £4.00). Older worked examples in this guide that omit VAT on fees (such as the £4.00, ~24.7% example) understate the true cost; use the cost sheet figures.
 
-Live, editable version of this calculation: `StickerBinStickersCosts_v4.xlsx` → **Ebay costs** sheet (fee stack, per-unit and monthly figures, and a £3/£4/£5/£6 price-sensitivity table). Change the price or ad-rate inputs there and everything recalculates; the Break-Even Calculator on the Tier 1 sheet reads from it. **This sheet needs the VAT correction applied before the numbers here can be trusted.**
+Live, editable version of this calculation: `StickerBinStickersCosts_v13.xlsx` → **Ebay costs** sheet (fee stack, per-unit and monthly figures, and a £3/£4/£5/£6 price-sensitivity table). Change the price or ad-rate inputs there and everything recalculates; the Break-Even Calculator on the Tier 1 sheet reads from it. The VAT correction is applied in the current cost sheet (v13), so the sheet's figures can be trusted over the older worked examples here.
 
 ---
 
@@ -75,7 +75,7 @@ Live, editable version of this calculation: `StickerBinStickersCosts_v4.xlsx` �
 
 ## 5. Open items — resolve before finalising
 
-- [x] ~~**Price/product ambiguity**~~ — resolved Sep 2026: the eBay price is £4.00 per 4-pack. Competitor four-packs sit at £1.69–£1.99 (see `eBay-Competitor-Research.md`), so the price needs justifying on durability, design and photos.
+- [x] ~~**Price/product ambiguity**~~ — resolved Oct 2026: the eBay launch price is £5.00 per 4-pack (it was £4.00 in Sep 2026). Competitor four-packs sit at £1.69–£1.99 (see `eBay-Competitor-Research.md`), so the price needs justifying on durability, design and photos.
 - [ ] **Monthly order volume** — currently modelled at 10 stickers/month (Conservative scenario in the workbook, linked to the Ebay costs sheet); revisit once real data exists.
 - [x] ~~**Business Plan Section 11 (Sales Channels)**~~ — updated Sep 2026 for eBay-first sequencing (eBay → Etsy → Amazon).
 - [x] ~~**Business Plan Section 6 / costs workbook**~~ — both now break out the per-order fee and the ~0.4% regulatory fee (Sep 2026).

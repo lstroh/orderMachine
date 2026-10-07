@@ -39,7 +39,7 @@ Live eBay UK listings, as logged in `eBay-Competitor-Research.md` (not re-checke
 | C2 poppy_uk | Large numbers-only stickers (not a fixed 4-pack) | £3.99 |
 | C3 LaserEdge Designs UK | Personalised number + street name, priced **each** | £2.99 each (about £11.96 for four) |
 
-**What this means for our £4 eBay price:** the four-pack band is £1.69–£1.99, so £4 is roughly double the commodity price, and our cost per pack (about £2.35–£3.00 depending on packaging and postage) is above that band — we cannot compete on price there. The £4 price has to be justified by laminated durability, personalised plaque-style designs and real photos of the finished product. LaserEdge shows some buyers will pay about £3 per personalised sticker, which supports a premium position. Whether a "pack of 4" or a "per sticker" price framing converts better is untested.
+**What this means for our £5 eBay price (launch price, Oct 2026):** the four-pack band is £1.69–£1.99, so £5 is about two and a half times the commodity price, and our landed cost per pack (£2.73 in cost sheet v13, Letter postage) is above that band — we cannot compete on price there. The £5 price has to be justified by laminated durability, personalised plaque-style designs and real photos of the finished product. LaserEdge shows some buyers will pay about £3 per personalised sticker, which supports a premium position. Whether a "pack of 4" or a "per sticker" price framing converts better is untested.
 
 ---
 

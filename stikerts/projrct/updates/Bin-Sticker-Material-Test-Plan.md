@@ -16,7 +16,7 @@
 | Cost per matched page (vinyl + laminate) | £0.65 (£13 per 20-ct set); £0.85 as bought incl. £4 shipping. Cricut UK list £12.99, currently £9.09 (30% off) | £0.77–£1.20 depending on pack size (500 down to 10 sheets) |
 | Customer rating | 2.8/5 (32 reviews, Cricut UK page for the 20-ct set) | Not compared |
 
-**Note (Sep 2026):** an earlier version of this plan used the 6-ct set (£1.87 per page) and excluded the 20-ct set as transparent-only in the UK. A White 20-ct set is now available and has been bought (along with a Transparent one for the clear-vinyl work), so it is the Cricut candidate. Prices come from the 'cost per item' sheet in `StickerBinStickersCosts_v4.xlsx`. Both materials are white/opaque, so this remains a like-for-like test. **Assumption to confirm:** the Day 0 samples in the tracking table below are treated as this same white Cricut product.
+**Note (Sep 2026):** an earlier version of this plan used the 6-ct set (£1.87 per page) and excluded the 20-ct set as transparent-only in the UK. A White 20-ct set is now available and has been bought (along with a Transparent one for the clear-vinyl work), so it is the Cricut candidate. Prices come from the 'cost per item' sheet in `StickerBinStickersCosts_v13.xlsx`. Both materials are white/opaque, so this remains a like-for-like test. **Assumption to confirm:** the Day 0 samples in the tracking table below are treated as this same white Cricut product.
 
 ---
 
@@ -60,7 +60,7 @@
 - [ ] Check: visible scratch marks, ink showing through, laminate lifting at the scratch point
 - **Record:** Pass / Fail / Notes
 
-### Test 6 — Transit/shipping stress (added for the 140×100mm size change; updated Sep 2026)
+### Test 6 — Transit/shipping stress (added for the 140×100mm size change; updated Oct 2026)
 *Purpose: the material tests above (1–5) check the sticker itself once applied to a bin. This test checks whether it survives the journey through the post BEFORE it's ever applied — bending, crushing, corner knocks, flexing. Run this once you've settled on candidate packaging (see packaging brainstorm), so it doubles as a packaging test, not just a material test.*
 
 **Why the postage result now matters more (Sep 2026):** the cost sheet assumes the Letter rate (£0.91). If the packed order is 5mm or thicker, or over 100g, Large Letter (£1.55) applies and eBay profit per pack at £4 falls from £0.80 to £0.16 (Business Plan §9). So this test decides both protection and the postage tier.
@@ -75,9 +75,9 @@
 | C6 box (163×112×20mm, rigid) | ~£0.14 | 20mm (logged as 3mm — check) | Large Letter | £1.55 | Best — resists bending and crushing entirely | Strongest "unboxing" moment |
 | A6/C6 board-backed "Do Not Bend" envelope (114×162mm), flat — **the confirmed choice** | ~£0.25 (sourced; R&D 50-pack works out at £0.147) | **To be measured** | Letter if under 5mm and 100g, otherwise Large Letter | £0.91 if Letter, £1.55 if not | Board backing resists bending; no cushioning against crushing | Functional, not gift-style |
 
-**Update (Oct 2026):** the board-backed envelope (single pack) and the AKAR white A6/C6 box (2–4 packs, cap 4) were hand-tested and reported as passed. Packed weights: envelope 31g; box 57g with 2 packs taped, 69g with 3, 82g with 4. Box height 23mm. Still to do: Post Office gauge check of the envelope's thickness (reported under 4mm) and the post-to-self test.
+**Update (Oct 2026):** the board-backed envelope (single pack) and the AKAR white A6/C6 box (2–4 packs; up to 4 loose, capped at 3 wrapped packs until the 4-pack wrapped weight is logged) **passed Test 6**: the envelope passed the Post Office counter check as a Letter, and both passed all drop/flex tests and the post-to-self test (arrived in 2 days, no creasing, corner damage or shifting). Packed weights, without the personal wrap: envelope 31g; box 57g with 2 packs taped, 69g with 3, 82g with 4. Box height 23mm. Not logged: exact envelope thickness in mm and wrapped weights. The other candidates were not posted.
 
-**Logged so far (3–5 Aug 2026, `TestTrackingSheet.xlsx`):** flat wrap and the padded mailer did not fit (eliminated). Envelope + backing card measured 4mm and 36g (Letter-eligible, but much closer to the 5mm limit than the ~0.5mm estimate). The box was logged at 3mm and 48g (the thickness looks wrong for a 20mm box). Drop/flex and post-to-self are not yet logged, and the board-backed envelope has not been measured.
+**Logged so far (3–5 Aug 2026, `TestTrackingSheet.xlsx`):** flat wrap and the padded mailer did not fit (eliminated). Envelope + backing card measured 4mm and 36g (Letter-eligible, but much closer to the 5mm limit than the ~0.5mm estimate). The box was logged at 3mm and 48g (the thickness looks wrong for a 20mm box). Drop/flex and post-to-self were not logged at that point (superseded by the Oct 2026 update above).
 
 **Why the backing-card option matters:** a padded/bubble mailer's cushioning layer is, by definition, thick enough to protect against impact — which is also exactly why no genuine padded mailer fits under the 5mm Letter limit (checked directly: even slim/foam-lined alternatives are built around a padding layer that inherently exceeds 5mm). A rigid backing card adds bend-resistance without meaningfully adding thickness, so it's the one candidate that might combine Letter-rate postage with better-than-plain-wrap protection — worth testing directly rather than assuming.
 
@@ -88,10 +88,10 @@
 - 1 sample in a small box — e.g. Forms Plus C6 postal box, 163×112×20mm (£6.54–6.89/50)
 - 1 sample in the A6/C6 board-backed "Do Not Bend" envelope, flat with no extra padding — e.g. Double Dragon A6/C6 manilla hard board backed, 50-pack (£7.37 in the R&D list)
 
-- [ ] **Post-to-self test:** address and post all five packed samples to yourself (or a friend/family member) via standard 2nd class. This is the single most realistic test available — it goes through actual sorting machines, bags, and delivery handling.
-- [ ] **Measure packed thickness and weight** of each with a ruler and kitchen scale before posting — confirm which candidates actually stay under 5mm and 100g (Letter) vs which are inherently Large Letter, since this affects the postage cost comparison as much as the protection result. The board-backed envelope is the one that matters most: it is the confirmed choice and the cost sheet assumes it qualifies for Letter
-- [ ] **On arrival, check:** creasing/bend lines across the sheet, corner dents or crushing, laminate lifting or separating from flex, any shift/damage to the backing card, mailer, or box
-- [ ] **DIY drop/flex test (while waiting for the post-to-self result):** drop each packed sample flat, on its edge, and corner-first from ~1m onto a hard floor, 3 times each orientation. Separately, flex the flat-wrapped and backing-card samples by hand — a firm bend to roughly 30°, held for 2 seconds, repeated 5 times — to simulate an envelope getting squeezed through a letterbox or postbag
+- [x] **Post-to-self test (done Oct 2026 for the board-backed envelope and AKAR box only — both passed, 2-day delivery):** address and post all five packed samples to yourself (or a friend/family member) via standard 2nd class. This is the single most realistic test available — it goes through actual sorting machines, bags, and delivery handling.
+- [x] **Measure packed thickness and weight (done Oct 2026 for the board-backed envelope and AKAR box; envelope passed the counter check as a Letter)** of each with a ruler and kitchen scale before posting — confirm which candidates actually stay under 5mm and 100g (Letter) vs which are inherently Large Letter, since this affects the postage cost comparison as much as the protection result. The board-backed envelope is the one that matters most: it is the confirmed choice and the cost sheet assumes it qualifies for Letter
+- [x] **On arrival, check (done Oct 2026 — no creasing, corner damage or shifting):** creasing/bend lines across the sheet, corner dents or crushing, laminate lifting or separating from flex, any shift/damage to the backing card, mailer, or box
+- [x] **DIY drop/flex test (done Oct 2026 for the board-backed envelope and AKAR box — both passed) (while waiting for the post-to-self result):** drop each packed sample flat, on its edge, and corner-first from ~1m onto a hard floor, 3 times each orientation. Separately, flex the flat-wrapped and backing-card samples by hand — a firm bend to roughly 30°, held for 2 seconds, repeated 5 times — to simulate an envelope getting squeezed through a letterbox or postbag
 - **Record:** Pass / Fail / Notes for each material × each packaging type (10 combinations: 2 materials × 5 packaging types), plus packed thickness and weight for each packaging type
 
 **Decision this test feeds into:** if the backing-card option resists creasing about as well as the padded mailer or box, it's the standout choice — same Letter-rate postage as plain wrap, better durability. If it creases like the plain wrap does, that tells you rigidity alone isn't enough and the extra postage cost of a padded mailer/box is buying something real. Durability is this product's core sales promise (per competitor research), so a bent sticker on arrival undermines that even if the vinyl itself is fine. Because the cost sheet currently assumes the Letter rate, the result on the board-backed envelope also decides whether that assumption stands.
@@ -124,7 +124,8 @@ At the end of 2–3 weeks, compare both materials against:
 - [ ] Did either scratch significantly more easily than the other?
 - [ ] Which was easier to laminate/cut cleanly in practice (bubbles, wrinkles, cut precision)?
 - [ ] **Colour rendering (Day 0 finding, see Addendum 5):** Cricut renders navy as near-black across all 3 print settings tested; Stickiply retains true navy. **Now a live factor (Sep 2026):** navy is the default accent in `bin_sticker.py` and berry/forest are in the palette, across 25 built designs — see the swatch test in Addendum 5.
-- [ ] **Transit (Test 6):** of the five packaging types (flat wrap / envelope + backing card / padded mailer / box / board-backed envelope), which showed creasing, corner damage, or laminate lifting after the post-to-self and drop/flex tests, and which came through cleanest? Did this differ by material? Which candidates actually measured under 5mm and 100g (Letter-rate eligible) once packed — especially the board-backed envelope?
+- [x] **Transit (Test 6) — answered Oct 2026:** the board-backed envelope (Letter) and the AKAR box (2–4 packs) came through drop/flex and post-to-self with no creasing, corner damage or shifting; the other candidates were not posted.
+  Original question: of the five packaging types (flat wrap / envelope + backing card / padded mailer / box / board-backed envelope), which showed creasing, corner damage, or laminate lifting after the post-to-self and drop/flex tests, and which came through cleanest? Did this differ by material? Which candidates actually measured under 5mm and 100g (Letter-rate eligible) once packed — especially the board-backed envelope?
 
 **Decision (Sep 2026): the Cricut Printable Waterproof Sticker Set (20 ct, White) is the chosen material for bin stickers.** This was decided before Tests 1–5 finished, so those tests now continue as validation rather than selection: if Cricut fails submersion, hot water, outdoor UV or adhesion, revisit the decision before bulk buying. The colour-rendering finding (Addendum 5) becomes a design constraint instead of a selection factor: navy is the default accent in `bin_sticker.py` and Cricut renders it near-black, so the swatch test now decides which accent colours can be offered on Cricut, and whether the navy default changes.
 
@@ -142,7 +143,7 @@ The comparison rules below are kept for reference.
 
 ## Addendum (July 2026) — Cutting tool verification: corner punch & peel-nick — ON HOLD (superseded Sep 2026)
 
-**Status (Sep 2026): on hold.** Bin sticker cutting is now the Cricut Explore 5 in cut-only mode for all sizes, with the guillotine trimming the sheet into separate backed stickers (Business Plan §10, Equipment Guide). The corner punch (the Cricut cuts the rounded corners) and the Slice peel-nick are only worth testing if Addendum 6 shows a need, e.g. a peel-start problem once the backing is trimmed flush. The original checks are kept below for that case.
+**Status (Sep 2026): on hold.** Bin sticker cutting is now the Cricut Explore 5 in cut-only mode for all sizes, with the guillotine trimming the sheet into separate backed stickers (Business Plan §10, Equipment Guide). The corner punch (the Cricut cuts the rounded corners) and the Slice peel-nick are only worth testing if Addendum 6 shows a need. The peel-start question is now answered by the Cricut back cut (Oct 2026, Addendum 6 Part 4). The original checks are kept below for that case.
 
 Added after switching bin sticker cutting from Cricut Print Then Cut to a manual guillotine + corner rounder punch + Slice 00200 safety cutter workflow (see Business Plan Section 10 and the Equipment Guide). This addendum is deliberately unnumbered to avoid clashing with this file's own Test 6 (packaging transit test) above — treat it as a separate, parallel check.
 
@@ -317,7 +318,7 @@ Added after the decision to cut every bin sticker size on the Explore 5 in cut-o
 ### Part 4 — Trim into separate stickers
 - [ ] Trim the kiss-cut sheet along the gaps between outlines on the guillotine
 - [ ] Check the backing trims cleanly, the stickers don't lift, and the rounded corners survive
-- [ ] Check how the peel-start feels with the backing trimmed flush. If it is hard to start a peel, revive the Slice peel-nick check in the July addendum
+- [x] ~~Check how the peel-start feels with the backing trimmed flush~~ — **resolved Oct 2026:** a back cut made on the Cricut (a slit through the backing only, 15mm below the top edge) gives a peel tab, marked with a "PEEL THIS FIRST" pill on the strip and an arrow below the cut. User-tested and approved. Still to check: back cut blade depth on the real stock (backing only, vinyl untouched) and that the markers stay put in transit
 - **Record:** Pass / Fail / Notes
 
 ### Part 5 — Mat fit and repeatability
@@ -328,4 +329,4 @@ Added after the decision to cut every bin sticker size on the Explore 5 in cut-o
 - **All parts pass:** cut-only is confirmed for every size; the corner punch and Slice stay on hold.
 - **Kiss-cut depth is inconsistent:** fall back to the options in the Equipment Guide's "Kiss-Cut Upgrade Path" before buying anything.
 - **Alignment offset is over tolerance:** add a simple placement jig or guide on the mat before changing method.
-- **Peel-start is poor after trimming:** bring back the peel-nick check (July addendum) or leave a small tab.
+- **Peel-start is poor after trimming:** resolved Oct 2026 with the Cricut back cut and peel markers (Part 4). The Slice peel-nick stays on hold; it is now only a possible cheaper replacement for the back cut pass, which costs a mat use.
