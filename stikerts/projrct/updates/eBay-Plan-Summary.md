@@ -75,6 +75,10 @@
 - [ ] Overhead phone stand not yet purchased (recommended fix for angle/perspective issues).
 - [ ] Privacy: confirm all final listing images are cropped tight to the bin, with no house front, door, or doorbell camera in frame.
 
+**Approved design names (Oct 2026)** — dropdown order; SKU = design ID; old internal gallery names to be retired in favour of the D-number internally.
+1. D24 Modern Minimal · 2. D02 Classic Scrolls · 3. D03 Classic Frame · 4. D04 House Outline · 5. D05 House Outline – Number Only · 6. D01 Cottage & Flowers · 7. D22 Arrow Wreath · 8. D18 Flower Wreath · 9. D19 Flower Wreath – Number Only · 10. D21 Heart Vine Wreath · 11. D23 Olive Branch Wreath · 12. D20 Laurel Wreath – Number Only · 13. D25 Paw Prints
+(Competitor-derived words "Central Avenue" and "Fishpond" kept out of buyer-facing names. Quantity 10 per design.)
+
 **Listing B (animal families) — deferred (decided Oct 2026)**
 - Launch Listing A only; review after about 4–6 weeks or 10–15 sales, whichever comes first (Seller Hub → Performance → Traffic: impressions, click-through, sales by design, buyer questions). Listing B photo work is on hold until then.
 
@@ -138,7 +142,7 @@
   - £3.50, Letter: £0.21 profit/pack. £3.50, Large Letter: −£0.43 (a loss)
   - **Test 6 (Letter vs Large Letter postage) — reported complete Oct 2026; launching on Letter at £5.00.**
 - [x] Medium (202×140mm, 2-pack, £1.59/sticker) and Large (280×200mm, 1-pack, £3.19/sticker) dimensions and costs **already exist in the Business Plan §12** — this file's earlier "not yet set" note was stale, now corrected above.
-- [ ] **New-seller selling limits (~10 items/$500/month) are real and confirmed via eBay's own help pages.** Whether each variation counts separately against this (would affect the 48-variation plan) is not independently confirmed — check Seller Hub directly once the account exists, before assuming all variations can launch simultaneously.
+- [x] **Selling limit checked (Oct 2026): 75,000 items / £566,101.82 a month** — no practical constraint; all 13 designs can launch. (Earlier assumption of ~10 items/$500 for new sellers does not apply to this business account.)
 
 **Contested — needs a deliberate decision, not fact-checking:**
 - Personalisation fallback (blank → delivery address): 2 of 3 reviewers say keep with safeguards, 1 says drop entirely in favour of always messaging the buyer. Real trade-off between dispatch speed and personalisation-error risk.
@@ -172,5 +176,5 @@
 2. **Confirm Size at launch** with one value, "Small" (recommended).
 3. **Confirm the native Personalisation box** (recommended).
 4. Resume the draft: variations (Design + Size, £5.00 each, SKU = design ID) → item specifics incl. **Personalise** → select the three policies → title → description (incl. returns wording) → package weight/size (packed weight still to enter; may help eBay offer the Letter label) → photos → item disclosures → Promoted Listings decision.
-5. Before going live (step 5): missing photos (13-design line-up, bin hero), preview test of the Personalisation box, new-seller selling-limit check.
+5. Before going live (step 5): missing photo (13-design line-up only — bin hero done), preview test of the Personalisation box, ~~new-seller selling-limit check~~ (done: 75,000 items).
 6. At the first order: check the label price (Letter £0.91 offered? QR code option? ship-from/return address correct?).

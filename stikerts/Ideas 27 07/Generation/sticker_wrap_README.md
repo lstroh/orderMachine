@@ -50,17 +50,18 @@ One-time install for the Cricut image: `pip install pymupdf pillow`.
 
 ## 3. Running an order
 
-1. Open `make_order.py` and edit the `ORDERS` list.
-2. Set `CRICUT = True` to also get the Cricut image, or `False` to print
-   and cut by hand.
-3. Run `python3 make_order.py`.
+1. Open `make_order.py` and edit the `ORDERS` list. Every entry needs
+   `order_number`.
+2. `CRICUT` is `True`: each wrap also gets a Cricut Print Then Cut PNG.
+   The sticker sheets stay PDFs.
+3. Run `python make_order.py`.
 
-Output goes into a dated folder, for example `orders_2026-10-04/`:
+Output for each order number goes to `G:\My Drive\orders\<order_number>\`:
 
 - `sheet_1.pdf`, `sheet_2.pdf` … sticker sheets, 4 per A4 (unchanged
   from `bin_sticker_small.render_sheet`)
-- `wrap_36_Grove_Street.pdf` … one wrap per order, for hand cutting
-- `wrap_36_Grove_Street_cricut.png` … one per order when `CRICUT = True`
+- `wrap_36_Grove_Street.pdf` … one wrap per pack, for hand cutting
+- `wrap_36_Grove_Street_cricut.png` … one per wrap
 
 ### The ORDERS list
 
@@ -70,6 +71,7 @@ on 3 of them so only one wrap is made.
 
 | Key | Used by | Required | Notes |
 |---|---|---|---|
+| `order_number` | make_order | yes | folder name under `G:\My Drive\orders\` |
 | `house_number` | stickers + wrap | yes | e.g. `"36"` |
 | `street_name` | stickers + wrap | yes | e.g. `"Grove Street"` |
 | `style` | stickers + wrap | yes | a key from `bin_sticker_small.STYLES` |
@@ -258,15 +260,17 @@ badge falls back to `"mark"` behaviour if its PNG is missing.
 
 ### 7.5 `make_order.py`
 
-- `ORDERS` is sliced into groups of 4 for `bin_sticker_small.render_sheet`.
+- Entries are grouped by `order_number`. Each group is sliced into
+  pages of 4 for `bin_sticker_small.render_sheet`.
 - Each entry, unless `"wrap": False`, gets `{**BRAND, **entry}`, so
-  per-order keys override `BRAND`. That gives one wrap PDF, plus a PNG
-  when `CRICUT = True`.
-- Output folder is `orders_<YYYY-MM-DD>/`. Re-running on the same day
-  overwrites files with the same names.
+  per-order keys override `BRAND`. That gives one wrap PDF and, because
+  `CRICUT` is `True`, one Print Then Cut PNG. The PNG is the wrap, not
+  the sticker sheet.
+- Output folder is `G:\My Drive\orders\<order_number>\`. Re-running that
+  order number overwrites files with the same names.
 - Wrap file name: `wrap_<house_number>_<street_name with _>.pdf`. Two
-  orders to the same address on the same day would overwrite each other
-  (see TODO).
+  wraps for the same address inside one order number overwrite each
+  other (see TODO).
 
 ### 7.6 Suggested next steps (not done yet)
 

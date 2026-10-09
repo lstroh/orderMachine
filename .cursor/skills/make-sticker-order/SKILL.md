@@ -1,0 +1,78 @@
+---
+name: make-sticker-order
+description: >-
+  Build a Doorstep Studio small bin-sticker order (140x100mm): write the ORDERS
+  list in make_order.py and run it so sticker sheets and one personal wrap per
+  pack are produced. Use when the user names this skill and asks to make a
+  sticker order, fill ORDERS, or run make_order.py.
+disable-model-invocation: true
+---
+
+# Make a sticker order
+
+Small stickers only (140 x 100mm). Scripts live in `stikerts/Ideas 27 07/Generation/`. Run from that folder. Do not edit `bin_sticker_small.py`, `bin_sticker_core.py`, or `sticker_wrap.py` to place an order.
+
+## What to collect
+
+One pack is one design. Ask for anything missing. Do not guess a house number, street, buyer name, or style.
+
+| Field | Required | Notes |
+|---|---|---|
+| `order_number` | yes | Folder name under `G:\My Drive\orders\`. Letters, digits, spaces, hyphens, or underscores. One folder per number. |
+| `house_number` | yes | e.g. `"36"` |
+| `street_name` | yes | e.g. `"Grove Street"` |
+| `style` | yes | A key in `STYLES` in `bin_sticker_small.py`. Read that dict. Do not invent a key. |
+| `buyer_name` | yes | First name. Wrap only: "Thank you, {name}!" |
+| `accent` | fixed | Always `"black"`. Do not ask. `p25_landscape_flourish` and `p25b_landscape_flourish` are already black and ignore this key. |
+| `paper` | no | `"white"` (default) or `"kraft"`. Ink colours on the wrap only. |
+| `care_line` | no | Wrap only. Default is already in `sticker_wrap.py`. |
+| `quantity` | no | Stickers in the pack. Default **4**. This is how many sheet slots to write, and the number printed as "Your set of …". |
+| Cricut | fixed | Leave `CRICUT = True`. It writes a Print Then Cut PNG of each wrap. It does not cut the sticker sheet. |
+
+`BRAND` at the top of `make_order.py` (`brand_name`, `handle`, `logo_style`) applies to every wrap. Leave it unless the user asks to change it. `logo_style` `"both"` is the chosen design.
+
+## Write ORDERS
+
+`quantity` is not expanded by the script. Expand it yourself: one dict per sticker slot. The first slot of a pack is the wrap. The other slots of that pack are the same sticker fields with `"wrap": False`.
+
+A 4-pack:
+
+```python
+ORDERS = [
+    {"order_number": "12-34567-89012", "house_number": "36",
+     "street_name": "Grove Street", "style": "p25_landscape_flourish",
+     "accent": "black", "buyer_name": "Priya", "paper": "kraft",
+     "quantity": 4},
+    {"order_number": "12-34567-89012", "house_number": "36",
+     "street_name": "Grove Street", "style": "p25_landscape_flourish",
+     "accent": "black", "wrap": False},
+    {"order_number": "12-34567-89012", "house_number": "36",
+     "street_name": "Grove Street", "style": "p25_landscape_flourish",
+     "accent": "black", "wrap": False},
+    {"order_number": "12-34567-89012", "house_number": "36",
+     "street_name": "Grove Street", "style": "p25_landscape_flourish",
+     "accent": "black", "wrap": False},
+]
+```
+
+Put `order_number` on every slot, including `"wrap": False`. Replace the whole `ORDERS` list. Leave `CRICUT = True`. Packs that share an `order_number` go in one folder, and their sheets are filled 4 slots per page inside that folder.
+
+Two wraps with the same house number and street inside one order number share one wrap filename and the second overwrites the first. Say so before running.
+
+## Run
+
+From `stikerts/Ideas 27 07/Generation/`:
+
+```bash
+python make_order.py
+```
+
+Use `python3` if `python` is not the interpreter that has reportlab. Cricut PNGs also need pymupdf and pillow.
+
+Output for each order number is `G:\My Drive\orders\<order_number>\`:
+
+- `sheet_1.pdf`, `sheet_2.pdf`, … — landscape A4, up to 4 stickers
+- `wrap_<house>_<street>.pdf` — one wrap per pack
+- `wrap_<house>_<street>_cricut.png` — Cricut image of that wrap
+
+Re-running the same order number overwrites files with the same names in that folder. Tell the user the folder path and the files written. Google Drive must be mounted as `G:`.

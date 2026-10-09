@@ -23,7 +23,7 @@
 - [ ] Add known **UK bank holidays** as time-away exceptions.
 - [x] Royal Mail **Click & Drop business account** exists — kept as a fallback and for other channels. **For eBay orders, use eBay's label tool.**
 - [ ] At the **first order**, in eBay's label tool (Seller Hub → Orders → Get postage label): confirm **untracked 2nd Class Letter** is offered at about £0.91 — if only Large Letter is offered, buy that label in Click & Drop; choose the QR code option (Post Office or Royal Mail locker printing both work); check the Ship from / Return to address before paying. If the price differs, update the cost sheet.
-- [ ] On day one, check your **new-seller selling limit** in Seller Hub, and whether each variation counts against it.
+- [x] **Selling limit checked (Oct 2026): 75,000 items / £566,101.82 a month** — no practical constraint; all 13 designs can launch.
 - [ ] Check whether **Promoted Listings** is available to your account. If not, remove the 4% ad line from the cost sheet (profit rises to about £1.11 a pack at £5.00).
 
 ## 3. Production (physical samples)
@@ -46,12 +46,50 @@ eBay's Picture Policy bans added text, artwork, marketing, borders, badges and w
 
 ## 5. Listing content
 
-- [ ] **Title:** `Personalised Wheelie Bin Number Stickers - Pack of 4 - Waterproof Vinyl - 13 Designs` (refine keywords once the category picker is open). "Pack of 4" is right while Small is the only size; revisit when Medium and Large are added.
-- [ ] **Item specifics:** required Type; optional Shape, Material, Brand, Subject, Room, Theme, Features, Style, plus "Show more" (look for Personalise). Leave Size, Theme and Pattern blank until variations are set up (an attribute used as a variation can't also be an item specific).
-- [ ] **Variations:** remove eBay's default Colour and MPN; custom attribute **Design** (fallback "Sticker Design") + built-in **Size**. SKU = design ID.
-- [ ] **Design variation values** — buyer-facing names for the launch designs are **not yet decided or recorded** (to be done in a separate chat). Also decide which designs launch: all 13 have been printed and photographed on the bin (Oct 2026), so the "needs proofs" flags on D04, D05 and D18–D23 in the products gallery look stale (owner to confirm). **Check against the selling limit first — see Section 8.**
+- [x] **Title (decided Oct 2026, 76 chars, size-neutral):** `Personalised Wheelie Bin Stickers Numbers House Street Name Waterproof Vinyl` — built from the 7 competitor titles (wheelie bin/sticker/number 7/7; personalised, house, pack count 5/7; street 3/7; waterproof 1/7 = differentiator). No pack count in the title so it stays correct when Medium/Large launch; the earlier draft title was 84 chars, over eBay's 80 limit.
+- [ ] **Item specifics:** required Type; optional Shape, Material, Brand, Subject, Room, Theme, Features, Style, plus "Show more" (look for Personalise). Leave Size, Theme and Pattern blank until variations are set up (an attribute used as a variation can't also be an item specific). **Decided values (Oct 2026):** Brand = Doorstep Studio; Material = Vinyl; Features = Waterproof, Self-Adhesive, Personalised (where offered); Shape = Rectangle; Personalise = Yes. Leave **Number of pieces** blank (item specifics are listing-wide, so "4" would be wrong once other sizes exist).
+- [ ] **Variations:** remove eBay's default Colour and MPN; custom attribute **Design** (fallback "Sticker Design") + built-in **Size**. SKU = design ID. **Size value at launch: `Small – 140×100mm – Pack of 4`** (pack count lives here, per size; eBay also reads variation values for search).
+- [x] **Design variation values — decided (Oct 2026):** all 13 launch.
+  **Approved design names (Oct 2026)** — dropdown order; SKU = design ID; old internal gallery names to be retired in favour of the D-number internally.
+  1. D24 Modern Minimal · 2. D02 Classic Scrolls · 3. D03 Classic Frame · 4. D04 House Outline · 5. D05 House Outline – Number Only · 6. D01 Cottage & Flowers · 7. D22 Arrow Wreath · 8. D18 Flower Wreath · 9. D19 Flower Wreath – Number Only · 10. D21 Heart Vine Wreath · 11. D23 Olive Branch Wreath · 12. D20 Laurel Wreath – Number Only · 13. D25 Paw Prints
+  (Competitor-derived words "Central Avenue" and "Fishpond" kept out of buyer-facing names. Quantity 10 per design.)
 - [ ] **Price £5.00** entered on every variation (ignore eBay's autofilled £2.37; Autofill pricing switched off).
-- [ ] **Description** — final copy still to be written: size, personalisation steps, the "prevent bin mix-ups/theft" hook, application instructions (the thank-you card carries them too), real dispatch/delivery wording (about 3–4 working days, non-guaranteed), and the **returns wording** (no change-of-mind returns on personalised items; damaged, faulty or our-error orders replaced or refunded — eBay's returns form has no text box for it). The numbers-only vs number+street split for the two circlet designs should be called out clearly.
+- [x] **Description — final text (Oct 2026).** Plain, well-structured text in eBay's editor (bold headings, bullets) — no HTML template, images or off-eBay links: eBay shows mobile buyers an 800-character summary and advises against decorative descriptions; active content has been banned since 2017. The first 800 characters cover the hook, What you get and How to personalise. Revisit a designed layout after the 4–6 week review. No lifespan claim until outdoor Test 3 is done; application steps match `thankyou_card.py`. When Medium/Large launch, add one size line under What you get.
+
+  ```
+  PERSONALISED WHEELIE BIN NUMBER STICKERS
+  
+  Stop bin mix-ups on collection day. Matching stickers with your house number and street name – one for every bin, recycling box and food caddy.
+  
+  WHAT YOU GET
+  • Small: 4 identical stickers, 140 × 100 mm (about 5.5 × 4 in)
+  • Printed on waterproof vinyl and laminated for extra protection outdoors
+  • 13 designs to choose from – pick yours from the Design menu
+  • Made by hand in the UK by Doorstep Studio
+  
+  HOW TO PERSONALISE
+  1. Choose your design from the menu.
+  2. Type your house number and street name in the personalisation box, exactly as you want them printed.
+  3. Designs marked "Number Only" show just the house number – enter the number only.
+  We print exactly what you type, so please double-check spelling. If the box is left blank, we'll message you before printing.
+  
+  HOW TO APPLY
+  1. Clean the bin with soapy water and let it dry fully. Best above about 10°C.
+  2. Bend the sticker at the back cut and peel off the narrow strip of backing.
+  3. Line up that edge and press the exposed strip onto the bin.
+  4. Pull the rest of the backing away slowly, smoothing the sticker down as you go.
+  5. Press firmly along all edges and corners.
+  6. Leave for 3 days before washing or scrubbing. Ordinary rain is fine.
+  These instructions are also included with your order.
+  
+  Tip: on many council bins the logo panel is larger than the sticker – the clear area just below the lid works well, as shown in our photos.
+  
+  POSTAGE
+  Free Royal Mail 2nd Class. Dispatched within 1 working day of receiving your order and personalisation details. Usually arrives 3–4 working days after ordering (Royal Mail delivery times are not guaranteed). Ordering several packs? We send them together where possible.
+  
+  RETURNS
+  As these stickers are personalised to order, they can't be returned for a change of mind. If your order arrives damaged, faulty, or with an error on our part, contact us and we'll replace or refund it.
+  ```
 - [x] **Shipping tiers at launch:** Standard only (free, absorbed, untracked Letter). Paid upgrades later.
 - [ ] **Package size** in the listing: enter the packed weight and envelope dimensions (wrapped weight not yet logged; about 35g estimated).
 - [ ] **Multi-pack discount:** the listing form's **Multi-buy** works without a paid Shop — off at launch; set the % later.
@@ -71,11 +109,11 @@ eBay's Picture Policy bans added text, artwork, marketing, borders, badges and w
 
 ---
 
-*Open items that block the live listing: selling-limit check (now first), design names and launch set, Size confirmation, the Personalisation preview test, the line-up photo and the final description. The eBay label price check happens at the first order. Account, policies, category and price are done.*
+*Open items that block the live listing: Size confirmation, the Personalisation preview test, the line-up photo (description done). The eBay label price check happens at the first order. Account, policies, category and price are done.*
 
 ## 8. eBay guidance checked (Oct 2026) — what applies to Listing A
 
-- **Selling limit is the biggest risk.** New accounts typically start at about 10 items or $500 a month (UK starting caps vary by account), and the limit counts *item quantities*, not listings — active stock plus items sold that month. A 13-design listing with quantity 1 per design may already exceed a 10-item limit. Check Seller Hub → Overview → Monthly limits **before** setting variation quantities; if the limit is 10, launch with fewer designs or quantity 1 on up to 10 designs, and request an increase after the first sales.
+- ~~**Selling limit is the biggest risk.**~~ Resolved: this account's limit is 75,000 items / £566,101.82 a month, so the typical new-seller cap (about 10 items / $500) doesn't apply. Set a sensible quantity per design (e.g. 10) since stickers are made to order.
 - **Variations:** must be set up from the start (a published listing can't be converted into a variation listing); use the website, not the app; fill in variations **before** item specifics (eBay blocks attribute names that clash with item specifics). Variation photos attach to one attribute (Design). Sources disagree on 12 vs 24 photos per variation and whether they share the 24-photo cap — irrelevant here, as the plan uses 13 design photos + ~4 shared = 17.
 - **Personalisation instructions text (max 200 characters), chosen Oct 2026 (174 chars):** "Enter your house number and street name exactly as they should appear. For number-only designs, enter the number only. Please check spelling - we print exactly what you type." Also make sure buyer messages aren't switched off in account settings — the personalisation arrives as a message.
 - **Personalisation box:** add the Personalise item specific **and** write the personalisation instructions; sellers report the box sometimes not appearing, so check the live listing while logged out (and on mobile) before relying on it.

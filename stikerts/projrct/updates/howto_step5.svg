@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+    <rect x="16" y="24" width="368" height="352" rx="22" fill="#3F5B4C" stroke="#2C2C2A" stroke-width="4"/>
+  <rect x="34" y="42" width="332" height="316" rx="14" fill="none" stroke="#4E6D5C" stroke-width="3"/>
+    
+  <g>
+    <rect x="60" y="96" width="280" height="200" rx="6" fill="#FFFFFF" stroke="#2C2C2A" stroke-width="4"/>
+    <text x="200" y="202" text-anchor="middle" font-family="Inter" font-weight="800" font-size="92" fill="#2C2C2A">40</text>
+    <line x1="104.80000000000001" y1="222" x2="295.2" y2="222" stroke="#2C2C2A" stroke-width="2.5"/>
+    <text x="200" y="264" text-anchor="middle" font-family="Inter" font-weight="800" font-size="34" fill="#2C2C2A" letter-spacing="1">OAK AVENUE</text>
+  </g>
+    <line x1="60" y1="96" x2="340" y2="96" stroke="#E6007E" stroke-width="9" stroke-linecap="round" opacity="1"/><line x1="340" y1="96" x2="340" y2="296" stroke="#E6007E" stroke-width="9" stroke-linecap="round" opacity="1"/><line x1="340" y1="296" x2="60" y2="296" stroke="#E6007E" stroke-width="9" stroke-linecap="round" opacity="1"/><line x1="60" y1="296" x2="60" y2="96" stroke="#E6007E" stroke-width="9" stroke-linecap="round" opacity="0.25"/>
+    <circle cx="74" cy="110" r="7" fill="#E6007E"/><circle cx="326" cy="110" r="7" fill="#E6007E"/><circle cx="326" cy="282" r="7" fill="#E6007E"/><circle cx="74" cy="282" r="7" fill="#E6007E"/>
+    
+  <g transform="translate(94.16000000000005 280) rotate(-20) scale(0.78 0.78)">
+    <rect x="-24" y="88" width="48" height="70" rx="6" fill="#7F77DD" stroke="#2C2C2A" stroke-width="3.2"/>
+    <rect x="-28.5" y="12" width="15" height="50" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/><rect x="-14.5" y="0" width="15" height="60" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/><rect x="-0.5" y="4" width="15" height="58" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/><rect x="13.5" y="16" width="15" height="46" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/>
+    <rect x="-46" y="44" width="15" height="46" rx="7.5" transform="rotate(-38 -38 70)" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/>
+    <rect x="-30" y="40" width="60" height="58" rx="18" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/>
+    <path d="M-28 52 Q -36 70 -30 84" fill="none" stroke="#F3C9A5" stroke-width="5"/>
+  </g></svg>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400"><g transform="translate(0 34)">
+    <rect x="60" y="104" width="280" height="200" rx="6" fill="rgba(0,0,0,0.28)" opacity="0.35"/>
+    <rect x="60" y="96" width="280" height="200" rx="6" fill="#E4E1D8" stroke="#2C2C2A" stroke-width="4"/>
+    <rect x="62" y="98" width="276" height="28" fill="#F6F3EA"/>
+    <path d="M 106 120 l 14 -18" stroke="#D3D1C7" stroke-width="2.5" stroke-linecap="round"/><path d="M 162 120 l 14 -18" stroke="#D3D1C7" stroke-width="2.5" stroke-linecap="round"/><path d="M 218 120 l 14 -18" stroke="#D3D1C7" stroke-width="2.5" stroke-linecap="round"/><path d="M 274 120 l 14 -18" stroke="#D3D1C7" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="60" y1="126" x2="340" y2="126" stroke="#2C2C2A" stroke-width="2.5" stroke-dasharray="7 6"/>
+    <g transform="translate(200 132)">
+      <rect x="-4.32" y="12.6" width="8.64" height="15.400000000000002" fill="#E6007E"/>
+      <polygon points="0,0 12,14 -12,14" fill="#E6007E"/>
+    </g>
+    <g transform="translate(0 -58.879999999999995) rotate(-4.6 340 126)">
+      <rect x="60" y="102" width="280" height="30" rx="5" fill="rgba(0,0,0,0.28)" opacity="0.368"/>
+      <rect x="60" y="96" width="280" height="30" rx="5" fill="#E4E1D8" stroke="#2C2C2A" stroke-width="4"/>
+      <rect x="148" y="100" width="104" height="22" rx="11" fill="#E6007E"/>
+      <text x="200" y="115.84" text-anchor="middle" font-family="Inter" font-weight="800" font-size="11.5" fill="#FFFFFF">PEEL THIS FIRST</text>
+      
+  <g transform="translate(306 111) rotate(-90) scale(0.62 0.62)">
+    <rect x="-24" y="88" width="48" height="70" rx="6" fill="#7F77DD" stroke="#2C2C2A" stroke-width="3.2"/>
+    <rect x="-28.5" y="12" width="15" height="50" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/><rect x="-14.5" y="0" width="15" height="60" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/><rect x="-0.5" y="4" width="15" height="58" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/><rect x="13.5" y="16" width="15" height="46" rx="7.5" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/>
+    <rect x="-46" y="44" width="15" height="46" rx="7.5" transform="rotate(-38 -38 70)" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/>
+    <rect x="-30" y="40" width="60" height="58" rx="18" fill="#F3C9A5" stroke="#2C2C2A" stroke-width="3.2"/>
+    <path d="M-28 52 Q -36 70 -30 84" fill="none" stroke="#F3C9A5" stroke-width="5"/>
+  </g>
+    </g>
+</g></svg>
