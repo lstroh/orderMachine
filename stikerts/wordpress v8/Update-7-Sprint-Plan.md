@@ -148,6 +148,8 @@ Record verification in **`Update-7-Sprint-Progress.md`** when implementation sta
 
 Planning only. Implement when you ask for **UP7-S1** (or later). Soft defaults apply unless overturned.
 
+**Follow-on (separate package):** physical **trays** for make/pack — see [`../wordpress v9/Update-8-Sprint-Plan.md`](../wordpress%20v9/Update-8-Sprint-Plan.md). Not part of Package 7 sprints.
+
 ---
 
 ## 9. Quick checklist
