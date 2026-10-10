@@ -67,7 +67,7 @@ From `stikerts/Ideas 27 07/Generation/`:
 python make_order.py
 ```
 
-Use `python3` if `python` is not the interpreter that has reportlab. Cricut PNGs also need pymupdf and pillow.
+Use `python3` if `python` is not the interpreter that has reportlab. The wrap QR needs the `qrcode` package. Cricut PNGs also need pymupdf and pillow.
 
 Output for each order number is `G:\My Drive\orders\<order_number>\`:
 
