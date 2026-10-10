@@ -6,9 +6,19 @@ stickers on all four sides. One wrap per A4 sheet.
 Personal to each order: the front shows the customer's own address and a
 half-size preview of the exact sticker design they ordered, drawn live by
 bin_sticker_small.draw_sticker() -- so it always matches the stickers inside.
-Deliberately NOT a copy of the thank-you card; it only shares the paper
-themes (white / kraft). Needs bin_sticker_small.py + bin_sticker_core.py
-(and the assets/ folder for the real icons) in the same folder.
+Deliberately NOT a copy of the instructions card; it only shares the paper
+themes (white / kraft) and the how-to video QR code. Needs
+bin_sticker_small.py + bin_sticker_core.py + instructions_card.py (and the
+assets/ folder for the real icons) in the same folder.
+
+QR code (10 Oct 2026): the back lower flap carries the same how-to video QR
+code as the instructions card, so the link stays with the spare stickers
+after the card is thrown away. It is built with instructions_card.py's own
+helpers (normalise_video_url, qr_matrix, qr_quiet_zone) and its VIDEO_URL,
+at the A6 card's size (19mm, 0.66mm modules, level Q, version 3), so the
+wrap and the card can never point at different videos or follow different
+rules. Only YouTube links are accepted. Set order["video_url"] = None to
+leave the code off (the flap then prints its original centred text).
 
 SMALL SIZE ONLY: the net is built around a 140 x 100mm front panel. Medium
 (210 x 140mm) would need a different net that doesn't fit A4 or Cricut
@@ -22,7 +32,7 @@ How it folds (back of the pack):
 No glue or tape, 100% paper.
 
 Net layout (mm, origin bottom-left, A4 portrait, long axis vertical):
-    y   0 -  58  lower flap   (slot at y=12)
+    y   0 -  58  lower flap   (slot at y=12; QR code + thank-you text y 18-56)
     y  58 -  60  bottom edge of stack
     y  60 - 160  FRONT panel 140 x 100, x 20 - 160
     y 160 - 162  top edge of stack
@@ -44,16 +54,24 @@ import os
 
 import bin_sticker_small as bs   # SMALL (140x100mm) only -- see module docstring
 
+# How-to video QR code: the instructions card's own helpers and link, never a
+# copy, so the wrap and the card always agree (see module docstring)
+from instructions_card import (VIDEO_URL, QR_DARK, QR_MIN_MODULE_MM,
+                               normalise_video_url, qr_matrix, qr_quiet_zone)
+
 LOGO_MARK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               "assets", "icons", "doorstep_studio_mark.png")
 BADGE_PATH = os.path.join(os.path.dirname(LOGO_MARK_PATH),
                           "doorstep_handmade_sticker_40mm_transparent.png")
 
-# same ink themes as the thank-you card, kept local so the two files can
-# change independently
+# Ink themes, kept local so the wrap and the instructions card can change
+# independently. Since 10 Oct 2026 every line of wrap text prints in the full
+# text colour ("muted" = "text"): the old light grey (#888780) was hard to read
+# at 7-7.5pt on inkjet paper. Hierarchy now comes from bold and size only.
+# "guide" (the cut outline) stays light on purpose.
 PAPER = {
-    "white": {"text": "#2C2C2A", "muted": "#888780", "guide": "#D3D1C7"},
-    "kraft": {"text": "#3D2015", "muted": "#5C4326", "guide": "#8A6F3F"},
+    "white": {"text": "#2C2C2A", "muted": "#2C2C2A", "guide": "#D3D1C7"},
+    "kraft": {"text": "#3D2015", "muted": "#3D2015", "guide": "#8A6F3F"},
 }
 PREVIEW_SCALE = 0.5          # 70 x 50mm preview of the 140 x 100mm sticker
 
@@ -83,6 +101,15 @@ FY1 = FY0 + H                    # 160
 NET_W = 2 * SIDE + 2 * STACK + W                      # 180
 NET_H = LOWER + 2 * STACK + H + UPPER + TONGUE        # 232
 CX = NET_W / 2
+
+# Back lower flap: visible zone (clear of the slot, the upper-flap overlap
+# and the fold) is sheet y 18-56, so centred on y 37 with 19mm either side.
+LOWER_VIS_Y0, LOWER_VIS_Y1 = 18, 56
+LOWER_CY = (LOWER_VIS_Y0 + LOWER_VIS_Y1) / 2           # 37
+QR_SIZE_MM = 19              # same code area as the A6 instructions card (0.66mm modules)
+QR_EDGE_MM = 8               # code's outer edge from the flap's side edge (quiet zone 2.6mm inside that)
+QR_TEXT_GAP_MM = 5           # code to text; must be at least the 2.6mm quiet zone
+TEXT_EDGE_MM = 6             # text block's right margin from the flap's side edge
 
 
 def _outline_pts():
@@ -149,9 +176,8 @@ def _cut_lines(c, ox, oy, theme, P):
 
 
 def _logo_lockup(c, cx, cy, theme, brand_name, mark_h=8 * mm):
-    """Logo mark beside the name in bold caps, centred on (cx, cy) -- the
-    same side-by-side lockup as the thank-you card. If the logo file is
-    missing, prints the name on its own so nothing breaks."""
+    """Logo mark beside the name in bold caps, centred on (cx, cy). If the
+    logo file is missing, prints the name on its own so nothing breaks."""
     name = brand_name.upper()
     font, size = "Helvetica-Bold", 8
     gap = 2.5 * mm
@@ -181,6 +207,93 @@ def _badge(c, cx, top, bottom):
     w = h * im.width / im.height
     c.drawImage(ImageReader(im), cx - w / 2, bottom, width=w, height=h,
                 mask="auto")
+
+
+def _qr(c, x, y, size, url):
+    """QR code filling the square (x, y, size), as solid black runs (same
+    drawing method as the instructions card). The quiet zone lies OUTSIDE
+    this square; the caller keeps qr_quiet_zone(size) clear."""
+    m = qr_matrix(url)
+    n = len(m)
+    mod = size / n
+    if mod < QR_MIN_MODULE_MM * mm:
+        raise ValueError(f"QR modules {mod / mm:.2f}mm < {QR_MIN_MODULE_MM}mm minimum")
+    c.saveState()
+    c.setFillColor(HexColor(QR_DARK))
+    for r, row in enumerate(m):
+        yy = y + size - (r + 1) * mod
+        col = 0
+        while col < n:  # one rectangle per horizontal run: no hairline gaps
+            if row[col]:
+                start = col
+                while col < n and row[col]:
+                    col += 1
+                c.rect(x + start * mod, yy, (col - start) * mod, mod, fill=1, stroke=0)
+            else:
+                col += 1
+    c.restoreState()
+
+
+def _lower_flap(c, ox, oy, order, theme):
+    """Back lower flap: QR code on the left (as read on the back), thank-you,
+    care line and the video prompt beside it. Without a link, the original
+    centred text."""
+    care_text = order.get("care_line",
+                          "Laminated to stand up to rain, sun and bin-day knocks.")
+    footer = f"@{order['handle']}  ·  Recycle me with your paper"
+    url = normalise_video_url(order.get("video_url", VIDEO_URL))
+
+    if not url:
+        care = wrap_text(care_text, "Helvetica", 7.5, 110 * mm)
+        _back_text(c, ox, oy, CX, LOWER_CY,
+                   [("Helvetica-Bold", "text", f"Thank you, {order['buyer_name']}!")] +
+                   [("Helvetica", "muted", "")] +
+                   [("Helvetica", "muted", l) for l in care] +
+                   [("Helvetica", "muted", ""), ("Helvetica", "muted", footer)],
+                   theme)
+        return
+
+    # local frame: origin at the flap's visible centre, rotated 180 so x/y
+    # run as the customer reads the back of the pack
+    half_w, half_h = W / 2 * mm, (LOWER_VIS_Y1 - LOWER_VIS_Y0) / 2 * mm
+    q = QR_SIZE_MM * mm
+    qz = qr_quiet_zone(q)
+    qx, qy = -half_w + QR_EDGE_MM * mm, -q / 2
+    tx = qx + q + QR_TEXT_GAP_MM * mm
+    tw = half_w - TEXT_EDGE_MM * mm - tx
+
+    # fail loudly if the code's quiet zone would leave the clear zone or touch text
+    gaps = {"flap edge": qx - qz + half_w, "top of clear zone": half_h - (qy + q + qz),
+            "bottom of clear zone": (qy - qz) + half_h, "text": tx - (qx + q) - qz}
+    for name, gap in gaps.items():
+        if gap < 0:
+            raise AssertionError(f"wrap QR quiet zone overlaps the {name} by {-gap / mm:.2f}mm")
+
+    lines = [("Helvetica-Bold", 8.5, "text", f"Thank you, {order['buyer_name']}!"),
+             None]
+    lines += [("Helvetica", 7.5, "muted", l) for l in wrap_text(care_text, "Helvetica", 7.5, tw)]
+    lines += [None,
+              ("Helvetica-Bold", 7.5, "text", "Need a hand putting it on?"),
+              ("Helvetica", 7.5, "text", "Scan for the 40-second how-to video."),
+              None,
+              ("Helvetica", 7, "muted", footer)]
+    lead = lambda ln: (ln[1] if ln else 5) * 0.5 * mm
+    block_h = sum(lead(ln) for ln in lines[1:])
+
+    c.saveState()
+    c.translate(ox + CX * mm, oy + LOWER_CY * mm)
+    c.rotate(180)
+    _qr(c, qx, qy, q, url)
+    y = block_h / 2 - 1 * mm
+    for i, ln in enumerate(lines):
+        if i:
+            y -= lead(ln)
+        if ln:
+            font, size, colour, text = ln
+            c.setFont(font, size)
+            c.setFillColor(HexColor(theme[colour]))
+            c.drawString(tx, y, text)
+    c.restoreState()
 
 
 def _content(c, ox, oy, order, theme):
@@ -221,20 +334,11 @@ def _content(c, ox, oy, order, theme):
         c.setFillColor(HexColor(theme["muted"]))
         c.setFont("Helvetica", 7.5)
         c.drawCentredString(fcx, py - 6 * mm,
-                            f"Your set of {order.get('quantity', 4)}  \u00b7  made by hand")
+                            f"Your set of {order.get('quantity', 4)}  ·  made by hand")
         _logo_lockup(c, fcx, oy + (FY0 + 9) * mm, theme, order["brand_name"])
 
     # -- back: lower flap, visible area y 18-56 -----------------------------
-    care = wrap_text(order.get("care_line",
-                     "Laminated to stand up to rain, sun and bin-day knocks."),
-                     "Helvetica", 7.5, 110 * mm)
-    _back_text(c, ox, oy, CX, 36,
-               [("Helvetica-Bold", "text", f"Thank you, {order['buyer_name']}!")] +
-               [("Helvetica", "muted", "")] +
-               [("Helvetica", "muted", l) for l in care] +
-               [("Helvetica", "muted", ""),
-                ("Helvetica", "muted", f"@{order['handle']}  \u00b7  Recycle me with your paper")],
-               theme)
+    _lower_flap(c, ox, oy, order, theme)
 
     # -- back: upper flap, visible area y 164-210 ---------------------------
     if order.get("logo_style") == "both" and os.path.exists(BADGE_PATH):
@@ -301,11 +405,10 @@ def export_png(order, out_path, dpi=300):
 
 
 if __name__ == "__main__":
-    import sys
     order = {"buyer_name": "Priya", "house_number": "36",
              "street_name": "Grove Street", "style": "p25_landscape_flourish",
-             "paper": "kraft", "brand_name": "Doorstep Studio",
-             "handle": "doorstepstudio", "logo_style": "both"}
+             "paper": "white", "brand_name": "Doorstep Studio",
+             "handle": "doorstepstudiouk", "logo_style": "both"}
     render_sheet(order, "sticker_wrap_sample.pdf")
     export_png(order, "sticker_wrap_sample_cricut.png")
-    print("net", NET_W, "x", NET_H, "mm")
+    print("net", NET_W, "x", NET_H, "mm  QR ->", normalise_video_url(VIDEO_URL))
