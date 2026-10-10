@@ -89,13 +89,27 @@ At make-complete (or a clear control on order detail when make is done and pack 
 | Multiple make lines | Each line has its own tray set; no sharing the same tray number |
 | Ship-together | Pack trays are order-level once (after transfer or pack assign) |
 
-## 5. Out of scope
+## 5. Related: manual timer release (same package)
+
+Not a tray feature, but the same “manual release” operator need for **timer** steps:
+
+| Topic | Decision |
+|---|---|
+| Availability | **Always** on every timer step (make + pack) — no per-step opt-in |
+| Effect | Unlock `waiting_timer` as if countdown ended → Timer ready; **Mark done** still required |
+| Audit | Log **who** and **when** on the progress row; also write a short **order note** (soft default) |
+| UI | Order detail (and board if cheap): **Release timer** while waiting |
+
+See `02-Update-Data-Model.md` §E and sprint **UP8-S2**.
+
+## 6. Out of scope
 
 - Scanning trays  
 - Tray ↔ material stock link  
 - Auto-pick next free tray without UI (unless added later as shortcut)  
+- Auto-completing the step on timer release (Mark done stays explicit)  
 
-## 6. Open items
+## 7. Open items
 
 1. Must first step block until trays assigned, or warn only? **Default: block Mark done / advance.**  
 2. Pack not bound at make-complete: keep held + “transfer when pack binds” vs force release. **Default: keep held; offer transfer when pack binds.**  

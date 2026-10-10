@@ -64,8 +64,33 @@ Empty trays are implicit (number not in any `held` assignment). Optional later: 
 
 ---
 
-## E. Open items (data)
+## E. Timer early-release audit
+
+No new table required if progress already stores enough context. Prefer one of:
+
+### Option A (recommended) — columns on progress rows
+
+On `order_item_step_progress` (make) and `order_step_progress` (pack):
+
+| Column | Type | Notes |
+|---|---|---|
+| `timer_released_early_at` | DATETIME NULL | Set when admin releases timer before `timer_ends_at` |
+| `timer_released_early_by` | BIGINT UNSIGNED NULL | WP user id |
+
+Clear or leave set when step completes (leave set for audit).
+
+### Option B — order note
+
+Append a system order note: “Timer released early on {step} by {user} at {time}.”  
+Use **in addition** to Option A if you want the Notes panel to show it without opening progress internals.
+
+**Settled:** log who/when (Option A required; Option B soft-default **yes** — also write a short order note).
+
+---
+
+## F. Open items (data)
 
 1. Hard max ceiling (10 vs 20) for `som_tray_max`. **Default:** allow 1–20, seed/docs say 10.  
 2. Reducing max while higher trays are held — **block reduce** until those released, or allow and keep held orphans (recommend **block**).  
-3. Whether released rows are retained forever (audit) — **yes, retain**.  
+3. Whether released tray rows are retained forever (audit) — **yes, retain**.  
+4. Timer early release: Option B order note — **default yes**.  

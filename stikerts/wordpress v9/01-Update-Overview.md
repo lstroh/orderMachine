@@ -22,13 +22,15 @@
 | Auto release | When that workflow **completes** (make-complete for make; pack/ship complete for pack) |
 | Manual release | Always allowed |
 | Make → Pack | **Option to transfer** tray assignment from make to pack/ship instead of releasing at make-complete |
+| Timer early release | **Always** available on every timer step (make + pack); unlocks like countdown end; still requires Mark done; **log** who/when |
 
 ## What's in this update
 
 1. **Tray pool & settings** — site max; tray numbers 1…max; occupancy.  
 2. **Workflow template flag** — template uses trays (make/pack).  
 3. **Assign / release / transfer UI** — first-step gate; order/Make/Pack surfaces; manual release.  
-4. **Data model** — assignments, history optional.
+4. **Manual timer release** — early unlock on any `waiting_timer` step + audit log.  
+5. **Data model** — tray assignments; timer early-release audit.
 
 ## Recommended build order
 

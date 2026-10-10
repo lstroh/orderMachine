@@ -11,7 +11,8 @@
 - Numbers **1 … site max** (default max **10**).  
 - Cannot assign a tray that is **in use**.  
 - Release on **workflow complete** (make or pack/ship) or **manual**.  
-- **Transfer** make → pack/ship optional instead of releasing at make-complete.
+- **Transfer** make → pack/ship optional instead of releasing at make-complete.  
+- **Manual timer release** always available on timer steps; unlocks early; Mark done still required; **log** who/when (+ order note).
 
 ---
 
@@ -19,12 +20,14 @@
 
 | # | Source | Item | Blocks | Status / decision |
 |---|---|---|---|---|
-| O1 | `03` §6.1 | Block first step until ≥1 tray? | UP8-S2 | **Default:** **block** Mark done / advance |
-| O2 | `03` §6.2 | Pack not bound at make-complete | UP8-S2 | **Default:** keep trays held; transfer when pack binds |
-| O3 | `03` §6.3 | Trays overview page | UP8-S3 | **Default:** **no** in v1 |
-| O4 | `02` §E1 | Max range 1–10 vs 1–20 | UP8-S1 | **Default:** allow **1–20**, docs say 10 |
-| O5 | `03` §6.5 | Transfer UX control | UP8-S2 | **Default:** checkbox / choice at make-complete |
-| O6 | `02` §E2 | Lowering max while high trays held | UP8-S1 | **Default:** **block** settings save until released |
+| O1 | `03` §7.1 | Block first step until ≥1 tray? | UP8-S2 | **Default:** **block** Mark done / advance |
+| O2 | `03` §7.2 | Pack not bound at make-complete | UP8-S2 | **Default:** keep trays held; transfer when pack binds |
+| O3 | `03` §7.3 | Trays overview page | UP8-S3 | **Default:** **no** in v1 |
+| O4 | `02` §F1 | Max range 1–10 vs 1–20 | UP8-S1 | **Default:** allow **1–20**, docs say 10 |
+| O5 | `03` §7.5 | Transfer UX control | UP8-S2 | **Default:** checkbox / choice at make-complete |
+| O6 | `02` §F2 | Lowering max while high trays held | UP8-S1 | **Default:** **block** settings save until released |
+| O7 | Timer | Per-step opt-in for early release? | UP8-S2 | **Settled:** **always** (no opt-in) |
+| O8 | `02` §E | Also write order note on early timer release? | UP8-S2 | **Default:** **yes** |
 
 ---
 
@@ -33,7 +36,8 @@
 1. **Block first step until trays assigned?** — default yes (O1).  
 2. **Keep trays if pack not bound yet?** — default yes (O2).  
 3. **No separate Trays admin list in v1?** — default yes (O3).  
-4. **Max up to 20?** — default yes (O4).
+4. **Max up to 20?** — default yes (O4).  
+5. **Timer early release always + audit log?** — **settled yes** (O7/O8).
 
 Overturn before kickoff if needed.
 
@@ -48,6 +52,7 @@ Overturn before kickoff if needed.
 | Pack first step | Gates only | Same |
 | Make-complete | Pack-ready | + release or transfer trays |
 | Boards | Step badges | + tray number badge(s) |
+| Timer steps | Unlock only when elapsed | + **Release timer** anytime; audit who/when |
 
 ---
 
@@ -70,20 +75,22 @@ Overturn before kickoff if needed.
 
 ---
 
-### UP8-S2 — First-step gate, auto release, make→pack transfer, board badges
+### UP8-S2 — First-step gate, tray release/transfer, manual timer release, board badges
 
-- **Covers:** `03` assign timing, release, transfer  
-- **Schema:** none expected  
+- **Covers:** `03` assign timing, tray release, transfer; manual timer release (`02` §E)  
+- **Schema:** progress columns `timer_released_early_at` / `timer_released_early_by` (if not done in S1)  
 
 | Work | Detail |
 |---|---|
 | First-step gate | Make + pack: if `uses_trays`, block Mark done/advance until ≥1 tray (O1) |
 | Auto release | Make-complete → release make trays **or** transfer path; pack-complete → release pack trays |
 | Transfer | Choice at make-complete (O5); pack not bound → keep held (O2); on pack bind offer transfer |
-| Boards | Make + Pack cards show tray numbers |
-| Tests | `tests/sprint-up8-s2-smoke.php` — gate; complete releases; transfer rebinds to pack |
+| **Release timer** | On any make/pack `waiting_timer` current step: admin action unlocks early (same as elapsed unlock); does **not** Mark done |
+| Timer audit | Set progress early-release columns; write order note (O8) |
+| Boards | Make + Pack cards show tray numbers; optional Release timer on card if cheap |
+| Tests | `tests/sprint-up8-s2-smoke.php` — gate; complete releases; transfer; early timer unlock + log |
 
-**Done when:** first step requires trays; complete frees or transfers; boards show trays; smoke passes.
+**Done when:** first step requires trays; complete frees or transfers; timer can be released early with audit; boards show trays; smoke passes.
 
 ---
 
@@ -148,6 +155,7 @@ Planning only. Implement when you ask for **UP8-S1** (after your testing / Packa
 - [ ] First-step gate (make + pack)
 - [ ] Auto release on workflow complete
 - [ ] Transfer make → pack
+- [ ] Release timer early (always) + who/when log (+ order note)
 - [ ] Board badges
 - [ ] Smoke
 

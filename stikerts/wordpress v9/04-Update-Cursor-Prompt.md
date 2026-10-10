@@ -8,6 +8,7 @@
 - Workflow template **`uses_trays`** (make and pack).  
 - Assign **one or more free** trays at **first step**; no double-booking.  
 - Release on workflow complete or manual; **transfer** make → pack optional.  
+- **Release timer** always on `waiting_timer` steps; log who/when (+ order note); Mark done still required.  
 
 ## Rules
 
