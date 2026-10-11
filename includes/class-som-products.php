@@ -212,7 +212,7 @@ class SOM_Products {
 	 * Create a product.
 	 *
 	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, is_active, is_internal,
-	 *                                   weight_grams, package_id, planned_shipping_gbp.
+	 *                                   weight_grams, package_id, package_id_multi, planned_shipping_gbp.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -257,6 +257,7 @@ class SOM_Products {
 				'target_selling_price'  => self::nullable_price( $data, 'target_selling_price' ),
 				'weight_grams'          => $shipping['weight_grams'],
 				'package_id'            => $shipping['package_id'],
+				'package_id_multi'      => $shipping['package_id_multi'],
 				'planned_shipping_gbp'  => $shipping['planned_shipping_gbp'],
 				'is_internal'           => $is_internal,
 				'linked_material_id'    => null,
@@ -264,7 +265,7 @@ class SOM_Products {
 				'created_at'            => $now,
 				'updated_at'            => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -382,7 +383,7 @@ class SOM_Products {
 			}
 		}
 
-		$shipping_keys = array( 'weight_grams', 'package_id', 'planned_shipping_gbp' );
+		$shipping_keys = array( 'weight_grams', 'package_id', 'package_id_multi', 'planned_shipping_gbp' );
 		$has_shipping  = false;
 		foreach ( $shipping_keys as $sk ) {
 			if ( array_key_exists( $sk, $data ) ) {
@@ -666,13 +667,14 @@ class SOM_Products {
 	 *
 	 * @param array<string, mixed> $data        Source.
 	 * @param bool                 $is_internal Whether product is internal.
-	 * @return array{weight_grams: string|null, package_id: int|null, planned_shipping_gbp: string|null}|WP_Error
+	 * @return array{weight_grams: string|null, package_id: int|null, package_id_multi: int|null, planned_shipping_gbp: string|null}|WP_Error
 	 */
 	private static function sanitize_shipping_fields( array $data, $is_internal ) {
 		if ( $is_internal ) {
 			return array(
 				'weight_grams'         => null,
 				'package_id'           => null,
+				'package_id_multi'     => null,
 				'planned_shipping_gbp' => null,
 			);
 		}
@@ -702,6 +704,17 @@ class SOM_Products {
 			}
 		}
 
+		$package_id_multi = null;
+		if ( array_key_exists( 'package_id_multi', $data ) ) {
+			$raw = trim( (string) $data['package_id_multi'] );
+			if ( '' !== $raw ) {
+				$package_id_multi = (int) $raw;
+				if ( $package_id_multi < 1 || ! SOM_Shipping_Packages::get( $package_id_multi ) ) {
+					return new WP_Error( 'som_product_package_multi', __( 'Selected multi-pack shipping package was not found.', 'order-machine' ) );
+				}
+			}
+		}
+
 		$planned = null;
 		if ( array_key_exists( 'planned_shipping_gbp', $data ) ) {
 			$planned = self::nullable_price( $data, 'planned_shipping_gbp' );
@@ -710,6 +723,7 @@ class SOM_Products {
 		return array(
 			'weight_grams'         => $weight,
 			'package_id'           => $package_id,
+			'package_id_multi'     => $package_id_multi,
 			'planned_shipping_gbp' => $planned,
 		);
 	}

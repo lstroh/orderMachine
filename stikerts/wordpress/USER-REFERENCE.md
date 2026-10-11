@@ -184,7 +184,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Assign workflow template
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, planned shipping when set, fee-aware profit/margin, goal alerts, listing prices)
-- For sellable products: goods weight (g), default **shipping package**, flat **planned shipping** £ (hidden on internal products)
+- For sellable products: goods weight (g), **default package** (qty 1), optional **multi-pack package** (qty 2+), flat **planned shipping** £ (hidden on internal products)
 - Follow links to related Listings (internal products are excluded from marketplace listing pickers)
 
 **List columns:** target price, material cost, fee-aware margin with Est./Actual fees badge, goal alerts, Internal badge; type filter sellable/internal.
@@ -204,7 +204,7 @@ A **multipack** is N identical units sold as one listing/SKU (e.g. bin sticker *
 |---|---|
 | Catalogue | **Separate product** per pack size (1-pack, 4-pack, 10-pack, …) |
 | Recipe | Materials for **one sold unit** of that pack (qty per unit already scales) |
-| Shipping | Own goods weight, default package, and planned postage per SKU |
+| Shipping | Own goods weight, default + multi-pack packages, and planned postage per SKU |
 | Engine | No `base_product_id` / `units_per_pack` — deferred; no pack→base inventory explosion |
 
 **Naming:** e.g. `Bin Sticker Set — 4-pack` / `BIN-SET-4PK` (seed style). Do **not** create a phantom loose-unit SKU unless you sell singles. Seed ships one sample 4-pack only — add other sizes as normal products when needed.
@@ -217,13 +217,25 @@ Also see order **Notes** (§3) and **Planned shipping** on order detail (§3) / 
 
 **Where:** Order Machine → Shipping packages
 
-**Package materials:** On edit, define a material recipe (e.g. thank-you + envelope). Selecting that package on an order reserves those quantities once; Materials used shows them under Source **Package**.
+**Package materials (BOM):** On edit, define a material recipe (e.g. thank-you + envelope). Selecting that package on an order reserves those quantities once; Materials used shows them under Source **Package**. Packaging materials live on the package — not on the product recipe or Pack workflow.
 
 **What it is for:** Catalogue of outer mailers/boxes (L×W×H mm, tare grams). Assign on sellable products with goods weight and flat planned postage. Actual postage is recorded on the order shipment, not here.
 
-**Main actions:** Create / edit; set one **default** for new products; deactivate (prefer over delete); delete blocked while products still reference the package.
+**Main actions:** Create / edit; set one site **default**; deactivate (prefer over delete); delete blocked while products still reference the package (default or multi-pack).
 
-**With multipacks:** each pack-size SKU usually gets its own package and planned £ (heavier packs → larger mailer/box and higher planned postage).
+**Order package suggestion (1 vs 2+):**
+
+| Order shape | Suggested package |
+|---|---|
+| Total sellable qty **1** | Product **Default package** |
+| Total sellable qty **≥ 2** (same or mixed SKUs) | Each line votes **Multi-pack package** if set, else Default; if all agree → that package |
+| Mixed SKUs disagree | Site default package + Pack UI flag **Mixed products — confirm package** |
+
+Operator can always override on the Pack panel; changing package reverses prior package reserves and reserves the new BOM.
+
+**Create test order:** Orders list → addable lines (product + qty + optional unit price / personalisation, up to 5) for multi-qty and mixed-SKU tests without channel sync.
+
+**With multipacks:** each pack-size SKU usually gets its own planned £; use Default vs Multi-pack package when one vs several sold packs need different outer packaging.
 
 ---
 

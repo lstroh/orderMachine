@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.17.0';
+	const DB_VERSION = '1.18.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -124,6 +124,7 @@ class SOM_DB {
 			target_selling_price decimal(10,2) NULL,
 			weight_grams decimal(10,2) NULL,
 			package_id bigint(20) unsigned NULL,
+			package_id_multi bigint(20) unsigned NULL,
 			planned_shipping_gbp decimal(10,2) NULL,
 			is_internal tinyint(1) NOT NULL DEFAULT 0,
 			linked_material_id bigint(20) unsigned NULL,
@@ -134,6 +135,7 @@ class SOM_DB {
 			KEY workflow_template_id (workflow_template_id),
 			KEY sku (sku),
 			KEY package_id (package_id),
+			KEY package_id_multi (package_id_multi),
 			UNIQUE KEY linked_material_id (linked_material_id)
 		) {$charset_collate};";
 
@@ -527,6 +529,7 @@ class SOM_DB {
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_workflow_template_kind();
 		self::upgrade_pack_columns();
+		self::upgrade_product_package_id_multi();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -695,6 +698,43 @@ class SOM_DB {
 	}
 
 	/**
+	 * Add products.package_id_multi when missing (UP7-S3).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_product_package_id_multi() {
+		global $wpdb;
+
+		$products = self::table( 'products' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $products ) ) !== $products ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$has = $wpdb->get_row( "SHOW COLUMNS FROM {$products} LIKE 'package_id_multi'" );
+		if ( ! $has ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$products} ADD COLUMN package_id_multi bigint(20) unsigned NULL AFTER package_id" );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$indexes = $wpdb->get_results( "SHOW INDEX FROM {$products}" );
+		$have    = array();
+		if ( is_array( $indexes ) ) {
+			foreach ( $indexes as $idx ) {
+				if ( isset( $idx->Key_name ) ) {
+					$have[ $idx->Key_name ] = true;
+				}
+			}
+		}
+		if ( empty( $have['package_id_multi'] ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$products} ADD KEY package_id_multi (package_id_multi)" );
+		}
+	}
+
+	/**
 	 * Ensure workflow_templates.kind exists (dbDelta ENUM add can be flaky).
 	 *
 	 * @return void
@@ -762,6 +802,7 @@ class SOM_DB {
 		self::upgrade_progress_status_enum();
 		self::upgrade_workflow_template_kind();
 		self::upgrade_pack_columns();
+		self::upgrade_product_package_id_multi();
 	}
 
 	/**

@@ -52,7 +52,7 @@ Top-level: **Order Machine**
 | **Materials** | Stock, WA / value, preferred supplier, R&D write-off |
 | **Budgets** | Material + manual budgets, ledger, adjustments |
 | **Suppliers** | Supplier contacts (no delete) |
-| **Shipping packages** | Outer mailers/boxes (mm + tare g); assign on sellable products with planned postage |
+| **Shipping packages** | Outer mailers/boxes (mm + tare g) with optional packaging materials; assign default + multi-pack on sellable products |
 | **Purchase Orders** | Create / receive POs, Preview Impact |
 | **Batches** | Collecting / release / mark done for batch steps |
 | **Workflows** | Templates and step editor (timers, batch groups, goals) |
@@ -137,11 +137,11 @@ Sell pack sizes as **separate catalogue products**. There is no pack→base inve
 |---|---|
 | One product per pack size (1-pack, 4-pack, 10-pack, …) | Expect one SKU to “multiply” into N loose units |
 | Recipe = materials for **one sold unit** of that pack | Create a phantom loose-unit SKU unless you actually sell singles |
-| Set goods weight, default package, and planned shipping **per SKU** | Share one planned postage across all pack sizes |
+| Set goods weight, default package, multi-pack package, and planned shipping **per SKU** | Share one planned postage across all pack sizes |
 
-**Naming (seed style):** name like `Bin Sticker Set — 4-pack`, SKU like `BIN-SET-4PK`. Heavier packs usually need a larger package and higher planned postage. Link each pack SKU to its own marketplace listing.
+**Naming (seed style):** name like `Bin Sticker Set — 4-pack`, SKU like `BIN-SET-4PK`. One sold 4-pack uses the **default** package; two or more sold packs on an order suggest the **multi-pack** package when set. Mixed SKUs that disagree fall back to the site default with a Pack confirm flag. Link each pack SKU to its own marketplace listing.
 
-Order notes, planned vs actual postage, and the shipping-packages catalogue are covered in [`USER-REFERENCE.md`](USER-REFERENCE.md).
+Order notes, planned vs actual postage, package materials, and Create test order (multi-line) are covered in [`USER-REFERENCE.md`](USER-REFERENCE.md).
 
 ---
 

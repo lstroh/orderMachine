@@ -171,8 +171,8 @@ Not part of Package 7 sprints.
 - [x] Smoke
 
 ### UP7-S3
-- [ ] 1 pack vs 2+ package suggestion
-- [ ] Mixed-product package agree / conflict → default + flag
-- [ ] Multi-line Create test order (different products + qtys)
-- [ ] Seed small/large packages + docs
-- [ ] Smoke
+- [x] 1 pack vs 2+ package suggestion
+- [x] Mixed-product package agree / conflict → default + flag
+- [x] Multi-line Create test order (different products + qtys)
+- [x] Seed small/large packages + docs
+- [x] Smoke

@@ -169,19 +169,46 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 			</tr>
 			<?php if ( ! $is_internal ) : ?>
 				<?php
-				$packages       = SOM_Shipping_Packages::list_active();
-				$default_pkg    = SOM_Shipping_Packages::get_default();
-				$selected_pkg   = $product && ! empty( $product->package_id ) ? (int) $product->package_id : 0;
+				$packages         = SOM_Shipping_Packages::list_active();
+				$default_pkg      = SOM_Shipping_Packages::get_default();
+				$selected_pkg     = $product && ! empty( $product->package_id ) ? (int) $product->package_id : 0;
+				$selected_pkg_multi = $product && ! empty( $product->package_id_multi ) ? (int) $product->package_id_multi : 0;
 				if ( $is_new && ! $selected_pkg && $default_pkg ) {
 					$selected_pkg = (int) $default_pkg->id;
 				}
-				// Keep inactive assigned package visible on edit.
-				if ( $product && $selected_pkg > 0 ) {
-					$assigned = SOM_Shipping_Packages::get( $selected_pkg );
-					if ( $assigned && empty( $assigned->is_active ) ) {
+				// Keep inactive assigned packages visible on edit.
+				$ensure_visible = array( $selected_pkg, $selected_pkg_multi );
+				foreach ( $ensure_visible as $pkg_id ) {
+					if ( $pkg_id < 1 ) {
+						continue;
+					}
+					$already = false;
+					foreach ( $packages as $pkg ) {
+						if ( (int) $pkg->id === $pkg_id ) {
+							$already = true;
+							break;
+						}
+					}
+					if ( $already ) {
+						continue;
+					}
+					$assigned = SOM_Shipping_Packages::get( $pkg_id );
+					if ( $assigned ) {
 						array_unshift( $packages, $assigned );
 					}
 				}
+				$package_options = static function ( $packages_list, $selected ) {
+					foreach ( $packages_list as $pkg ) {
+						echo '<option value="' . esc_attr( (string) (int) $pkg->id ) . '" ' . selected( $selected, (int) $pkg->id, false ) . '>';
+						echo esc_html( (string) $pkg->name );
+						if ( empty( $pkg->is_active ) ) {
+							echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+						} elseif ( ! empty( $pkg->is_default ) ) {
+							echo ' (' . esc_html__( 'default', 'order-machine' ) . ')';
+						}
+						echo '</option>';
+					}
+				};
 				?>
 				<tr>
 					<th scope="row"><label for="som_product_weight_g"><?php echo esc_html__( 'Goods weight', 'order-machine' ); ?></label></th>
@@ -195,21 +222,12 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 					<td>
 						<select id="som_product_package_id" name="som_product_package_id">
 							<option value=""><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
-							<?php foreach ( $packages as $pkg ) : ?>
-								<option value="<?php echo esc_attr( (string) (int) $pkg->id ); ?>" <?php selected( $selected_pkg, (int) $pkg->id ); ?>>
-									<?php
-									echo esc_html( (string) $pkg->name );
-									if ( empty( $pkg->is_active ) ) {
-										echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
-									} elseif ( ! empty( $pkg->is_default ) ) {
-										echo ' (' . esc_html__( 'default', 'order-machine' ) . ')';
-									}
-									?>
-								</option>
-							<?php endforeach; ?>
+							<?php $package_options( $packages, $selected_pkg ); ?>
 						</select>
 						<p class="description">
 							<?php
+							echo esc_html__( 'Suggested when the order has one sellable pack (qty 1).', 'order-machine' );
+							echo ' ';
 							echo wp_kses_post(
 								sprintf(
 									/* translators: %s: packages admin link */
@@ -219,6 +237,16 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 							);
 							?>
 						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_product_package_id_multi"><?php echo esc_html__( 'Multi-pack package', 'order-machine' ); ?></label></th>
+					<td>
+						<select id="som_product_package_id_multi" name="som_product_package_id_multi">
+							<option value=""><?php echo esc_html__( '— Same as default —', 'order-machine' ); ?></option>
+							<?php $package_options( $packages, $selected_pkg_multi ); ?>
+						</select>
+						<p class="description"><?php echo esc_html__( 'Suggested when the order’s total sellable qty is 2 or more. If unset, the default package is used for multi-qty votes.', 'order-machine' ); ?></p>
 					</td>
 				</tr>
 				<tr>
