@@ -17,21 +17,37 @@
 }
 
 .som-create-test-order-form {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	align-items: center;
 	margin: 8px 0 4px;
 }
 
-.som-create-test-order-form label {
+.som-create-test-order-form > label {
 	font-weight: 600;
+	margin-right: 6px;
 }
 
-.som-create-test-order-form select,
-.som-create-test-order-form input[type="text"],
-.som-create-test-order-form input[type="number"] {
+.som-create-test-order-form > input[type="text"] {
 	max-width: 220px;
+	margin-right: 12px;
+}
+
+.som-test-order-lines {
+	margin: 10px 0 6px;
+	max-width: 960px;
+}
+
+.som-test-order-lines select,
+.som-test-order-lines input[type="text"],
+.som-test-order-lines input[type="number"] {
+	width: 100%;
+	max-width: 220px;
+}
+
+.som-test-order-actions-col {
+	width: 70px;
+}
+
+.som-pack-mixed-flag {
+	color: #996800;
 }
 
 .som-orders-filters {

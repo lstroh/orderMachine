@@ -383,28 +383,53 @@ class SOM_Admin_Menu {
 		if ( isset( $_POST['som_create_test_order'] ) ) {
 			check_admin_referer( 'som_create_test_order', 'som_order_nonce' );
 
-			$product_id = isset( $_POST['som_test_product_id'] ) ? (int) $_POST['som_test_product_id'] : 0;
-			$quantity   = isset( $_POST['som_test_quantity'] ) ? (int) $_POST['som_test_quantity'] : 1;
-			$quantity   = max( 1, $quantity );
 			$buyer_name = isset( $_POST['som_test_buyer_name'] ) ? sanitize_text_field( wp_unslash( $_POST['som_test_buyer_name'] ) ) : '';
-			$personalis = isset( $_POST['som_test_personalisation'] ) ? sanitize_textarea_field( wp_unslash( $_POST['som_test_personalisation'] ) ) : '';
-			$unit_price = isset( $_POST['som_test_unit_price'] ) ? wp_unslash( $_POST['som_test_unit_price'] ) : '';
+			$raw_lines  = isset( $_POST['som_test_lines'] ) && is_array( $_POST['som_test_lines'] )
+				? wp_unslash( $_POST['som_test_lines'] )
+				: array();
 
-			if ( $product_id < 1 || ! SOM_Products::get( $product_id ) ) {
-				self::flash_notice( __( 'Select a valid product for the test order.', 'order-machine' ), 'error', 'som_order_error' );
+			// Legacy single-line fields (pre-UP7-S3) still accepted.
+			if ( empty( $raw_lines ) && isset( $_POST['som_test_product_id'] ) ) {
+				$raw_lines = array(
+					array(
+						'product_id'      => $_POST['som_test_product_id'],
+						'quantity'        => isset( $_POST['som_test_quantity'] ) ? $_POST['som_test_quantity'] : 1,
+						'unit_price'      => isset( $_POST['som_test_unit_price'] ) ? $_POST['som_test_unit_price'] : '',
+						'personalisation' => isset( $_POST['som_test_personalisation'] ) ? $_POST['som_test_personalisation'] : '',
+					),
+				);
+			}
+
+			$items = array();
+			foreach ( array_slice( array_values( $raw_lines ), 0, 5 ) as $line ) {
+				if ( ! is_array( $line ) ) {
+					continue;
+				}
+				$product_id = isset( $line['product_id'] ) ? (int) $line['product_id'] : 0;
+				$quantity   = isset( $line['quantity'] ) ? (int) $line['quantity'] : 1;
+				$quantity   = max( 1, $quantity );
+				if ( $product_id < 1 || ! SOM_Products::get( $product_id ) ) {
+					continue;
+				}
+				$item = array(
+					'product_id' => $product_id,
+					'quantity'   => $quantity,
+				);
+				$personalis = isset( $line['personalisation'] ) ? sanitize_textarea_field( (string) $line['personalisation'] ) : '';
+				if ( '' !== trim( $personalis ) ) {
+					$item['personalisation_text'] = $personalis;
+				}
+				$unit_price = isset( $line['unit_price'] ) ? $line['unit_price'] : '';
+				if ( '' !== $unit_price && is_numeric( $unit_price ) ) {
+					$item['unit_price'] = (float) $unit_price;
+				}
+				$items[] = $item;
+			}
+
+			if ( empty( $items ) ) {
+				self::flash_notice( __( 'Add at least one valid product line for the test order.', 'order-machine' ), 'error', 'som_order_error' );
 				wp_safe_redirect( SOM_Orders::list_url() );
 				exit;
-			}
-
-			$item = array(
-				'product_id' => $product_id,
-				'quantity'   => $quantity,
-			);
-			if ( '' !== trim( $personalis ) ) {
-				$item['personalisation_text'] = $personalis;
-			}
-			if ( '' !== $unit_price && is_numeric( $unit_price ) ) {
-				$item['unit_price'] = (float) $unit_price;
 			}
 
 			$external_id = 'test-' . gmdate( 'YmdHis' ) . '-' . wp_generate_password( 4, false, false );
@@ -419,7 +444,7 @@ class SOM_Admin_Menu {
 						'postcode' => 'E1 1AA',
 						'country'  => 'GB',
 					),
-					'items'             => array( $item ),
+					'items'             => $items,
 				)
 			);
 
@@ -1495,6 +1520,7 @@ class SOM_Admin_Menu {
 			'target_selling_price'  => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
 			'weight_grams'          => isset( $_POST['som_product_weight_g'] ) ? wp_unslash( $_POST['som_product_weight_g'] ) : '',
 			'package_id'            => isset( $_POST['som_product_package_id'] ) ? wp_unslash( $_POST['som_product_package_id'] ) : '',
+			'package_id_multi'      => isset( $_POST['som_product_package_id_multi'] ) ? wp_unslash( $_POST['som_product_package_id_multi'] ) : '',
 			'planned_shipping_gbp'  => isset( $_POST['som_product_planned_shipping'] ) ? wp_unslash( $_POST['som_product_planned_shipping'] ) : '',
 			'is_active'             => ! empty( $_POST['som_product_is_active'] ),
 			'is_internal'           => ! empty( $_POST['som_product_is_internal'] ),

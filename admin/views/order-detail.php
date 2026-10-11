@@ -580,7 +580,14 @@ if ( ! empty( $order->raw_payload ) ) {
 								</option>
 							<?php endforeach; ?>
 						</select>
-						<p class="description"><?php echo esc_html__( 'Required before Ship. Product default is a suggestion only.', 'order-machine' ); ?></p>
+						<?php if ( SOM_Pack::has_mixed_package_conflict( $order ) ) : ?>
+							<p class="description som-pack-mixed-flag">
+								<strong><?php echo esc_html__( 'Mixed products — confirm package', 'order-machine' ); ?></strong>
+								<?php echo esc_html__( 'Line products disagree on the multi-pack package; the site default was suggested. Choose the correct package before Ship.', 'order-machine' ); ?>
+							</p>
+						<?php else : ?>
+							<p class="description"><?php echo esc_html__( 'Required before Ship. Suggestion uses product default (qty 1) or multi-pack package (qty 2+); you can override.', 'order-machine' ); ?></p>
+						<?php endif; ?>
 					</td>
 				</tr>
 			</table>

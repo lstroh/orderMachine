@@ -4,6 +4,67 @@
 ( function () {
 	'use strict';
 
+	function initTestOrderLines() {
+		var tbody = document.getElementById( 'som-test-order-rows' );
+		var template = document.getElementById( 'som-test-order-row-template' );
+		var addButton = document.getElementById( 'som-test-order-add-row' );
+		var maxLines = 5;
+		var nextIndex = 1;
+
+		if ( ! tbody || ! template ) {
+			return;
+		}
+
+		function rowCount() {
+			return tbody.querySelectorAll( '.som-test-order-row' ).length;
+		}
+
+		function bindRemove( scope ) {
+			( scope || tbody ).querySelectorAll( '.som-test-order-remove' ).forEach( function ( button ) {
+				if ( button.dataset.bound ) {
+					return;
+				}
+				button.dataset.bound = '1';
+				button.addEventListener( 'click', function () {
+					var row = button.closest( 'tr' );
+					if ( ! row ) {
+						return;
+					}
+					if ( rowCount() > 1 ) {
+						row.remove();
+					} else {
+						row.querySelectorAll( 'select, input' ).forEach( function ( field ) {
+							if ( field.type === 'number' && field.name && field.name.indexOf( '[quantity]' ) !== -1 ) {
+								field.value = '1';
+							} else {
+								field.value = '';
+							}
+						} );
+					}
+				} );
+			} );
+		}
+
+		if ( addButton ) {
+			addButton.addEventListener( 'click', function () {
+				if ( rowCount() >= maxLines ) {
+					return;
+				}
+				var html = template.innerHTML.replace( /__INDEX__/g, String( nextIndex ) );
+				nextIndex += 1;
+				var wrapper = document.createElement( 'tbody' );
+				wrapper.innerHTML = html.trim();
+				var row = wrapper.firstElementChild;
+				if ( row ) {
+					tbody.appendChild( row );
+					bindRemove( row );
+				}
+			} );
+		}
+
+		bindRemove( tbody );
+	}
+
 	function initRecipeEditor() {
 		var recipeIndex = 0;
 		var tbody = document.getElementById( 'som-recipe-rows' );
@@ -416,6 +477,7 @@
 		bindRemove( tbody );
 	}
 
+	initTestOrderLines();
 	initRecipeEditor();
 	initGoalEditor();
 	initPoLineEditor();

@@ -28,6 +28,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Order notes (threaded log) | Done (UP5-S1) |
 | Shipping packages + planned postage | Done (UP5-S2) |
 | Shipping package materials + Materials used (Package) | Done (UP7-S2) |
+| Order package suggestion (1 vs 2+ / mixed) + multi-line test orders | Done (UP7-S3) |
 | Multipack conventions (docs; separate SKUs) | Done (UP5-S3) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
@@ -216,7 +217,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Assign a **workflow template**
 - Edit the **material recipe** (material + quantity per unit; inputs for internal products)
 - Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, **planned shipping** when set, fee-aware profit / margin, goal alerts, listing prices side by side)
-- For sellable products: **goods weight (g)**, default **shipping package**, flat **planned shipping** £
+- For sellable products: **goods weight (g)**, **default package** (qty 1), optional **multi-pack package** (qty 2+), flat **planned shipping** £
 - See linked listings (links through to **Listings** admin)
 
 **Products list** also shows costing columns: target price, material cost, **fee-aware margin** with Est. fees / Actual fees badge, goal-alert badges, **Internal** badge, and type filter (sellable / internal).
@@ -225,7 +226,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 **Multipacks (pack sizes):** model each pack size as its **own product SKU** with its own recipe and shipping defaults (e.g. seed `BIN-SET-4PK`). There is no pack→base multiplier or inventory explosion. See [`USER-GUIDE.md`](USER-GUIDE.md) (Pack sizes) and [`USER-REFERENCE.md`](USER-REFERENCE.md) §5.
 
-**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one default for new products; optional **package materials** BOM (reserved when the package is selected on an order — Materials used Source **Package**).
+**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one site default; optional **package materials** BOM (reserved when the package is selected on an order — Materials used Source **Package**). New orders suggest a package from product default (sellable qty 1) or multi-pack package (qty ≥ 2); mixed-SKU disagreement → site default + Pack flag. **Create test order** supports multiple product lines.
 
 ---
 
@@ -650,11 +651,23 @@ Expect DB version `1.8.0`, plugin `0.22.0`, and **25** `wp_som_*` tables (includ
 
 - [ ] Notes, packages/planned postage, and multipack-as-separate-SKU convention understood
 
+### Test 2c — Package 7 quick verify (package BOM + 1 vs 2+ + multi-line test)
+
+1. **Shipping packages** → open seed **Sample C5 envelope (single)** / **Sample large mailer (multi)** → confirm material BOM rows.
+2. Sample product → **Default package** = single, **Multi-pack package** = large.
+3. **Orders** → Create test order → qty **1** → Pack panel shows small package + Materials used Package planned from small BOM.
+4. Create test order → qty **2** (or two lines) → large package suggested; override still updates package materials.
+5. Mixed SKUs with disagreeing multi-pack packages → site default + **Mixed products — confirm package**.
+
+- [ ] Package BOM, 1 vs 2+ suggestion, mixed flag, and multi-line test order understood
+
 Smoke (wp-env):
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up5-s1-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up5-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s3-smoke.php
 ```
 
 ---

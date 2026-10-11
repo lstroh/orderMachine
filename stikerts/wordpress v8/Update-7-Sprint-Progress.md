@@ -8,15 +8,15 @@
 
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
-| UP7-S1 | Make step gate & confirmation UX (BUG-003) | Code complete | No schema bump; wp-env smoke pending if Docker unavailable |
-| UP7-S2 | Package materials + Materials used | Code complete | Schema **1.17.0**; wp-env smoke pending if Docker unavailable |
-| UP7-S3 | Order package suggestion + seed/docs | Not started | — |
+| UP7-S1 | Make step gate & confirmation UX (BUG-003) | Code complete | Merged (#17); wp-env smoke pending if Docker unavailable |
+| UP7-S2 | Package materials + Materials used | Code complete | Merged (#18); schema 1.17.0 |
+| UP7-S3 | Order package suggestion + seed/docs | Code complete | Schema 1.18.0; Package 7 sprints complete |
 
 ---
 
 ## UP7-S1 — Make step gate & confirmation UX (BUG-003)
 
-- **Status:** Code complete (PR)
+- **Status:** Code complete (merged #17)
 - **Schema:** unchanged
 - **Plugin:** unchanged (release bump optional later → ~0.33.0)
 
@@ -41,54 +41,64 @@ O7 warn-only; O8 verify-first (empty gates, not engine bug); checklist Save ≠ 
 
 ### Verification
 
-- PHP lint on changed files: pass (`order-detail.php`, `workflow-step-editor.php`, smoke)
+- PHP lint on changed files: pass
 - `node --check` on `admin/assets/js/admin.js`: pass
-- wp-env smoke: **not run in cloud agent** (`docker` missing). Run locally:
-
-```bash
-npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s1-smoke.php
-```
+- wp-env smoke: run locally when Docker available
 
 ---
 
 ## UP7-S2 — Package materials + Materials used
 
-- **Status:** Code complete (PR)
-- **Schema:** `1.17.0` (`wp_som_shipping_package_materials`; stock reasons `package_reserve` / `package_unreserve` / `package_usage_extra`)
+- **Status:** Code complete (merged #18)
+- **Schema:** 1.17.0 (`shipping_package_materials`, reason `package_reserve`)
 - **Plugin:** unchanged (release bump optional later → ~0.34.0)
-
-### Soft defaults applied
-
-- Materials on shipping package only (not Pack workflow)
-- Reserve when `shipping_package_id` is set/changed (including suggest-on-bind when stock applies)
-- Package change: reverse prior package reserves, then reserve new (O4)
-- Materials used rows separate by Source Recipe / Package (O5)
-- History import / cancelled / Internal Produce N skip package reserve
-- Product Costing packaging line deferred (O6)
-- No decrease below planned; Actual increase-only
 
 ### Delivered
 
-- Schema: `shipping_package_materials` via `dbDelta`; `som_db_version` → `1.17.0`
-- Shipping package edit: recipe-like material BOM UI; reject duplicate materials
-- `SOM_Material_Stock::sync_package_reserve` on pack bind (when stock applies) + `SOM_Pack::set_shipping_package`
-- Material budget funding for package reserves; reverse funding on package change
-- Materials used panel: Source column; Package overuse via `package_usage_extra` + Extra material usage funding
-- COGS: `package_reserve` + `package_unreserve` + extras included
+- Package material recipe UI + table
+- Reserve/reverse on package select/change
+- Materials used Source Recipe / Package
+- COGS includes package reserve + extras
 - Smoke: `tests/sprint-up7-s2-smoke.php`
-- USER-REFERENCE / FEATURES short notes
+
+### Soft defaults applied
+
+O3 reserve when `shipping_package_id` set/changed; O4 reverse prior then reserve new; O5 separate Source rows.
+
+---
+
+## UP7-S3 — Order package suggestion (1 vs 2+ / mixed) + multi-line test orders + seed/docs
+
+- **Status:** Code complete (this PR)
+- **Schema:** 1.18.0 (`products.package_id_multi`)
+- **Plugin:** unchanged (release bump optional later → ~0.35.0)
+
+### Delivered
+
+- Product fields: `package_id` = qty 1; `package_id_multi` = suggestion when order total sellable qty ≥ 2
+- `SOM_Pack::suggest_package` / `suggest_package_id` / `has_mixed_package_conflict` — sum sellable qtys; agreement vs site default + Pack flag
+- Create test order: up to 5 addable lines (product + qty + optional price/personalisation) via `create_from_external`
+- Seed: Sample C5 envelope (single) + Sample large mailer (multi) with thank-you/envelope materials; sample product wired
+- Docs: USER-GUIDE / USER-REFERENCE / FEATURES
+- Smoke: `tests/sprint-up7-s3-smoke.php`
+- O6 Product Costing packaging line: deferred (not in this sprint)
+
+### Soft defaults applied
+
+O1 product-level `package_id_multi`; O2 sum of sellable qtys; O9 seed yes; O10 conflict → site default + confirm flag; O11 multi-line test order; O6 deferred.
 
 ### Verification
 
-- PHP lint on changed files: pass
-- wp-env smoke: **not run in cloud agent** if Docker unavailable. Run locally:
+- PHP lint on changed files
+- `node --check` on `admin/assets/js/admin.js`
+- wp-env smoke: run locally when Docker available:
 
 ```bash
-npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s3-smoke.php
 ```
 
 ---
 
-## UP7-S3
+## Package 7 complete
 
-Not started (out of scope for this PR).
+All three sprints (S1–S3) are code-complete. Follow-on packages (Trays/Unblock, Copy command, Workflow timing, Post-ship) are out of scope — see Sprint Plan §8.

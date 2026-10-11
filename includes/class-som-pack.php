@@ -212,40 +212,126 @@ class SOM_Pack {
 	}
 
 	/**
-	 * Suggested package: primary sellable line product package, else site default.
+	 * Suggested package id (see suggest_package()).
 	 *
 	 * @param object $order Order with items.
 	 * @return int
 	 */
 	public static function suggest_package_id( $order ) {
+		$result = self::suggest_package( $order );
+		return (int) $result['package_id'];
+	}
+
+	/**
+	 * Whether Pack UI should flag mixed-product package conflict (O10).
+	 *
+	 * @param object $order Order with items.
+	 * @return bool
+	 */
+	public static function has_mixed_package_conflict( $order ) {
+		$result = self::suggest_package( $order );
+		return ! empty( $result['mixed_conflict'] );
+	}
+
+	/**
+	 * Suggest shipping package from order shape (UP7-S3).
+	 *
+	 * Rules (soft defaults O1/O2/O10):
+	 * - Total sellable qty = sum of matched non-internal line quantities.
+	 * - Qty 1 → that line's package_id.
+	 * - Qty ≥ 2 → each line votes package_id_multi if set else package_id;
+	 *   agreement → use it; conflict → site default + mixed_conflict flag.
+	 *
+	 * @param object $order Order with items.
+	 * @return array{package_id:int,mixed_conflict:bool,total_sellable_qty:int}
+	 */
+	public static function suggest_package( $order ) {
 		global $wpdb;
 
-		if ( $order && ! empty( $order->items ) && is_array( $order->items ) ) {
-			$products_t = SOM_DB::table( 'products' );
-			foreach ( $order->items as $item ) {
-				$product_id = isset( $item->product_id ) ? (int) $item->product_id : 0;
-				if ( $product_id < 1 ) {
-					continue;
-				}
-				$row = $wpdb->get_row(
-					$wpdb->prepare(
-						"SELECT package_id, is_internal FROM {$products_t} WHERE id = %d LIMIT 1",
-						$product_id
-					)
-				);
-				if ( $row && empty( $row->is_internal ) && ! empty( $row->package_id ) ) {
-					return (int) $row->package_id;
-				}
+		$default_id = self::site_default_package_id();
+		$result     = array(
+			'package_id'          => $default_id,
+			'mixed_conflict'      => false,
+			'total_sellable_qty'  => 0,
+		);
+
+		if ( ! $order || empty( $order->items ) || ! is_array( $order->items ) ) {
+			return $result;
+		}
+
+		$products_t = SOM_DB::table( 'products' );
+		$lines      = array();
+		$total_qty  = 0;
+
+		foreach ( $order->items as $item ) {
+			$product_id = isset( $item->product_id ) ? (int) $item->product_id : 0;
+			if ( $product_id < 1 ) {
+				continue;
+			}
+			$qty = isset( $item->quantity ) ? (int) $item->quantity : 0;
+			if ( $qty < 1 ) {
+				continue;
+			}
+
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT package_id, package_id_multi, is_internal FROM {$products_t} WHERE id = %d LIMIT 1",
+					$product_id
+				)
+			);
+			if ( ! $row || ! empty( $row->is_internal ) ) {
+				continue;
+			}
+
+			$total_qty += $qty;
+			$lines[]    = $row;
+		}
+
+		$result['total_sellable_qty'] = $total_qty;
+
+		if ( $total_qty < 1 || empty( $lines ) ) {
+			return $result;
+		}
+
+		if ( 1 === $total_qty ) {
+			$single = (int) ( $lines[0]->package_id ?? 0 );
+			$result['package_id'] = $single > 0 ? $single : $default_id;
+			return $result;
+		}
+
+		$candidates = array();
+		foreach ( $lines as $row ) {
+			$multi = ! empty( $row->package_id_multi ) ? (int) $row->package_id_multi : 0;
+			$single = ! empty( $row->package_id ) ? (int) $row->package_id : 0;
+			$vote   = $multi > 0 ? $multi : $single;
+			if ( $vote > 0 ) {
+				$candidates[] = $vote;
 			}
 		}
 
-		$packages = SOM_Shipping_Packages::list_active();
-		foreach ( $packages as $pkg ) {
-			if ( ! empty( $pkg->is_default ) ) {
-				return (int) $pkg->id;
-			}
+		if ( empty( $candidates ) ) {
+			return $result;
 		}
-		return 0;
+
+		$unique = array_values( array_unique( $candidates ) );
+		if ( 1 === count( $unique ) ) {
+			$result['package_id'] = (int) $unique[0];
+			return $result;
+		}
+
+		$result['package_id']     = $default_id;
+		$result['mixed_conflict'] = true;
+		return $result;
+	}
+
+	/**
+	 * Active site default shipping package id, or 0.
+	 *
+	 * @return int
+	 */
+	public static function site_default_package_id() {
+		$default = SOM_Shipping_Packages::get_default();
+		return $default ? (int) $default->id : 0;
 	}
 
 	/**

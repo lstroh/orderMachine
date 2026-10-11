@@ -373,11 +373,13 @@ class SOM_Shipping_Packages {
 	 */
 	public static function count_product_refs( $package_id ) {
 		global $wpdb;
-		$products = SOM_DB::table( 'products' );
+		$products   = SOM_DB::table( 'products' );
+		$package_id = (int) $package_id;
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$products} WHERE package_id = %d",
-				(int) $package_id
+				"SELECT COUNT(*) FROM {$products} WHERE package_id = %d OR package_id_multi = %d",
+				$package_id,
+				$package_id
 			)
 		);
 	}
