@@ -92,5 +92,5 @@
 - [x] Smoke
 
 ### UP10-S2
-- [ ] Analytics timing
-- [ ] Docs + smoke
+- [x] Analytics timing
+- [x] Docs + smoke

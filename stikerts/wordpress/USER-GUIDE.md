@@ -55,9 +55,9 @@ Top-level: **Order Machine**
 | **Shipping packages** | Outer mailers/boxes (mm + tare g) with optional packaging materials; assign default + multi-pack on sellable products |
 | **Purchase Orders** | Create / receive POs, Preview Impact |
 | **Batches** | Collecting / release / mark done for batch steps |
-| **Workflows** | Templates and step editor (timers, batch groups, goals) |
+| **Workflows** | Templates and step editor (timers, planned duration, batch groups, goals) |
 | **Listings** | Cached marketplace listings; link products; push updates |
-| **Analytics** | Sales, profit, stock, channel mix, AOV charts |
+| **Analytics** | Sales, profit, stock, channel mix, AOV, workflow timing |
 | **Channel Fee Estimates** | Editable estimated fee components per channel |
 | **Recurring Platform Expenses** | Non-order fees (e.g. listing fees) from fee sync |
 | **Settings** | Channels, OAuth, sync, fee sync, MCP, API key, **Max trays**, Default Pack workflow |
@@ -129,10 +129,29 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Trays** | Numbered physical trays (site pool **1 … Max trays**) assigned to an **order**. Shared by all make lines and pack on that order. |
 | **Uses trays** | Template checkbox (make or Pack). If **any** make or Pack template on the order has it on, the order **requires** ≥1 held tray before Mark done / advance. |
 | **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, batch, ship/package/hold, trays). Does **not** complete the step for you. |
+| **Planned duration** | Target time for a step (reporting only). Set in the workflow editor; separate from the timer gate. |
+| **Timer** | Hard gate — Mark done stays blocked until the countdown ends (or you Unblock). Not the same as planned duration. |
+| **Actual (wall clock)** | How long a step really took: started → completed, **including** timer waits. Shown on order detail and Analytics. |
 | **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
 | **Step instructions** | Markdown guidance on a workflow step (default) or product override. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
 | **Tasks** | Optional per-step tick list (template default + make product override). Operators can tick while running; **never** blocks **Mark done**. |
 | **Confirmation checklist** | Hard gate on a step (print / address / packing). Must be saved complete before Mark done. Not the same as Tasks. |
+
+---
+
+## Planned vs timer vs actual
+
+Three different concepts — do not mix them up:
+
+| Concept | What it is | Where you set / see it |
+|---|---|---|
+| **Planned duration** | Target time for reporting (minutes / hours / days → seconds) | **Workflows** step editor · order detail · Analytics timing |
+| **Timer** | Hard gate that blocks Mark done until it ends | **Workflows** step editor · order detail countdown |
+| **Actual (wall clock)** | Elapsed start → complete, **includes timer waits** | Order detail (per step + make/pack totals) · **Analytics → Workflow timing** |
+
+Make-line and pack **totals** use span actual: first step start → last step complete (not a sum of overlapping waits). Steps often over plan (actual > planned × 1.2) are highlighted on Analytics.
+
+More detail: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7 / §15.
 
 ---
 
@@ -249,6 +268,7 @@ Physical trays stay with the **order** (not a single make line). There is no mak
 | Order has no Platform fees panel lines | Run **Sync fees now**; live eBay may need Finances reconnect. |
 | Analytics empty | No priced lines in range; cancelled/refunded excluded; or date filter too narrow. |
 | Analytics stock chart blank | Select material(s) and Apply. |
+| Analytics timing empty | No fully completed make/pack for that template in the date range; or no planned durations set yet. |
 | Charts / Board DnD missing | CDN blocked (offline admin) — SortableJS / Chart.js. |
 
 More detail: [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) §7.

@@ -436,6 +436,44 @@
 	}
 }
 
+/* Workflow timing (UP10-S2) */
+
+.som-analytics-timing {
+	margin-top: 28px;
+}
+
+.som-analytics-timing > h2 {
+	margin: 0 0 8px;
+}
+
+.som-analytics-timing-tabs {
+	display: flex;
+	gap: 8px;
+	margin: 12px 0;
+}
+
+.som-analytics-timing-filters {
+	margin-bottom: 16px;
+}
+
+.som-analytics-timing-grid {
+	display: grid;
+	gap: 20px;
+}
+
+.som-analytics-timing-table-wrap h3 {
+	margin: 0 0 8px;
+	font-size: 14px;
+}
+
+.som-analytics-timing-table .som-timing-over-plan td {
+	background: #fcf0f1;
+}
+
+.som-analytics-timing-table .som-timing-over-plan td:first-child {
+	box-shadow: inset 3px 0 0 #d63638;
+}
+
 .som-badge-active {
 	background: #edfaef;
 	color: #1e6e34;
