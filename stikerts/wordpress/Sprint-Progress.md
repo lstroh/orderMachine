@@ -4,6 +4,8 @@
 
 **Update Package 6:** see [`../wordpress v7/Update-6-Sprint-Progress.md`](../wordpress%20v7/Update-6-Sprint-Progress.md) (UP6-S1–S3 complete in code).
 
+**Update Package 7:** see [`../wordpress v8/Update-7-Sprint-Progress.md`](../wordpress%20v8/Update-7-Sprint-Progress.md) (UP7-S1 Make gate UX / BUG-003 complete in code; S2–S3 not started).
+
 ---
 
 ## Status overview

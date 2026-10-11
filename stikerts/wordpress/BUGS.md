@@ -19,13 +19,20 @@
 
 ## Open
 
+*(None right now — add new `BUG-NNN` entries here as testing continues.)*
+
+---
+
+## Closed / fixed
+
 ### BUG-003 — Make step shows Done before work; checklist not tied to step
 
 | | |
 |---|---|
 | **Severity** | Major / UX |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Found in** | Order detail → MAKE (post Package 6) |
+| **Fixed** | 2026-10-11 |
 | **Env** | Operator testing; screenshot 2026-10-01 |
 
 **Symptoms**
@@ -34,19 +41,19 @@
 - Confirmation checklist (“print matches the client request”) appears above the step list while a later step (**Print…**) is In progress with Mark done disabled.  
 - Make panel still shows stale copy: “Pack & Ship controls arrive in UP6-S2.”
 
-**Likely cause**
+**Root cause / fix**
 
-Zero-gate auto-complete on ungated steps (`enter_item_step`), plus checklist UI rendered above the list for the **current** step (not nested under it). Verify whether Create PDF actually had `requires_manual_confirm` / `confirmation_kind` set.
+- **Create PDF Done** was zero-gate auto-complete (`enter_item_step` / `enter_step`), not an engine bug when gates are set. Gated first steps stay `in_progress`.  
+- Nested confirmation checklist under the current make/pack step `<li>`; heading includes the step name.  
+- Removed stale UP6-S2 Make panel copy.  
+- Workflow editor: warn on Save for zero-gate steps; default **Requires manual confirm** on new step cards.  
+- USER-REFERENCE note: zero-gate steps auto-complete.
 
-**Plan**
+**Files:** `admin/views/order-detail.php`, `admin/views/workflow-step-editor.php`, `admin/assets/js/admin.js`, `stikerts/wordpress/USER-REFERENCE.md`, `tests/sprint-up7-s1-smoke.php`
 
-Update Package 7 / **UP7-S1** — see `stikerts/wordpress v8/04-Update-Make-Step-Gate-UX.md` and `Update-7-Sprint-Plan.md`.
-
-**Related (not this bug):** Package materials live on **shipping packages** (not workflows); see Package 7 `03-Update-Package-Materials.md`.
+**Plan:** Update Package 7 / **UP7-S1** — `stikerts/wordpress v8/04-Update-Make-Step-Gate-UX.md`
 
 ---
-
-## Closed / fixed
 
 ### BUG-001 — Orders status filter has no “current step” options (e.g. Print)
 
@@ -119,8 +126,9 @@ Fixture unmatched rows are **expected** for UAT §5.2 — not a defect.
 | §0 – §4.1 | OK; BUG-001 fixed — re-check Current step filter |
 | §4.2 – §8.1 | Re-check Add material after BUG-002 |
 | §8.2+ | Continue |
+| Order detail Make (BUG-003) | Fixed in UP7-S1 — checklist nested; zero-gate warn |
 
-**Automated coverage:** `tests/bugfix-001-002-smoke.php` (wp-env) — PASS 2026-08-02.
+**Automated coverage:** `tests/bugfix-001-002-smoke.php` (wp-env) — PASS 2026-08-02; `tests/sprint-up7-s1-smoke.php` — UP7-S1 / BUG-003.
 
 ---
 

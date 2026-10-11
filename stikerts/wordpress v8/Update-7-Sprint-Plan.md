@@ -162,7 +162,7 @@ Not part of Package 7 sprints.
 ## 9. Quick checklist
 
 ### UP7-S1
-- [ ] BUG-003: nest checklist; zero-gate warning; remove UP6-S2 copy; smoke
+- [x] BUG-003: nest checklist; zero-gate warning; remove UP6-S2 copy; smoke
 
 ### UP7-S2
 - [ ] Package material recipe UI + table
