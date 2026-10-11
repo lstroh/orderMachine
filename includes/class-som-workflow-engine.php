@@ -992,15 +992,19 @@ class SOM_Workflow_Engine {
 		$manual = ! empty( $step->requires_manual_confirm );
 		$script = SOM_Script_Dispatch::has_script( $step );
 		$confirm = SOM_Step_Confirmations::has_confirmation( $step );
+		$copy    = SOM_Copy_Command::has_template( $step );
 
 		// Batch gate (batch-only in v1 — ignore other gates on the same step).
 		if ( ! empty( $step->batch_group_id ) ) {
 			return SOM_Batches::enqueue( $order_id, $step );
 		}
 
-		// Confirmation steps are always manual gates.
-		if ( $confirm ) {
+		// Confirmation / copy-command steps are always manual gates (copy is display-only).
+		if ( $confirm || $copy ) {
 			$manual = true;
+		}
+		if ( $copy ) {
+			$script = false;
 		}
 
 		// Zero-gate (no timer, no manual, no script) → auto-advance.

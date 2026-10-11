@@ -108,6 +108,10 @@ class SOM_Order_Sync {
 				'sku'                  => isset( $item['sku'] ) ? (string) $item['sku'] : '',
 				'quantity'             => isset( $item['quantity'] ) ? (int) $item['quantity'] : 1,
 				'personalisation_text' => isset( $item['personalisation_text'] ) ? $item['personalisation_text'] : null,
+				'house_number'         => isset( $item['house_number'] ) ? $item['house_number'] : null,
+				'street_name'          => isset( $item['street_name'] ) ? $item['street_name'] : null,
+				'style'                => isset( $item['style'] ) ? $item['style'] : null,
+				'personalisation_json' => isset( $item['personalisation_json'] ) ? $item['personalisation_json'] : null,
 				'unit_price'           => array_key_exists( 'unit_price', $item ) ? $item['unit_price'] : null,
 			);
 			if ( isset( $item['product_id'] ) && (int) $item['product_id'] > 0 ) {
@@ -527,6 +531,19 @@ class SOM_Order_Sync {
 			}
 		}
 
+		$house = self::nullable_text_field( $item, 'house_number', 64 );
+		$street = self::nullable_text_field( $item, 'street_name', 191 );
+		$style  = self::nullable_text_field( $item, 'style', 191 );
+		$pjson  = null;
+		if ( isset( $item['personalisation_json'] ) && null !== $item['personalisation_json'] && '' !== $item['personalisation_json'] ) {
+			if ( is_array( $item['personalisation_json'] ) ) {
+				$encoded = wp_json_encode( $item['personalisation_json'] );
+				$pjson   = is_string( $encoded ) ? $encoded : null;
+			} else {
+				$pjson = (string) $item['personalisation_json'];
+			}
+		}
+
 		$wpdb->insert(
 			SOM_DB::table( 'order_items' ),
 			array(
@@ -536,6 +553,10 @@ class SOM_Order_Sync {
 				'personalisation_text' => isset( $item['personalisation_text'] ) && null !== $item['personalisation_text'] && '' !== $item['personalisation_text']
 					? (string) $item['personalisation_text']
 					: null,
+				'house_number'         => $house,
+				'street_name'          => $street,
+				'style'                => $style,
+				'personalisation_json' => $pjson,
 				'unit_price'           => array_key_exists( 'unit_price', $item ) && null !== $item['unit_price']
 					? (float) $item['unit_price']
 					: null,
@@ -546,10 +567,35 @@ class SOM_Order_Sync {
 				null === $product_id ? '%s' : '%d',
 				'%d',
 				'%s',
+				'%s',
+				'%s',
+				'%s',
+				'%s',
 				'%f',
 				'%s',
 			)
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $item Item row.
+	 * @param string               $key  Field key.
+	 * @param int                  $max  Max length.
+	 * @return string|null
+	 */
+	private static function nullable_text_field( array $item, $key, $max ) {
+		if ( ! isset( $item[ $key ] ) || null === $item[ $key ] ) {
+			return null;
+		}
+		$text = sanitize_text_field( (string) $item[ $key ] );
+		$text = trim( $text );
+		if ( '' === $text ) {
+			return null;
+		}
+		if ( strlen( $text ) > $max ) {
+			$text = substr( $text, 0, $max );
+		}
+		return $text;
 	}
 
 	/**

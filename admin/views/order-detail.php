@@ -380,7 +380,7 @@ if ( ! empty( $order->raw_payload ) ) {
 					$line_confirm_state = SOM_Step_Confirmations::decode_state( $line_current );
 				}
 				?>
-				<div class="som-make-line" data-som-order-item-id="<?php echo esc_attr( (string) $line_id ); ?>">
+				<div class="som-make-line" id="som-make-line-<?php echo esc_attr( (string) $line_id ); ?>" data-som-order-item-id="<?php echo esc_attr( (string) $line_id ); ?>">
 					<h3>
 						<?php
 						printf(
@@ -402,8 +402,48 @@ if ( ! empty( $order->raw_payload ) ) {
 						<p class="som-personalisation-snippet"><?php echo esc_html( $line_person ); ?></p>
 					<?php endif; ?>
 
+					<?php
+					$line_house  = isset( $make_item->house_number ) ? (string) $make_item->house_number : '';
+					$line_street = isset( $make_item->street_name ) ? (string) $make_item->street_name : '';
+					$line_style  = isset( $make_item->style ) ? (string) $make_item->style : '';
+					?>
+					<details class="som-line-fields-panel" <?php echo ( '' === $line_house && '' === $line_street && '' === $line_style ) ? '' : 'open'; ?>>
+						<summary><?php echo esc_html__( 'Line fields (house / street / style)', 'order-machine' ); ?></summary>
+						<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-line-fields-form">
+							<?php wp_nonce_field( 'som_save_line_fields', 'som_order_nonce' ); ?>
+							<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+							<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
+							<input type="hidden" name="som_save_line_fields" value="1" />
+							<p>
+								<label>
+									<?php echo esc_html__( 'House number', 'order-machine' ); ?>
+									<input type="text" class="regular-text" name="som_line[house_number]" value="<?php echo esc_attr( $line_house ); ?>" maxlength="64" />
+								</label>
+							</p>
+							<p>
+								<label>
+									<?php echo esc_html__( 'Street name', 'order-machine' ); ?>
+									<input type="text" class="regular-text" name="som_line[street_name]" value="<?php echo esc_attr( $line_street ); ?>" maxlength="191" />
+								</label>
+							</p>
+							<p>
+								<label>
+									<?php echo esc_html__( 'Style / design', 'order-machine' ); ?>
+									<input type="text" class="regular-text" name="som_line[style]" value="<?php echo esc_attr( $line_style ); ?>" maxlength="191" />
+								</label>
+							</p>
+							<p>
+								<label>
+									<?php echo esc_html__( 'Personalisation summary', 'order-machine' ); ?>
+									<textarea class="large-text" rows="2" name="som_line[personalisation_text]"><?php echo esc_textarea( $line_person ); ?></textarea>
+								</label>
+							</p>
+							<?php submit_button( __( 'Save line fields', 'order-machine' ), 'secondary', 'submit', false ); ?>
+						</form>
+					</details>
+
 					<?php if ( $is_internal_l || $line_complete || empty( $line_progress ) ) : ?>
-						<?php /* status badge above is enough */ ?>
+						<?php /* status badge above is enough — still allow line field edits above */ ?>
 					<?php else : ?>
 						<ol class="som-workflow-progress">
 							<?php foreach ( $line_progress as $row ) : ?>
@@ -419,9 +459,17 @@ if ( ! empty( $order->raw_payload ) ) {
 									'timer_seconds'           => $row->timer_seconds,
 									'requires_manual_confirm' => $row->requires_manual_confirm,
 									'script_config'           => $row->script_config,
+									'command_template'        => isset( $row->command_template ) ? $row->command_template : null,
 									'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
 									'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
 								);
+								$copy_rendered = null;
+								if ( SOM_Copy_Command::has_template( $step_obj ) ) {
+									$copy_rendered = SOM_Copy_Command::render(
+										(string) $step_obj->command_template,
+										SOM_Copy_Command::values_from_order_item( $order, $make_item )
+									);
+								}
 								$can_done    = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
 								$can_unblock = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete )
 									&& SOM_Workflow_Engine::can_unblock_step( $row, $step_obj, $order );
@@ -452,6 +500,23 @@ if ( ! empty( $order->raw_payload ) ) {
 										<div class="som-step-instructions">
 											<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
 											<div class="som-step-instructions-body"><?php echo esc_html( $step_instructions ); ?></div>
+										</div>
+									<?php endif; ?>
+									<?php if ( is_array( $copy_rendered ) ) : ?>
+										<?php
+										$copy_id      = 'som-copy-cmd-' . $line_id . '-' . (int) $row->workflow_step_id;
+										$copy_missing = SOM_Copy_Command::missing_notice( $copy_rendered['missing'] );
+										?>
+										<div class="som-copy-command-panel">
+											<strong class="som-copy-command-label"><?php echo esc_html__( 'Copy command', 'order-machine' ); ?></strong>
+											<?php if ( '' !== $copy_missing ) : ?>
+												<p class="notice notice-warning inline som-copy-command-missing"><?php echo esc_html( $copy_missing ); ?></p>
+											<?php endif; ?>
+											<pre class="som-copy-command-text" id="<?php echo esc_attr( $copy_id ); ?>"><?php echo esc_html( $copy_rendered['command'] ); ?></pre>
+											<button type="button" class="button button-small" data-som-copy-from="<?php echo esc_attr( $copy_id ); ?>">
+												<?php echo esc_html__( 'Copy', 'order-machine' ); ?>
+											</button>
+											<p class="description"><?php echo esc_html__( 'Run this locally, then Mark done here. WordPress does not execute the command.', 'order-machine' ); ?></p>
 										</div>
 									<?php endif; ?>
 									<?php if ( $is_current && $timer_ready ) : ?>

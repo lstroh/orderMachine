@@ -600,12 +600,17 @@ class SOM_Channel_Ebay {
 			if ( ! is_array( $line ) ) {
 				continue;
 			}
-			$items[] = array(
+			$structured = self::extract_structured_fields( $line );
+			$items[]    = array(
 				'external_listing_id'  => ! empty( $line['legacyItemId'] ) ? (string) $line['legacyItemId'] : '',
 				'sku'                  => ! empty( $line['sku'] ) ? (string) $line['sku'] : '',
 				'quantity'             => isset( $line['quantity'] ) ? (int) $line['quantity'] : 1,
 				'unit_price'           => isset( $line['lineItemCost']['value'] ) ? (float) $line['lineItemCost']['value'] : null,
 				'personalisation_text' => self::extract_personalisation( $line ),
+				'house_number'         => $structured['house_number'],
+				'street_name'          => $structured['street_name'],
+				'style'                => $structured['style'],
+				'personalisation_json' => $structured['personalisation_json'],
 			);
 		}
 
@@ -620,36 +625,123 @@ class SOM_Channel_Ebay {
 	}
 
 	/**
+	 * Map eBay variation aspects → structured line fields (UP9-S1 / O1).
+	 *
+	 * Aspect name aliases are case-insensitive exact matches (after trim).
+	 * Style falls back to the line title when no design/style aspect is present.
+	 *
+	 * @param array<string, mixed> $line Line item.
+	 * @return array{house_number: ?string, street_name: ?string, style: ?string, personalisation_json: ?string}
+	 */
+	public static function extract_structured_fields( array $line ) {
+		$aspects = self::line_aspects( $line );
+		$map     = array();
+		foreach ( $aspects as $aspect ) {
+			if ( ! is_array( $aspect ) ) {
+				continue;
+			}
+			$name  = isset( $aspect['name'] ) ? strtolower( trim( (string) $aspect['name'] ) ) : '';
+			$value = isset( $aspect['value'] ) ? trim( (string) $aspect['value'] ) : '';
+			if ( '' === $name || '' === $value ) {
+				continue;
+			}
+			$map[ $name ] = $value;
+		}
+
+		$house = self::aspect_value_by_aliases(
+			$map,
+			array( 'house number', 'house no', 'house #', 'number' )
+		);
+		$street = self::aspect_value_by_aliases(
+			$map,
+			array( 'street name', 'street', 'road name' )
+		);
+		$style = self::aspect_value_by_aliases(
+			$map,
+			array( 'design', 'style', 'design name', 'ebay design' )
+		);
+		if ( null === $style && ! empty( $line['title'] ) ) {
+			$title = trim( (string) $line['title'] );
+			$style = '' !== $title ? $title : null;
+		}
+
+		$json = null;
+		if ( $map ) {
+			$encoded = wp_json_encode( $map );
+			$json    = is_string( $encoded ) ? $encoded : null;
+		}
+
+		return array(
+			'house_number'         => $house,
+			'street_name'          => $street,
+			'style'                => $style,
+			'personalisation_json' => $json,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $line Line item.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function line_aspects( array $line ) {
+		if ( ! empty( $line['variationAspects'] ) && is_array( $line['variationAspects'] ) ) {
+			return $line['variationAspects'];
+		}
+		if ( ! empty( $line['properties'] ) && is_array( $line['properties'] ) ) {
+			return $line['properties'];
+		}
+		return array();
+	}
+
+	/**
+	 * @param array<string, string> $map     Lowercased aspect name → value.
+	 * @param string[]              $aliases Candidate aspect names (lowercase).
+	 * @return string|null
+	 */
+	private static function aspect_value_by_aliases( array $map, array $aliases ) {
+		foreach ( $aliases as $alias ) {
+			if ( isset( $map[ $alias ] ) && '' !== $map[ $alias ] ) {
+				return $map[ $alias ];
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Best-effort personalisation from variation aspects / properties.
 	 *
 	 * @param array<string, mixed> $line Line item.
 	 * @return string|null
 	 */
 	private static function extract_personalisation( array $line ) {
-		$aspects = array();
-		if ( ! empty( $line['variationAspects'] ) && is_array( $line['variationAspects'] ) ) {
-			$aspects = $line['variationAspects'];
-		} elseif ( ! empty( $line['properties'] ) && is_array( $line['properties'] ) ) {
-			$aspects = $line['properties'];
-		}
-
-		$preferred = array( 'personalisation', 'personalization', 'custom text', 'customisation', 'customization', 'name', 'bin' );
-		$parts     = array();
+		$aspects   = self::line_aspects( $line );
+		// Longer phrases use substring match; short tokens ('name', 'bin') are exact
+		// so "Street Name" / "House Number" do not pollute the summary blob.
+		$preferred_contains = array( 'personalisation', 'personalization', 'custom text', 'customisation', 'customization' );
+		$preferred_exact    = array( 'name', 'bin' );
+		$parts              = array();
 
 		foreach ( $aspects as $aspect ) {
 			if ( ! is_array( $aspect ) ) {
 				continue;
 			}
-			$name  = isset( $aspect['name'] ) ? strtolower( (string) $aspect['name'] ) : '';
+			$name  = isset( $aspect['name'] ) ? strtolower( trim( (string) $aspect['name'] ) ) : '';
 			$value = isset( $aspect['value'] ) ? trim( (string) $aspect['value'] ) : '';
 			if ( '' === $value ) {
 				continue;
 			}
-			foreach ( $preferred as $needle ) {
+			$matched = false;
+			foreach ( $preferred_contains as $needle ) {
 				if ( false !== strpos( $name, $needle ) ) {
-					$parts[] = $value;
+					$matched = true;
 					break;
 				}
+			}
+			if ( ! $matched && in_array( $name, $preferred_exact, true ) ) {
+				$matched = true;
+			}
+			if ( $matched ) {
+				$parts[] = $value;
 			}
 		}
 

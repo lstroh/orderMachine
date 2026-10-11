@@ -42,8 +42,11 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 		? SOM_Step_Confirmations::sanitize_kind( $step->confirmation_kind )
 		: null;
 	$instructions = $step && ! empty( $step->instructions ) ? (string) $step->instructions : '';
+	$command_template = $step && ! empty( $step->command_template ) ? (string) $step->command_template : '';
+	$has_legacy_script = ( 'none' !== $type );
 	$prefix   = 'som_step[' . $index . ']';
 	$confirm_choices = SOM_Step_Confirmations::kind_choices();
+	$placeholder_help = '{{order_number}}, {{house_number}}, {{street_name}}, {{style}}, {{buyer_name}}, {{buyer_full_name}}, {{product_name}}, {{personalisation}}';
 	?>
 	<div class="som-step-card" data-som-step>
 		<div class="som-step-card-header">
@@ -71,8 +74,33 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 				<?php echo esc_html__( 'Requires manual confirm', 'order-machine' ); ?>
 			</label>
 			<p class="som-zero-gate-warning notice notice-warning inline" data-som-zero-gate-warning hidden>
-				<?php echo esc_html__( 'This step will auto-complete when entered (no manual confirm, checklist, timer, script, or batch).', 'order-machine' ); ?>
+				<?php echo esc_html__( 'This step will auto-complete when entered (no manual confirm, checklist, timer, script, copy command, or batch).', 'order-machine' ); ?>
 			</p>
+
+			<div class="som-step-gate som-step-copy-command" data-som-copy-command-gate>
+				<label>
+					<?php echo esc_html__( 'Copy command template', 'order-machine' ); ?>
+					<textarea
+						class="large-text code som-command-template"
+						rows="5"
+						name="<?php echo esc_attr( $prefix ); ?>[command_template]"
+						maxlength="<?php echo esc_attr( (string) SOM_Copy_Command::MAX_TEMPLATE_LENGTH ); ?>"
+						placeholder="<?php echo esc_attr__( '/make-sticker-order Order number: {{order_number}}', 'order-machine' ); ?>"
+					><?php echo esc_textarea( $command_template ); ?></textarea>
+				</label>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: %s: placeholder list */
+						esc_html__( 'Shown on the make line with a Copy button (not run by WordPress). Placeholders: %s. Cannot combine with timer, script, or batch; Mark done stays manual.', 'order-machine' ),
+						esc_html( $placeholder_help )
+					);
+					?>
+				</p>
+				<p class="som-copy-combo-warning notice notice-warning inline" data-som-copy-warning hidden>
+					<?php echo esc_html__( 'Copy-command steps cannot also use timer, script, or batch gates. Save will be rejected until those are cleared.', 'order-machine' ); ?>
+				</p>
+			</div>
 
 			<div class="som-step-gate som-step-confirmation" data-som-confirmation-gate>
 				<label>
@@ -122,7 +150,11 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 				</p>
 			</div>
 
-			<div class="som-step-gate som-step-script" data-som-script>
+			<details class="som-step-gate som-step-script som-step-script-legacy" data-som-script <?php echo $has_legacy_script ? 'open' : ''; ?>>
+				<summary>
+					<?php echo esc_html__( 'Script / API (legacy — prefer Copy command)', 'order-machine' ); ?>
+				</summary>
+				<p class="description"><?php echo esc_html__( 'Local / API / n8n dispatch remains for existing steps; new work should use Copy command. Full removal is UP9-S2.', 'order-machine' ); ?></p>
 				<label>
 					<?php echo esc_html__( 'Script / API', 'order-machine' ); ?>
 					<select name="<?php echo esc_attr( $prefix ); ?>[script_type]" class="som-script-type">
@@ -189,7 +221,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 					<textarea name="<?php echo esc_attr( $prefix ); ?>[script_raw_json]" rows="6" class="large-text code"><?php echo esc_textarea( $script['raw_json'] ); ?></textarea>
 					<p class="description"><?php echo esc_html__( 'When checked, this JSON is stored as-is (must include type: local, api, or n8n). Form fields above are ignored.', 'order-machine' ); ?></p>
 				</div>
-			</div>
+			</details>
 		</div>
 	</div>
 	<?php
@@ -315,7 +347,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates). Confirmation checklists cannot combine with timer, script, or batch. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, copy command, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates). Copy command and confirmation checklists cannot combine with timer, script, or batch. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block.', 'order-machine' ); ?></p>
 
 		<div id="som-step-list" class="som-step-list">
 			<?php

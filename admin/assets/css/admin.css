@@ -1288,3 +1288,63 @@
 	vertical-align: middle;
 }
 
+.som-line-fields-panel {
+	margin: 8px 0 12px;
+	padding: 8px 10px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	max-width: 42em;
+}
+
+.som-line-fields-panel > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.som-line-fields-form p {
+	margin: 8px 0;
+}
+
+.som-copy-command-panel {
+	margin: 8px 0 10px;
+	padding: 10px 12px;
+	background: #f6f7f7;
+	border-left: 3px solid #1d2327;
+}
+
+.som-copy-command-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: #50575e;
+}
+
+.som-copy-command-text {
+	margin: 0 0 8px;
+	padding: 10px 12px;
+	background: #1d2327;
+	color: #f0f0f1;
+	border-radius: 2px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	overflow-x: auto;
+}
+
+.som-copy-command-missing {
+	margin: 0 0 8px !important;
+}
+
+.som-step-script-legacy {
+	opacity: 0.92;
+}
+
+.som-step-script-legacy > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
