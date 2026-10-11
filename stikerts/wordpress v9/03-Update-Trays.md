@@ -75,12 +75,15 @@ If required and no held trays yet → prompt/block as below.
 | Internal Produce N | Release when that order completes (make-complete) |
 | Batches | Unaffected |
 
-## 5. Manual timer release (same package)
+## 5. Manual step unblock (same package)
+
+See `05-Update-Manual-Step-Unblock.md`. Trays-required is one of the gates **Unblock step** can bypass (does not auto-assign trays).
 
 | Topic | Decision |
 |---|---|
-| Availability | **Always** on every timer step (make + pack) |
-| Effect | Unlock early → Timer ready; **Mark done** still required |
+| Availability | **Always** on current make/pack step when Mark done is gated |
+| Effect | Allow **Mark done**; does not auto-advance |
+| Gates | Timer, checklist, script, batch, ship/package/hold, trays-required — **all** |
 | Audit | Progress columns who/when + order note |
 
 ## 6. Out of scope

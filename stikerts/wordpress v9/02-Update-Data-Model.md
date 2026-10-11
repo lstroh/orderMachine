@@ -58,16 +58,21 @@ Empty trays = numbers with no held assignment.
 
 ---
 
-## E. Timer early-release audit
+## E. Manual step-unblock audit
 
 On `order_item_step_progress` (make) and `order_step_progress` (pack):
 
 | Column | Type | Notes |
 |---|---|---|
-| `timer_released_early_at` | DATETIME NULL | |
-| `timer_released_early_by` | BIGINT UNSIGNED NULL | WP user id |
+| `manual_unblock_at` | DATETIME NULL | When admin unblocked gates for this step |
+| `manual_unblock_by` | BIGINT UNSIGNED NULL | WP user id |
+| `manual_unblock_gates` | VARCHAR(191) NULL | Optional short list of bypassed gate keys |
+
+One-shot bypass: `can_mark_done` treats gates as satisfied while these are set and status is still the current step; clear or leave after Mark done (**default: leave for audit**).
 
 Also write a short **order note** (soft default yes).
+
+*(Timer-only column names from earlier drafts are superseded by this general unblock.)*
 
 ---
 
@@ -76,4 +81,4 @@ Also write a short **order note** (soft default yes).
 1. Max range 1–20 — **default yes**.  
 2. Lowering max while higher trays held — **block** until released.  
 3. Released tray rows retained — **yes**.  
-4. Order note on timer early release — **default yes**.  
+4. Order note on manual unblock — **default yes**.  

@@ -1,8 +1,8 @@
 # Update Package 8 — Sprint Plan
 
-*Planning only. Specs: `01`–`04` in this folder. Baseline: **v0.32.2** (+ Package 7 as applicable).*
+*Planning only. Specs: `01`–`05` in this folder. Baseline: **v0.32.2** (+ Package 7 as applicable).*
 
-**Sequencing:** Order-level assign/release → require-when-any + first-step + order-complete release + timer release + boards → docs.
+**Sequencing:** Order-level trays → require/complete + **Unblock step** (all gates) + boards → docs.
 
 ## Locked decisions (operator)
 
@@ -10,9 +10,9 @@
 - Assign at **first step** **or** on **order detail**.  
 - **One or more** free trays; site pool **1 … max** (default 10).  
 - Required if **any** involved template has `uses_trays`.  
-- Auto-release on **order complete**; **manual** release anytime.  
+- Auto-release on **order complete**; **manual** tray release anytime.  
 - **No** make→pack transfer.  
-- **Release timer** always; log who/when (+ order note).
+- **Unblock step** always: allows **Mark done** despite **any** gate (timer, checklist, script, batch, ship/package/hold, trays); does not auto-complete; **log** who/when (+ order note).
 
 ---
 
@@ -25,8 +25,11 @@
 | O3 | Trays overview page | UP8-S3 | **Default: no** |
 | O4 | Max range 1–20 | UP8-S1 | **Default: yes** |
 | O5 | Lowering max while high trays held | UP8-S1 | **Default: block** |
-| O6 | Timer early release always + audit | UP8-S2 | **Settled: yes** |
-| O7 | Order note on timer early release | UP8-S2 | **Default: yes** |
+| O6 | Unblock all gates (not timer-only) | UP8-S2 | **Settled: yes** |
+| O7 | Order note on unblock | UP8-S2 | **Default: yes** |
+| O8 | Pack hold: clear vs bypass only | UP8-S2 | **Default: bypass Ship check; leave hold flag** |
+| O9 | Batch unblock removes member | UP8-S2 | **Default: yes** |
+| O10 | Unblock on boards | UP8-S2 | **Default: order detail only** |
 
 ---
 
@@ -36,7 +39,7 @@
 |---|---|---|
 | Trays | None | Order-level pool assignments |
 | `uses_trays` | — | Template flag; order requires if **any** match |
-| Timer | Unlock when elapsed | + early **Release timer** + audit |
+| Blocked steps | Wait for gate | + **Unblock step** (all gates) + audit |
 | Boards | Step badges | + tray numbers |
 
 ---
@@ -57,18 +60,19 @@
 
 ---
 
-### UP8-S2 — Require-when-any, first-step prompt, order-complete release, timer release, boards
+### UP8-S2 — Trays require/complete + Unblock step (all gates) + boards
 
 | Work | Detail |
 |---|---|
 | Required? | Any line make template or pack template `uses_trays` |
 | First-step / advance | If required and none held → assign UI; block advance (O1) |
-| Auto release | On order complete → release all held trays |
-| Release timer | Always on `waiting_timer`; audit + order note (O6/O7) |
+| Auto release trays | On order complete → release all held trays |
+| **Unblock step** | Current make/pack step: bypass timer, checklist, script, batch, ship/package/hold, trays-required; enable Mark done only (`05`) |
+| Audit | `manual_unblock_*` columns + order note (O7) |
 | Boards | Tray badges on Make + Pack cards |
-| Tests | `tests/sprint-up8-s2-smoke.php` |
+| Tests | `tests/sprint-up8-s2-smoke.php` — trays + unblock each gate family |
 
-**Done when:** required orders get trays; complete frees them; timer early release logged; smoke passes.
+**Done when:** required orders get trays; complete frees them; any blocked step can be unblocked with audit; smoke passes.
 
 ---
 
@@ -76,7 +80,7 @@
 
 | Work | Detail |
 |---|---|
-| Docs | USER-GUIDE / REFERENCE / FEATURES |
+| Docs | USER-GUIDE / REFERENCE / FEATURES — trays + Unblock step |
 | Seed | Leave `uses_trays` **off** on seed templates (operator opts in) |
 | Progress | `Update-8-Sprint-Progress.md` |
 
@@ -99,6 +103,7 @@
 - Per-line trays / make→pack transfer  
 - Barcode / auto-assign  
 - Trays overview page (unless O3 overturned)  
+- Auto Mark done on unblock  
 
 ---
 
@@ -113,15 +118,15 @@
 ### UP8-S1
 - [ ] Site max + template `uses_trays`
 - [ ] Order-level assign multiple free trays; reject in-use
-- [ ] Manual release
+- [ ] Manual tray release
 - [ ] Smoke
 
 ### UP8-S2
 - [ ] Required when any template uses trays
 - [ ] First-step / order UI; block until assigned
-- [ ] Auto-release on order complete
-- [ ] Release timer + audit
-- [ ] Board badges
+- [ ] Auto-release trays on order complete
+- [ ] **Unblock step** for all gates + audit
+- [ ] Board tray badges
 - [ ] Smoke
 
 ### UP8-S3
