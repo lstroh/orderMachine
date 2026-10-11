@@ -186,6 +186,73 @@
 			warning.hidden = ! hasName || stepHasGate( card );
 		}
 
+		function plannedSecondsForCard( card ) {
+			var valueField = card.querySelector( '[data-som-planned-value]' );
+			var unitField = card.querySelector( '[data-som-planned-unit]' );
+			if ( ! valueField ) {
+				return null;
+			}
+			var raw = String( valueField.value || '' ).trim();
+			if ( raw === '' || isNaN( Number( raw ) ) || Number( raw ) <= 0 ) {
+				return null;
+			}
+			var unit = unitField ? String( unitField.value || 'minutes' ) : 'minutes';
+			var mult = 60;
+			if ( unit === 'hours' ) {
+				mult = 3600;
+			} else if ( unit === 'days' ) {
+				mult = 86400;
+			}
+			return Math.round( Number( raw ) * mult );
+		}
+
+		function formatPlannedTotal( seconds ) {
+			if ( seconds === null || seconds === undefined ) {
+				return '—';
+			}
+			seconds = Math.max( 0, Math.floor( seconds ) );
+			if ( seconds === 0 ) {
+				return '0s';
+			}
+			if ( seconds < 60 ) {
+				return seconds + 's';
+			}
+			if ( seconds < 3600 ) {
+				return Math.floor( seconds / 60 ) + 'm';
+			}
+			if ( seconds < 86400 ) {
+				var h = Math.floor( seconds / 3600 );
+				var m = Math.floor( ( seconds % 3600 ) / 60 );
+				return m > 0 ? ( h + 'h ' + m + 'm' ) : ( h + 'h' );
+			}
+			var d = Math.floor( seconds / 86400 );
+			var hours = Math.floor( ( seconds % 86400 ) / 3600 );
+			return hours > 0 ? ( d + 'd ' + hours + 'h' ) : ( d + 'd' );
+		}
+
+		function syncPlannedTotal() {
+			var totalEl = document.querySelector( '[data-som-planned-total-value]' );
+			var partialEl = document.querySelector( '[data-som-planned-partial]' );
+			if ( ! totalEl ) {
+				return;
+			}
+			var named = namedCards();
+			var sum = 0;
+			var plannedCount = 0;
+			named.forEach( function ( card ) {
+				var secs = plannedSecondsForCard( card );
+				if ( secs === null ) {
+					return;
+				}
+				plannedCount += 1;
+				sum += secs;
+			} );
+			totalEl.textContent = plannedCount > 0 ? formatPlannedTotal( sum ) : '—';
+			if ( partialEl ) {
+				partialEl.hidden = !( plannedCount > 0 && plannedCount < named.length );
+			}
+		}
+
 		function bindCard( card ) {
 			if ( card.dataset.bound ) {
 				return;
@@ -247,16 +314,20 @@
 						syncConfirmWarning( card );
 						syncCopyWarning( card );
 						syncZeroGateWarning( card );
+						syncPlannedTotal();
 						return;
 					}
 					card.remove();
 					refreshOrder();
+					syncPlannedTotal();
 				} );
 			}
 
 			var batchSelectBind = card.querySelector( '.som-batch-group-select' );
 			var manualBind = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timerBind = card.querySelector( 'input[name*="[timer_value]"]' );
+			var plannedValueBind = card.querySelector( '[data-som-planned-value]' );
+			var plannedUnitBind = card.querySelector( '[data-som-planned-unit]' );
 			var confirmBind = card.querySelector( '.som-confirmation-kind' );
 			var commandBind = card.querySelector( '.som-command-template' );
 			var nameBind = card.querySelector( '.som-step-name' );
@@ -313,7 +384,14 @@
 			if ( nameBind ) {
 				nameBind.addEventListener( 'input', function () {
 					syncZeroGateWarning( card );
+					syncPlannedTotal();
 				} );
+			}
+			if ( plannedValueBind ) {
+				plannedValueBind.addEventListener( 'input', syncPlannedTotal );
+			}
+			if ( plannedUnitBind ) {
+				plannedUnitBind.addEventListener( 'change', syncPlannedTotal );
 			}
 
 			syncBatchWarning( card );
@@ -398,9 +476,12 @@
 					bindCard( card );
 					bindTaskLists( card );
 					refreshOrder();
+					syncPlannedTotal();
 				}
 			} );
 		}
+
+		syncPlannedTotal();
 
 		if ( form ) {
 			form.addEventListener( 'submit', function ( e ) {
@@ -588,6 +669,7 @@
 	initListingEditor();
 	initBatchesPage();
 	initCountdowns();
+	initLiveElapsed();
 	initAdvanceStepRest();
 	initCopyText();
 
@@ -1217,5 +1299,47 @@
 
 		tick();
 		setInterval( tick, 1000 );
+	}
+
+	/**
+	 * Live wall-clock elapsed for in-progress steps (display only; not persisted until Mark done).
+	 */
+	function initLiveElapsed() {
+		var nodes = document.querySelectorAll( '[data-som-elapsed-from]' );
+		if ( ! nodes.length ) {
+			return;
+		}
+
+		function formatElapsed( seconds ) {
+			seconds = Math.max( 0, Math.floor( seconds ) );
+			if ( seconds < 60 ) {
+				return seconds + 's';
+			}
+			if ( seconds < 3600 ) {
+				return Math.floor( seconds / 60 ) + 'm';
+			}
+			if ( seconds < 86400 ) {
+				var h = Math.floor( seconds / 3600 );
+				var m = Math.floor( ( seconds % 3600 ) / 60 );
+				return m > 0 ? ( h + 'h ' + m + 'm' ) : ( h + 'h' );
+			}
+			var d = Math.floor( seconds / 86400 );
+			var hours = Math.floor( ( seconds % 86400 ) / 3600 );
+			return hours > 0 ? ( d + 'd ' + hours + 'h' ) : ( d + 'd' );
+		}
+
+		function tickElapsed() {
+			var now = Math.floor( Date.now() / 1000 );
+			document.querySelectorAll( '[data-som-elapsed-from]' ).forEach( function ( el ) {
+				var start = parseInt( el.getAttribute( 'data-som-elapsed-from' ), 10 );
+				if ( ! start ) {
+					return;
+				}
+				el.textContent = formatElapsed( now - start );
+			} );
+		}
+
+		tickElapsed();
+		setInterval( tickElapsed, 1000 );
 	}
 }() );

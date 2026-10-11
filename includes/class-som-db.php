@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.22.0';
+	const DB_VERSION = '1.23.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -189,6 +189,7 @@ class SOM_DB {
 			name varchar(100) NOT NULL,
 			requires_manual_confirm tinyint(1) NOT NULL DEFAULT 0,
 			timer_seconds int(11) NULL,
+			planned_seconds int(10) unsigned NULL,
 			script_config text NULL,
 			command_template text NULL,
 			batch_group_id bigint(20) unsigned NULL,
@@ -316,6 +317,7 @@ class SOM_DB {
 			manual_unblock_gates varchar(191) NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
+			actual_seconds int(10) unsigned NULL,
 			PRIMARY KEY  (id),
 			KEY order_id (order_id),
 			KEY workflow_step_id (workflow_step_id),
@@ -338,6 +340,7 @@ class SOM_DB {
 			manual_unblock_gates varchar(191) NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
+			actual_seconds int(10) unsigned NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -576,6 +579,7 @@ class SOM_DB {
 		self::upgrade_product_package_id_multi();
 		self::upgrade_copy_command_columns();
 		self::upgrade_step_task_list_columns();
+		self::upgrade_workflow_timing_columns();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -931,6 +935,44 @@ class SOM_DB {
 		self::upgrade_product_package_id_multi();
 		self::upgrade_copy_command_columns();
 		self::upgrade_step_task_list_columns();
+		self::upgrade_workflow_timing_columns();
+	}
+
+	/**
+	 * Add planned_seconds on steps + actual_seconds on progress (UP10-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_timing_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) === $steps ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'planned_seconds'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN planned_seconds int(10) unsigned NULL AFTER timer_seconds" );
+			}
+		}
+
+		$progress_tables = array(
+			self::table( 'order_step_progress' ),
+			self::table( 'order_item_step_progress' ),
+		);
+		foreach ( $progress_tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				continue;
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'actual_seconds'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$table} ADD COLUMN actual_seconds int(10) unsigned NULL AFTER completed_at" );
+			}
+		}
 	}
 
 	/**

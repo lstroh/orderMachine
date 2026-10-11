@@ -703,7 +703,7 @@ class SOM_Workflow_Engine {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
-					s.timer_seconds, s.script_config, s.workflow_template_id, s.batch_group_id,
+					s.timer_seconds, s.planned_seconds, s.script_config, s.workflow_template_id, s.batch_group_id,
 					s.confirmation_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
@@ -954,13 +954,14 @@ class SOM_Workflow_Engine {
 			$wpdb->update(
 				SOM_DB::table( 'order_step_progress' ),
 				array(
-					'status'        => 'done',
-					'started_at'    => $now,
-					'completed_at'  => $now,
-					'timer_ends_at' => null,
+					'status'         => 'done',
+					'started_at'     => $now,
+					'completed_at'   => $now,
+					'actual_seconds' => 0,
+					'timer_ends_at'  => null,
 				),
 				array( 'id' => (int) $progress->id ),
-				array( '%s', '%s', '%s', '%s' ),
+				array( '%s', '%s', '%s', '%d', '%s' ),
 				array( '%d' )
 			);
 			return self::advance_after_step( $order_id, $step_id );
@@ -1056,15 +1057,24 @@ class SOM_Workflow_Engine {
 			return true;
 		}
 
+		$started = isset( $progress->started_at ) ? $progress->started_at : $now;
+		$actual  = self::wall_clock_seconds( $started, $now );
+		if ( null === $actual ) {
+			$started = $now;
+			$actual  = 0;
+		}
+
 		$wpdb->update(
 			SOM_DB::table( 'order_step_progress' ),
 			array(
-				'status'       => 'done',
-				'completed_at' => $now,
-				'last_error'   => null,
+				'status'         => 'done',
+				'started_at'     => $started,
+				'completed_at'   => $now,
+				'actual_seconds' => $actual,
+				'last_error'     => null,
 			),
 			array( 'id' => (int) $progress->id ),
-			array( '%s', '%s', '%s' ),
+			array( '%s', '%s', '%s', '%d', '%s' ),
 			array( '%d' )
 		);
 
@@ -1123,6 +1133,24 @@ class SOM_Workflow_Engine {
 	}
 
 	/**
+	 * Wall-clock seconds between two MySQL datetimes (completed − started).
+	 *
+	 * Includes timer waits. Returns null when either timestamp is missing/invalid.
+	 *
+	 * @param string|null $started_at   MySQL datetime.
+	 * @param string|null $completed_at MySQL datetime.
+	 * @return int|null
+	 */
+	public static function wall_clock_seconds( $started_at, $completed_at ) {
+		$start = SOM_Orders::mysql_to_timestamp( $started_at );
+		$end   = SOM_Orders::mysql_to_timestamp( $completed_at );
+		if ( null === $start || null === $end ) {
+			return null;
+		}
+		return max( 0, $end - $start );
+	}
+
+	/**
 	 * @param int    $order_id Order PK.
 	 * @param object $progress Progress.
 	 * @param object $step     Step.
@@ -1131,15 +1159,25 @@ class SOM_Workflow_Engine {
 	private static function complete_current_and_advance( $order_id, $progress, $step ) {
 		global $wpdb;
 
-		$now = current_time( 'mysql', true );
+		$now    = current_time( 'mysql', true );
+		$started = isset( $progress->started_at ) ? $progress->started_at : null;
+		$actual  = self::wall_clock_seconds( $started, $now );
+		// If started_at was never set (legacy), stamp both ends so actual is 0 rather than null.
+		if ( null === $actual ) {
+			$started = $now;
+			$actual  = 0;
+		}
+
 		$wpdb->update(
 			SOM_DB::table( 'order_step_progress' ),
 			array(
-				'status'       => 'done',
-				'completed_at' => $now,
+				'status'         => 'done',
+				'started_at'     => $started,
+				'completed_at'   => $now,
+				'actual_seconds' => $actual,
 			),
 			array( 'id' => (int) $progress->id ),
-			array( '%s', '%s' ),
+			array( '%s', '%s', '%s', '%d' ),
 			array( '%d' )
 		);
 

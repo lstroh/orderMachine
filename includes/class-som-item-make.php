@@ -320,7 +320,7 @@ class SOM_Item_Make {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
-					s.timer_seconds, s.script_config, s.command_template, s.workflow_template_id, s.batch_group_id,
+					s.timer_seconds, s.planned_seconds, s.script_config, s.command_template, s.workflow_template_id, s.batch_group_id,
 					s.confirmation_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
@@ -411,16 +411,25 @@ class SOM_Item_Make {
 			return new WP_Error( 'som_step_locked', __( 'This step cannot be marked done yet.', 'order-machine' ) );
 		}
 
-		$now = current_time( 'mysql', true );
+		$now     = current_time( 'mysql', true );
+		$started = isset( $current->started_at ) ? $current->started_at : null;
+		$actual  = SOM_Workflow_Engine::wall_clock_seconds( $started, $now );
+		if ( null === $actual ) {
+			$started = $now;
+			$actual  = 0;
+		}
+
 		$wpdb->update(
 			SOM_DB::table( 'order_item_step_progress' ),
 			array(
-				'status'       => 'done',
-				'completed_at' => $now,
-				'updated_at'   => $now,
+				'status'         => 'done',
+				'started_at'     => $started,
+				'completed_at'   => $now,
+				'actual_seconds' => $actual,
+				'updated_at'     => $now,
 			),
 			array( 'id' => (int) $current->id ),
-			array( '%s', '%s', '%s' ),
+			array( '%s', '%s', '%s', '%d', '%s' ),
 			array( '%d' )
 		);
 
@@ -846,14 +855,15 @@ class SOM_Item_Make {
 			$wpdb->update(
 				$table,
 				array(
-					'status'        => 'done',
-					'started_at'    => $now,
-					'completed_at'  => $now,
-					'timer_ends_at' => null,
-					'updated_at'    => $now,
+					'status'         => 'done',
+					'started_at'     => $now,
+					'completed_at'   => $now,
+					'actual_seconds' => 0,
+					'timer_ends_at'  => null,
+					'updated_at'     => $now,
 				),
 				array( 'id' => (int) $progress->id ),
-				array( '%s', '%s', '%s', '%s', '%s' ),
+				array( '%s', '%s', '%s', '%d', '%s', '%s' ),
 				array( '%d' )
 			);
 			return self::advance_after_item_step( $order_id, $order_item_id, $step_id );

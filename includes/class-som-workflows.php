@@ -405,6 +405,11 @@ class SOM_Workflows {
 				return $timer;
 			}
 
+			$planned = self::sanitize_planned_seconds( $row );
+			if ( is_wp_error( $planned ) ) {
+				return $planned;
+			}
+
 			// UP9-S2: local / api / n8n removed — never persist script_config (clears legacy on save).
 			$script = null;
 
@@ -504,6 +509,7 @@ class SOM_Workflows {
 				'name'                    => $name,
 				'requires_manual_confirm' => $manual,
 				'timer_seconds'           => $timer,
+				'planned_seconds'         => $planned,
 				'script_config'           => $script,
 				'command_template'        => $command_template,
 				'batch_group_id'          => $batch_group_id,
@@ -531,6 +537,7 @@ class SOM_Workflows {
 				'name'                    => $row['name'],
 				'requires_manual_confirm' => $row['requires_manual_confirm'],
 				'timer_seconds'           => $row['timer_seconds'],
+				'planned_seconds'         => $row['planned_seconds'],
 				'script_config'           => $row['script_config'],
 				'command_template'        => $row['command_template'],
 				'batch_group_id'          => $row['batch_group_id'],
@@ -548,7 +555,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -562,7 +569,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -688,39 +695,87 @@ class SOM_Workflows {
 	 * @return int|null|WP_Error
 	 */
 	public static function sanitize_timer_seconds( array $row ) {
-		if ( isset( $row['timer_value'] ) || isset( $row['timer_unit'] ) ) {
-			$raw = isset( $row['timer_value'] ) ? trim( (string) $row['timer_value'] ) : '';
+		return self::sanitize_duration_seconds(
+			$row,
+			'timer_seconds',
+			'timer_value',
+			'timer_unit',
+			'som_timer_invalid',
+			__( 'Timer value must be a positive number.', 'order-machine' ),
+			'som_timer_unit',
+			__( 'Invalid timer unit.', 'order-machine' )
+		);
+	}
+
+	/**
+	 * Convert friendlier planned-duration fields to seconds (or null).
+	 *
+	 * Accepted keys: planned_seconds (raw), or planned_value + planned_unit (minutes|hours|days).
+	 * Planned duration is a reporting target — separate from the timer hard-gate.
+	 *
+	 * @param array<string, mixed> $row Step form row.
+	 * @return int|null|WP_Error
+	 */
+	public static function sanitize_planned_seconds( array $row ) {
+		return self::sanitize_duration_seconds(
+			$row,
+			'planned_seconds',
+			'planned_value',
+			'planned_unit',
+			'som_planned_invalid',
+			__( 'Planned duration must be a positive number.', 'order-machine' ),
+			'som_planned_unit',
+			__( 'Invalid planned duration unit.', 'order-machine' )
+		);
+	}
+
+	/**
+	 * Shared value+unit → seconds sanitizer for timer / planned duration.
+	 *
+	 * @param array<string, mixed> $row           Step form row.
+	 * @param string               $raw_key       Raw seconds key.
+	 * @param string               $value_key     Friendly value key.
+	 * @param string               $unit_key      Friendly unit key.
+	 * @param string               $invalid_code  WP_Error code for bad value.
+	 * @param string               $invalid_msg   WP_Error message for bad value.
+	 * @param string               $unit_code     WP_Error code for bad unit.
+	 * @param string               $unit_msg      WP_Error message for bad unit.
+	 * @return int|null|WP_Error
+	 */
+	private static function sanitize_duration_seconds( array $row, $raw_key, $value_key, $unit_key, $invalid_code, $invalid_msg, $unit_code, $unit_msg ) {
+		if ( isset( $row[ $value_key ] ) || isset( $row[ $unit_key ] ) ) {
+			$raw = isset( $row[ $value_key ] ) ? trim( (string) $row[ $value_key ] ) : '';
 			if ( '' === $raw ) {
 				return null;
 			}
 			if ( ! is_numeric( $raw ) || (float) $raw <= 0 ) {
-				return new WP_Error( 'som_timer_invalid', __( 'Timer value must be a positive number.', 'order-machine' ) );
+				return new WP_Error( $invalid_code, $invalid_msg );
 			}
 
 			$value = (float) $raw;
-			$unit  = isset( $row['timer_unit'] ) ? sanitize_key( (string) $row['timer_unit'] ) : 'minutes';
+			$unit  = isset( $row[ $unit_key ] ) ? sanitize_key( (string) $row[ $unit_key ] ) : 'minutes';
 			$mult  = 60;
 			if ( 'hours' === $unit ) {
 				$mult = HOUR_IN_SECONDS;
 			} elseif ( 'days' === $unit ) {
 				$mult = DAY_IN_SECONDS;
 			} elseif ( 'minutes' !== $unit ) {
-				return new WP_Error( 'som_timer_unit', __( 'Invalid timer unit.', 'order-machine' ) );
+				return new WP_Error( $unit_code, $unit_msg );
 			}
 
 			$seconds = (int) round( $value * $mult );
 			if ( $seconds < 1 ) {
-				return new WP_Error( 'som_timer_invalid', __( 'Timer value must be a positive number.', 'order-machine' ) );
+				return new WP_Error( $invalid_code, $invalid_msg );
 			}
 
 			return $seconds;
 		}
 
-		if ( ! array_key_exists( 'timer_seconds', $row ) || null === $row['timer_seconds'] || '' === $row['timer_seconds'] ) {
+		if ( ! array_key_exists( $raw_key, $row ) || null === $row[ $raw_key ] || '' === $row[ $raw_key ] ) {
 			return null;
 		}
 
-		$seconds = (int) $row['timer_seconds'];
+		$seconds = (int) $row[ $raw_key ];
 		if ( $seconds < 1 ) {
 			return null;
 		}
@@ -749,6 +804,64 @@ class SOM_Workflows {
 	 * @return array{value: string, unit: string}
 	 */
 	public static function timer_for_display( $seconds ) {
+		return self::duration_for_display( $seconds );
+	}
+
+	/**
+	 * Split stored planned_seconds into value + unit for the editor.
+	 *
+	 * @param int|null $seconds Stored seconds.
+	 * @return array{value: string, unit: string}
+	 */
+	public static function planned_for_display( $seconds ) {
+		return self::duration_for_display( $seconds );
+	}
+
+	/**
+	 * Sum of non-null planned_seconds for a step list + whether the plan is partial.
+	 *
+	 * @param array<int, object|array<string, mixed>> $steps Step rows (objects or arrays).
+	 * @return array{total: int|null, planned_count: int, step_count: int, is_partial: bool}
+	 */
+	public static function planned_total_summary( array $steps ) {
+		$total         = 0;
+		$planned_count = 0;
+		$step_count    = 0;
+
+		foreach ( $steps as $step ) {
+			++$step_count;
+			$raw = null;
+			if ( is_object( $step ) ) {
+				$raw = isset( $step->planned_seconds ) ? $step->planned_seconds : null;
+			} elseif ( is_array( $step ) ) {
+				$raw = array_key_exists( 'planned_seconds', $step ) ? $step['planned_seconds'] : null;
+			}
+			if ( null === $raw || '' === $raw ) {
+				continue;
+			}
+			$seconds = (int) $raw;
+			if ( $seconds < 1 ) {
+				continue;
+			}
+			++$planned_count;
+			$total += $seconds;
+		}
+
+		return array(
+			'total'         => $planned_count > 0 ? $total : null,
+			'planned_count' => $planned_count,
+			'step_count'    => $step_count,
+			'is_partial'    => $planned_count > 0 && $planned_count < $step_count,
+		);
+	}
+
+	/**
+	 * Split stored duration seconds into value + unit for the editor.
+	 *
+	 * @param int|null $seconds Stored seconds.
+	 * @return array{value: string, unit: string}
+	 */
+	private static function duration_for_display( $seconds ) {
 		$seconds = null === $seconds || '' === $seconds ? 0 : (int) $seconds;
 		if ( $seconds < 1 ) {
 			return array(

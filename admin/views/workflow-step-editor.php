@@ -34,6 +34,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 	// New / blank step cards default to manual confirm (UP7-S1) so they do not auto-complete by accident.
 	$manual   = $step ? (int) $step->requires_manual_confirm : 1;
 	$timer    = SOM_Workflows::timer_for_display( $step && null !== $step->timer_seconds ? (int) $step->timer_seconds : null );
+	$planned  = SOM_Workflows::planned_for_display( $step && isset( $step->planned_seconds ) && null !== $step->planned_seconds ? (int) $step->planned_seconds : null );
 	$batch_id = $step && ! empty( $step->batch_group_id ) ? (int) $step->batch_group_id : 0;
 	$confirm  = $step && ! empty( $step->confirmation_kind )
 		? SOM_Step_Confirmations::sanitize_kind( $step->confirmation_kind )
@@ -164,7 +165,18 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 					<option value="hours" <?php selected( $timer['unit'], 'hours' ); ?>><?php echo esc_html__( 'hours', 'order-machine' ); ?></option>
 					<option value="days" <?php selected( $timer['unit'], 'days' ); ?>><?php echo esc_html__( 'days', 'order-machine' ); ?></option>
 				</select>
-				<span class="description"><?php echo esc_html__( 'Leave blank for no timer.', 'order-machine' ); ?></span>
+				<span class="description"><?php echo esc_html__( 'Hard gate — leave blank for no timer.', 'order-machine' ); ?></span>
+			</div>
+
+			<div class="som-step-gate som-step-planned">
+				<label><?php echo esc_html__( 'Planned duration', 'order-machine' ); ?></label>
+				<input type="number" min="0" step="1" class="small-text" name="<?php echo esc_attr( $prefix ); ?>[planned_value]" value="<?php echo esc_attr( $planned['value'] ); ?>" placeholder="—" data-som-planned-value />
+				<select name="<?php echo esc_attr( $prefix ); ?>[planned_unit]" data-som-planned-unit>
+					<option value="minutes" <?php selected( $planned['unit'], 'minutes' ); ?>><?php echo esc_html__( 'minutes', 'order-machine' ); ?></option>
+					<option value="hours" <?php selected( $planned['unit'], 'hours' ); ?>><?php echo esc_html__( 'hours', 'order-machine' ); ?></option>
+					<option value="days" <?php selected( $planned['unit'], 'days' ); ?>><?php echo esc_html__( 'days', 'order-machine' ); ?></option>
+				</select>
+				<span class="description"><?php echo esc_html__( 'Target wall-clock for reporting (not a gate). Separate from timer.', 'order-machine' ); ?></span>
 			</div>
 
 			<div class="som-step-gate som-step-batch" data-som-batch-gate>
@@ -310,7 +322,19 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, copy command, and/or timer — or assign a batch group (batch-only; cannot combine with other gates). Copy command and confirmation checklists cannot combine with timer or batch. Local / API / n8n script steps are removed — use Copy command. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, copy command, and/or timer — or assign a batch group (batch-only; cannot combine with other gates). Copy command and confirmation checklists cannot combine with timer or batch. Local / API / n8n script steps are removed — use Copy command. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block. Planned duration is a reporting target only (not a gate).', 'order-machine' ); ?></p>
+
+		<?php
+		$planned_summary = SOM_Workflows::planned_total_summary( $steps );
+		$planned_total_label = SOM_Orders::format_duration_seconds( $planned_summary['total'] );
+		?>
+		<p class="som-template-planned-total description" id="som-template-planned-total" data-som-planned-total>
+			<?php echo esc_html__( 'Template planned total:', 'order-machine' ); ?>
+			<strong data-som-planned-total-value><?php echo esc_html( $planned_total_label ); ?></strong>
+			<span class="som-timing-partial" data-som-planned-partial <?php echo ! empty( $planned_summary['is_partial'] ) ? '' : 'hidden'; ?>>
+				(<?php echo esc_html__( 'partial plan — some steps have no planned duration', 'order-machine' ); ?>)
+			</span>
+		</p>
 
 		<div id="som-step-list" class="som-step-list">
 			<?php
