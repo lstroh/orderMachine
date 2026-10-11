@@ -27,6 +27,191 @@ class SOM_Trays {
 	const REASON_ORDER_COMPLETE = 'order_complete';
 
 	/**
+	 * Register completion listener (auto-release held trays).
+	 *
+	 * @return void
+	 */
+	public static function init() {
+		add_action( SOM_Production::HOOK_ORDER_COMPLETED, array( __CLASS__, 'on_order_completed' ), 5, 1 );
+	}
+
+	/**
+	 * Release all held trays when an order completes (including Internal Produce N).
+	 *
+	 * @param int $order_id Order PK.
+	 * @return void
+	 */
+	public static function on_order_completed( $order_id ) {
+		$order_id = (int) $order_id;
+		if ( $order_id < 1 ) {
+			return;
+		}
+		if ( empty( self::held_for_order( $order_id ) ) ) {
+			return;
+		}
+		$result = self::release( $order_id, array(), self::REASON_ORDER_COMPLETE, null );
+		if ( is_wp_error( $result ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log(
+				sprintf(
+					'[Order Machine] Tray auto-release failed for order %d: %s',
+					$order_id,
+					$result->get_error_message()
+				)
+			);
+		}
+	}
+
+	/**
+	 * Whether the order requires tray assignment (any sellable make template or bound pack template uses_trays).
+	 *
+	 * @param object|int $order Order row from SOM_Orders::get() or order PK.
+	 * @return bool
+	 */
+	public static function order_requires_trays( $order ) {
+		if ( is_numeric( $order ) ) {
+			$order = SOM_Orders::get( (int) $order );
+		}
+		if ( ! $order ) {
+			return false;
+		}
+
+		if ( ! empty( $order->pack_workflow_template_id ) ) {
+			$pack_tpl = SOM_Workflows::get( (int) $order->pack_workflow_template_id );
+			if ( $pack_tpl && ! empty( $pack_tpl->uses_trays ) ) {
+				return true;
+			}
+		}
+
+		if ( empty( $order->items ) || ! is_array( $order->items ) ) {
+			return false;
+		}
+
+		foreach ( $order->items as $item ) {
+			$product_id = isset( $item->product_id ) ? (int) $item->product_id : 0;
+			if ( $product_id < 1 ) {
+				continue;
+			}
+			$product = SOM_Products::get( $product_id );
+			if ( ! $product || ! empty( $product->is_internal ) ) {
+				continue;
+			}
+			$wf_id = ! empty( $product->workflow_template_id ) ? (int) $product->workflow_template_id : 0;
+			if ( $wf_id < 1 ) {
+				continue;
+			}
+			$tpl = SOM_Workflows::get( $wf_id );
+			if ( $tpl && ! empty( $tpl->uses_trays ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether the order currently holds at least one tray.
+	 *
+	 * @param int $order_id Order PK.
+	 * @return bool
+	 */
+	public static function order_has_held_trays( $order_id ) {
+		return ! empty( self::held_numbers_for_order( (int) $order_id ) );
+	}
+
+	/**
+	 * Whether trays gate is satisfied for Mark done (not required, or ≥1 held).
+	 * Manual unblock is handled separately in can_mark_done.
+	 *
+	 * @param object|int $order Order or PK.
+	 * @return bool
+	 */
+	public static function trays_gate_ok( $order ) {
+		if ( is_numeric( $order ) ) {
+			$order_id = (int) $order;
+			$order    = SOM_Orders::get( $order_id );
+		} else {
+			$order_id = $order && isset( $order->id ) ? (int) $order->id : 0;
+		}
+		if ( ! $order || $order_id < 1 ) {
+			return true;
+		}
+		if ( ! self::order_requires_trays( $order ) ) {
+			return true;
+		}
+		return self::order_has_held_trays( $order_id );
+	}
+
+	/**
+	 * Map order_id => held tray numbers (ascending) for board badges.
+	 *
+	 * @param array<int, int> $order_ids Order PKs.
+	 * @return array<int, array<int, int>>
+	 */
+	public static function held_numbers_by_orders( array $order_ids ) {
+		global $wpdb;
+
+		$ids = array();
+		foreach ( $order_ids as $id ) {
+			$id = (int) $id;
+			if ( $id > 0 ) {
+				$ids[ $id ] = $id;
+			}
+		}
+		$ids = array_values( $ids );
+		if ( empty( $ids ) ) {
+			return array();
+		}
+
+		$table        = SOM_DB::table( 'tray_assignments' );
+		$placeholders = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+		$params       = array_merge( array( self::STATUS_HELD ), $ids );
+		$sql          = "SELECT order_id, tray_number FROM {$table}
+			WHERE status = %s AND order_id IN ({$placeholders})
+			ORDER BY order_id ASC, tray_number ASC";
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
+		$map  = array();
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$oid = (int) $row->order_id;
+				if ( ! isset( $map[ $oid ] ) ) {
+					$map[ $oid ] = array();
+				}
+				$map[ $oid ][] = (int) $row->tray_number;
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Attach tray_numbers arrays onto board card objects (mutates).
+	 *
+	 * @param array<int, object> $cards Board cards with order_id or id.
+	 * @return void
+	 */
+	public static function attach_board_tray_numbers( array $cards ) {
+		$ids = array();
+		foreach ( $cards as $card ) {
+			if ( isset( $card->order_id ) && (int) $card->order_id > 0 ) {
+				$ids[] = (int) $card->order_id;
+			} elseif ( isset( $card->id ) && (int) $card->id > 0 ) {
+				$ids[] = (int) $card->id;
+			}
+		}
+		$map = self::held_numbers_by_orders( $ids );
+		foreach ( $cards as $card ) {
+			$oid = 0;
+			if ( isset( $card->order_id ) && (int) $card->order_id > 0 ) {
+				$oid = (int) $card->order_id;
+			} elseif ( isset( $card->id ) && (int) $card->id > 0 ) {
+				$oid = (int) $card->id;
+			}
+			$card->tray_numbers = isset( $map[ $oid ] ) ? $map[ $oid ] : array();
+		}
+	}
+
+	/**
 	 * Site max tray number (1–20).
 	 *
 	 * @return int
@@ -375,6 +560,21 @@ class SOM_Trays {
 
 		if ( empty( $targets ) ) {
 			return new WP_Error( 'som_tray_empty', __( 'Select at least one tray to release.', 'order-machine' ) );
+		}
+
+		// Soft default O2: while trays are required and the order is open, keep ≥1 held.
+		if ( self::REASON_MANUAL === $reason ) {
+			$order = SOM_Orders::get( $order_id );
+			if ( $order && empty( $order->is_complete ) && self::order_requires_trays( $order ) ) {
+				$held_count = count( $held_rows );
+				$release_n  = count( $targets );
+				if ( $release_n >= $held_count ) {
+					return new WP_Error(
+						'som_tray_keep_one',
+						__( 'This order requires trays. Keep at least one held tray until the order is complete (or use Unblock step to advance without trays).', 'order-machine' )
+					);
+				}
+			}
 		}
 
 		$now   = current_time( 'mysql', true );

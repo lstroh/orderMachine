@@ -605,6 +605,24 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_unblock_step'] ) ) {
+			check_admin_referer( 'som_unblock_step', 'som_order_nonce' );
+			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$order_item_id = isset( $_POST['som_order_item_id'] ) ? (int) $_POST['som_order_item_id'] : 0;
+			$result        = SOM_Workflow_Engine::unblock_step( $order_id, $order_item_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice(
+					__( 'Step unblocked. Mark done is now available; the step was not completed.', 'order-machine' ),
+					'success',
+					'som_order_saved'
+				);
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_save_pack_package'] ) ) {
 			check_admin_referer( 'som_save_pack_package', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;

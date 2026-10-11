@@ -749,6 +749,8 @@ class SOM_Orders {
 			$cards[] = $card;
 		}
 
+		SOM_Trays::attach_board_tray_numbers( $cards );
+
 		$workflow_steps = array();
 		if ( $workflow_id > 0 ) {
 			$workflow_steps = SOM_Item_Make::filter_make_steps( SOM_Workflows::get_steps( $workflow_id ) );

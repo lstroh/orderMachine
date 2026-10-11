@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.19.0';
+	const DB_VERSION = '1.20.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -292,6 +292,9 @@ class SOM_DB {
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
 			confirmation_state text NULL,
+			manual_unblock_at datetime NULL,
+			manual_unblock_by bigint(20) unsigned NULL,
+			manual_unblock_gates varchar(191) NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
 			PRIMARY KEY  (id),
@@ -310,6 +313,9 @@ class SOM_DB {
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
 			confirmation_state text NULL,
+			manual_unblock_at datetime NULL,
+			manual_unblock_by bigint(20) unsigned NULL,
+			manual_unblock_gates varchar(191) NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
 			created_at datetime NOT NULL,
@@ -545,6 +551,7 @@ class SOM_DB {
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_workflow_template_kind();
 		self::upgrade_workflow_template_uses_trays();
+		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
 		self::backfill_material_total_value();
@@ -809,6 +816,56 @@ class SOM_DB {
 	}
 
 	/**
+	 * Ensure manual_unblock_* audit columns on make + pack progress (UP8-S2).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_manual_unblock_columns() {
+		global $wpdb;
+
+		$tables = array(
+			self::table( 'order_step_progress' ),
+			self::table( 'order_item_step_progress' ),
+		);
+
+		foreach ( $tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( $exists !== $table ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$cols = $wpdb->get_results( "SHOW COLUMNS FROM {$table}", OBJECT_K );
+			if ( ! is_array( $cols ) ) {
+				continue;
+			}
+
+			if ( empty( $cols['manual_unblock_at'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$table}
+					ADD COLUMN manual_unblock_at datetime NULL AFTER confirmation_state"
+				);
+			}
+			if ( empty( $cols['manual_unblock_by'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$table}
+					ADD COLUMN manual_unblock_by bigint(20) unsigned NULL AFTER manual_unblock_at"
+				);
+			}
+			if ( empty( $cols['manual_unblock_gates'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$table}
+					ADD COLUMN manual_unblock_gates varchar(191) NULL AFTER manual_unblock_by"
+				);
+			}
+		}
+	}
+
+	/**
 	 * Seed total_value_on_hand from existing unit_cost × current_stock (idempotent).
 	 *
 	 * Only rows still at the column default (0) with a known unit_cost are updated,
@@ -847,6 +904,7 @@ class SOM_DB {
 		self::upgrade_progress_status_enum();
 		self::upgrade_workflow_template_kind();
 		self::upgrade_workflow_template_uses_trays();
+		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
 	}

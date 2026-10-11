@@ -101,6 +101,7 @@ function som_init() {
 	SOM_Batch_Groups::ensure_rows();
 	SOM_Cron::init();
 	SOM_Production::init();
+	SOM_Trays::init();
 	SOM_REST_API::init();
 	SOM_Abilities::init();
 	SOM_Seed::maybe_load_dummy_credentials();

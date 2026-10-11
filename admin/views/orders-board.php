@@ -359,6 +359,19 @@ $has_filters = ( '' !== $channel || $product_id > 0 || $workflow_id > 0 || '' !=
 												<?php echo esc_html( SOM_Orders::progress_status_label( $display_status ) ); ?>
 											</span>
 										<?php endif; ?>
+										<?php if ( ! empty( $order->tray_numbers ) && is_array( $order->tray_numbers ) ) : ?>
+											<?php foreach ( $order->tray_numbers as $tray_num ) : ?>
+												<span class="som-badge som-badge-tray" title="<?php echo esc_attr__( 'Tray', 'order-machine' ); ?>">
+													<?php
+													printf(
+														/* translators: %d: tray number */
+														esc_html__( 'Tray %d', 'order-machine' ),
+														(int) $tray_num
+													);
+													?>
+												</span>
+											<?php endforeach; ?>
+										<?php endif; ?>
 									</div>
 
 									<?php if ( 'waiting_timer' === $status && $timer_ends_ts > 0 && ! $timer_ready ) : ?>

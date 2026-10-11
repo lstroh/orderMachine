@@ -83,7 +83,9 @@ class SOM_Workflow_Engine {
 			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
 		}
 
-		if ( SOM_Shipments::is_ship_step( $step ) ) {
+		$unblocked = self::has_manual_unblock( $progress );
+
+		if ( ! $unblocked && SOM_Shipments::is_ship_step( $step ) ) {
 			$blocked = SOM_Pack::ship_blocked_reason( $order );
 			if ( '' !== $blocked ) {
 				return new WP_Error( 'som_ship_blocked', $blocked );
@@ -96,11 +98,18 @@ class SOM_Workflow_Engine {
 			}
 		}
 
-		if ( SOM_Step_Confirmations::has_confirmation( $step )
+		if ( ! $unblocked && SOM_Step_Confirmations::has_confirmation( $step )
 			&& ! SOM_Step_Confirmations::progress_is_complete( $progress, $step, $order ) ) {
 			return new WP_Error(
 				'som_confirmation_required',
 				__( 'Complete the confirmation checklist before marking this step done.', 'order-machine' )
+			);
+		}
+
+		if ( ! $unblocked && ! SOM_Trays::trays_gate_ok( $order ) ) {
+			return new WP_Error(
+				'som_trays_required',
+				__( 'Assign at least one tray to this order before marking the step done.', 'order-machine' )
 			);
 		}
 
@@ -399,6 +408,9 @@ class SOM_Workflow_Engine {
 	/**
 	 * Whether Mark done is allowed for the current progress + step definition.
 	 *
+	 * When manual_unblock_* is set on the progress row, timer / checklist / script /
+	 * batch / ship / package / hold / trays gates are treated as satisfied (UP8-S2).
+	 *
 	 * @param object $progress Progress row.
 	 * @param object $step     Workflow step row.
 	 * @return bool
@@ -412,14 +424,19 @@ class SOM_Workflow_Engine {
 			return false;
 		}
 
+		if ( self::has_manual_unblock( $progress ) ) {
+			return true;
+		}
+
 		$timer = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
 		if ( $timer > 0 && ! empty( $progress->timer_ends_at ) && ! self::timer_elapsed( $progress->timer_ends_at ) ) {
 			return false;
 		}
 
+		$order_id = isset( $progress->order_id ) ? (int) $progress->order_id : 0;
+		$order    = $order_id > 0 ? SOM_Orders::get( $order_id ) : null;
+
 		if ( SOM_Shipments::is_ship_step( $step ) ) {
-			$order_id = isset( $progress->order_id ) ? (int) $progress->order_id : 0;
-			$order    = $order_id > 0 ? SOM_Orders::get( $order_id ) : null;
 			if ( ! $order || '' !== SOM_Pack::ship_blocked_reason( $order ) ) {
 				return false;
 			}
@@ -429,10 +446,247 @@ class SOM_Workflow_Engine {
 		}
 
 		if ( SOM_Step_Confirmations::has_confirmation( $step ) ) {
-			$order_id = isset( $progress->order_id ) ? (int) $progress->order_id : 0;
-			$order    = $order_id > 0 ? SOM_Orders::get( $order_id ) : null;
 			if ( ! $order || ! SOM_Step_Confirmations::progress_is_complete( $progress, $step, $order ) ) {
 				return false;
+			}
+		}
+
+		if ( $order && ! SOM_Trays::trays_gate_ok( $order ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Whether the progress row has a manual unblock audit stamp.
+	 *
+	 * @param object $progress Progress row.
+	 * @return bool
+	 */
+	public static function has_manual_unblock( $progress ) {
+		return $progress && ! empty( $progress->manual_unblock_at );
+	}
+
+	/**
+	 * Gate keys currently blocking Mark done for this progress/step (for UI + audit).
+	 *
+	 * @param object $progress Progress row.
+	 * @param object $step     Step row.
+	 * @param object $order    Order from get().
+	 * @return array<int, string>
+	 */
+	public static function blocking_gate_keys( $progress, $step, $order ) {
+		$gates  = array();
+		$status = $progress ? (string) $progress->status : '';
+
+		if ( in_array( $status, array( 'waiting_timer' ), true ) ) {
+			$gates[] = 'timer';
+		} elseif ( $step && isset( $step->timer_seconds ) && (int) $step->timer_seconds > 0
+			&& ! empty( $progress->timer_ends_at )
+			&& ! self::timer_elapsed( $progress->timer_ends_at ) ) {
+			$gates[] = 'timer';
+		}
+
+		if ( in_array( $status, array( 'waiting_script', 'error' ), true ) ) {
+			$gates[] = 'script';
+		}
+
+		if ( 'waiting_batch' === $status ) {
+			$gates[] = 'batch';
+		}
+
+		if ( $step && SOM_Step_Confirmations::has_confirmation( $step ) && $order
+			&& ! SOM_Step_Confirmations::progress_is_complete( $progress, $step, $order ) ) {
+			$gates[] = 'checklist';
+		}
+
+		if ( $step && SOM_Shipments::is_ship_step( $step ) && $order ) {
+			if ( SOM_Pack::is_held( $order ) ) {
+				$gates[] = 'hold';
+			}
+			if ( empty( $order->shipping_package_id ) ) {
+				$gates[] = 'package';
+			}
+			if ( ! SOM_Shipments::has_required( (int) $order->id ) ) {
+				$gates[] = 'ship';
+			}
+			if ( ! SOM_Pack::order_is_make_ready( $order ) ) {
+				$gates[] = 'make_ready';
+			}
+			if ( empty( $order->pack_workflow_template_id ) ) {
+				$gates[] = 'pack_bind';
+			}
+		}
+
+		if ( $order && ! SOM_Trays::trays_gate_ok( $order ) ) {
+			$gates[] = 'trays';
+		}
+
+		return array_values( array_unique( $gates ) );
+	}
+
+	/**
+	 * Whether Unblock step should be offered on order detail for this current progress.
+	 *
+	 * @param object $progress Progress row.
+	 * @param object $step     Step row.
+	 * @param object $order    Order.
+	 * @return bool
+	 */
+	public static function can_unblock_step( $progress, $step, $order ) {
+		if ( ! $progress || ! $step || ! $order ) {
+			return false;
+		}
+		if ( ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ) {
+			return false;
+		}
+		$status = (string) $progress->status;
+		if ( in_array( $status, array( 'pending', 'done' ), true ) ) {
+			return false;
+		}
+		if ( self::can_mark_done( $progress, $step ) ) {
+			return false;
+		}
+		$gates = self::blocking_gate_keys( $progress, $step, $order );
+		if ( ! empty( $gates ) ) {
+			return true;
+		}
+		// Waiting statuses that hide Mark done even when gate list is empty.
+		return in_array( $status, array( 'waiting_timer', 'waiting_script', 'waiting_batch', 'error' ), true );
+	}
+
+	/**
+	 * Unblock the current make or pack step (all gates). Does not Mark done.
+	 *
+	 * @param int $order_id      Order PK.
+	 * @param int $order_item_id Make line PK (0 = pack / order-level progress).
+	 * @param int $user_id       WP user id (0 = current).
+	 * @return true|WP_Error
+	 */
+	public static function unblock_step( $order_id, $order_item_id = 0, $user_id = 0 ) {
+		global $wpdb;
+
+		$order_id      = (int) $order_id;
+		$order_item_id = (int) $order_item_id;
+		$user_id       = $user_id > 0 ? (int) $user_id : get_current_user_id();
+
+		$order = SOM_Orders::get( $order_id );
+		if ( ! $order ) {
+			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
+		}
+		if ( ! empty( $order->is_cancelled ) ) {
+			return new WP_Error( 'som_order_cancelled', __( 'Cancelled orders cannot be unblocked.', 'order-machine' ) );
+		}
+		if ( ! empty( $order->is_complete ) ) {
+			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
+		}
+
+		if ( $order_item_id > 0 ) {
+			$progress = SOM_Item_Make::current_item_progress( $order_item_id );
+			$table    = SOM_DB::table( 'order_item_step_progress' );
+		} else {
+			$current_step_id = (int) $order->current_step_id;
+			if ( $current_step_id < 1 ) {
+				return new WP_Error( 'som_no_workflow', __( 'This order has no workflow assigned.', 'order-machine' ) );
+			}
+			$progress = self::get_progress_for_step( $order_id, $current_step_id );
+			$table    = SOM_DB::table( 'order_step_progress' );
+		}
+
+		if ( ! $progress ) {
+			return new WP_Error( 'som_no_workflow', __( 'This order has no active step to unblock.', 'order-machine' ) );
+		}
+
+		$step = self::get_step( (int) $progress->workflow_step_id );
+		if ( ! $step ) {
+			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
+		}
+
+		$status = (string) $progress->status;
+		if ( in_array( $status, array( 'pending', 'done' ), true ) ) {
+			return new WP_Error(
+				'som_unblock_not_current',
+				__( 'Only the current active step can be unblocked.', 'order-machine' )
+			);
+		}
+
+		if ( self::can_mark_done( $progress, $step ) ) {
+			return new WP_Error(
+				'som_unblock_unneeded',
+				__( 'Mark done is already available for this step.', 'order-machine' )
+			);
+		}
+
+		$gates = self::blocking_gate_keys( $progress, $step, $order );
+		if ( empty( $gates ) && in_array( $status, array( 'waiting_timer', 'waiting_script', 'waiting_batch', 'error' ), true ) ) {
+			$gates = array( $status );
+		}
+		if ( empty( $gates ) ) {
+			$gates = array( 'gates' );
+		}
+
+		// O9: remove from collecting/ready batch when unblocking waiting_batch.
+		if ( 'waiting_batch' === $status || in_array( 'batch', $gates, true ) ) {
+			$removed = SOM_Batches::remove_order_from_open_batch( $order_id );
+			if ( is_wp_error( $removed ) ) {
+				return $removed;
+			}
+		}
+
+		$now       = current_time( 'mysql', true );
+		$gates_csv = implode( ',', $gates );
+		$update    = array(
+			'status'               => 'in_progress',
+			'timer_ends_at'        => null,
+			'last_error'           => null,
+			'manual_unblock_at'    => $now,
+			'manual_unblock_gates' => $gates_csv,
+		);
+		$formats   = array( '%s', '%s', '%s', '%s', '%s' );
+		if ( $user_id > 0 ) {
+			$update['manual_unblock_by'] = $user_id;
+			$formats[]                   = '%d';
+		} else {
+			$update['manual_unblock_by'] = null;
+			$formats[]                   = '%s';
+		}
+		if ( $order_item_id > 0 ) {
+			$update['updated_at'] = $now;
+			$formats[]            = '%s';
+		}
+
+		$ok = $wpdb->update(
+			$table,
+			$update,
+			array( 'id' => (int) $progress->id ),
+			$formats,
+			array( '%d' )
+		);
+		if ( false === $ok ) {
+			return new WP_Error( 'som_unblock_save', __( 'Could not unblock step.', 'order-machine' ) );
+		}
+
+		// Soft default O7: short order note.
+		$step_name = isset( $step->name ) ? trim( (string) $step->name ) : '';
+		if ( '' === $step_name && isset( $progress->step_name ) ) {
+			$step_name = trim( (string) $progress->step_name );
+		}
+		$who = $user_id > 0 ? SOM_Order_Notes::author_label( $user_id ) : __( 'System', 'order-machine' );
+		$note = sprintf(
+			/* translators: 1: step name, 2: user display name, 3: comma-separated gate keys */
+			__( 'Step %1$s unblocked by %2$s (%3$s). Allows Mark done without meeting gates; does not complete the step.', 'order-machine' ),
+			'' !== $step_name ? $step_name : '#' . (int) $progress->workflow_step_id,
+			$who,
+			$gates_csv
+		);
+		if ( $user_id > 0 ) {
+			SOM_Order_Notes::add( $order_id, $note, $user_id );
+		} else {
+			// CLI / system: still persist note under user 1 when available.
+			$fallback = (int) $wpdb->get_var( "SELECT ID FROM {$wpdb->users} ORDER BY ID ASC LIMIT 1" );
+			if ( $fallback > 0 ) {
+				SOM_Order_Notes::add( $order_id, $note, $fallback );
 			}
 		}
 
