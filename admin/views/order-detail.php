@@ -358,7 +358,8 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
 			<p class="description"><?php echo esc_html__( 'Cancelled — make actions are blocked.', 'order-machine' ); ?></p>
-		<?php elseif ( empty( $order->make_lines ) ) : ?>
+		<?php endif; ?>
+		<?php if ( empty( $order->make_lines ) ) : ?>
 			<p class="som-muted"><?php echo esc_html__( 'No line items on this order.', 'order-machine' ); ?></p>
 		<?php else : ?>
 			<?php foreach ( $order->make_lines as $make_item ) : ?>
@@ -442,13 +443,13 @@ if ( ! empty( $order->raw_payload ) ) {
 						</form>
 					</details>
 
-					<?php if ( $is_internal_l || $line_complete || empty( $line_progress ) ) : ?>
-						<?php /* status badge above is enough — still allow line field edits above */ ?>
+					<?php if ( $is_internal_l || empty( $line_progress ) ) : ?>
+						<?php /* internal / no progress — badge above is enough */ ?>
 					<?php else : ?>
 						<ol class="som-workflow-progress">
 							<?php foreach ( $line_progress as $row ) : ?>
 								<?php
-								$is_current = $line_current && (int) $row->id === (int) $line_current->id;
+								$is_current = ! $line_complete && empty( $order->is_cancelled ) && $line_current && (int) $row->id === (int) $line_current->id;
 								$status     = (string) $row->status;
 								$step_instructions = SOM_Step_Instructions::effective(
 									$product_id_l,
@@ -503,6 +504,7 @@ if ( ! empty( $order->raw_payload ) ) {
 											<span class="som-badge som-badge-unblocked"><?php echo esc_html__( 'Unblocked', 'order-machine' ); ?></span>
 										<?php endif; ?>
 									</div>
+									<?php SOM_Orders::render_step_timing_html( $row, $is_current ); ?>
 									<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
 										<div class="som-step-instructions">
 											<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
@@ -618,7 +620,7 @@ if ( ! empty( $order->raw_payload ) ) {
 											<span class="description"><?php echo esc_html__( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ); ?></span>
 										</form>
 									<?php endif; ?>
-									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) ) : ?>
+									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && ! $line_complete ) : ?>
 										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
 											<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
 											<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
@@ -638,6 +640,14 @@ if ( ! empty( $order->raw_payload ) ) {
 								</li>
 							<?php endforeach; ?>
 						</ol>
+						<?php
+						// O2: span total only when make line finished. Cancelled mid-run → no invented total.
+						SOM_Orders::render_workflow_timing_footer_html(
+							$line_progress,
+							(bool) $line_complete,
+							__( 'Make total', 'order-machine' )
+						);
+						?>
 					<?php endif; ?>
 				</div>
 			<?php endforeach; ?>
@@ -912,11 +922,13 @@ if ( ! empty( $order->raw_payload ) ) {
 			<p class="description"><?php echo esc_html__( 'Cancelled — workflow actions are blocked.', 'order-machine' ); ?></p>
 		<?php elseif ( ! empty( $order->is_complete ) ) : ?>
 			<p><span class="som-badge som-badge-complete"><?php echo esc_html__( 'Workflow complete', 'order-machine' ); ?></span></p>
-		<?php else : ?>
-			<?php
-			$current_confirm_kind  = null;
-			$current_confirm_state = array();
-			$current_confirm_row   = null;
+		<?php endif; ?>
+		<?php
+		$pack_actions_open     = empty( $order->is_cancelled ) && empty( $order->is_complete );
+		$current_confirm_kind  = null;
+		$current_confirm_state = array();
+		$current_confirm_row   = null;
+		if ( $pack_actions_open ) {
 			foreach ( $order->workflow_progress as $prog_row ) {
 				if ( (int) $prog_row->workflow_step_id === (int) $order->current_step_id ) {
 					$current_confirm_kind  = SOM_Step_Confirmations::sanitize_kind(
@@ -927,12 +939,13 @@ if ( ! empty( $order->raw_payload ) ) {
 					break;
 				}
 			}
-			$primary_product_id = SOM_Workflow_Engine::primary_product_id( $order );
-			?>
+		}
+		$primary_product_id = SOM_Workflow_Engine::primary_product_id( $order );
+		?>
 			<ol class="som-workflow-progress">
 				<?php foreach ( $order->workflow_progress as $row ) : ?>
 					<?php
-					$is_current = (int) $row->workflow_step_id === (int) $order->current_step_id;
+					$is_current = $pack_actions_open && (int) $row->workflow_step_id === (int) $order->current_step_id;
 					$status     = (string) $row->status;
 					$step_instructions = SOM_Step_Instructions::effective(
 						$primary_product_id ? (int) $primary_product_id : 0,
@@ -999,6 +1012,7 @@ if ( ! empty( $order->raw_payload ) ) {
 								<span class="som-badge som-badge-unblocked"><?php echo esc_html__( 'Unblocked', 'order-machine' ); ?></span>
 							<?php endif; ?>
 						</div>
+						<?php SOM_Orders::render_step_timing_html( $row, $is_current ); ?>
 						<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
 							<div class="som-step-instructions">
 								<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
@@ -1018,14 +1032,14 @@ if ( ! empty( $order->raw_payload ) ) {
 										<?php foreach ( $step_tasks as $task ) : ?>
 											<li>
 												<label class="som-task-check">
-													<input type="checkbox" name="som_task_checks[<?php echo esc_attr( $task['id'] ); ?>]" value="1" <?php checked( SOM_Step_Tasks::is_checked( $step_task_checks, $task['id'] ) ); ?> <?php disabled( ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ); ?> />
+													<input type="checkbox" name="som_task_checks[<?php echo esc_attr( $task['id'] ); ?>]" value="1" <?php checked( SOM_Step_Tasks::is_checked( $step_task_checks, $task['id'] ) ); ?> <?php disabled( ! $pack_actions_open ); ?> />
 													<?php echo esc_html( $task['label'] ); ?>
 												</label>
 											</li>
 										<?php endforeach; ?>
 									</ul>
 									<?php
-									if ( empty( $order->is_cancelled ) && empty( $order->is_complete ) ) {
+									if ( $pack_actions_open ) {
 										submit_button( __( 'Save tasks', 'order-machine' ), 'secondary', 'submit', false );
 									}
 									?>
@@ -1282,7 +1296,13 @@ if ( ! empty( $order->raw_payload ) ) {
 					</li>
 				<?php endforeach; ?>
 			</ol>
-		<?php endif; ?>
+			<?php
+			SOM_Orders::render_workflow_timing_footer_html(
+				$order->workflow_progress,
+				! empty( $order->is_complete ),
+				$is_pack_bound ? __( 'Pack total', 'order-machine' ) : __( 'Workflow total', 'order-machine' )
+			);
+			?>
 	</section>
 	<?php endif; ?>
 

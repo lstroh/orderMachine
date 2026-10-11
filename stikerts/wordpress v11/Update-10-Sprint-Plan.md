@@ -86,10 +86,10 @@
 ## 6. Quick checklist
 
 ### UP10-S1
-- [ ] planned_seconds + editor
-- [ ] actual_seconds on complete
-- [ ] Order detail step + make/pack totals
-- [ ] Smoke
+- [x] planned_seconds + editor
+- [x] actual_seconds on complete
+- [x] Order detail step + make/pack totals
+- [x] Smoke
 
 ### UP10-S2
 - [ ] Analytics timing

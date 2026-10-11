@@ -1017,6 +1017,24 @@
 	align-items: center;
 }
 
+.som-step-timing,
+.som-workflow-timing-total {
+	margin: 4px 0 0;
+}
+
+.som-timing-delta,
+.som-timing-partial {
+	color: #646970;
+}
+
+.som-step-planned {
+	margin-top: 8px;
+}
+
+.som-template-planned-total {
+	margin: 0.5em 0 1em;
+}
+
 .som-mark-done-form,
 .som-retry-script-form {
 	margin-top: 10px;
