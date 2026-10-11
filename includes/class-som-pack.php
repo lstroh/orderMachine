@@ -115,10 +115,11 @@ class SOM_Pack {
 	 *
 	 * Soft-flags when no default Pack template (O14). Idempotent.
 	 *
-	 * @param int $order_id Order PK.
+	 * @param int                  $order_id Order PK.
+	 * @param array<string, mixed> $args     Optional: sync_package_materials (bool, default true).
 	 * @return true|WP_Error
 	 */
-	public static function bind_on_create( $order_id ) {
+	public static function bind_on_create( $order_id, array $args = array() ) {
 		global $wpdb;
 
 		$order_id = (int) $order_id;
@@ -197,7 +198,17 @@ class SOM_Pack {
 			array( '%d' )
 		);
 
-		return SOM_Workflow_Engine::enter_step_public( $order_id, (int) $steps[0]->id );
+		$entered = SOM_Workflow_Engine::enter_step_public( $order_id, (int) $steps[0]->id );
+
+		$sync_package = ! array_key_exists( 'sync_package_materials', $args ) || ! empty( $args['sync_package_materials'] );
+		if ( $sync_package && $suggested > 0 ) {
+			$reserved = SOM_Material_Stock::sync_package_reserve( $order_id );
+			if ( is_wp_error( $reserved ) ) {
+				return $reserved;
+			}
+		}
+
+		return is_wp_error( $entered ) ? $entered : true;
 	}
 
 	/**
@@ -431,6 +442,12 @@ class SOM_Pack {
 		if ( false === $ok ) {
 			return new WP_Error( 'som_package_save', __( 'Could not save shipping package.', 'order-machine' ) );
 		}
+
+		$reserved = SOM_Material_Stock::sync_package_reserve( $order_id );
+		if ( is_wp_error( $reserved ) ) {
+			return $reserved;
+		}
+
 		return true;
 	}
 

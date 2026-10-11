@@ -493,13 +493,31 @@ class SOM_Admin_Menu {
 			$raw      = isset( $_POST['som_material_actual'] ) && is_array( $_POST['som_material_actual'] )
 				? wp_unslash( $_POST['som_material_actual'] )
 				: array();
-			$actuals  = array();
-			foreach ( $raw as $material_id => $qty ) {
-				$material_id = (int) $material_id;
-				if ( $material_id < 1 || ! is_numeric( $qty ) ) {
+			$actuals  = array(
+				SOM_Material_Stock::SOURCE_RECIPE  => array(),
+				SOM_Material_Stock::SOURCE_PACKAGE => array(),
+			);
+			foreach ( $raw as $source_or_id => $value ) {
+				if ( is_array( $value ) ) {
+					$source = sanitize_key( (string) $source_or_id );
+					if ( SOM_Material_Stock::SOURCE_RECIPE !== $source && SOM_Material_Stock::SOURCE_PACKAGE !== $source ) {
+						continue;
+					}
+					foreach ( $value as $material_id => $qty ) {
+						$material_id = (int) $material_id;
+						if ( $material_id < 1 || ! is_numeric( $qty ) ) {
+							continue;
+						}
+						$actuals[ $source ][ $material_id ] = (float) $qty;
+					}
 					continue;
 				}
-				$actuals[ $material_id ] = (float) $qty;
+				// Legacy flat map → recipe.
+				$material_id = (int) $source_or_id;
+				if ( $material_id < 1 || ! is_numeric( $value ) ) {
+					continue;
+				}
+				$actuals[ SOM_Material_Stock::SOURCE_RECIPE ][ $material_id ] = (float) $value;
 			}
 			$result = SOM_Material_Stock::apply_overuse( $order_id, $actuals );
 			if ( is_wp_error( $result ) ) {
@@ -1921,6 +1939,26 @@ class SOM_Admin_Menu {
 			self::flash_notice( $result->get_error_message(), 'error', 'som_package_error' );
 			wp_safe_redirect( $package_id > 0 ? SOM_Shipping_Packages::detail_url( $package_id ) : SOM_Shipping_Packages::detail_url( 'new' ) );
 			exit;
+		}
+
+		if ( $package_id > 0 && isset( $_POST['som_pkg_material'] ) && is_array( $_POST['som_pkg_material'] ) ) {
+			$materials  = wp_unslash( $_POST['som_pkg_material'] );
+			$quantities = isset( $_POST['som_pkg_qty'] ) && is_array( $_POST['som_pkg_qty'] )
+				? wp_unslash( $_POST['som_pkg_qty'] )
+				: array();
+			$recipe_rows = array();
+			foreach ( $materials as $key => $material_id ) {
+				$recipe_rows[] = array(
+					'material_id'          => (int) $material_id,
+					'quantity_per_package' => isset( $quantities[ $key ] ) ? $quantities[ $key ] : '',
+				);
+			}
+			$recipe_result = SOM_Shipping_Packages::save_materials( $package_id, $recipe_rows );
+			if ( is_wp_error( $recipe_result ) ) {
+				self::flash_notice( $recipe_result->get_error_message(), 'error', 'som_package_error' );
+				wp_safe_redirect( SOM_Shipping_Packages::detail_url( $package_id ) );
+				exit;
+			}
 		}
 
 		self::flash_notice( __( 'Package saved.', 'order-machine' ), 'success', 'som_package_saved' );

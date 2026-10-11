@@ -26,15 +26,16 @@ class SOM_Workflow_Engine {
 	 *
 	 * Package 6: per-line make + order-level pack bind.
 	 *
-	 * @param int $order_id Order PK.
+	 * @param int                  $order_id Order PK.
+	 * @param array<string, mixed> $args     Passed to pack bind (e.g. sync_package_materials).
 	 * @return true|WP_Error
 	 */
-	public static function assign_on_create( $order_id ) {
+	public static function assign_on_create( $order_id, array $args = array() ) {
 		$result = SOM_Item_Make::assign_on_create( $order_id );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return SOM_Pack::bind_on_create( $order_id );
+		return SOM_Pack::bind_on_create( $order_id, $args );
 	}
 
 	/**

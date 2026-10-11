@@ -95,8 +95,15 @@ $assert( ! is_wp_error( $order_id ), 'create_order' );
 $order_id = (int) $order_id;
 
 $usage = SOM_Material_Stock::get_usage_by_material( $order_id );
-$assert( isset( $usage[ $material_id ] ), 'usage_has_material' );
-$planned = isset( $usage[ $material_id ] ) ? (float) $usage[ $material_id ]->planned : 0.0;
+$usage_row = null;
+foreach ( $usage as $row ) {
+	if ( (int) $row->material_id === $material_id && SOM_Material_Stock::SOURCE_RECIPE === (string) $row->source ) {
+		$usage_row = $row;
+		break;
+	}
+}
+$assert( null !== $usage_row, 'usage_has_material' );
+$planned = $usage_row ? (float) $usage_row->planned : 0.0;
 $assert( $planned > 0, 'planned_gt_zero' );
 
 $cogs_planned = SOM_Analytics::order_material_cogs( $order_id );
@@ -116,12 +123,19 @@ $apply     = SOM_Material_Stock::apply_overuse(
 $assert( ! is_wp_error( $apply ), 'apply_overuse_ok' );
 
 $usage2 = SOM_Material_Stock::get_usage_by_material( $order_id );
+$usage2_row = null;
+foreach ( $usage2 as $row ) {
+	if ( (int) $row->material_id === $material_id && SOM_Material_Stock::SOURCE_RECIPE === (string) $row->source ) {
+		$usage2_row = $row;
+		break;
+	}
+}
 $assert(
-	isset( $usage2[ $material_id ] ) && abs( (float) $usage2[ $material_id ]->extra - $extra_qty ) < 0.001,
+	null !== $usage2_row && abs( (float) $usage2_row->extra - $extra_qty ) < 0.001,
 	'extra_recorded'
 );
 $assert(
-	isset( $usage2[ $material_id ] ) && abs( (float) $usage2[ $material_id ]->actual - ( $planned + $extra_qty ) ) < 0.001,
+	null !== $usage2_row && abs( (float) $usage2_row->actual - ( $planned + $extra_qty ) ) < 0.001,
 	'actual_updated'
 );
 

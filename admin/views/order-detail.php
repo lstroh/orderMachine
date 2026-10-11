@@ -1008,7 +1008,7 @@ if ( ! empty( $order->raw_payload ) ) {
 				<?php endif; ?>
 			</p>
 			<p class="description">
-				<?php echo esc_html__( 'Planned amounts come from the product recipe. You can raise Actual if you used more — stock, order profit, and material budgets update by the extra. You cannot go below planned or reduce a previous actual.', 'order-machine' ); ?>
+				<?php echo esc_html__( 'Planned amounts come from the product recipe and the selected shipping package. You can raise Actual if you used more — stock, order profit, and material budgets update by the extra. You cannot go below planned or reduce a previous actual.', 'order-machine' ); ?>
 			</p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-orders&order_id=' . (int) $order->id ) ); ?>" class="som-materials-used-form">
 				<?php wp_nonce_field( 'som_save_materials_used', 'som_order_nonce' ); ?>
@@ -1017,6 +1017,7 @@ if ( ! empty( $order->raw_payload ) ) {
 				<table class="widefat striped som-stock-table som-materials-used-table">
 					<thead>
 						<tr>
+							<th><?php echo esc_html__( 'Source', 'order-machine' ); ?></th>
 							<th><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
 							<th><?php echo esc_html__( 'Planned', 'order-machine' ); ?></th>
 							<th><?php echo esc_html__( 'Extra', 'order-machine' ); ?></th>
@@ -1025,7 +1026,11 @@ if ( ! empty( $order->raw_payload ) ) {
 					</thead>
 					<tbody>
 						<?php foreach ( $materials_used as $usage_row ) : ?>
+							<?php
+							$usage_source = isset( $usage_row->source ) ? (string) $usage_row->source : SOM_Material_Stock::SOURCE_RECIPE;
+							?>
 							<tr>
+								<td><?php echo esc_html( SOM_Material_Stock::usage_source_label( $usage_source ) ); ?></td>
 								<td>
 									<?php echo esc_html( (string) $usage_row->material_name ); ?>
 									<?php if ( ! empty( $usage_row->material_unit ) ) : ?>
@@ -1039,7 +1044,7 @@ if ( ! empty( $order->raw_payload ) ) {
 										type="number"
 										step="0.01"
 										min="<?php echo esc_attr( (string) (float) $usage_row->actual ); ?>"
-										name="som_material_actual[<?php echo esc_attr( (string) (int) $usage_row->material_id ); ?>]"
+										name="som_material_actual[<?php echo esc_attr( $usage_source ); ?>][<?php echo esc_attr( (string) (int) $usage_row->material_id ); ?>]"
 										value="<?php echo esc_attr( (string) (float) $usage_row->actual ); ?>"
 										class="small-text"
 										<?php disabled( 'reversed' === $stock_status ); ?>

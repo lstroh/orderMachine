@@ -655,14 +655,68 @@ class SOM_Budgets {
 	 * sale_funding exists. Each call funds only the provided stock-log lines.
 	 *
 	 * @param int             $order_id Order PK.
-	 * @param array<int, int> $log_ids  material_stock_log PKs with reason order_usage_extra.
+	 * @param array<int, int> $log_ids  material_stock_log PKs with reason order_usage_extra or package_usage_extra.
 	 * @return true Always true (ledger failures are logged).
 	 */
 	public static function fund_usage_extras( $order_id, array $log_ids ) {
+		return self::fund_stock_log_lines(
+			$order_id,
+			$log_ids,
+			array( 'order_usage_extra', 'package_usage_extra' ),
+			self::REASON_EXTRA_MATERIAL_USAGE,
+			true
+		);
+	}
+
+	/**
+	 * Fund material budgets for package BOM reserve stock-log lines.
+	 *
+	 * @param int             $order_id Order PK.
+	 * @param array<int, int> $log_ids  material_stock_log PKs with reason package_reserve.
+	 * @return true Always true (ledger failures are logged).
+	 */
+	public static function fund_package_reserves( $order_id, array $log_ids ) {
+		return self::fund_stock_log_lines(
+			$order_id,
+			$log_ids,
+			array( 'package_reserve' ),
+			self::REASON_SALE_FUNDING,
+			true
+		);
+	}
+
+	/**
+	 * Reverse material budget funding when package reserves are undone on package change.
+	 *
+	 * @param int             $order_id Order PK.
+	 * @param array<int, int> $log_ids  material_stock_log PKs with reason package_unreserve.
+	 * @return true Always true (ledger failures are logged).
+	 */
+	public static function reverse_package_reserves( $order_id, array $log_ids ) {
+		return self::fund_stock_log_lines(
+			$order_id,
+			$log_ids,
+			array( 'package_unreserve' ),
+			self::REASON_SALE_FUNDING,
+			false
+		);
+	}
+
+	/**
+	 * Fund (or reverse-fund) material budgets from selected stock-log lines.
+	 *
+	 * @param int             $order_id        Order PK.
+	 * @param array<int, int> $log_ids         Stock log PKs.
+	 * @param array<int, string> $reasons      Allowed stock-log reasons.
+	 * @param string          $ledger_reason   Budget ledger reason.
+	 * @param bool            $positive_amount True = fund abs(qty×unit); false = reverse (negative).
+	 * @return true
+	 */
+	private static function fund_stock_log_lines( $order_id, array $log_ids, array $reasons, $ledger_reason, $positive_amount ) {
 		global $wpdb;
 
 		$order_id = (int) $order_id;
-		if ( $order_id < 1 || ! $log_ids ) {
+		if ( $order_id < 1 || ! $log_ids || ! $reasons ) {
 			return true;
 		}
 
@@ -679,6 +733,17 @@ class SOM_Budgets {
 			}
 		}
 		if ( ! $ids ) {
+			return true;
+		}
+
+		$allowed = array();
+		foreach ( $reasons as $reason ) {
+			$reason = sanitize_key( (string) $reason );
+			if ( '' !== $reason ) {
+				$allowed[ $reason ] = true;
+			}
+		}
+		if ( ! $allowed ) {
 			return true;
 		}
 
@@ -700,13 +765,17 @@ class SOM_Budgets {
 		$workflow_id = self::order_workflow_template_id( $order );
 
 		foreach ( $rows as $row ) {
-			if ( 'order_usage_extra' !== (string) $row->reason ) {
+			$reason = (string) $row->reason;
+			if ( ! isset( $allowed[ $reason ] ) ) {
 				continue;
 			}
 			$material_id = (int) $row->material_id;
 			$qty         = abs( (float) $row->change_qty );
 			$unit        = (float) $row->unit_cost_at_time;
 			$amount      = SOM_Material_Costing::round4( $qty * $unit );
+			if ( ! $positive_amount ) {
+				$amount = -1 * $amount;
+			}
 			if ( $material_id < 1 || abs( $amount ) < 0.0000001 ) {
 				continue;
 			}
@@ -724,7 +793,7 @@ class SOM_Budgets {
 				$amount,
 				array(
 					'order_id' => $order_id,
-					'reason'   => self::REASON_EXTRA_MATERIAL_USAGE,
+					'reason'   => $ledger_reason,
 					'notes'    => sprintf(
 						/* translators: %d: stock log id */
 						__( 'Stock log #%d', 'order-machine' ),
@@ -736,7 +805,7 @@ class SOM_Budgets {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log(
 					sprintf(
-						'[Order Machine] Extra material usage funding failed for order %d material %d (budget %d): %s',
+						'[Order Machine] Material budget funding failed for order %d material %d (budget %d): %s',
 						$order_id,
 						$material_id,
 						(int) $budget->id,
