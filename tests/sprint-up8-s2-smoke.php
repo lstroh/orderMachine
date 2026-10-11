@@ -71,7 +71,31 @@ $prev_pack = SOM_Pack::default_template_id();
 $prev_max  = SOM_Trays::get_max();
 SOM_Trays::set_max( 10 );
 
-// Pack template with uses_trays + ship step (for hold/package/ship gates).
+$smoke_order_ids = array();
+
+// Release leftover held trays from prior UP8-S2 smoke runs so S1/hardcoded pools stay free.
+$prior_held = $wpdb->get_col(
+	"SELECT DISTINCT ta.order_id
+	FROM " . SOM_DB::table( 'tray_assignments' ) . " ta
+	INNER JOIN " . SOM_DB::table( 'orders' ) . " o ON o.id = ta.order_id
+	WHERE ta.status = 'held' AND o.external_order_id LIKE 'up8s2%'"
+);
+if ( is_array( $prior_held ) ) {
+	foreach ( $prior_held as $prior_oid ) {
+		SOM_Trays::release( (int) $prior_oid, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+	}
+}
+$out( 'prior_up8s2_trays_cleared', (string) count( is_array( $prior_held ) ? $prior_held : array() ) );
+
+$pick_free = static function ( $n ) {
+	$free = SOM_Trays::free_tray_numbers();
+	if ( count( $free ) < $n ) {
+		return array();
+	}
+	return array_slice( $free, 0, $n );
+};
+
+// Pack template + ship step (for hold/package/ship gates).
 $wf_pack = SOM_Workflows::create(
 	array(
 		'name'       => 'UP8-S2 pack ' . $suffix,
@@ -99,7 +123,7 @@ $saved_pack = SOM_Workflows::save_steps(
 $assert( true === $saved_pack, 'save_pack_steps' );
 SOM_Pack::set_default_template_id( $wf_pack_id );
 
-// Make template with uses_trays + timer + checklist.
+// Make template with uses_trays + timer only (confirmation_kind cannot combine with timer).
 $wf_make = SOM_Workflows::create(
 	array(
 		'name'       => 'UP8-S2 make ' . $suffix,
@@ -117,7 +141,6 @@ $saved_make = SOM_Workflows::save_steps(
 			'name'                    => 'Print',
 			'requires_manual_confirm' => 1,
 			'timer_seconds'           => 3600,
-			'confirmation_kind'       => 'print_vs_request',
 		),
 	)
 );
@@ -150,7 +173,8 @@ $order_id = SOM_Order_Sync::create_from_external(
 	)
 );
 $assert( ! is_wp_error( $order_id ), 'create_order' );
-$order_id = (int) $order_id;
+$order_id          = (int) $order_id;
+$smoke_order_ids[] = $order_id;
 
 $order = SOM_Orders::get( $order_id );
 $assert( $order && SOM_Trays::order_requires_trays( $order ), 'order_requires_trays' );
@@ -160,47 +184,45 @@ $item_id = (int) $order->items[0]->id;
 $current = SOM_Item_Make::current_item_progress( $item_id );
 $assert( $current && 'waiting_timer' === (string) $current->status, 'make_waiting_timer' );
 
-$step = $wpdb->get_row(
-	$wpdb->prepare(
-		'SELECT * FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d LIMIT 1',
-		(int) $current->workflow_step_id
-	)
-);
-$assert( ! SOM_Workflow_Engine::can_mark_done( $current, $step ), 'blocked_without_trays_and_timer' );
+$step = null;
+if ( $current ) {
+	$step = $wpdb->get_row(
+		$wpdb->prepare(
+			'SELECT * FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d LIMIT 1',
+			(int) $current->workflow_step_id
+		)
+	);
+}
+$assert( $current && $step && ! SOM_Workflow_Engine::can_mark_done( $current, $step ), 'blocked_without_trays_and_timer' );
 
 $blocked = SOM_Item_Make::mark_done( $order_id, $item_id );
 $assert( is_wp_error( $blocked ), 'mark_done_blocked_without_trays' );
 
-// Assign tray → still blocked by timer, but trays gate ok.
-$assign = SOM_Trays::assign( $order_id, array( 1 ) );
+// Assign one free tray → still blocked by timer, but trays gate ok.
+$free_one = $pick_free( 1 );
+$assert( 1 === count( $free_one ), 'enough_free_trays_for_timer' );
+$tray_a  = (int) $free_one[0];
+$assign  = SOM_Trays::assign( $order_id, array( $tray_a ) );
 $assert( true === $assign, 'assign_tray_1' );
-$assert( array( 1 ) === SOM_Trays::held_numbers_for_order( $order_id ), 'holds_tray_1' );
+$assert( array( $tray_a ) === SOM_Trays::held_numbers_for_order( $order_id ), 'holds_tray_1' );
 
 // Soft O2: cannot release last tray while required + open.
-$keep = SOM_Trays::release( $order_id, array( 1 ), SOM_Trays::REASON_MANUAL );
+$keep = SOM_Trays::release( $order_id, array( $tray_a ), SOM_Trays::REASON_MANUAL );
 $assert( is_wp_error( $keep ) && 'som_tray_keep_one' === $keep->get_error_code(), 'keep_last_tray_while_required' );
 
-// Board data includes tray numbers.
-SOM_Trays::attach_board_tray_numbers(
-	array(
-		(object) array(
-			'order_id' => $order_id,
-		),
-	)
-);
 $card = (object) array( 'order_id' => $order_id );
 SOM_Trays::attach_board_tray_numbers( array( $card ) );
-$assert( isset( $card->tray_numbers ) && array( 1 ) === $card->tray_numbers, 'board_tray_numbers' );
+$assert( isset( $card->tray_numbers ) && array( $tray_a ) === $card->tray_numbers, 'board_tray_numbers' );
 
 // --- Unblock timer (+ trays already assigned) ---
 $unblocked = SOM_Workflow_Engine::unblock_step( $order_id, $item_id, (int) $admin_user->ID );
 $assert( true === $unblocked, 'unblock_timer_gate' );
 $current = SOM_Item_Make::current_item_progress( $item_id );
 $assert( $current && 'in_progress' === (string) $current->status, 'status_in_progress_after_unblock' );
-$assert( ! empty( $current->manual_unblock_at ), 'audit_manual_unblock_at' );
-$assert( (int) $current->manual_unblock_by === (int) $admin_user->ID, 'audit_manual_unblock_by' );
-$assert( false !== strpos( (string) $current->manual_unblock_gates, 'timer' ), 'audit_gates_include_timer' );
-$assert( SOM_Workflow_Engine::can_mark_done( $current, $step ), 'can_mark_done_after_timer_unblock' );
+$assert( $current && ! empty( $current->manual_unblock_at ), 'audit_manual_unblock_at' );
+$assert( $current && (int) $current->manual_unblock_by === (int) $admin_user->ID, 'audit_manual_unblock_by' );
+$assert( $current && false !== strpos( (string) $current->manual_unblock_gates, 'timer' ), 'audit_gates_include_timer' );
+$assert( $current && $step && SOM_Workflow_Engine::can_mark_done( $current, $step ), 'can_mark_done_after_timer_unblock' );
 
 $notes = SOM_Order_Notes::list_for_order( $order_id );
 $note_ok = false;
@@ -212,20 +234,21 @@ foreach ( $notes as $n ) {
 }
 $assert( $note_ok, 'order_note_on_unblock' );
 
-// Checklist still needed unless we unblocked checklist too — timer unblock may include checklist if incomplete.
-// Fresh unblock already set; can_mark_done returns true when unblock set regardless of checklist.
-$assert( SOM_Workflow_Engine::has_manual_unblock( $current ), 'has_manual_unblock' );
+$assert( $current && SOM_Workflow_Engine::has_manual_unblock( $current ), 'has_manual_unblock' );
 $done = SOM_Item_Make::mark_done( $order_id, $item_id );
 $assert( ! is_wp_error( $done ), 'mark_done_after_unblock' );
 $assert( null === SOM_Item_Make::current_item_progress( $item_id ), 'make_line_complete_after_mark_done' );
 // Audit fields left on the done row.
-$done_row = $wpdb->get_row(
-	$wpdb->prepare(
-		"SELECT * FROM {$oisp_t} WHERE order_item_id = %d AND workflow_step_id = %d LIMIT 1",
-		$item_id,
-		(int) $step->id
-	)
-);
+$done_row = null;
+if ( $step ) {
+	$done_row = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT * FROM {$oisp_t} WHERE order_item_id = %d AND workflow_step_id = %d LIMIT 1",
+			$item_id,
+			(int) $step->id
+		)
+	);
+}
 $assert( $done_row && ! empty( $done_row->manual_unblock_at ) && 'done' === (string) $done_row->status, 'audit_left_after_mark_done' );
 
 // --- Checklist-only unblock on a new order ---
@@ -270,8 +293,9 @@ $oid_c = SOM_Order_Sync::create_from_external(
 		),
 	)
 );
-$oid_c   = (int) $oid_c;
-$ord_c   = SOM_Orders::get( $oid_c );
+$oid_c             = (int) $oid_c;
+$smoke_order_ids[] = $oid_c;
+$ord_c             = SOM_Orders::get( $oid_c );
 $item_c  = (int) $ord_c->items[0]->id;
 $cur_c   = SOM_Item_Make::current_item_progress( $item_c );
 $step_c  = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d', (int) $cur_c->workflow_step_id ) );
@@ -323,7 +347,8 @@ $oid_t = (int) SOM_Order_Sync::create_from_external(
 		),
 	)
 );
-$ord_t  = SOM_Orders::get( $oid_t );
+$smoke_order_ids[] = $oid_t;
+$ord_t             = SOM_Orders::get( $oid_t );
 $item_t = (int) $ord_t->items[0]->id;
 $cur_t  = SOM_Item_Make::current_item_progress( $item_t );
 $step_t = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d', (int) $cur_t->workflow_step_id ) );
@@ -418,7 +443,8 @@ $oid_s = (int) SOM_Order_Sync::create_from_external(
 		),
 	)
 );
-$ord_s  = SOM_Orders::get( $oid_s );
+$smoke_order_ids[] = $oid_s;
+$ord_s             = SOM_Orders::get( $oid_s );
 $item_s = (int) $ord_s->items[0]->id;
 // Finish make so pack ship gates apply (not make_ready).
 SOM_Workflow_Engine::unblock_step( $oid_s, $item_s, (int) $admin_user->ID );
@@ -524,7 +550,8 @@ $oid_b = (int) SOM_Order_Sync::create_from_external(
 		),
 	)
 );
-$ord_b  = SOM_Orders::get( $oid_b );
+$smoke_order_ids[] = $oid_b;
+$ord_b             = SOM_Orders::get( $oid_b );
 $item_b = (int) $ord_b->items[0]->id;
 SOM_Workflow_Engine::unblock_step( $oid_b, $item_b, (int) $admin_user->ID );
 SOM_Item_Make::mark_done( $oid_b, $item_b );
@@ -572,8 +599,12 @@ $oid_rel = (int) SOM_Order_Sync::create_from_external(
 		),
 	)
 );
-SOM_Trays::assign( $oid_rel, array( 2, 4 ) );
-$assert( array( 2, 4 ) === SOM_Trays::held_numbers_for_order( $oid_rel ), 'pre_complete_trays' );
+$smoke_order_ids[] = $oid_rel;
+$free_two          = $pick_free( 2 );
+$assert( 2 === count( $free_two ), 'enough_free_trays_for_release' );
+$assign_rel = SOM_Trays::assign( $oid_rel, $free_two );
+$assert( true === $assign_rel, 'assign_release_trays' );
+$assert( $free_two === SOM_Trays::held_numbers_for_order( $oid_rel ), 'pre_complete_trays' );
 $wpdb->update(
 	SOM_DB::table( 'orders' ),
 	array(
@@ -604,6 +635,13 @@ $assert( $reasons_ok, 'release_reason_order_complete' );
 
 // Unblock does not auto Mark done — already verified: unblock then separate mark_done.
 $assert( true, 'unblock_not_auto_mark_done' );
+
+// Cleanup held trays from this run (and any leftover up8s2*) so follow-on smokes stay free.
+foreach ( array_unique( $smoke_order_ids ) as $cleanup_oid ) {
+	if ( ! empty( SOM_Trays::held_for_order( (int) $cleanup_oid ) ) ) {
+		SOM_Trays::release( (int) $cleanup_oid, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+	}
+}
 
 // Restore.
 if ( $prev_pack > 0 ) {
