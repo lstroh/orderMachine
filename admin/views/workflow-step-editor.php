@@ -57,12 +57,13 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 			</span>
 		</div>
 
-		<div class="som-step-instructions-field">
+		<div class="som-step-instructions-field" data-som-md-editor>
 			<label>
 				<?php echo esc_html__( 'Instructions (default)', 'order-machine' ); ?>
-				<textarea class="large-text" rows="3" name="<?php echo esc_attr( $prefix ); ?>[instructions]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Optional plain-text guidance for this step…', 'order-machine' ); ?>"><?php echo esc_textarea( $instructions ); ?></textarea>
+				<textarea class="large-text som-md-source" rows="3" name="<?php echo esc_attr( $prefix ); ?>[instructions]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Optional Markdown guidance for this step…', 'order-machine' ); ?>"><?php echo esc_textarea( $instructions ); ?></textarea>
 			</label>
 			<p class="description"><?php echo esc_html__( 'Shown on order detail for every product using this template, unless a product sets its own override. Leave blank for no default.', 'order-machine' ); ?></p>
+			<?php SOM_Step_Instructions::render_editor_help(); ?>
 		</div>
 
 		<div class="som-step-gates">

@@ -111,6 +111,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Shipping address
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, **waiting_batch** badge + Batches link
+- **Step instructions** — Markdown rendered as HTML on make/pack progress (product override → step default); plain text still works
 - **Copy command** on make lines when the step has a `command_template` — monospace rendered command + **Copy** (not executed by WordPress); then Mark done
 - Editable line fields: house number, street name, style (and personalisation summary) for placeholders / bad eBay payloads
 - **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done)
@@ -216,6 +217,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
 - Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order)
 - Assign workflow template
+- **Step instruction overrides** (Markdown; leave blank for workflow default; Preview in editor)
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, planned shipping when set, fee-aware profit/margin, goal alerts, listing prices)
 - For sellable products: goods weight (g), **default package** (qty 1), optional **multi-pack package** (qty 2+), flat **planned shipping** £ (hidden on internal products)
@@ -315,12 +317,15 @@ Operator can always override on the Pack panel; changing package reverses prior 
 **Step editor — main actions:**
 
 - Add / remove / reorder steps
+- **Instructions (default)** — Markdown (bold, lists, links, inline code, `##` / `###`); cheatsheet + Preview under the textarea. Max 5000 characters. No images; no TinyMCE / HTML editor. Products may override per step.
 - Requires manual confirm
-- **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist.
+- **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist. Stays separate from instructions (not embedded in the Markdown body).
 - **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer and batch
 - Timer (friendly min/hr/day → seconds)
 - Assign **batch group** (batch-only step in v1; combo with other gates is rejected). Script batch groups soft-fail on release.
 - Template-level **material cost goals**
+
+**Instructions Markdown (v1):** paragraphs/line breaks, **bold** / *italic*, bullet + numbered lists, links, inline `code`, simple headings. Unsafe HTML is stripped. Legacy plain text still renders readably.
 
 **Removed:** local / API / n8n `script_config` UI and runtime dispatch. Legacy rows show a disabled warning in the editor and clear on save; at runtime they are ignored (treated as manual Mark done).
 
