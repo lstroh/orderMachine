@@ -1313,6 +1313,62 @@
 	margin: 8px 0 12px;
 }
 
+.som-step-tasks-field {
+	margin: 10px 0 14px;
+}
+
+.som-step-tasks-label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.som-task-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+}
+
+.som-task-row .regular-text {
+	flex: 1;
+	max-width: 28em;
+}
+
+.som-step-tasks-table {
+	margin: 12px 0 20px;
+}
+
+.som-step-default-tasks {
+	margin: 6px 0 0;
+	padding-left: 1.2em;
+}
+
+.som-tasks-panel {
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	background: #f0f6fc;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.som-tasks-label {
+	display: block;
+	margin: 0 0 4px;
+}
+
+.som-tasks-list {
+	margin: 8px 0 12px;
+	padding-left: 0;
+	list-style: none;
+}
+
+.som-task-check {
+	display: block;
+	margin: 6px 0;
+	font-weight: 600;
+}
+
 .som-confirmation-panel {
 	margin: 0 0 16px;
 	padding: 12px 14px;

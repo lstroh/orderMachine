@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.21.0';
+	const DB_VERSION = '1.22.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -194,6 +194,7 @@ class SOM_DB {
 			batch_group_id bigint(20) unsigned NULL,
 			confirmation_kind varchar(40) NULL,
 			instructions text NULL,
+			task_list_json text NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -206,6 +207,18 @@ class SOM_DB {
 			product_id bigint(20) unsigned NOT NULL,
 			workflow_step_id bigint(20) unsigned NOT NULL,
 			instructions text NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY product_step (product_id,workflow_step_id),
+			KEY workflow_step_id (workflow_step_id)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_product_step_tasks (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			product_id bigint(20) unsigned NOT NULL,
+			workflow_step_id bigint(20) unsigned NOT NULL,
+			task_list_json text NOT NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -297,6 +310,7 @@ class SOM_DB {
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
 			confirmation_state text NULL,
+			task_checks_json text NULL,
 			manual_unblock_at datetime NULL,
 			manual_unblock_by bigint(20) unsigned NULL,
 			manual_unblock_gates varchar(191) NULL,
@@ -318,6 +332,7 @@ class SOM_DB {
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
 			confirmation_state text NULL,
+			task_checks_json text NULL,
 			manual_unblock_at datetime NULL,
 			manual_unblock_by bigint(20) unsigned NULL,
 			manual_unblock_gates varchar(191) NULL,
@@ -560,6 +575,7 @@ class SOM_DB {
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
 		self::upgrade_copy_command_columns();
+		self::upgrade_step_task_list_columns();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -914,6 +930,7 @@ class SOM_DB {
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
 		self::upgrade_copy_command_columns();
+		self::upgrade_step_task_list_columns();
 	}
 
 	/**
@@ -953,6 +970,43 @@ class SOM_DB {
 			if ( ! $has ) {
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->query( "ALTER TABLE {$items} ADD COLUMN {$name} {$def}" );
+			}
+		}
+	}
+
+	/**
+	 * Add optional step task lists + progress tick state (UP9-S4).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_step_task_list_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) === $steps ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'task_list_json'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN task_list_json text NULL AFTER instructions" );
+			}
+		}
+
+		$progress_tables = array(
+			self::table( 'order_step_progress' ),
+			self::table( 'order_item_step_progress' ),
+		);
+		foreach ( $progress_tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				continue;
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'task_checks_json'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$table} ADD COLUMN task_checks_json text NULL AFTER confirmation_state" );
 			}
 		}
 	}

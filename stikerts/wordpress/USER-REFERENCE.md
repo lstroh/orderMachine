@@ -112,9 +112,10 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, **waiting_batch** badge + Batches link
 - **Step instructions** — Markdown rendered as HTML on make/pack progress (product override → step default); plain text still works
+- **Tasks** — optional tick list on make/pack steps that have an effective list (product override → template default for make; template only for pack). Shown on current + completed steps; Save tasks persists ticks. **Does not block Mark done.** Separate from Confirmation checklist.
 - **Copy command** on make lines when the step has a `command_template` — monospace rendered command + **Copy** (not executed by WordPress); then Mark done
 - Editable line fields: house number, street name, style (and personalisation summary) for placeholders / bad eBay payloads
-- **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done)
+- **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done). Hard gate — not optional Tasks.
 - **Unblock step** on the current make/pack step when Mark done is gated (confirm: allows Mark done without meeting gates; does not complete the step)
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete; also blocked when trays are required and none held)
@@ -318,9 +319,10 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 - Add / remove / reorder steps
 - **Instructions (default)** — Markdown (bold, lists, links, inline code, `##` / `###`); cheatsheet + Preview under the textarea. Max 5000 characters. No images; no TinyMCE / HTML editor. Products may override per step.
+- **Tasks (optional)** — repeatable task rows (stable ids + labels). Empty = no Tasks panel. Help: does not block Mark done. Make products may override the whole list (full replace, not merge). Pack uses template tasks only.
 - Requires manual confirm
 - **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist. Stays separate from instructions (not embedded in the Markdown body).
-- **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer and batch
+- **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer and batch; hard gate (unlike optional Tasks)
 - Timer (friendly min/hr/day → seconds)
 - Assign **batch group** (batch-only step in v1; combo with other gates is rejected). Script batch groups soft-fail on release.
 - Template-level **material cost goals**
@@ -353,6 +355,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 |---|---|
 | Manual | Mark done / drag only when current and allowed |
 | Copy command | Display-only on make line; never `waiting_script`; Mark done stays manual |
+| Tasks | Optional ticks on order detail; **never** required for Mark done / drag |
 | Confirmation | Checklist on order detail must be saved complete before Mark done / drag |
 | Timer | Blocked until countdown ends (or tick unlocks) |
 | Script | **Removed** — legacy `script_config` ignored at runtime (manual Mark done) |

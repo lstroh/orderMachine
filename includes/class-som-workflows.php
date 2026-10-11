@@ -479,6 +479,25 @@ class SOM_Workflows {
 				}
 			}
 
+			$task_list_json = null;
+			if ( array_key_exists( 'tasks', $row ) ) {
+				$tasks = SOM_Step_Tasks::sanitize_from_form( $row['tasks'] );
+				if ( is_wp_error( $tasks ) ) {
+					return $tasks;
+				}
+				$task_list_json = SOM_Step_Tasks::encode_list( $tasks );
+			} elseif ( $step_id > 0 ) {
+				// Preserve existing when the form omits tasks (e.g. partial saves).
+				$existing_tasks = $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT task_list_json FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d AND workflow_template_id = %d LIMIT 1',
+						$step_id,
+						$template_id
+					)
+				);
+				$task_list_json = is_string( $existing_tasks ) && '' !== trim( $existing_tasks ) ? $existing_tasks : null;
+			}
+
 			$normalized[] = array(
 				'id'                      => $step_id,
 				'step_order'              => $order,
@@ -490,6 +509,7 @@ class SOM_Workflows {
 				'batch_group_id'          => $batch_group_id,
 				'confirmation_kind'       => $confirmation_kind,
 				'instructions'            => '' !== $instructions ? $instructions : null,
+				'task_list_json'          => $task_list_json,
 			);
 		}
 
@@ -516,6 +536,7 @@ class SOM_Workflows {
 				'batch_group_id'          => $row['batch_group_id'],
 				'confirmation_kind'       => $row['confirmation_kind'],
 				'instructions'            => $row['instructions'],
+				'task_list_json'          => $row['task_list_json'],
 				'updated_at'              => $now,
 			);
 
@@ -527,7 +548,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -541,7 +562,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -554,6 +575,7 @@ class SOM_Workflows {
 				continue;
 			}
 			SOM_Step_Instructions::delete_for_step( (int) $old_id );
+			SOM_Step_Tasks::delete_for_step( (int) $old_id );
 			$wpdb->delete(
 				$table,
 				array(

@@ -43,6 +43,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-material-stock.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-production.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflows.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-step-instructions.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-step-tasks.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-local-actions.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-script-dispatch.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-copy-command.php';

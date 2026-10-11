@@ -38,6 +38,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Script / n8n / local actions execution | **Removed** (UP9-S2) — use Copy command |
 | Copy command step + structured eBay fields | Done (UP9-S1–S2) |
 | Step instructions Markdown + styling | Done (UP9-S3) |
+| Optional step task lists (default + product override) | Done (UP9-S4) |
 | Listings push | Done (Sprint 10) |
 | REST API + MCP Abilities | Done (Sprint 11; enriched in U7 + UP3-S3) |
 | Suppliers + purchase orders (receive / close) | Done (Package 1 U2) |
@@ -281,6 +282,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
 - Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); products may override per step; order detail renders safe HTML; editor has cheatsheet + Preview (UP9-S3)
+- Set **Tasks (optional)** per step (repeatable labels); products may override the whole list on make templates (full replace); pack = template only; order detail Tasks panel never blocks Mark done (UP9-S4). Separate from **Confirmation checklist**.
 - Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). Exclusive with timer/batch; implies manual confirm
 - Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer or batch
 - Set **timer** (seconds via friendly min/hr/day UI)
@@ -1171,4 +1173,4 @@ Beyond “does it click,” please watch for:
 
 ---
 
-*End of guide. Update Package 9 Markdown instructions: `tests/sprint-up9-s3-smoke.php`. Copy command / script removal: S1–S2 smokes. Package 8 trays: `tests/sprint-up8-s*-smoke.php`.*
+*End of guide. Update Package 9 step task lists: `tests/sprint-up9-s4-smoke.php`. Markdown instructions: `tests/sprint-up9-s3-smoke.php`. Copy command / script removal: S1–S2 smokes. Package 8 trays: `tests/sprint-up8-s*-smoke.php`.*

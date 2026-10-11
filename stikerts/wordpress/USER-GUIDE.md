@@ -131,6 +131,8 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, batch, ship/package/hold, trays). Does **not** complete the step for you. |
 | **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
 | **Step instructions** | Markdown guidance on a workflow step (default) or product override. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
+| **Tasks** | Optional per-step tick list (template default + make product override). Operators can tick while running; **never** blocks **Mark done**. |
+| **Confirmation checklist** | Hard gate on a step (print / address / packing). Must be saved complete before Mark done. Not the same as Tasks. |
 
 ---
 
@@ -146,6 +148,19 @@ Use this when a make step should show a skill/command to run on your machine (e.
 Local / API / n8n **script steps are removed**. Script batch groups soft-fail on release (use manual_confirm batches). Details: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7–8.
 
 **Step instructions** on the same editor accept Markdown (bold, lists, links, code, headings). Use **Preview** under the textarea; they render on order detail. Do not put the copy-command block inside instructions — keep Copy command as its own field.
+
+---
+
+## Tasks vs Confirmation checklist
+
+| | **Tasks** | **Confirmation checklist** |
+|---|---|---|
+| Purpose | Optional operator reminders on a step | Required gate before Mark done |
+| Blocks Mark done? | **No** | **Yes** (until saved complete) |
+| Authoring | Workflow step rows + optional make product override (full replace) | Step **Confirmation checklist** kind |
+| Pack | Template tasks only (no product override) | Pack kinds (packing items, address, …) |
+
+On order detail, **Tasks** appear under steps that have a list (current and completed). **Confirmation checklist** stays the hard gate. Do not put tasks inside Markdown instructions.
 
 ---
 
