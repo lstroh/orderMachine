@@ -215,8 +215,9 @@ $assert( 1200 === (int) $print->planned_seconds, 'print_planned_joined' );
 $live = SOM_Orders::step_live_elapsed_seconds( $print );
 $assert( null !== $live && $live >= 0, 'live_elapsed_for_in_progress' );
 
-// Backdate started_at so actual is measurable.
-$print_start = gmdate( 'Y-m-d H:i:s', time() - 120 );
+// Backdate started_at so actual is measurable (non-overlapping sequential windows).
+$t0          = time();
+$print_start = gmdate( 'Y-m-d H:i:s', $t0 - 180 );
 $wpdb->update(
 	$item_prog_t,
 	array( 'started_at' => $print_start ),
@@ -245,14 +246,18 @@ $assert( ! empty( $print2->completed_at ), 'print_completed_at_set' );
 $assert( $cut2 && 'in_progress' === (string) $cut2->status, 'cut_in_progress' );
 $assert( ! empty( $cut2->started_at ), 'cut_started_at_set' );
 
-$cut_start = gmdate( 'Y-m-d H:i:s', time() - 60 );
+// Start cut at print's completed_at (sequential, no overlap), then age it before Mark done.
+$print_done_ts = SOM_Orders::mysql_to_timestamp( $print2->completed_at );
+$cut_start_ts  = $print_done_ts ? $print_done_ts : time();
 $wpdb->update(
 	$item_prog_t,
-	array( 'started_at' => $cut_start ),
+	array( 'started_at' => gmdate( 'Y-m-d H:i:s', $cut_start_ts ) ),
 	array( 'id' => (int) $cut2->id ),
 	array( '%s' ),
 	array( '%d' )
 );
+// Force a measurable cut duration by shifting both ends: started earlier relative to "now".
+sleep( 1 );
 
 $done_cut = SOM_Item_Make::mark_done( $order_id, $item_id );
 $assert( ! is_wp_error( $done_cut ), 'mark_cut_done' );
@@ -267,7 +272,8 @@ $sum_steps = 0;
 foreach ( $progress3 as $row ) {
 	$sum_steps += (int) ( $row->actual_seconds ?? 0 );
 }
-$assert( $span >= $sum_steps - 5, 'make_span_gte_sum_ish' ); // span ≈ sum for sequential; allow tiny clock skew.
+// Sequential non-overlapping steps → span ≈ sum of step actuals.
+$assert( abs( $span - $sum_steps ) <= 3, 'make_span_matches_sum' );
 $out( 'make_span_seconds', (string) $span );
 $out( 'make_sum_actuals', (string) $sum_steps );
 
@@ -316,7 +322,7 @@ $assert( $pack_ship && 'in_progress' === (string) $pack_ship->status, 'pack_ship
 // Ensure shipping package selected (Ship gate).
 $pkg_id = (int) SOM_Pack::site_default_package_id();
 if ( $pkg_id < 1 ) {
-	$pkgs = SOM_Shipping_Packages::list_active();
+	$pkgs   = SOM_Shipping_Packages::list_active();
 	$pkg_id = ! empty( $pkgs[0]->id ) ? (int) $pkgs[0]->id : 0;
 }
 if ( $pkg_id > 0 ) {
@@ -339,14 +345,17 @@ $ship_ok = SOM_Shipments::upsert(
 );
 $assert( ! is_wp_error( $ship_ok ), 'save_shipment' );
 
-$ship_start = gmdate( 'Y-m-d H:i:s', time() - 45 );
+// Sequential: ship starts at confirm's completed_at.
+$confirm_done_ts = SOM_Orders::mysql_to_timestamp( $pack_confirm2->completed_at );
+$ship_start_ts   = $confirm_done_ts ? $confirm_done_ts : time();
 $wpdb->update(
 	$order_prog_t,
-	array( 'started_at' => $ship_start ),
+	array( 'started_at' => gmdate( 'Y-m-d H:i:s', $ship_start_ts ) ),
 	array( 'id' => (int) $pack_ship->id ),
 	array( '%s' ),
 	array( '%d' )
 );
+sleep( 1 );
 
 $done_ship = SOM_Workflow_Engine::mark_done( $order_id );
 $assert( ! is_wp_error( $done_ship ), 'mark_ship_done' );
@@ -356,6 +365,12 @@ $assert( ! empty( $order->is_complete ), 'order_complete' );
 $pack_span = SOM_Orders::progress_span_seconds( $order->workflow_progress );
 $assert( null !== $pack_span && $pack_span >= 80, 'pack_span_first_to_last' );
 $out( 'pack_span_seconds', (string) $pack_span );
+
+$pack_sum = 0;
+foreach ( $order->workflow_progress as $prow ) {
+	$pack_sum += (int) ( $prow->actual_seconds ?? 0 );
+}
+$assert( abs( $pack_span - $pack_sum ) <= 3, 'pack_span_matches_sum' );
 
 foreach ( $order->workflow_progress as $prow ) {
 	if ( 'done' === (string) $prow->status ) {
