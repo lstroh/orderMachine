@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.16.0';
+	const DB_VERSION = '1.17.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -102,6 +102,18 @@ class SOM_DB {
 			PRIMARY KEY  (id),
 			UNIQUE KEY name (name),
 			KEY is_active (is_active)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_shipping_package_materials (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			shipping_package_id bigint(20) unsigned NOT NULL,
+			material_id bigint(20) unsigned NOT NULL,
+			quantity_per_package decimal(10,2) NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY package_material (shipping_package_id,material_id),
+			KEY material_id (material_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_products (

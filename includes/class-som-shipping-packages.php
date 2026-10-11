@@ -120,6 +120,114 @@ class SOM_Shipping_Packages {
 	}
 
 	/**
+	 * Material BOM rows for a shipping package.
+	 *
+	 * @param int $package_id Package PK.
+	 * @return array<int, object>
+	 */
+	public static function get_materials( $package_id ) {
+		global $wpdb;
+
+		$package_id  = (int) $package_id;
+		$recipe_t    = SOM_DB::table( 'shipping_package_materials' );
+		$materials_t = SOM_DB::table( 'materials' );
+
+		if ( $package_id < 1 ) {
+			return array();
+		}
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT pm.*, m.name AS material_name, m.unit AS material_unit, m.is_active AS material_is_active
+				FROM {$recipe_t} pm
+				INNER JOIN {$materials_t} m ON m.id = pm.material_id
+				WHERE pm.shipping_package_id = %d
+				ORDER BY pm.id ASC",
+				$package_id
+			)
+		);
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Replace the material BOM for a shipping package (reject duplicate materials).
+	 *
+	 * @param int                       $package_id Package PK.
+	 * @param array<int, array<string, mixed>> $rows Rows with material_id + quantity_per_package.
+	 * @return true|WP_Error
+	 */
+	public static function save_materials( $package_id, array $rows ) {
+		global $wpdb;
+
+		$package_id = (int) $package_id;
+		if ( $package_id < 1 || ! self::get( $package_id ) ) {
+			return new WP_Error( 'som_package_missing', __( 'Package not found.', 'order-machine' ) );
+		}
+
+		$seen       = array();
+		$normalized = array();
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$material_id = isset( $row['material_id'] ) ? (int) $row['material_id'] : 0;
+			$qty_raw     = isset( $row['quantity_per_package'] ) ? trim( (string) $row['quantity_per_package'] ) : '';
+
+			if ( $material_id < 1 || '' === $qty_raw ) {
+				continue;
+			}
+
+			if ( ! is_numeric( $qty_raw ) || (float) $qty_raw <= 0 ) {
+				return new WP_Error(
+					'som_package_recipe_qty',
+					__( 'Each package material line needs a material and a quantity greater than zero.', 'order-machine' )
+				);
+			}
+
+			if ( isset( $seen[ $material_id ] ) ) {
+				return new WP_Error(
+					'som_package_recipe_duplicate',
+					__( 'Each material can only appear once on a shipping package.', 'order-machine' )
+				);
+			}
+
+			$material = SOM_Materials::get( $material_id );
+			if ( ! $material ) {
+				return new WP_Error( 'som_package_recipe_material', __( 'Material not found.', 'order-machine' ) );
+			}
+
+			$seen[ $material_id ] = true;
+			$normalized[]         = array(
+				'material_id'           => $material_id,
+				'quantity_per_package'  => number_format( (float) $qty_raw, 2, '.', '' ),
+			);
+		}
+
+		$recipe_t = SOM_DB::table( 'shipping_package_materials' );
+		$wpdb->delete( $recipe_t, array( 'shipping_package_id' => $package_id ), array( '%d' ) );
+
+		$now = current_time( 'mysql', true );
+		foreach ( $normalized as $line ) {
+			$wpdb->insert(
+				$recipe_t,
+				array(
+					'shipping_package_id'  => $package_id,
+					'material_id'          => $line['material_id'],
+					'quantity_per_package' => $line['quantity_per_package'],
+					'created_at'           => $now,
+					'updated_at'           => $now,
+				),
+				array( '%d', '%d', '%f', '%s', '%s' )
+			);
+		}
+
+		return true;
+	}
+
+	/**
 	 * @param array<string, mixed> $data Fields.
 	 * @return int|WP_Error
 	 */
@@ -248,6 +356,8 @@ class SOM_Shipping_Packages {
 				)
 			);
 		}
+
+		$wpdb->delete( SOM_DB::table( 'shipping_package_materials' ), array( 'shipping_package_id' => $id ), array( '%d' ) );
 
 		$ok = $wpdb->delete( SOM_DB::table( 'shipping_packages' ), array( 'id' => $id ), array( '%d' ) );
 		if ( ! $ok ) {

@@ -399,23 +399,27 @@ class SOM_Analytics {
 		$log_t = SOM_DB::table( 'material_stock_log' );
 		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT change_qty, unit_cost_at_time
+				"SELECT change_qty, unit_cost_at_time, reason
 				FROM {$log_t}
-				WHERE order_id = %d AND reason IN (%s, %s)",
+				WHERE order_id = %d AND reason IN (%s, %s, %s, %s, %s)",
 				$order_id,
 				'new_order',
-				'order_usage_extra'
+				'order_usage_extra',
+				'package_reserve',
+				'package_unreserve',
+				'package_usage_extra'
 			)
 		);
 
 		$total = 0.0;
 		if ( is_array( $rows ) ) {
 			foreach ( $rows as $row ) {
-				$total += abs( (float) $row->change_qty ) * (float) $row->unit_cost_at_time;
+				// Consumption (negative change_qty) adds COGS; unreserve (positive) reduces it.
+				$total += -1 * (float) $row->change_qty * (float) $row->unit_cost_at_time;
 			}
 		}
 
-		return SOM_Material_Costing::round4( $total );
+		return SOM_Material_Costing::round4( max( 0.0, $total ) );
 	}
 
 	/**

@@ -165,10 +165,10 @@ Not part of Package 7 sprints.
 - [x] BUG-003: nest checklist; zero-gate warning; remove UP6-S2 copy; smoke
 
 ### UP7-S2
-- [ ] Package material recipe UI + table
-- [ ] Reserve/reverse on package select
-- [ ] Materials used (Package source) like product overuse
-- [ ] Smoke
+- [x] Package material recipe UI + table
+- [x] Reserve/reverse on package select
+- [x] Materials used (Package source) like product overuse
+- [x] Smoke
 
 ### UP7-S3
 - [ ] 1 pack vs 2+ package suggestion

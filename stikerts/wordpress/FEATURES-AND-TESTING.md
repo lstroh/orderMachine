@@ -27,6 +27,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Internal products UX / guards / analytics | Done (UP4-S4) |
 | Order notes (threaded log) | Done (UP5-S1) |
 | Shipping packages + planned postage | Done (UP5-S2) |
+| Shipping package materials + Materials used (Package) | Done (UP7-S2) |
 | Multipack conventions (docs; separate SKUs) | Done (UP5-S3) |
 | Workflow engine (manual + timer + script + batch + confirmation) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
@@ -188,7 +189,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Confirmation checklist** when the current step has a confirmation kind (print / address / packing)
 - **Open on eBay/Etsy** marketplace order link
 - **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete)
-- **Materials used** — planned vs actual recipe materials; raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
+- **Materials used** — planned vs actual from product **Recipe** and selected shipping **Package** (separate Source rows); raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
 - Stock log for the order available under a details disclosure
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
 - **Notes** — admin-only append-only thread (author, time, plain text); not on Board/list; not via REST/MCP
@@ -224,7 +225,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 **Multipacks (pack sizes):** model each pack size as its **own product SKU** with its own recipe and shipping defaults (e.g. seed `BIN-SET-4PK`). There is no pack→base multiplier or inventory explosion. See [`USER-GUIDE.md`](USER-GUIDE.md) (Pack sizes) and [`USER-REFERENCE.md`](USER-REFERENCE.md) §5.
 
-**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one default for new products.
+**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one default for new products; optional **package materials** BOM (reserved when the package is selected on an order — Materials used Source **Package**).
 
 ---
 

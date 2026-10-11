@@ -9,7 +9,7 @@
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
 | UP7-S1 | Make step gate & confirmation UX (BUG-003) | Code complete | No schema bump; wp-env smoke pending if Docker unavailable |
-| UP7-S2 | Package materials + Materials used | Not started | — |
+| UP7-S2 | Package materials + Materials used | Code complete | Schema **1.17.0**; wp-env smoke pending if Docker unavailable |
 | UP7-S3 | Order package suggestion + seed/docs | Not started | — |
 
 ---
@@ -51,6 +51,44 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 ---
 
-## UP7-S2 / UP7-S3
+## UP7-S2 — Package materials + Materials used
+
+- **Status:** Code complete (PR)
+- **Schema:** `1.17.0` (`wp_som_shipping_package_materials`; stock reasons `package_reserve` / `package_unreserve` / `package_usage_extra`)
+- **Plugin:** unchanged (release bump optional later → ~0.34.0)
+
+### Soft defaults applied
+
+- Materials on shipping package only (not Pack workflow)
+- Reserve when `shipping_package_id` is set/changed (including suggest-on-bind when stock applies)
+- Package change: reverse prior package reserves, then reserve new (O4)
+- Materials used rows separate by Source Recipe / Package (O5)
+- History import / cancelled / Internal Produce N skip package reserve
+- Product Costing packaging line deferred (O6)
+- No decrease below planned; Actual increase-only
+
+### Delivered
+
+- Schema: `shipping_package_materials` via `dbDelta`; `som_db_version` → `1.17.0`
+- Shipping package edit: recipe-like material BOM UI; reject duplicate materials
+- `SOM_Material_Stock::sync_package_reserve` on pack bind (when stock applies) + `SOM_Pack::set_shipping_package`
+- Material budget funding for package reserves; reverse funding on package change
+- Materials used panel: Source column; Package overuse via `package_usage_extra` + Extra material usage funding
+- COGS: `package_reserve` + `package_unreserve` + extras included
+- Smoke: `tests/sprint-up7-s2-smoke.php`
+- USER-REFERENCE / FEATURES short notes
+
+### Verification
+
+- PHP lint on changed files: pass
+- wp-env smoke: **not run in cloud agent** if Docker unavailable. Run locally:
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s2-smoke.php
+```
+
+---
+
+## UP7-S3
 
 Not started (out of scope for this PR).

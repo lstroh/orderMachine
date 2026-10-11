@@ -110,7 +110,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done)
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete)
-- **Materials used** — raise Actual above planned when you used more (stock, profit, budget); increase-only
+- **Materials used** — planned from product **Recipe** and selected shipping **Package**; raise Actual above planned when you used more (stock, profit, budget); increase-only; same material can appear once per source
 - **Platform fees** panel when synced fee lines exist
 - **Notes** — admin-only append-only log (cannot edit/delete); not synced to marketplaces
 - **Planned shipping** — expected postage (seeded from product defaults on create; editable; re-sync does not overwrite). Variance vs shipment **postage paid** when recorded. Internal orders leave planned null
@@ -216,6 +216,8 @@ Also see order **Notes** (§3) and **Planned shipping** on order detail (§3) / 
 ## 5b. Shipping packages
 
 **Where:** Order Machine → Shipping packages
+
+**Package materials:** On edit, define a material recipe (e.g. thank-you + envelope). Selecting that package on an order reserves those quantities once; Materials used shows them under Source **Package**.
 
 **What it is for:** Catalogue of outer mailers/boxes (L×W×H mm, tare grams). Assign on sellable products with goods weight and flat planned postage. Actual postage is recorded on the order shipment, not here.
 

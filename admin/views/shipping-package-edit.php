@@ -17,6 +17,9 @@ if ( ! current_user_can( 'manage_options' ) ) {
 $is_new  = ! empty( $is_new );
 $package = isset( $package ) ? $package : null;
 $refs    = ( ! $is_new && $package ) ? SOM_Shipping_Packages::count_product_refs( (int) $package->id ) : 0;
+$material_rows    = ( ! $is_new && $package ) ? SOM_Shipping_Packages::get_materials( (int) $package->id ) : array();
+$material_options = SOM_Materials::list_active();
+$blank_rows       = max( 2, 3 - count( $material_rows ) );
 ?>
 <div class="wrap som-catalog-wrap">
 	<h1>
@@ -86,6 +89,117 @@ $refs    = ( ! $is_new && $package ) ? SOM_Shipping_Packages::count_product_refs
 				</td>
 			</tr>
 		</table>
+
+		<?php if ( ! $is_new && $package ) : ?>
+			<h2><?php echo esc_html__( 'Package materials', 'order-machine' ); ?></h2>
+			<p class="description">
+				<?php echo esc_html__( 'Materials reserved once when this package is selected on an order (thank-you card, envelope, box, …). Each material can only appear once.', 'order-machine' ); ?>
+			</p>
+
+			<table class="widefat striped som-recipe-table" id="som-recipe-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Material', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Qty per package', 'order-machine' ); ?></th>
+						<th scope="col" class="som-recipe-actions-col"></th>
+					</tr>
+				</thead>
+				<tbody id="som-recipe-rows">
+					<?php
+					$index = 0;
+					foreach ( $material_rows as $row ) :
+						++$index;
+						?>
+						<tr class="som-recipe-row">
+							<td>
+								<select name="som_pkg_material[<?php echo esc_attr( (string) $index ); ?>]">
+									<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+									<?php foreach ( $material_options as $material ) : ?>
+										<option value="<?php echo esc_attr( (string) (int) $material->id ); ?>" <?php selected( (int) $row->material_id, (int) $material->id ); ?>>
+											<?php echo esc_html( (string) $material->name ); ?> (<?php echo esc_html( (string) $material->unit ); ?>)
+										</option>
+									<?php endforeach; ?>
+									<?php if ( empty( $row->material_is_active ) ) : ?>
+										<option value="<?php echo esc_attr( (string) (int) $row->material_id ); ?>" selected>
+											<?php echo esc_html( (string) $row->material_name ); ?> (<?php echo esc_html__( 'inactive', 'order-machine' ); ?>)
+										</option>
+									<?php endif; ?>
+								</select>
+							</td>
+							<td>
+								<input type="number" step="0.01" min="0.01" name="som_pkg_qty[<?php echo esc_attr( (string) $index ); ?>]" value="<?php echo esc_attr( (string) $row->quantity_per_package ); ?>" class="small-text" />
+							</td>
+							<td class="som-recipe-actions-col">
+								<button type="button" class="button-link som-recipe-remove" aria-label="<?php echo esc_attr__( 'Remove row', 'order-machine' ); ?>">&times;</button>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+
+					<?php for ( $i = 0; $i < $blank_rows; $i++ ) : ?>
+						<?php ++$index; ?>
+						<tr class="som-recipe-row">
+							<td>
+								<select name="som_pkg_material[<?php echo esc_attr( (string) $index ); ?>]">
+									<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+									<?php foreach ( $material_options as $material ) : ?>
+										<option value="<?php echo esc_attr( (string) (int) $material->id ); ?>">
+											<?php echo esc_html( (string) $material->name ); ?> (<?php echo esc_html( (string) $material->unit ); ?>)
+										</option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+							<td>
+								<input type="number" step="0.01" min="0.01" name="som_pkg_qty[<?php echo esc_attr( (string) $index ); ?>]" value="" class="small-text" />
+							</td>
+							<td class="som-recipe-actions-col">
+								<button type="button" class="button-link som-recipe-remove" aria-label="<?php echo esc_attr__( 'Remove row', 'order-machine' ); ?>">&times;</button>
+							</td>
+						</tr>
+					<?php endfor; ?>
+				</tbody>
+			</table>
+
+			<p>
+				<button type="button" class="button" id="som-recipe-add-row"><?php echo esc_html__( 'Add material row', 'order-machine' ); ?></button>
+			</p>
+
+			<?php if ( empty( $material_options ) ) : ?>
+				<div class="notice notice-warning inline"><p>
+					<?php
+					echo wp_kses_post(
+						sprintf(
+							/* translators: %s: materials admin link */
+							__( 'Add materials first under %s before building a package recipe.', 'order-machine' ),
+							'<a href="' . esc_url( SOM_Materials::list_url() ) . '">' . esc_html__( 'Materials', 'order-machine' ) . '</a>'
+						)
+					);
+					?>
+				</p></div>
+			<?php endif; ?>
+
+			<template id="som-recipe-row-template">
+				<tr class="som-recipe-row">
+					<td>
+						<select name="som_pkg_material[__INDEX__]">
+							<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
+							<?php foreach ( $material_options as $material ) : ?>
+								<option value="<?php echo esc_attr( (string) (int) $material->id ); ?>">
+									<?php echo esc_html( (string) $material->name ); ?> (<?php echo esc_html( (string) $material->unit ); ?>)
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</td>
+					<td>
+						<input type="number" step="0.01" min="0.01" name="som_pkg_qty[__INDEX__]" value="" class="small-text" />
+					</td>
+					<td class="som-recipe-actions-col">
+						<button type="button" class="button-link som-recipe-remove" aria-label="<?php echo esc_attr__( 'Remove row', 'order-machine' ); ?>">&times;</button>
+					</td>
+				</tr>
+			</template>
+		<?php else : ?>
+			<p class="description"><?php echo esc_html__( 'Save the package first, then add packaging materials (thank-you, envelope, …).', 'order-machine' ); ?></p>
+		<?php endif; ?>
 
 		<p class="submit">
 			<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save package', 'order-machine' ); ?></button>

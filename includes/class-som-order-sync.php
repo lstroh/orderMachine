@@ -428,7 +428,13 @@ class SOM_Order_Sync {
 			SOM_Budgets::fund_on_create( $order_id );
 		}
 
-		SOM_Workflow_Engine::assign_on_create( $order_id );
+		// History import skips package BOM reserve (same gate as recipe stock).
+		SOM_Workflow_Engine::assign_on_create(
+			$order_id,
+			array(
+				'sync_package_materials' => (bool) $apply_stock,
+			)
+		);
 
 		return 'created';
 	}
