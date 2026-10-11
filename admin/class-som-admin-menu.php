@@ -590,12 +590,16 @@ class SOM_Admin_Menu {
 			$raw      = isset( $_POST['som_release_tray_numbers'] ) && is_array( $_POST['som_release_tray_numbers'] )
 				? wp_unslash( $_POST['som_release_tray_numbers'] )
 				: array();
-			$numbers  = array_map( 'intval', $raw );
-			$result   = SOM_Trays::release( $order_id, $numbers, SOM_Trays::REASON_MANUAL );
-			if ( is_wp_error( $result ) ) {
-				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			$numbers  = array_values( array_filter( array_map( 'intval', $raw ) ) );
+			if ( empty( $numbers ) ) {
+				self::flash_notice( __( 'Select at least one tray to release.', 'order-machine' ), 'error', 'som_order_error' );
 			} else {
-				self::flash_notice( __( 'Trays released.', 'order-machine' ), 'success', 'som_order_saved' );
+				$result = SOM_Trays::release( $order_id, $numbers, SOM_Trays::REASON_MANUAL );
+				if ( is_wp_error( $result ) ) {
+					self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+				} else {
+					self::flash_notice( __( 'Trays released.', 'order-machine' ), 'success', 'som_order_saved' );
+				}
 			}
 			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-trays' );
 			exit;
