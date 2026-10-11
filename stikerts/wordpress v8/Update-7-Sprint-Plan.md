@@ -148,6 +148,15 @@ Record verification in **`Update-7-Sprint-Progress.md`** when implementation sta
 
 Planning only. Implement when you ask for **UP7-S1** (or later). Soft defaults apply unless overturned.
 
+**Follow-on (separate packages):**
+
+- **Trays** (order-level) + **Unblock step** (all gates) — [`../wordpress v9/Update-8-Sprint-Plan.md`](../wordpress%20v9/Update-8-Sprint-Plan.md)  
+- **Copy command** + Markdown instructions + optional step task lists — [`../wordpress v10/Update-9-Sprint-Plan.md`](../wordpress%20v10/Update-9-Sprint-Plan.md)  
+- **Workflow timing** (planned + actual) — [`../wordpress v11/Update-10-Sprint-Plan.md`](../wordpress%20v11/Update-10-Sprint-Plan.md)  
+- **Post-ship workflow** (aftercare board; complete on arrival) — [`../wordpress v12/Update-11-Sprint-Plan.md`](../wordpress%20v12/Update-11-Sprint-Plan.md)  
+
+Not part of Package 7 sprints.
+
 ---
 
 ## 9. Quick checklist
