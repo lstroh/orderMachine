@@ -2,7 +2,7 @@
 
 *Planning only. Specs in this folder. Baseline: **v0.32.2**.*
 
-**Sequencing:** Structured eBay fields + copy-command step → remove local/api/n8n + docs.
+**Sequencing:** Structured eBay fields + copy-command → remove local/api/n8n → Markdown instructions polish.
 
 ## Locked decisions (operator)
 
@@ -10,7 +10,8 @@
 - Inputs from **eBay order**; **per make line**.  
 - Editable step template with `{{placeholders}}`.  
 - Example skill: `/make-sticker-order` with order number, house, street, design, buyer name.  
-- Operator runs locally; SOM only displays + Copy + Mark done.
+- Operator runs locally; SOM only displays + Copy + Mark done.  
+- Step **instructions** support **Markdown** + better styling (not TinyMCE).
 
 ---
 
@@ -25,6 +26,9 @@
 | O5 | Legacy `script_config` at runtime | UP9-S2 | **Default: ignore (no dispatch); editor warns** |
 | O6 | Script batch groups | UP9-S2 | **Default: disabled / soft-fail; docs** |
 | O7 | Copy on Make board? | UP9-S1 | **Default: order detail only** |
+| O8 | Instructions images in Markdown? | UP9-S3 | **Default: no** |
+| O9 | Markdown parser (core vs lib) | UP9-S3 | **Choose at kickoff** |
+| O10 | Editor preview for instructions? | UP9-S3 | **Default: yes, simple** |
 
 ---
 
@@ -35,6 +39,7 @@
 | Script step | local / api / n8n execute | **Removed** |
 | Personalisation | Single text blob | + `house_number`, `street_name`, `style` from eBay |
 | Make line UI | Gates / Mark done | + rendered command + Copy |
+| Instructions | Plain `esc_html` | **Markdown** → kses HTML + CSS polish |
 | Thank-you | Pack checklist (P6) | Unchanged |
 
 ---
@@ -72,12 +77,29 @@
 
 ---
 
+### UP9-S3 — Markdown instructions + styling
+
+- **Covers:** `05-Update-Markdown-Instructions.md`  
+
+| Work | Detail |
+|---|---|
+| Render helper | Markdown → safe HTML (`wp_kses_post` / allowlist) |
+| Order detail | Replace `esc_html` body with rendered HTML; CSS for lists/headings/code |
+| Editor | Markdown help + simple preview (O10); same for product overrides |
+| Docs | USER-REFERENCE note: Markdown in instructions |
+| Tests | `tests/sprint-up9-s3-smoke.php` — bold/list render; script tags stripped |
+
+**Done when:** formatted instructions look clear on order detail; unsafe HTML stripped; smoke passes.
+
+---
+
 ## 4. Suggested SemVer
 
 | After | Plugin (approx) |
 |---|---|
 | UP9-S1 | 0.39.0* |
 | UP9-S2 | 0.40.0* |
+| UP9-S3 | 0.41.0* |
 
 \*After Packages 7–8 version bumps.
 
@@ -88,6 +110,7 @@
 - Server-side execution of Cursor skills / shell  
 - Restoring n8n webhooks  
 - AI parsing of unstructured personalisation  
+- TinyMCE / block editor for instructions  
 
 ---
 
@@ -105,3 +128,8 @@
 - [ ] Engine/batch cleanup
 - [ ] Seed example + docs
 - [ ] Smoke
+
+### UP9-S3
+- [ ] Markdown render + kses
+- [ ] Order detail / editor styling + preview
+- [ ] Docs + smoke
