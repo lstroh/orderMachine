@@ -57,6 +57,21 @@ $assert( is_string( $detail_src ) && false !== strpos( $detail_src, 'som_release
 
 $suffix = wp_generate_password( 4, false, false );
 
+// Clear leftover held trays from prior UP8-S1/S2 smoke runs (hardcoded tray numbers need a clean pool).
+$prior_held = $wpdb->get_col(
+	"SELECT DISTINCT ta.order_id
+	FROM " . SOM_DB::table( 'tray_assignments' ) . " ta
+	INNER JOIN " . SOM_DB::table( 'orders' ) . " o ON o.id = ta.order_id
+	WHERE ta.status = 'held'
+		AND ( o.external_order_id LIKE 'up8s1%' OR o.external_order_id LIKE 'up8s2%' )"
+);
+if ( is_array( $prior_held ) ) {
+	foreach ( $prior_held as $prior_oid ) {
+		SOM_Trays::release( (int) $prior_oid, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+	}
+}
+$out( 'prior_smoke_trays_cleared', (string) count( is_array( $prior_held ) ? $prior_held : array() ) );
+
 // Ensure a known pool size for the run.
 $prev_max = SOM_Trays::get_max();
 $set_max  = SOM_Trays::set_max( 10 );
@@ -184,10 +199,11 @@ $assert( true === $release_high, 'release_tray_10' );
 $ok_lower = SOM_Trays::set_max( 9 );
 $assert( true === $ok_lower && 9 === SOM_Trays::get_max(), 'lower_max_after_release' );
 
-// Restore max for leftover trays still held (1,5 on A; 2 on B) then clean up.
+// Restore max, then free held trays. Use order_complete reason so O2 keep-≥1 does not block cleanup
+// (these smoke orders use uses_trays make templates and are still open).
 SOM_Trays::set_max( 10 );
-SOM_Trays::release( $order_a, array(), SOM_Trays::REASON_MANUAL );
-SOM_Trays::release( $order_b, array(), SOM_Trays::REASON_MANUAL );
+SOM_Trays::release( $order_a, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+SOM_Trays::release( $order_b, array(), SOM_Trays::REASON_ORDER_COMPLETE );
 
 // Restore prior site max when valid.
 if ( $prev_max >= SOM_Trays::MIN_MAX && $prev_max <= SOM_Trays::MAX_MAX ) {
