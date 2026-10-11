@@ -370,17 +370,14 @@ class SOM_Workflows {
 					__( 'Cannot set kind to Pack or Post-ship while products still use this template as Make.', 'order-machine' )
 				);
 			}
-			if ( 'post_ship' === $fields['kind'] ) {
-				$fields['uses_trays'] = 0;
-				$format[]             = '%d';
-			}
 		}
 
-		if ( array_key_exists( 'uses_trays', $data ) ) {
+		if ( array_key_exists( 'uses_trays', $data ) || array_key_exists( 'kind', $data ) ) {
 			$kind_for_trays = array_key_exists( 'kind', $fields )
 				? $fields['kind']
 				: self::sanitize_kind( isset( $existing->kind ) ? $existing->kind : 'make' );
-			$fields['uses_trays'] = ( 'post_ship' !== $kind_for_trays && ! empty( $data['uses_trays'] ) ) ? 1 : 0;
+			$want_trays = array_key_exists( 'uses_trays', $data ) ? ! empty( $data['uses_trays'] ) : ! empty( $existing->uses_trays );
+			$fields['uses_trays'] = ( 'post_ship' !== $kind_for_trays && $want_trays ) ? 1 : 0;
 			$format[]             = '%d';
 		}
 
