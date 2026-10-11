@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.18.0';
+	const DB_VERSION = '1.19.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -81,6 +81,7 @@ class SOM_DB {
 			name varchar(100) NOT NULL,
 			description text NULL,
 			kind enum('make','pack') NOT NULL DEFAULT 'make',
+			uses_trays tinyint(1) NOT NULL DEFAULT 0,
 			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -518,6 +519,21 @@ class SOM_DB {
 			KEY incurred_date (incurred_date)
 		) {$charset_collate};";
 
+		$sql[] = "CREATE TABLE {$p}som_tray_assignments (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			tray_number smallint(5) unsigned NOT NULL,
+			order_id bigint(20) unsigned NOT NULL,
+			status enum('held','released') NOT NULL DEFAULT 'held',
+			assigned_at datetime NOT NULL,
+			released_at datetime NULL,
+			release_reason varchar(32) NULL,
+			assigned_by_user_id bigint(20) unsigned NULL,
+			released_by_user_id bigint(20) unsigned NULL,
+			PRIMARY KEY  (id),
+			KEY order_id (order_id),
+			KEY status_tray (status,tray_number)
+		) {$charset_collate};";
+
 		// Migrate reserved `key` → group_key before dbDelta so UNIQUE is not applied to empty placeholders.
 		self::upgrade_batch_groups_key_column();
 
@@ -528,6 +544,7 @@ class SOM_DB {
 		self::upgrade_progress_status_enum();
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_workflow_template_kind();
+		self::upgrade_workflow_template_uses_trays();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
 		self::backfill_material_total_value();
@@ -764,6 +781,34 @@ class SOM_DB {
 	}
 
 	/**
+	 * Ensure workflow_templates.uses_trays exists (UP8-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_template_uses_trays() {
+		global $wpdb;
+
+		$table = self::table( 'workflow_templates' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $exists !== $table ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'uses_trays'" );
+		if ( $col ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$table}
+			ADD COLUMN uses_trays tinyint(1) NOT NULL DEFAULT 0 AFTER kind"
+		);
+	}
+
+	/**
 	 * Seed total_value_on_hand from existing unit_cost × current_stock (idempotent).
 	 *
 	 * Only rows still at the column default (0) with a known unit_cost are updated,
@@ -801,6 +846,7 @@ class SOM_DB {
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_progress_status_enum();
 		self::upgrade_workflow_template_kind();
+		self::upgrade_workflow_template_uses_trays();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
 	}

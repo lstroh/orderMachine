@@ -509,6 +509,89 @@ if ( ! empty( $order->raw_payload ) ) {
 	</section>
 
 	<?php
+	$held_trays  = SOM_Trays::held_for_order( (int) $order->id );
+	$free_trays  = SOM_Trays::free_tray_numbers();
+	$tray_max    = SOM_Trays::get_max();
+	?>
+	<section class="som-panel som-panel-trays" id="som-trays">
+		<h2><?php echo esc_html__( 'Trays', 'order-machine' ); ?></h2>
+		<p class="description">
+			<?php
+			printf(
+				/* translators: %d: site max tray number */
+				esc_html__( 'Order-level trays (pool 1–%d). Shared by all make lines and pack on this order. A tray cannot be held by two orders at once.', 'order-machine' ),
+				(int) $tray_max
+			);
+			?>
+		</p>
+
+		<?php if ( ! empty( $held_trays ) ) : ?>
+			<form method="post" action="" class="som-trays-release-form">
+				<?php wp_nonce_field( 'som_release_trays', 'som_order_nonce' ); ?>
+				<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+				<input type="hidden" name="som_release_trays" value="1" />
+				<p><strong><?php echo esc_html__( 'Held trays', 'order-machine' ); ?></strong></p>
+				<ul class="som-tray-held-list">
+					<?php foreach ( $held_trays as $held ) : ?>
+						<li>
+							<label>
+								<input type="checkbox" name="som_release_tray_numbers[]" value="<?php echo esc_attr( (string) (int) $held->tray_number ); ?>" />
+								<?php
+								printf(
+									/* translators: %d: tray number */
+									esc_html__( 'Tray %d', 'order-machine' ),
+									(int) $held->tray_number
+								);
+								?>
+								<span class="description">
+									<?php
+									printf(
+										/* translators: %s: datetime */
+										esc_html__( 'assigned %s UTC', 'order-machine' ),
+										esc_html( (string) $held->assigned_at )
+									);
+									?>
+								</span>
+							</label>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+				<?php submit_button( __( 'Release selected', 'order-machine' ), 'secondary', 'submit', false ); ?>
+			</form>
+		<?php else : ?>
+			<p class="description"><?php echo esc_html__( 'No trays held on this order.', 'order-machine' ); ?></p>
+		<?php endif; ?>
+
+		<?php if ( ! empty( $free_trays ) ) : ?>
+			<form method="post" action="" class="som-trays-assign-form" style="margin-top:1em;">
+				<?php wp_nonce_field( 'som_assign_trays', 'som_order_nonce' ); ?>
+				<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+				<input type="hidden" name="som_assign_trays" value="1" />
+				<p><strong><?php echo esc_html__( 'Assign free trays', 'order-machine' ); ?></strong></p>
+				<ul class="som-tray-free-list">
+					<?php foreach ( $free_trays as $tray_num ) : ?>
+						<li>
+							<label>
+								<input type="checkbox" name="som_tray_numbers[]" value="<?php echo esc_attr( (string) (int) $tray_num ); ?>" />
+								<?php
+								printf(
+									/* translators: %d: tray number */
+									esc_html__( 'Tray %d', 'order-machine' ),
+									(int) $tray_num
+								);
+								?>
+							</label>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+				<?php submit_button( __( 'Assign selected', 'order-machine' ), 'secondary', 'submit', false ); ?>
+			</form>
+		<?php else : ?>
+			<p class="description" style="margin-top:1em;"><?php echo esc_html__( 'No free trays in the site pool.', 'order-machine' ); ?></p>
+		<?php endif; ?>
+	</section>
+
+	<?php
 	$is_pack_bound = ! empty( $order->pack_workflow_template_id );
 	$buyer_note    = SOM_Pack::buyer_note( $order );
 	$ship_block    = $is_pack_bound || SOM_Production::CHANNEL_SLUG !== (string) $order->channel_slug

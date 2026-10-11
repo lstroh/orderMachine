@@ -252,7 +252,7 @@ class SOM_Workflows {
 	/**
 	 * Create a template (optionally with initial steps).
 	 *
-	 * @param array<string, mixed> $data Fields: name, description, is_active, kind.
+	 * @param array<string, mixed> $data Fields: name, description, is_active, kind, uses_trays.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -265,6 +265,7 @@ class SOM_Workflows {
 
 		$description = isset( $data['description'] ) ? sanitize_textarea_field( (string) $data['description'] ) : '';
 		$kind        = self::sanitize_kind( isset( $data['kind'] ) ? $data['kind'] : 'make' );
+		$uses_trays  = ! empty( $data['uses_trays'] ) ? 1 : 0;
 		$now         = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
@@ -273,11 +274,12 @@ class SOM_Workflows {
 				'name'        => $name,
 				'description' => '' !== $description ? $description : null,
 				'kind'        => $kind,
+				'uses_trays'  => $uses_trays,
 				'is_active'   => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
 				'created_at'  => $now,
 				'updated_at'  => $now,
 			),
-			array( '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%d', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -344,6 +346,11 @@ class SOM_Workflows {
 					__( 'Cannot set kind to Pack while products still use this template.', 'order-machine' )
 				);
 			}
+		}
+
+		if ( array_key_exists( 'uses_trays', $data ) ) {
+			$fields['uses_trays'] = ! empty( $data['uses_trays'] ) ? 1 : 0;
+			$format[]             = '%d';
 		}
 
 		$updated = $wpdb->update(

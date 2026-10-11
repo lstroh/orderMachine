@@ -567,6 +567,44 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_assign_trays'] ) ) {
+			check_admin_referer( 'som_assign_trays', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$raw      = isset( $_POST['som_tray_numbers'] ) && is_array( $_POST['som_tray_numbers'] )
+				? wp_unslash( $_POST['som_tray_numbers'] )
+				: array();
+			$numbers  = array_map( 'intval', $raw );
+			$result   = SOM_Trays::assign( $order_id, $numbers );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Trays assigned.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-trays' );
+			exit;
+		}
+
+		if ( isset( $_POST['som_release_trays'] ) ) {
+			check_admin_referer( 'som_release_trays', 'som_order_nonce' );
+			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$raw      = isset( $_POST['som_release_tray_numbers'] ) && is_array( $_POST['som_release_tray_numbers'] )
+				? wp_unslash( $_POST['som_release_tray_numbers'] )
+				: array();
+			$numbers  = array_values( array_filter( array_map( 'intval', $raw ) ) );
+			if ( empty( $numbers ) ) {
+				self::flash_notice( __( 'Select at least one tray to release.', 'order-machine' ), 'error', 'som_order_error' );
+			} else {
+				$result = SOM_Trays::release( $order_id, $numbers, SOM_Trays::REASON_MANUAL );
+				if ( is_wp_error( $result ) ) {
+					self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+				} else {
+					self::flash_notice( __( 'Trays released.', 'order-machine' ), 'success', 'som_order_saved' );
+				}
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-trays' );
+			exit;
+		}
+
 		if ( isset( $_POST['som_save_pack_package'] ) ) {
 			check_admin_referer( 'som_save_pack_package', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
@@ -1334,6 +1372,7 @@ class SOM_Admin_Menu {
 			'description' => isset( $_POST['som_workflow_description'] ) ? wp_unslash( $_POST['som_workflow_description'] ) : '',
 			'is_active'   => ! empty( $_POST['som_workflow_is_active'] ),
 			'kind'        => isset( $_POST['som_workflow_kind'] ) ? wp_unslash( $_POST['som_workflow_kind'] ) : 'make',
+			'uses_trays'  => ! empty( $_POST['som_workflow_uses_trays'] ),
 		);
 
 		if ( $template_id > 0 ) {
@@ -2338,6 +2377,14 @@ class SOM_Admin_Menu {
 		$pack_set        = SOM_Pack::set_default_template_id( $pack_tpl_posted );
 		if ( is_wp_error( $pack_set ) ) {
 			self::flash_notice( $pack_set->get_error_message(), 'error', 'som_pack_template' );
+			wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+			exit;
+		}
+
+		$tray_max_posted = isset( $_POST['som_tray_max'] ) ? (int) $_POST['som_tray_max'] : SOM_Trays::DEFAULT_MAX;
+		$tray_max_set    = SOM_Trays::set_max( $tray_max_posted );
+		if ( is_wp_error( $tray_max_set ) ) {
+			self::flash_notice( $tray_max_set->get_error_message(), 'error', 'som_tray_max' );
 			wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
 			exit;
 		}
