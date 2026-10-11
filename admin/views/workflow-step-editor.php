@@ -300,6 +300,18 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 					<?php endif; ?>
 				</td>
 			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Trays', 'order-machine' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="som_workflow_uses_trays" value="1" <?php checked( $template && ! empty( $template->uses_trays ) ); ?> />
+						<?php echo esc_html__( 'Uses trays', 'order-machine' ); ?>
+					</label>
+					<p class="description">
+						<?php echo esc_html__( 'When any make or Pack template on an order uses trays, operators assign numbered trays to that order (shared by all make lines and pack). Require-on-advance lands in a later sprint.', 'order-machine' ); ?>
+					</p>
+				</td>
+			</tr>
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>

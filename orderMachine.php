@@ -49,6 +49,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-step-confirmations.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-engine.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-item-make.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-pack.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-trays.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-notes.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-shipments.php';

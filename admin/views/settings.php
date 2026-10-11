@@ -267,6 +267,23 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 		<h2><?php echo esc_html__( 'General', 'order-machine' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
+				<th scope="row"><label for="som_tray_max"><?php echo esc_html__( 'Max trays', 'order-machine' ); ?></label></th>
+				<td>
+					<input name="som_tray_max" id="som_tray_max" type="number" min="<?php echo esc_attr( (string) SOM_Trays::MIN_MAX ); ?>" max="<?php echo esc_attr( (string) SOM_Trays::MAX_MAX ); ?>" step="1" value="<?php echo esc_attr( (string) SOM_Trays::get_max() ); ?>" class="small-text" />
+					<p class="description">
+						<?php
+						printf(
+							/* translators: 1: min, 2: max, 3: default */
+							esc_html__( 'Numbered tray pool is 1 through this value (allowed %1$d–%2$d; default %3$d). Lowering is blocked while a higher tray is still held.', 'order-machine' ),
+							SOM_Trays::MIN_MAX,
+							SOM_Trays::MAX_MAX,
+							SOM_Trays::DEFAULT_MAX
+						);
+						?>
+					</p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><label for="som_pack_workflow_template_id"><?php echo esc_html__( 'Default Pack workflow', 'order-machine' ); ?></label></th>
 				<td>
 					<select name="som_pack_workflow_template_id" id="som_pack_workflow_template_id">
