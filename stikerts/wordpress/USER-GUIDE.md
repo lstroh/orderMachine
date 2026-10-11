@@ -60,7 +60,7 @@ Top-level: **Order Machine**
 | **Analytics** | Sales, profit, stock, channel mix, AOV charts |
 | **Channel Fee Estimates** | Editable estimated fee components per channel |
 | **Recurring Platform Expenses** | Non-order fees (e.g. listing fees) from fee sync |
-| **Settings** | Channels, OAuth, sync, fee sync, MCP, API key |
+| **Settings** | Channels, OAuth, sync, fee sync, MCP, API key, **Max trays**, Default Pack workflow |
 
 ---
 
@@ -126,6 +126,9 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Sync now** | Incremental pull of new/updated orders; new matched creates get workflow + stock + budget funding. |
 | **Import history** | Backfill of past orders; does **not** assign workflow / reserve stock / fund budgets like a live create. |
 | **Multipack** | N identical units sold as one SKU (e.g. a 4-pack). Model as a **separate product** with its own recipe and shipping defaults — not a multiplier on a base SKU. |
+| **Trays** | Numbered physical trays (site pool **1 … Max trays**) assigned to an **order**. Shared by all make lines and pack on that order. |
+| **Uses trays** | Template checkbox (make or Pack). If **any** make or Pack template on the order has it on, the order **requires** ≥1 held tray before Mark done / advance. |
+| **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, script, batch, ship/package/hold, trays). Does **not** complete the step for you. |
 
 ---
 
@@ -145,6 +148,31 @@ Order notes, planned vs actual postage, package materials, and Create test order
 
 ---
 
+## Trays & Unblock step
+
+Physical trays stay with the **order** (not a single make line). There is no make→pack tray transfer and no separate trays overview page — manage them on **order detail** and see numbers as badges on the Make / Pack boards.
+
+### Set up trays
+
+1. **Settings → Max trays** — pool size **1–20** (default **10**). Numbers are **1 … max**. Lowering max is blocked while a higher tray number is still held.
+2. **Workflows** → open a make or Pack template → tick **Uses trays** when orders that use that template must hold trays. Seed templates leave this **off** — turn it on when you are ready.
+
+### Day to day
+
+| Action | Where |
+|---|---|
+| Assign free trays / release held trays | Order detail → **Trays** panel (multi-select) |
+| See held tray numbers | Make Board and Pack Board card badges (**Tray N**) |
+| Bypass a blocked step | Order detail → **Unblock step** on the **current** make or pack step |
+
+**When required:** if any sellable line’s make template **or** the bound Pack template has **Uses trays**, the order needs ≥1 held tray. Mark done / Board advance stay blocked until you assign; the Trays panel highlights. You may assign more trays later; while required and the order is still open you must **keep at least one** held (cannot release the last).
+
+**Auto-release:** when the order completes (pack/ship done, or Internal Produce N when make completes), all held trays for that order free back to the pool.
+
+**Unblock step:** available on order detail when Mark done is gated. Confirm copy: *Allows Mark done without meeting this step’s gates. Does not complete the step.* Still click **Mark done** yourself. Logs who/when and adds an order note. Not on the boards. Concise rules: [`USER-REFERENCE.md`](USER-REFERENCE.md) §3 / §8.
+
+---
+
 ## Limits operators should know
 
 | Topic | Behaviour |
@@ -157,6 +185,8 @@ Order notes, planned vs actual postage, package materials, and Create test order
 | Negative stock / budgets | Allowed as a shortage / overspend signal. |
 | Ink | No special type — track via a recipe material or a manual fixed-amount budget. |
 | Mobile Board | Horizontal scroll; no stacked mobile layout. |
+| Trays | Order-level only; cannot double-book a tray; no trays overview page; seed **Uses trays** is off until you opt in. |
+| Unblock step | Order detail only; does not auto Mark done; pack hold flag stays set (Ship gate bypassed for that Mark done). |
 
 ---
 
@@ -167,8 +197,11 @@ Order notes, planned vs actual postage, package materials, and Create test order
 | No seed product / workflow | Dummy constant not on; open any Order Machine admin page once. |
 | Sync creates 0 | Already synced — check Orders; or you need new marketplace activity (live). |
 | Matched order has no workflow | Order was created before a workflow was on the product — new Sync after assignment won’t rewrite old rows. |
-| Mark done disabled on a timer step | Wait for the timer, or wait for the engine tick after it ends. |
-| Mark done missing on Thank-you | Expected while **waiting_batch** — use **Batches**. |
+| Mark done disabled on a timer step | Wait for the timer, or wait for the engine tick after it ends — or **Unblock step** on order detail (still Mark done after). |
+| Mark done blocked — trays required | Order detail → **Trays** → assign ≥1 free tray (or Unblock step to bypass without assigning). |
+| Can’t release last tray | Expected while trays are required and the order is still open — keep ≥1. |
+| Can’t lower Max trays | A higher tray number is still held — release it first. |
+| Mark done missing on Thank-you | Expected while **waiting_batch** — use **Batches**, or **Unblock step** (removes the line/order from the open batch). |
 | Stock didn’t move | History import, cancelled, unmatched-only, or already reserved for that order. |
 | Budget didn’t fund | Same as stock skip reasons; inactive budget; product/workflow scope miss; already funded. |
 | Budget didn’t draw on receive | No active material budget for that material; or you used **Mark received** (shortfall) instead of **Receive**. |
@@ -194,12 +227,12 @@ More detail: [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) §7.
 When dummy mode seeds successfully you typically get:
 
 - Product **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`) with vinyl + laminate recipe — a **multipack SKU** (materials for one 4-pack sold unit)  
-- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut)  
-- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review)  
+- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) — **Uses trays** off  
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review) — **Uses trays** off  
 - Batch groups still seeded for optional use; thank-you is checklist-only on Pack (not a batch gate)  
 - Fixture listing matches so some synced lines resolve to that product  
 
-No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
+No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Turn on **Uses trays** on a template when you want the tray gate. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
 
 ---
 

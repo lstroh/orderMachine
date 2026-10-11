@@ -572,7 +572,7 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 		<?php if ( $trays_need_assign ) : ?>
 			<div class="notice notice-warning inline som-trays-required-notice">
-				<p><?php echo esc_html__( 'Assign at least one free tray below before advancing Make or Pack steps.', 'order-machine' ); ?></p>
+				<p><?php echo esc_html__( 'Assign at least one free tray below before Mark done / advance.', 'order-machine' ); ?></p>
 			</div>
 		<?php endif; ?>
 
