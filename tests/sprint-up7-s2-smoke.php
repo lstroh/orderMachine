@@ -195,6 +195,16 @@ $order_id    = SOM_Order_Sync::create_from_external(
 $assert( ! is_wp_error( $order_id ), 'create_order' );
 $order_id = (int) $order_id;
 
+// UP7-S3 may already have reserved a suggested package on create; count those
+// rows before switching so we only assert the +2 from package A.
+$reserve_before = (int) $wpdb->get_var(
+	$wpdb->prepare(
+		'SELECT COUNT(*) FROM ' . SOM_DB::table( 'material_stock_log' ) . ' WHERE order_id = %d AND reason = %s',
+		$order_id,
+		'package_reserve'
+	)
+);
+
 // Clear any auto-suggested package reserves, then select package A.
 $set = SOM_Pack::set_shipping_package( $order_id, $pkg_a_id );
 $assert( ! is_wp_error( $set ), 'set_package_a' );
@@ -224,7 +234,7 @@ $reserve_logs = (int) $wpdb->get_var(
 		'package_reserve'
 	)
 );
-$assert( 2 === $reserve_logs, 'two_package_reserve_logs' );
+$assert( ( $reserve_before + 2 ) === $reserve_logs, 'two_package_reserve_logs' );
 
 // Idempotent re-set same package.
 $set_again = SOM_Pack::set_shipping_package( $order_id, $pkg_a_id );
@@ -236,7 +246,7 @@ $reserve_logs_2 = (int) $wpdb->get_var(
 		'package_reserve'
 	)
 );
-$assert( 2 === $reserve_logs_2, 'idempotent_no_extra_reserves' );
+$assert( $reserve_logs === $reserve_logs_2, 'idempotent_no_extra_reserves' );
 
 $cogs_before_extra = SOM_Analytics::order_material_cogs( $order_id );
 $assert( $cogs_before_extra > 0, 'cogs_includes_package_reserve' );

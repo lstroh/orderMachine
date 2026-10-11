@@ -91,10 +91,11 @@ O1 product-level `package_id_multi`; O2 sum of sellable qtys; O9 seed yes; O10 c
 
 - PHP lint on changed files
 - `node --check` on `admin/assets/js/admin.js`
-- wp-env smoke: run locally when Docker available:
+- wp-env: UP7-S3 smoke **RESULT: OK**; UP7-S2 smoke updated for create-time suggested reserve (count before switch + 2) then **RESULT: OK**
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s3-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s2-smoke.php
 ```
 
 ---
