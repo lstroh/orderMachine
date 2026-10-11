@@ -8,8 +8,8 @@
 
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
-| UP9-S1 | eBay structured fields + Copy command step | Code complete | Schema 1.21.0; this PR |
-| UP9-S2 | Remove local/api/n8n + docs/seed | Not started | |
+| UP9-S1 | eBay structured fields + Copy command step | Done on main | Schema 1.21.0; #23 |
+| UP9-S2 | Remove local/api/n8n + docs/seed | Code complete | This PR |
 | UP9-S3 | Markdown instructions + styling | Not started | |
 | UP9-S4 | Optional step task lists | Not started | |
 
@@ -17,7 +17,7 @@
 
 ## UP9-S1 — eBay structured fields + Copy command step
 
-- **Status:** Code complete (this PR)
+- **Status:** Done on `main` (#23)
 - **Schema:** 1.21.0 (`workflow_steps.command_template`; `order_items.house_number` / `street_name` / `style` / `personalisation_json`)
 - **Plugin:** unchanged (release bump optional later → ~0.39.0)
 
@@ -61,5 +61,46 @@
 ### Verification
 
 ```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s1-smoke.php
+```
+
+---
+
+## UP9-S2 — Remove local/api/n8n + docs/seed
+
+- **Status:** Code complete (this PR)
+- **Schema:** unchanged (1.21.0)
+- **Plugin:** unchanged (release bump optional later → ~0.40.0)
+
+### Delivered
+
+- **Editor:** deleted local / api / n8n / raw `script_config` UI; legacy rows show disabled warning until cleared on save (O5)
+- **Save path:** `SOM_Workflows::save_steps` always writes `script_config = null` (clears legacy); `sanitize_script_config` is a no-op
+- **Engine (O5):** make + pack enter never set `waiting_script` / never call `SOM_Script_Dispatch::execute`; legacy script-only → `in_progress` (Mark done). Timer unlock no longer dispatches. `attempt_script` / retry open for Mark done
+- **Dispatch:** `SOM_Script_Dispatch::execute` always returns `som_script_removed`; class kept for `has_script()` legacy detection
+- **Batches (O6):** script batch release soft-fails with clear message; does not run `SOM_Local_Actions`
+- **REST:** `workflow-callback` left registered but documented unused; Settings n8n / callback copy deprecated
+- **Seed:** Bin Sticker Make **Print** step gets `/make-sticker-order` copy-command template (`SOM_Copy_Command::EXAMPLE_MAKE_STICKER_TEMPLATE`); idempotent ensure + clears legacy script on Print
+- **Docs:** USER-GUIDE / USER-REFERENCE / FEATURES — Copy command + placeholders + editable fields; scripts removed; script batches disabled
+- **Smoke:** `tests/sprint-up9-s2-smoke.php` (+ S1 smoke assertion updated for removed script UI)
+
+### Soft defaults applied
+
+- O5: ignore legacy `script_config` at runtime; editor warns; clear on save
+- O6: script batches soft-fail / disabled; document
+- No server-side skill/shell execution
+- Do not restore n8n/API
+- Unblock step unchanged for remaining gates (trays, timer, checklist, batch, ship)
+
+### Explicitly deferred
+
+- UP9-S3: Markdown instructions
+- UP9-S4: step task lists
+- Deleting `SOM_Script_Dispatch` / `SOM_Local_Actions` classes entirely (kept as safe no-op / migration)
+
+### Verification
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s2-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s1-smoke.php
 ```

@@ -488,6 +488,7 @@ class SOM_Seed {
 					array(
 						'name'                    => 'Print',
 						'requires_manual_confirm' => 1,
+						'command_template'        => SOM_Copy_Command::EXAMPLE_MAKE_STICKER_TEMPLATE,
 					),
 					array(
 						'name'                    => 'Confirm print',
@@ -514,6 +515,9 @@ class SOM_Seed {
 			}
 		}
 
+		// UP9-S2: ensure seed Print step has the example copy-command template (idempotent).
+		self::ensure_seed_copy_command_template( $template_id );
+
 		$current = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT id, workflow_template_id FROM {$products_t} WHERE id = %d LIMIT 1",
@@ -533,6 +537,61 @@ class SOM_Seed {
 				array( '%d' )
 			);
 		}
+	}
+
+	/**
+	 * Ensure the seed Bin Sticker Make "Print" step has the example copy-command template.
+	 *
+	 * @param int $template_id Workflow template PK.
+	 * @return void
+	 */
+	private static function ensure_seed_copy_command_template( $template_id ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		$steps_t = SOM_DB::table( 'workflow_steps' );
+		$print   = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, command_template, script_config FROM {$steps_t}
+				WHERE workflow_template_id = %d AND name = %s
+				ORDER BY step_order ASC
+				LIMIT 1",
+				$template_id,
+				'Print'
+			)
+		);
+		if ( ! $print ) {
+			return;
+		}
+
+		$updates = array();
+		$formats = array();
+		if ( '' === trim( (string) ( $print->command_template ?? '' ) ) ) {
+			$updates['command_template'] = SOM_Copy_Command::EXAMPLE_MAKE_STICKER_TEMPLATE;
+			$formats[]                   = '%s';
+		}
+		// Clear any legacy script_config on the seed Print step.
+		if ( null !== $print->script_config && '' !== trim( (string) $print->script_config ) ) {
+			$updates['script_config'] = null;
+			$formats[]                = '%s';
+		}
+		if ( empty( $updates ) ) {
+			return;
+		}
+
+		$updates['updated_at'] = current_time( 'mysql', true );
+		$formats[]             = '%s';
+		$wpdb->update(
+			$steps_t,
+			$updates,
+			array( 'id' => (int) $print->id ),
+			$formats,
+			array( '%d' )
+		);
 	}
 
 	/**

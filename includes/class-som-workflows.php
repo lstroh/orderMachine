@@ -405,10 +405,8 @@ class SOM_Workflows {
 				return $timer;
 			}
 
-			$script = self::sanitize_script_config( $row );
-			if ( is_wp_error( $script ) ) {
-				return $script;
-			}
+			// UP9-S2: local / api / n8n removed — never persist script_config (clears legacy on save).
+			$script = null;
 
 			$step_id        = isset( $row['id'] ) ? (int) $row['id'] : 0;
 			$batch_group_id = self::resolve_batch_group_id( $row, $step_id, $template_id );
@@ -435,45 +433,42 @@ class SOM_Workflows {
 			);
 
 			if ( $batch_group_id ) {
-				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || null !== $confirmation_kind || null !== $command_template;
+				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || null !== $confirmation_kind || null !== $command_template;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_batch_only_step',
-						__( 'A batch step cannot also have manual, timer, script, confirmation, or copy-command gates.', 'order-machine' )
+						__( 'A batch step cannot also have manual, timer, confirmation, or copy-command gates.', 'order-machine' )
 					);
 				}
 				$manual            = 0;
 				$timer             = null;
-				$script            = null;
 				$confirmation_kind = null;
 				$command_template  = null;
 			}
 
 			if ( null !== $confirmation_kind ) {
-				$has_other = ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || $batch_group_id;
+				$has_other = ( null !== $timer && (int) $timer > 0 ) || $batch_group_id;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_confirmation_only_step',
-						__( 'A confirmation step cannot also have timer, script, or batch gates.', 'order-machine' )
+						__( 'A confirmation step cannot also have timer or batch gates.', 'order-machine' )
 					);
 				}
 				$manual = 1;
 				$timer  = null;
-				$script = null;
 			}
 
-			// Copy-command: exclusive with timer / script / batch; may combine with manual confirm (O3).
+			// Copy-command: exclusive with timer / batch; may combine with manual confirm (O3).
 			if ( null !== $command_template ) {
-				$has_other = ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || $batch_group_id;
+				$has_other = ( null !== $timer && (int) $timer > 0 ) || $batch_group_id;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_copy_command_exclusive',
-						__( 'A copy-command step cannot also have timer, script, or batch gates.', 'order-machine' )
+						__( 'A copy-command step cannot also have timer or batch gates.', 'order-machine' )
 					);
 				}
 				$manual = 1;
 				$timer  = null;
-				$script = null;
 			}
 
 			$instructions = '';
@@ -714,106 +709,15 @@ class SOM_Workflows {
 	/**
 	 * Build script_config JSON string (or null).
 	 *
+	 * UP9-S2: local / api / n8n removed from the product — always returns null.
+	 * Kept for callers / migration; editor no longer posts script fields.
+	 *
 	 * @param array<string, mixed> $row Step form row.
 	 * @return string|null|WP_Error
 	 */
 	public static function sanitize_script_config( array $row ) {
-		if ( ! empty( $row['script_raw_mode'] ) && isset( $row['script_raw_json'] ) ) {
-			$raw = trim( (string) $row['script_raw_json'] );
-			if ( '' === $raw ) {
-				return null;
-			}
-			$decoded = json_decode( $raw, true );
-			if ( ! is_array( $decoded ) ) {
-				return new WP_Error( 'som_script_json', __( 'Script config raw JSON is invalid.', 'order-machine' ) );
-			}
-			if ( empty( $decoded['type'] ) || ! in_array( $decoded['type'], array( 'local', 'api', 'n8n' ), true ) ) {
-				return new WP_Error( 'som_script_type', __( 'Script config JSON must include type: local, api, or n8n.', 'order-machine' ) );
-			}
-			if ( 'local' === $decoded['type'] ) {
-				$action = isset( $decoded['action'] ) ? (string) $decoded['action'] : '';
-				if ( ! array_key_exists( $action, self::local_action_choices() ) ) {
-					return new WP_Error( 'som_script_action', __( 'Local script action is not on the allowlist.', 'order-machine' ) );
-				}
-			}
-			return wp_json_encode( $decoded );
-		}
-
-		$type = isset( $row['script_type'] ) ? sanitize_key( (string) $row['script_type'] ) : '';
-		if ( '' === $type || 'none' === $type ) {
-			return null;
-		}
-
-		if ( 'local' === $type ) {
-			$action = isset( $row['script_action'] ) ? sanitize_key( (string) $row['script_action'] ) : '';
-			if ( ! array_key_exists( $action, self::local_action_choices() ) ) {
-				return new WP_Error( 'som_script_action', __( 'Choose a local script action from the allowlist.', 'order-machine' ) );
-			}
-			$config = array(
-				'type'   => 'local',
-				'action' => $action,
-				'params' => array(),
-			);
-			if ( isset( $row['script_params'] ) && '' !== trim( (string) $row['script_params'] ) ) {
-				$params = json_decode( (string) $row['script_params'], true );
-				if ( ! is_array( $params ) ) {
-					return new WP_Error( 'som_script_params', __( 'Local action params must be valid JSON object.', 'order-machine' ) );
-				}
-				$config['params'] = $params;
-			}
-			return wp_json_encode( $config );
-		}
-
-		if ( 'api' === $type ) {
-			$method = isset( $row['script_method'] ) ? strtoupper( sanitize_text_field( (string) $row['script_method'] ) ) : 'POST';
-			if ( ! in_array( $method, array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' ), true ) ) {
-				$method = 'POST';
-			}
-			$url = isset( $row['script_url'] ) ? esc_url_raw( (string) $row['script_url'] ) : '';
-			if ( '' === $url ) {
-				return new WP_Error( 'som_script_url', __( 'API script steps need a URL.', 'order-machine' ) );
-			}
-			$body = array();
-			if ( isset( $row['script_body'] ) && '' !== trim( (string) $row['script_body'] ) ) {
-				$decoded = json_decode( (string) $row['script_body'], true );
-				if ( ! is_array( $decoded ) ) {
-					return new WP_Error( 'som_script_body', __( 'API body template must be valid JSON.', 'order-machine' ) );
-				}
-				$body = $decoded;
-			}
-			return wp_json_encode(
-				array(
-					'type'          => 'api',
-					'method'        => $method,
-					'url'           => $url,
-					'body_template' => $body,
-				)
-			);
-		}
-
-		if ( 'n8n' === $type ) {
-			$webhook = isset( $row['script_webhook'] ) ? esc_url_raw( (string) $row['script_webhook'] ) : '';
-			if ( '' === $webhook ) {
-				return new WP_Error( 'som_script_webhook', __( 'n8n script steps need a webhook URL.', 'order-machine' ) );
-			}
-			$payload = array();
-			if ( isset( $row['script_payload'] ) && '' !== trim( (string) $row['script_payload'] ) ) {
-				$decoded = json_decode( (string) $row['script_payload'], true );
-				if ( ! is_array( $decoded ) ) {
-					return new WP_Error( 'som_script_payload', __( 'n8n payload template must be valid JSON.', 'order-machine' ) );
-				}
-				$payload = $decoded;
-			}
-			return wp_json_encode(
-				array(
-					'type'             => 'n8n',
-					'webhook_url'      => $webhook,
-					'payload_template' => $payload,
-				)
-			);
-		}
-
-		return new WP_Error( 'som_script_type', __( 'Unknown script type.', 'order-machine' ) );
+		unset( $row );
+		return null;
 	}
 
 	/**

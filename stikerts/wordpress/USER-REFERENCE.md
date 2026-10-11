@@ -46,7 +46,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Save eBay / Etsy app client ID + secret (secrets encrypted; leave blank to keep existing)
 - Copy OAuth callback URLs into developer apps (**live**)
 - **Connect** / **Disconnect** each channel
-- Set **n8n base URL** (for workflow steps that call n8n)
+- **n8n base URL** (deprecated — script/n8n steps removed; kept for existing installs only)
 - Set **Max trays**
 - Intervals: order poll, engine tick, token refresh, fee poll (default 30 min, min 5)
 - Toggle **MCP / Abilities**; manage **REST API key**
@@ -110,7 +110,9 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Personalisation (prominent when present)
 - Shipping address
 - Line items (matched product or unmatched warning)
-- Workflow progress: current step, timers, scripts, **waiting_batch** badge + Batches link
+- Workflow progress: current step, timers, **waiting_batch** badge + Batches link
+- **Copy command** on make lines when the step has a `command_template` — monospace rendered command + **Copy** (not executed by WordPress); then Mark done
+- Editable line fields: house number, street name, style (and personalisation summary) for placeholders / bad eBay payloads
 - **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done)
 - **Unblock step** on the current make/pack step when Mark done is gated (confirm: allows Mark done without meeting gates; does not complete the step)
 - **Open on eBay/Etsy** link when channel supports it
@@ -314,13 +316,17 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 - Add / remove / reorder steps
 - Requires manual confirm
-- **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer, script, and batch
+- **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist.
+- **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer and batch
 - Timer (friendly min/hr/day → seconds)
-- Script config (local / api / n8n — form + JSON fallback)
-- Assign **batch group** (batch-only step in v1; combo with other gates is rejected)
+- Assign **batch group** (batch-only step in v1; combo with other gates is rejected). Script batch groups soft-fail on release.
 - Template-level **material cost goals**
 
-**Seeded make — Bin Sticker Make:** Print → Confirm print → Dry → Laminate → Cut.  
+**Removed:** local / API / n8n `script_config` UI and runtime dispatch. Legacy rows show a disabled warning in the editor and clear on save; at runtime they are ignored (treated as manual Mark done).
+
+**Placeholders (v1):** `{{order_number}}`, `{{house_number}}`, `{{street_name}}`, `{{style}}`, `{{buyer_name}}` (first word), `{{buyer_full_name}}`, `{{product_name}}`, `{{personalisation}}`.
+
+**Seeded make — Bin Sticker Make:** Print (copy-command `/make-sticker-order` example) → Confirm print → Dry → Laminate → Cut.  
 **Seeded pack — Order Pack & Ship:** Confirm pack (lines + thank-you) → Confirm address → Package → Ship → Review reminder. No thank-you batch on Pack. Existing Local templates are not auto-truncated — Restore seed or edit manually, then **Repair pack binding**.
 
 ---
@@ -333,18 +339,19 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 - New order create (incremental) → assign steps from primary product’s template
 - Admin Mark done / Board advance when gates allow
-- Cron engine tick → unlock timers; attempt due batch script retries
-- Batch release / mark-done / script success → advance all batch members
+- Cron engine tick → unlock timers; batch retries for non-script groups only
+- Batch release / mark-done → advance all batch members (script batches soft-fail; do not run)
 
 **Gates:**
 
 | Gate | Behaviour |
 |---|---|
 | Manual | Mark done / drag only when current and allowed |
+| Copy command | Display-only on make line; never `waiting_script`; Mark done stays manual |
 | Confirmation | Checklist on order detail must be saved complete before Mark done / drag |
 | Timer | Blocked until countdown ends (or tick unlocks) |
-| Script | Allowlisted runner + retries + callback |
-| Batch | Entering sets `waiting_batch` and enqueues; other gates ignored on that step in v1 |
+| Script | **Removed** — legacy `script_config` ignored at runtime (manual Mark done) |
+| Batch | Entering sets `waiting_batch` and enqueues; other gates ignored on that step in v1. Script action groups soft-fail on release |
 | Trays required | If order requires trays and none held → Mark done / drag blocked until ≥1 assigned (or Unblock) |
 | **Zero-gate** (none of the above) | Step **auto-completes** as soon as it is entered, and the engine advances to the next step. Useful for intentional pass-throughs. The workflow editor warns on Save (does not hard-block) and defaults **Requires manual confirm** on newly added step cards |
 
@@ -419,24 +426,25 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 **Where:** Order Machine → Batches
 
-**What it is for:** Multi-order steps (thank-you script, shipping-label confirm).
+**What it is for:** Multi-order steps (shipping-label confirm; thank-you script group is legacy).
 
 **Seeded groups (editable name/size; key + action type fixed):**
 
 | Group key | Action | Default size |
 |---|---|---|
-| `thank_you_card` | Script (e.g. 4-up thank-you) | 4 |
+| `thank_you_card` | Script (**disabled** — release soft-fails; do not execute) | 4 |
 | `shipping_label` | Manual confirm | 4 |
 
-**States:** collecting → ready → (processing for scripts) → done / error
+**States:** collecting → ready → (processing was for scripts; now unused) → done / error
 
-**Main actions:** Release, Mark done (manual groups), Retry (error), expand members, edit group display name/size.
+**Main actions:** Release, Mark done (manual groups), expand members, edit group display name/size. Script Retry is unsupported / soft-fails.
 
 **Important rules:**
 
 - Same batch group pools **across** workflows
 - Cancelled members may stay listed but are skipped on advance
 - Order Mark done is hidden while `waiting_batch`
+- Prefer `manual_confirm` batches; Pack checklist covers thank-you ticks without script batches
 
 ---
 
