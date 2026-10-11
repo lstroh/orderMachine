@@ -99,7 +99,7 @@ $saved_pack = SOM_Workflows::save_steps(
 $assert( true === $saved_pack, 'save_pack_steps' );
 SOM_Pack::set_default_template_id( $wf_pack_id );
 
-// Make template with uses_trays + timer + checklist.
+// Make template with uses_trays + timer (confirmation is exclusive — tested separately below).
 $wf_make = SOM_Workflows::create(
 	array(
 		'name'       => 'UP8-S2 make ' . $suffix,
@@ -114,13 +114,14 @@ $saved_make = SOM_Workflows::save_steps(
 	$wf_make_id,
 	array(
 		array(
-			'name'                    => 'Print',
-			'requires_manual_confirm' => 1,
-			'timer_seconds'           => 3600,
-			'confirmation_kind'       => 'print_vs_request',
+			'name'          => 'Print',
+			'timer_seconds' => 3600,
 		),
 	)
 );
+if ( is_wp_error( $saved_make ) ) {
+	$out( 'save_make_steps_error', $saved_make->get_error_message() );
+}
 $assert( true === $saved_make, 'save_make_steps' );
 
 $product = SOM_Products::create(
@@ -171,13 +172,17 @@ $assert( ! SOM_Workflow_Engine::can_mark_done( $current, $step ), 'blocked_witho
 $blocked = SOM_Item_Make::mark_done( $order_id, $item_id );
 $assert( is_wp_error( $blocked ), 'mark_done_blocked_without_trays' );
 
-// Assign tray → still blocked by timer, but trays gate ok.
-$assign = SOM_Trays::assign( $order_id, array( 1 ) );
+// Assign a free tray → still blocked by timer, but trays gate ok.
+// Use first free number so a prior S1 run (or leftover holds) does not poison tray 1.
+$free_trays = SOM_Trays::free_tray_numbers();
+$assert( count( $free_trays ) >= 1, 'have_free_tray' );
+$tray_num = (int) $free_trays[0];
+$assign   = SOM_Trays::assign( $order_id, array( $tray_num ) );
 $assert( true === $assign, 'assign_tray_1' );
-$assert( array( 1 ) === SOM_Trays::held_numbers_for_order( $order_id ), 'holds_tray_1' );
+$assert( array( $tray_num ) === SOM_Trays::held_numbers_for_order( $order_id ), 'holds_tray_1' );
 
 // Soft O2: cannot release last tray while required + open.
-$keep = SOM_Trays::release( $order_id, array( 1 ), SOM_Trays::REASON_MANUAL );
+$keep = SOM_Trays::release( $order_id, array( $tray_num ), SOM_Trays::REASON_MANUAL );
 $assert( is_wp_error( $keep ) && 'som_tray_keep_one' === $keep->get_error_code(), 'keep_last_tray_while_required' );
 
 // Board data includes tray numbers.
@@ -190,7 +195,7 @@ SOM_Trays::attach_board_tray_numbers(
 );
 $card = (object) array( 'order_id' => $order_id );
 SOM_Trays::attach_board_tray_numbers( array( $card ) );
-$assert( isset( $card->tray_numbers ) && array( 1 ) === $card->tray_numbers, 'board_tray_numbers' );
+$assert( isset( $card->tray_numbers ) && array( $tray_num ) === $card->tray_numbers, 'board_tray_numbers' );
 
 // --- Unblock timer (+ trays already assigned) ---
 $unblocked = SOM_Workflow_Engine::unblock_step( $order_id, $item_id, (int) $admin_user->ID );
@@ -572,8 +577,13 @@ $oid_rel = (int) SOM_Order_Sync::create_from_external(
 		),
 	)
 );
-SOM_Trays::assign( $oid_rel, array( 2, 4 ) );
-$assert( array( 2, 4 ) === SOM_Trays::held_numbers_for_order( $oid_rel ), 'pre_complete_trays' );
+$free_for_release = SOM_Trays::free_tray_numbers();
+$assert( count( $free_for_release ) >= 2, 'have_two_free_trays_for_release' );
+$rel_trays = array( (int) $free_for_release[0], (int) $free_for_release[1] );
+sort( $rel_trays, SORT_NUMERIC );
+$assign_rel = SOM_Trays::assign( $oid_rel, $rel_trays );
+$assert( true === $assign_rel, 'assign_trays_for_release' );
+$assert( $rel_trays === SOM_Trays::held_numbers_for_order( $oid_rel ), 'pre_complete_trays' );
 $wpdb->update(
 	SOM_DB::table( 'orders' ),
 	array(
