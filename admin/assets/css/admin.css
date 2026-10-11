@@ -17,21 +17,37 @@
 }
 
 .som-create-test-order-form {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	align-items: center;
 	margin: 8px 0 4px;
 }
 
-.som-create-test-order-form label {
+.som-create-test-order-form > label {
 	font-weight: 600;
+	margin-right: 6px;
 }
 
-.som-create-test-order-form select,
-.som-create-test-order-form input[type="text"],
-.som-create-test-order-form input[type="number"] {
+.som-create-test-order-form > input[type="text"] {
 	max-width: 220px;
+	margin-right: 12px;
+}
+
+.som-test-order-lines {
+	margin: 10px 0 6px;
+	max-width: 960px;
+}
+
+.som-test-order-lines select,
+.som-test-order-lines input[type="text"],
+.som-test-order-lines input[type="number"] {
+	width: 100%;
+	max-width: 220px;
+}
+
+.som-test-order-actions-col {
+	width: 70px;
+}
+
+.som-pack-mixed-flag {
+	color: #996800;
 }
 
 .som-orders-filters {
@@ -181,6 +197,54 @@
 
 .som-panel-planned-shipping {
 	margin-bottom: 20px;
+}
+
+.som-panel-trays {
+	margin-bottom: 20px;
+	border-left: 4px solid #646970;
+}
+
+.som-panel-trays.is-required {
+	border-left-color: #dba617;
+	background: #fcf9e8;
+}
+
+.som-trays-required-notice {
+	margin: 8px 0 12px;
+}
+
+.som-badge-tray {
+	background: #f0f6fc;
+	color: #1d2327;
+	border: 1px solid #c3c4c7;
+}
+
+.som-badge-unblocked {
+	background: #fcf9e8;
+	color: #614200;
+}
+
+.som-unblock-step-form {
+	margin: 8px 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.som-tray-held-list,
+.som-tray-free-list {
+	list-style: none;
+	margin: 0 0 12px;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+}
+
+.som-tray-held-list li,
+.som-tray-free-list li {
+	margin: 0;
 }
 
 .som-shipping-over {
@@ -370,6 +434,44 @@
 	.som-analytics-grid {
 		grid-template-columns: 1fr;
 	}
+}
+
+/* Workflow timing (UP10-S2) */
+
+.som-analytics-timing {
+	margin-top: 28px;
+}
+
+.som-analytics-timing > h2 {
+	margin: 0 0 8px;
+}
+
+.som-analytics-timing-tabs {
+	display: flex;
+	gap: 8px;
+	margin: 12px 0;
+}
+
+.som-analytics-timing-filters {
+	margin-bottom: 16px;
+}
+
+.som-analytics-timing-grid {
+	display: grid;
+	gap: 20px;
+}
+
+.som-analytics-timing-table-wrap h3 {
+	margin: 0 0 8px;
+	font-size: 14px;
+}
+
+.som-analytics-timing-table .som-timing-over-plan td {
+	background: #fcf0f1;
+}
+
+.som-analytics-timing-table .som-timing-over-plan td:first-child {
+	box-shadow: inset 3px 0 0 #d63638;
 }
 
 .som-badge-active {
@@ -625,16 +727,43 @@
 	max-width: 28em;
 }
 
+.som-md-cheatsheet {
+	margin: 6px 0 4px;
+	max-width: 36em;
+}
+
+.som-md-cheatsheet summary {
+	cursor: pointer;
+	color: #2271b1;
+}
+
+.som-md-cheatsheet-list {
+	margin: 6px 0 0 1.2em;
+	list-style: disc;
+}
+
+.som-md-cheatsheet-list code {
+	font-size: 12px;
+}
+
+.som-md-preview-actions {
+	margin: 4px 0;
+}
+
+.som-md-preview {
+	margin-top: 8px;
+}
+
 .som-step-instructions {
 	margin: 8px 0 4px;
-	padding: 8px 10px;
+	padding: 10px 12px;
 	background: #f6f7f7;
 	border-left: 3px solid #2271b1;
 }
 
 .som-step-instructions-label {
 	display: block;
-	margin-bottom: 4px;
+	margin-bottom: 6px;
 	font-size: 12px;
 	text-transform: uppercase;
 	letter-spacing: 0.02em;
@@ -642,9 +771,70 @@
 }
 
 .som-step-instructions-body {
-	white-space: pre-wrap;
 	margin: 0;
 	color: #1d2327;
+	line-height: 1.5;
+}
+
+.som-step-instructions-body > *:first-child {
+	margin-top: 0;
+}
+
+.som-step-instructions-body > *:last-child {
+	margin-bottom: 0;
+}
+
+.som-step-instructions-body p {
+	margin: 0 0 0.65em;
+}
+
+.som-step-instructions-body ul,
+.som-step-instructions-body ol {
+	margin: 0 0 0.65em 1.4em;
+	padding: 0;
+}
+
+.som-step-instructions-body li {
+	margin: 0.2em 0;
+}
+
+.som-step-instructions-body h2,
+.som-step-instructions-body h3 {
+	margin: 0.8em 0 0.35em;
+	font-size: 1.05em;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.som-step-instructions-body h3 {
+	font-size: 1em;
+}
+
+.som-step-instructions-body code {
+	padding: 0.1em 0.35em;
+	font-size: 0.92em;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}
+
+.som-step-instructions-body pre {
+	margin: 0 0 0.65em;
+	padding: 8px 10px;
+	overflow-x: auto;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}
+
+.som-step-instructions-body pre code {
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+
+.som-step-instructions-body a {
+	text-decoration: underline;
 }
 
 .som-step-gates {
@@ -863,6 +1053,24 @@
 	flex-wrap: wrap;
 	gap: 8px;
 	align-items: center;
+}
+
+.som-step-timing,
+.som-workflow-timing-total {
+	margin: 4px 0 0;
+}
+
+.som-timing-delta,
+.som-timing-partial {
+	color: #646970;
+}
+
+.som-step-planned {
+	margin-top: 8px;
+}
+
+.som-template-planned-total {
+	margin: 0.5em 0 1em;
 }
 
 .som-mark-done-form,
@@ -1161,6 +1369,62 @@
 	margin: 8px 0 12px;
 }
 
+.som-step-tasks-field {
+	margin: 10px 0 14px;
+}
+
+.som-step-tasks-label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.som-task-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+}
+
+.som-task-row .regular-text {
+	flex: 1;
+	max-width: 28em;
+}
+
+.som-step-tasks-table {
+	margin: 12px 0 20px;
+}
+
+.som-step-default-tasks {
+	margin: 6px 0 0;
+	padding-left: 1.2em;
+}
+
+.som-tasks-panel {
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	background: #f0f6fc;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.som-tasks-label {
+	display: block;
+	margin: 0 0 4px;
+}
+
+.som-tasks-list {
+	margin: 8px 0 12px;
+	padding-left: 0;
+	list-style: none;
+}
+
+.som-task-check {
+	display: block;
+	margin: 6px 0;
+	font-weight: 600;
+}
+
 .som-confirmation-panel {
 	margin: 0 0 16px;
 	padding: 12px 14px;
@@ -1222,5 +1486,65 @@
 .som-confirm-step-form .button {
 	margin-right: 8px;
 	vertical-align: middle;
+}
+
+.som-line-fields-panel {
+	margin: 8px 0 12px;
+	padding: 8px 10px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	max-width: 42em;
+}
+
+.som-line-fields-panel > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.som-line-fields-form p {
+	margin: 8px 0;
+}
+
+.som-copy-command-panel {
+	margin: 8px 0 10px;
+	padding: 10px 12px;
+	background: #f6f7f7;
+	border-left: 3px solid #1d2327;
+}
+
+.som-copy-command-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: #50575e;
+}
+
+.som-copy-command-text {
+	margin: 0 0 8px;
+	padding: 10px 12px;
+	background: #1d2327;
+	color: #f0f0f1;
+	border-radius: 2px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	overflow-x: auto;
+}
+
+.som-copy-command-missing {
+	margin: 0 0 8px !important;
+}
+
+.som-step-script-legacy {
+	opacity: 0.92;
+}
+
+.som-step-script-legacy > summary {
+	cursor: pointer;
+	font-weight: 600;
 }
 

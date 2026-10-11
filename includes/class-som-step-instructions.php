@@ -8,7 +8,8 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Resolve and persist plain-text step instructions (Package 4 / UP4-S1).
+ * Resolve and persist step instructions (Package 4 / UP4-S1).
+ * Display: Markdown → safe HTML (Package 9 / UP9-S3).
  */
 class SOM_Step_Instructions {
 
@@ -16,6 +17,98 @@ class SOM_Step_Instructions {
 	 * Soft max length for instruction text.
 	 */
 	const MAX_LENGTH = 5000;
+
+	/**
+	 * Allowed HTML after Markdown parse (no images / scripts / iframes).
+	 *
+	 * @return array<string, array<string, bool>>
+	 */
+	public static function allowed_html() {
+		return array(
+			'p'      => array(),
+			'br'     => array(),
+			'strong' => array(),
+			'b'      => array(),
+			'em'     => array(),
+			'i'      => array(),
+			'ul'     => array(),
+			'ol'     => array(),
+			'li'     => array(),
+			'a'      => array(
+				'href'   => true,
+				'title'  => true,
+				'rel'    => true,
+				'target' => true,
+			),
+			'code'   => array(),
+			'pre'    => array(),
+			'h2'     => array(),
+			'h3'     => array(),
+		);
+	}
+
+	/**
+	 * Render Markdown (or legacy plain text) to safe HTML for order detail / preview.
+	 *
+	 * Uses vendored Parsedown 1.7.4 (see includes/lib/parsedown/), then a tight
+	 * allowlist (not full wp_kses_post — images are excluded). Do not esc_html the result.
+	 *
+	 * @param string|null $markdown Source text.
+	 * @return string Safe HTML, or empty string.
+	 */
+	public static function render_html( $markdown ) {
+		$text = is_string( $markdown ) ? trim( $markdown ) : '';
+		if ( '' === $text ) {
+			return '';
+		}
+
+		if ( ! class_exists( 'Parsedown', false ) ) {
+			require_once SOM_PLUGIN_DIR . 'includes/lib/parsedown/Parsedown.php';
+		}
+
+		$parser = new Parsedown();
+		$parser->setSafeMode( true );
+		$parser->setBreaksEnabled( true );
+
+		$html = $parser->text( $text );
+		return wp_kses( $html, self::allowed_html() );
+	}
+
+	/**
+	 * Editor help + Markdown cheatsheet markup (after a `.som-md-source` textarea).
+	 *
+	 * @return void
+	 */
+	public static function render_editor_help() {
+		?>
+		<p class="description som-md-help">
+			<?php echo esc_html__( 'Markdown supported. No images; no HTML editor. Max 5000 characters.', 'order-machine' ); ?>
+		</p>
+		<details class="som-md-cheatsheet">
+			<summary><?php echo esc_html__( 'Markdown cheatsheet', 'order-machine' ); ?></summary>
+			<ul class="som-md-cheatsheet-list">
+				<li><code>**bold**</code> / <code>*italic*</code></li>
+				<li><code>- bullet</code> / <code>1. numbered</code></li>
+				<li><code>[label](https://example.com)</code></li>
+				<li><code>`inline code`</code></li>
+				<li><code>## Heading</code> / <code>### Subheading</code></li>
+				<li><?php echo esc_html__( 'Blank line between paragraphs', 'order-machine' ); ?></li>
+			</ul>
+		</details>
+		<p class="som-md-preview-actions">
+			<button type="button" class="button-link" data-som-md-preview-toggle>
+				<?php echo esc_html__( 'Preview', 'order-machine' ); ?>
+			</button>
+			<button type="button" class="button-link" data-som-md-preview-hide hidden>
+				<?php echo esc_html__( 'Hide preview', 'order-machine' ); ?>
+			</button>
+		</p>
+		<div class="som-step-instructions som-md-preview" data-som-md-preview hidden>
+			<strong class="som-step-instructions-label"><?php echo esc_html__( 'Preview', 'order-machine' ); ?></strong>
+			<div class="som-step-instructions-body" data-som-md-preview-body></div>
+		</div>
+		<?php
+	}
 
 	/**
 	 * Effective instructions for a product + step (override → step default → null).

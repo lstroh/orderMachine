@@ -20,7 +20,7 @@
         {
           "shippingStep": {
             "shipTo": {
-              "fullName": "Alex Buyer",
+              "fullName": "Priya Buyer",
               "contactAddress": {
                 "addressLine1": "10 High Street",
                 "addressLine2": "Flat 2",
@@ -45,6 +45,18 @@
             "currency": "GBP"
           },
           "variationAspects": [
+            {
+              "name": "House Number",
+              "value": "36"
+            },
+            {
+              "name": "Street Name",
+              "value": "Grove Street"
+            },
+            {
+              "name": "Design",
+              "value": "Classic Scrolls"
+            },
             {
               "name": "Personalisation",
               "value": "Bin 42 — Golden Retriever"

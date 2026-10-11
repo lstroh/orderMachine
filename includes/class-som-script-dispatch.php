@@ -15,10 +15,10 @@ class SOM_Script_Dispatch {
 	const MAX_ATTEMPTS = 3;
 
 	/**
-	 * Run script_config for an order. Returns:
-	 * - true: completed synchronously
-	 * - 'waiting_callback': HTTP accepted; wait for REST callback
-	 * - WP_Error: failure
+	 * Run script_config for an order.
+	 *
+	 * UP9-S2: local / api / n8n removed — never dispatches. Class kept for
+	 * has_script() legacy detection and migration/no-op callers.
 	 *
 	 * @param object $order  Order from SOM_Orders::get().
 	 * @param object $step   Workflow step row (script_config).
@@ -26,34 +26,11 @@ class SOM_Script_Dispatch {
 	 * @return true|string|WP_Error
 	 */
 	public static function execute( $order, $step, $progress ) {
-		$config = self::decode_config( $step );
-		if ( is_wp_error( $config ) ) {
-			return $config;
-		}
-		if ( null === $config ) {
-			return true;
-		}
-
-		$type = isset( $config['type'] ) ? (string) $config['type'] : '';
-
-		switch ( $type ) {
-			case 'local':
-				$action = isset( $config['action'] ) ? (string) $config['action'] : '';
-				$params = isset( $config['params'] ) && is_array( $config['params'] ) ? $config['params'] : array();
-				return SOM_Local_Actions::run( $action, $params, $order );
-
-			case 'api':
-				return self::run_http( $config, $order, $progress, false );
-
-			case 'n8n':
-				return self::run_http( $config, $order, $progress, true );
-
-			default:
-				return new WP_Error(
-					'som_script_type',
-					__( 'Unsupported script_config type.', 'order-machine' )
-				);
-		}
+		unset( $order, $step, $progress );
+		return new WP_Error(
+			'som_script_removed',
+			__( 'Local / API / n8n script steps are removed. Use a Copy command step instead.', 'order-machine' )
+		);
 	}
 
 	/**

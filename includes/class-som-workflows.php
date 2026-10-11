@@ -36,8 +36,9 @@ class SOM_Workflows {
 	 */
 	public static function kind_choices() {
 		return array(
-			'make' => __( 'Make', 'order-machine' ),
-			'pack' => __( 'Pack', 'order-machine' ),
+			'make'      => __( 'Make', 'order-machine' ),
+			'pack'      => __( 'Pack', 'order-machine' ),
+			'post_ship' => __( 'Post-ship', 'order-machine' ),
 		);
 	}
 
@@ -45,11 +46,33 @@ class SOM_Workflows {
 	 * Sanitize template kind.
 	 *
 	 * @param mixed $kind Raw kind.
-	 * @return string make|pack
+	 * @return string make|pack|post_ship
 	 */
 	public static function sanitize_kind( $kind ) {
 		$kind = sanitize_key( (string) $kind );
-		return 'pack' === $kind ? 'pack' : 'make';
+		return isset( self::kind_choices()[ $kind ] ) ? $kind : 'make';
+	}
+
+	/**
+	 * Lightweight kind lookup (no steps / products).
+	 *
+	 * @param int $template_id Template PK.
+	 * @return string make|pack|post_ship
+	 */
+	public static function get_kind( $template_id ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return 'make';
+		}
+		$kind = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT kind FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
+				$template_id
+			)
+		);
+		return self::sanitize_kind( $kind );
 	}
 
 	/**
@@ -85,7 +108,7 @@ class SOM_Workflows {
 		}
 
 		$kind = sanitize_key( (string) $args['kind'] );
-		if ( 'make' === $kind || 'pack' === $kind ) {
+		if ( isset( self::kind_choices()[ $kind ] ) ) {
 			$where[]  = 't.kind = %s';
 			$params[] = $kind;
 		}
@@ -252,7 +275,7 @@ class SOM_Workflows {
 	/**
 	 * Create a template (optionally with initial steps).
 	 *
-	 * @param array<string, mixed> $data Fields: name, description, is_active, kind.
+	 * @param array<string, mixed> $data Fields: name, description, is_active, kind, uses_trays.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -265,6 +288,8 @@ class SOM_Workflows {
 
 		$description = isset( $data['description'] ) ? sanitize_textarea_field( (string) $data['description'] ) : '';
 		$kind        = self::sanitize_kind( isset( $data['kind'] ) ? $data['kind'] : 'make' );
+		// Post-ship never uses trays (Package 11).
+		$uses_trays  = ( 'post_ship' !== $kind && ! empty( $data['uses_trays'] ) ) ? 1 : 0;
 		$now         = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
@@ -273,11 +298,12 @@ class SOM_Workflows {
 				'name'        => $name,
 				'description' => '' !== $description ? $description : null,
 				'kind'        => $kind,
+				'uses_trays'  => $uses_trays,
 				'is_active'   => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
 				'created_at'  => $now,
 				'updated_at'  => $now,
 			),
-			array( '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%d', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -338,12 +364,21 @@ class SOM_Workflows {
 		if ( array_key_exists( 'kind', $data ) ) {
 			$fields['kind'] = self::sanitize_kind( $data['kind'] );
 			$format[]       = '%s';
-			if ( 'pack' === $fields['kind'] && (int) $existing->product_count > 0 ) {
+			if ( in_array( $fields['kind'], array( 'pack', 'post_ship' ), true ) && (int) $existing->product_count > 0 ) {
 				return new WP_Error(
 					'som_workflow_kind_pack',
-					__( 'Cannot set kind to Pack while products still use this template.', 'order-machine' )
+					__( 'Cannot set kind to Pack or Post-ship while products still use this template as Make.', 'order-machine' )
 				);
 			}
+		}
+
+		if ( array_key_exists( 'uses_trays', $data ) || array_key_exists( 'kind', $data ) ) {
+			$kind_for_trays = array_key_exists( 'kind', $fields )
+				? $fields['kind']
+				: self::sanitize_kind( isset( $existing->kind ) ? $existing->kind : 'make' );
+			$want_trays = array_key_exists( 'uses_trays', $data ) ? ! empty( $data['uses_trays'] ) : ! empty( $existing->uses_trays );
+			$fields['uses_trays'] = ( 'post_ship' !== $kind_for_trays && $want_trays ) ? 1 : 0;
+			$format[]             = '%d';
 		}
 
 		$updated = $wpdb->update(
@@ -398,15 +433,23 @@ class SOM_Workflows {
 				return $timer;
 			}
 
-			$script = self::sanitize_script_config( $row );
-			if ( is_wp_error( $script ) ) {
-				return $script;
+			$planned = self::sanitize_planned_seconds( $row );
+			if ( is_wp_error( $planned ) ) {
+				return $planned;
 			}
+
+			// UP9-S2: local / api / n8n removed — never persist script_config (clears legacy on save).
+			$script = null;
 
 			$step_id        = isset( $row['id'] ) ? (int) $row['id'] : 0;
 			$batch_group_id = self::resolve_batch_group_id( $row, $step_id, $template_id );
 			if ( is_wp_error( $batch_group_id ) ) {
 				return $batch_group_id;
+			}
+
+			$command_template = self::resolve_command_template( $row, $step_id, $template_id );
+			if ( is_wp_error( $command_template ) ) {
+				return $command_template;
 			}
 
 			if ( $batch_group_id && 'make' === $template_kind ) {
@@ -423,30 +466,42 @@ class SOM_Workflows {
 			);
 
 			if ( $batch_group_id ) {
-				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || null !== $confirmation_kind;
+				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || null !== $confirmation_kind || null !== $command_template;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_batch_only_step',
-						__( 'A batch step cannot also have manual, timer, script, or confirmation gates.', 'order-machine' )
+						__( 'A batch step cannot also have manual, timer, confirmation, or copy-command gates.', 'order-machine' )
 					);
 				}
 				$manual            = 0;
 				$timer             = null;
-				$script            = null;
 				$confirmation_kind = null;
+				$command_template  = null;
 			}
 
 			if ( null !== $confirmation_kind ) {
-				$has_other = ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || $batch_group_id;
+				$has_other = ( null !== $timer && (int) $timer > 0 ) || $batch_group_id;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_confirmation_only_step',
-						__( 'A confirmation step cannot also have timer, script, or batch gates.', 'order-machine' )
+						__( 'A confirmation step cannot also have timer or batch gates.', 'order-machine' )
 					);
 				}
 				$manual = 1;
 				$timer  = null;
-				$script = null;
+			}
+
+			// Copy-command: exclusive with timer / batch; may combine with manual confirm (O3).
+			if ( null !== $command_template ) {
+				$has_other = ( null !== $timer && (int) $timer > 0 ) || $batch_group_id;
+				if ( $has_other ) {
+					return new WP_Error(
+						'som_copy_command_exclusive',
+						__( 'A copy-command step cannot also have timer or batch gates.', 'order-machine' )
+					);
+				}
+				$manual = 1;
+				$timer  = null;
 			}
 
 			$instructions = '';
@@ -457,16 +512,38 @@ class SOM_Workflows {
 				}
 			}
 
+			$task_list_json = null;
+			if ( array_key_exists( 'tasks', $row ) ) {
+				$tasks = SOM_Step_Tasks::sanitize_from_form( $row['tasks'] );
+				if ( is_wp_error( $tasks ) ) {
+					return $tasks;
+				}
+				$task_list_json = SOM_Step_Tasks::encode_list( $tasks );
+			} elseif ( $step_id > 0 ) {
+				// Preserve existing when the form omits tasks (e.g. partial saves).
+				$existing_tasks = $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT task_list_json FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE id = %d AND workflow_template_id = %d LIMIT 1',
+						$step_id,
+						$template_id
+					)
+				);
+				$task_list_json = is_string( $existing_tasks ) && '' !== trim( $existing_tasks ) ? $existing_tasks : null;
+			}
+
 			$normalized[] = array(
 				'id'                      => $step_id,
 				'step_order'              => $order,
 				'name'                    => $name,
 				'requires_manual_confirm' => $manual,
 				'timer_seconds'           => $timer,
+				'planned_seconds'         => $planned,
 				'script_config'           => $script,
+				'command_template'        => $command_template,
 				'batch_group_id'          => $batch_group_id,
 				'confirmation_kind'       => $confirmation_kind,
 				'instructions'            => '' !== $instructions ? $instructions : null,
+				'task_list_json'          => $task_list_json,
 			);
 		}
 
@@ -488,10 +565,13 @@ class SOM_Workflows {
 				'name'                    => $row['name'],
 				'requires_manual_confirm' => $row['requires_manual_confirm'],
 				'timer_seconds'           => $row['timer_seconds'],
+				'planned_seconds'         => $row['planned_seconds'],
 				'script_config'           => $row['script_config'],
+				'command_template'        => $row['command_template'],
 				'batch_group_id'          => $row['batch_group_id'],
 				'confirmation_kind'       => $row['confirmation_kind'],
 				'instructions'            => $row['instructions'],
+				'task_list_json'          => $row['task_list_json'],
 				'updated_at'              => $now,
 			);
 
@@ -503,7 +583,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -517,7 +597,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -530,6 +610,7 @@ class SOM_Workflows {
 				continue;
 			}
 			SOM_Step_Instructions::delete_for_step( (int) $old_id );
+			SOM_Step_Tasks::delete_for_step( (int) $old_id );
 			$wpdb->delete(
 				$table,
 				array(
@@ -598,6 +679,42 @@ class SOM_Workflows {
 	}
 
 	/**
+	 * Resolve command_template for a step row.
+	 *
+	 * When the form omits command_template, preserve the existing DB value.
+	 *
+	 * @param array<string, mixed> $row         Form row.
+	 * @param int                  $step_id     Existing step PK or 0.
+	 * @param int                  $template_id Template PK.
+	 * @return string|null|WP_Error
+	 */
+	public static function resolve_command_template( array $row, $step_id, $template_id ) {
+		global $wpdb;
+
+		if ( array_key_exists( 'command_template', $row ) ) {
+			return SOM_Copy_Command::sanitize_template( $row['command_template'] );
+		}
+
+		$step_id = (int) $step_id;
+		if ( $step_id < 1 ) {
+			return null;
+		}
+
+		$table    = SOM_DB::table( 'workflow_steps' );
+		$existing = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT command_template FROM {$table} WHERE id = %d AND workflow_template_id = %d LIMIT 1",
+				$step_id,
+				(int) $template_id
+			)
+		);
+		if ( null === $existing || '' === trim( (string) $existing ) ) {
+			return null;
+		}
+		return (string) $existing;
+	}
+
+	/**
 	 * Convert friendlier timer fields to seconds (or null).
 	 *
 	 * Accepted keys: timer_seconds (raw), or timer_value + timer_unit (minutes|hours|days).
@@ -606,39 +723,87 @@ class SOM_Workflows {
 	 * @return int|null|WP_Error
 	 */
 	public static function sanitize_timer_seconds( array $row ) {
-		if ( isset( $row['timer_value'] ) || isset( $row['timer_unit'] ) ) {
-			$raw = isset( $row['timer_value'] ) ? trim( (string) $row['timer_value'] ) : '';
+		return self::sanitize_duration_seconds(
+			$row,
+			'timer_seconds',
+			'timer_value',
+			'timer_unit',
+			'som_timer_invalid',
+			__( 'Timer value must be a positive number.', 'order-machine' ),
+			'som_timer_unit',
+			__( 'Invalid timer unit.', 'order-machine' )
+		);
+	}
+
+	/**
+	 * Convert friendlier planned-duration fields to seconds (or null).
+	 *
+	 * Accepted keys: planned_seconds (raw), or planned_value + planned_unit (minutes|hours|days).
+	 * Planned duration is a reporting target — separate from the timer hard-gate.
+	 *
+	 * @param array<string, mixed> $row Step form row.
+	 * @return int|null|WP_Error
+	 */
+	public static function sanitize_planned_seconds( array $row ) {
+		return self::sanitize_duration_seconds(
+			$row,
+			'planned_seconds',
+			'planned_value',
+			'planned_unit',
+			'som_planned_invalid',
+			__( 'Planned duration must be a positive number.', 'order-machine' ),
+			'som_planned_unit',
+			__( 'Invalid planned duration unit.', 'order-machine' )
+		);
+	}
+
+	/**
+	 * Shared value+unit → seconds sanitizer for timer / planned duration.
+	 *
+	 * @param array<string, mixed> $row           Step form row.
+	 * @param string               $raw_key       Raw seconds key.
+	 * @param string               $value_key     Friendly value key.
+	 * @param string               $unit_key      Friendly unit key.
+	 * @param string               $invalid_code  WP_Error code for bad value.
+	 * @param string               $invalid_msg   WP_Error message for bad value.
+	 * @param string               $unit_code     WP_Error code for bad unit.
+	 * @param string               $unit_msg      WP_Error message for bad unit.
+	 * @return int|null|WP_Error
+	 */
+	private static function sanitize_duration_seconds( array $row, $raw_key, $value_key, $unit_key, $invalid_code, $invalid_msg, $unit_code, $unit_msg ) {
+		if ( isset( $row[ $value_key ] ) || isset( $row[ $unit_key ] ) ) {
+			$raw = isset( $row[ $value_key ] ) ? trim( (string) $row[ $value_key ] ) : '';
 			if ( '' === $raw ) {
 				return null;
 			}
 			if ( ! is_numeric( $raw ) || (float) $raw <= 0 ) {
-				return new WP_Error( 'som_timer_invalid', __( 'Timer value must be a positive number.', 'order-machine' ) );
+				return new WP_Error( $invalid_code, $invalid_msg );
 			}
 
 			$value = (float) $raw;
-			$unit  = isset( $row['timer_unit'] ) ? sanitize_key( (string) $row['timer_unit'] ) : 'minutes';
+			$unit  = isset( $row[ $unit_key ] ) ? sanitize_key( (string) $row[ $unit_key ] ) : 'minutes';
 			$mult  = 60;
 			if ( 'hours' === $unit ) {
 				$mult = HOUR_IN_SECONDS;
 			} elseif ( 'days' === $unit ) {
 				$mult = DAY_IN_SECONDS;
 			} elseif ( 'minutes' !== $unit ) {
-				return new WP_Error( 'som_timer_unit', __( 'Invalid timer unit.', 'order-machine' ) );
+				return new WP_Error( $unit_code, $unit_msg );
 			}
 
 			$seconds = (int) round( $value * $mult );
 			if ( $seconds < 1 ) {
-				return new WP_Error( 'som_timer_invalid', __( 'Timer value must be a positive number.', 'order-machine' ) );
+				return new WP_Error( $invalid_code, $invalid_msg );
 			}
 
 			return $seconds;
 		}
 
-		if ( ! array_key_exists( 'timer_seconds', $row ) || null === $row['timer_seconds'] || '' === $row['timer_seconds'] ) {
+		if ( ! array_key_exists( $raw_key, $row ) || null === $row[ $raw_key ] || '' === $row[ $raw_key ] ) {
 			return null;
 		}
 
-		$seconds = (int) $row['timer_seconds'];
+		$seconds = (int) $row[ $raw_key ];
 		if ( $seconds < 1 ) {
 			return null;
 		}
@@ -649,106 +814,15 @@ class SOM_Workflows {
 	/**
 	 * Build script_config JSON string (or null).
 	 *
+	 * UP9-S2: local / api / n8n removed from the product — always returns null.
+	 * Kept for callers / migration; editor no longer posts script fields.
+	 *
 	 * @param array<string, mixed> $row Step form row.
 	 * @return string|null|WP_Error
 	 */
 	public static function sanitize_script_config( array $row ) {
-		if ( ! empty( $row['script_raw_mode'] ) && isset( $row['script_raw_json'] ) ) {
-			$raw = trim( (string) $row['script_raw_json'] );
-			if ( '' === $raw ) {
-				return null;
-			}
-			$decoded = json_decode( $raw, true );
-			if ( ! is_array( $decoded ) ) {
-				return new WP_Error( 'som_script_json', __( 'Script config raw JSON is invalid.', 'order-machine' ) );
-			}
-			if ( empty( $decoded['type'] ) || ! in_array( $decoded['type'], array( 'local', 'api', 'n8n' ), true ) ) {
-				return new WP_Error( 'som_script_type', __( 'Script config JSON must include type: local, api, or n8n.', 'order-machine' ) );
-			}
-			if ( 'local' === $decoded['type'] ) {
-				$action = isset( $decoded['action'] ) ? (string) $decoded['action'] : '';
-				if ( ! array_key_exists( $action, self::local_action_choices() ) ) {
-					return new WP_Error( 'som_script_action', __( 'Local script action is not on the allowlist.', 'order-machine' ) );
-				}
-			}
-			return wp_json_encode( $decoded );
-		}
-
-		$type = isset( $row['script_type'] ) ? sanitize_key( (string) $row['script_type'] ) : '';
-		if ( '' === $type || 'none' === $type ) {
-			return null;
-		}
-
-		if ( 'local' === $type ) {
-			$action = isset( $row['script_action'] ) ? sanitize_key( (string) $row['script_action'] ) : '';
-			if ( ! array_key_exists( $action, self::local_action_choices() ) ) {
-				return new WP_Error( 'som_script_action', __( 'Choose a local script action from the allowlist.', 'order-machine' ) );
-			}
-			$config = array(
-				'type'   => 'local',
-				'action' => $action,
-				'params' => array(),
-			);
-			if ( isset( $row['script_params'] ) && '' !== trim( (string) $row['script_params'] ) ) {
-				$params = json_decode( (string) $row['script_params'], true );
-				if ( ! is_array( $params ) ) {
-					return new WP_Error( 'som_script_params', __( 'Local action params must be valid JSON object.', 'order-machine' ) );
-				}
-				$config['params'] = $params;
-			}
-			return wp_json_encode( $config );
-		}
-
-		if ( 'api' === $type ) {
-			$method = isset( $row['script_method'] ) ? strtoupper( sanitize_text_field( (string) $row['script_method'] ) ) : 'POST';
-			if ( ! in_array( $method, array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' ), true ) ) {
-				$method = 'POST';
-			}
-			$url = isset( $row['script_url'] ) ? esc_url_raw( (string) $row['script_url'] ) : '';
-			if ( '' === $url ) {
-				return new WP_Error( 'som_script_url', __( 'API script steps need a URL.', 'order-machine' ) );
-			}
-			$body = array();
-			if ( isset( $row['script_body'] ) && '' !== trim( (string) $row['script_body'] ) ) {
-				$decoded = json_decode( (string) $row['script_body'], true );
-				if ( ! is_array( $decoded ) ) {
-					return new WP_Error( 'som_script_body', __( 'API body template must be valid JSON.', 'order-machine' ) );
-				}
-				$body = $decoded;
-			}
-			return wp_json_encode(
-				array(
-					'type'          => 'api',
-					'method'        => $method,
-					'url'           => $url,
-					'body_template' => $body,
-				)
-			);
-		}
-
-		if ( 'n8n' === $type ) {
-			$webhook = isset( $row['script_webhook'] ) ? esc_url_raw( (string) $row['script_webhook'] ) : '';
-			if ( '' === $webhook ) {
-				return new WP_Error( 'som_script_webhook', __( 'n8n script steps need a webhook URL.', 'order-machine' ) );
-			}
-			$payload = array();
-			if ( isset( $row['script_payload'] ) && '' !== trim( (string) $row['script_payload'] ) ) {
-				$decoded = json_decode( (string) $row['script_payload'], true );
-				if ( ! is_array( $decoded ) ) {
-					return new WP_Error( 'som_script_payload', __( 'n8n payload template must be valid JSON.', 'order-machine' ) );
-				}
-				$payload = $decoded;
-			}
-			return wp_json_encode(
-				array(
-					'type'             => 'n8n',
-					'webhook_url'      => $webhook,
-					'payload_template' => $payload,
-				)
-			);
-		}
-
-		return new WP_Error( 'som_script_type', __( 'Unknown script type.', 'order-machine' ) );
+		unset( $row );
+		return null;
 	}
 
 	/**
@@ -758,6 +832,64 @@ class SOM_Workflows {
 	 * @return array{value: string, unit: string}
 	 */
 	public static function timer_for_display( $seconds ) {
+		return self::duration_for_display( $seconds );
+	}
+
+	/**
+	 * Split stored planned_seconds into value + unit for the editor.
+	 *
+	 * @param int|null $seconds Stored seconds.
+	 * @return array{value: string, unit: string}
+	 */
+	public static function planned_for_display( $seconds ) {
+		return self::duration_for_display( $seconds );
+	}
+
+	/**
+	 * Sum of non-null planned_seconds for a step list + whether the plan is partial.
+	 *
+	 * @param array<int, object|array<string, mixed>> $steps Step rows (objects or arrays).
+	 * @return array{total: int|null, planned_count: int, step_count: int, is_partial: bool}
+	 */
+	public static function planned_total_summary( array $steps ) {
+		$total         = 0;
+		$planned_count = 0;
+		$step_count    = 0;
+
+		foreach ( $steps as $step ) {
+			++$step_count;
+			$raw = null;
+			if ( is_object( $step ) ) {
+				$raw = isset( $step->planned_seconds ) ? $step->planned_seconds : null;
+			} elseif ( is_array( $step ) ) {
+				$raw = array_key_exists( 'planned_seconds', $step ) ? $step['planned_seconds'] : null;
+			}
+			if ( null === $raw || '' === $raw ) {
+				continue;
+			}
+			$seconds = (int) $raw;
+			if ( $seconds < 1 ) {
+				continue;
+			}
+			++$planned_count;
+			$total += $seconds;
+		}
+
+		return array(
+			'total'         => $planned_count > 0 ? $total : null,
+			'planned_count' => $planned_count,
+			'step_count'    => $step_count,
+			'is_partial'    => $planned_count > 0 && $planned_count < $step_count,
+		);
+	}
+
+	/**
+	 * Split stored duration seconds into value + unit for the editor.
+	 *
+	 * @param int|null $seconds Stored seconds.
+	 * @return array{value: string, unit: string}
+	 */
+	private static function duration_for_display( $seconds ) {
 		$seconds = null === $seconds || '' === $seconds ? 0 : (int) $seconds;
 		if ( $seconds < 1 ) {
 			return array(

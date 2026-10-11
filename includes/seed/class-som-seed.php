@@ -252,8 +252,10 @@ class SOM_Seed {
 		);
 
 		self::maybe_seed_materials( $product_id );
+		self::maybe_seed_shipping_packages( $product_id );
 		self::maybe_seed_workflow( $product_id );
 		self::maybe_seed_pack_workflow();
+		self::maybe_seed_post_ship_workflow();
 		self::maybe_seed_internal_product( $product_id );
 	}
 
@@ -376,6 +378,12 @@ class SOM_Seed {
 	/** Seed Pack workflow template name. */
 	const PACK_WORKFLOW_NAME = 'Order Pack & Ship';
 
+	/** Seed Post-ship workflow template name (Package 11). */
+	const POST_SHIP_WORKFLOW_NAME = 'Post-ship — Order Aftercare';
+
+	/** Example copy-command for seed aftercare buyer update. */
+	const EXAMPLE_POST_SHIP_TRACKING_TEMPLATE = "Update buyer for order {{order_number}}\nBuyer: {{buyer_full_name}}\nTracking: (paste tracking number)";
+
 	/**
 	 * Resolve seed make template id (option, new name, or legacy name).
 	 *
@@ -443,6 +451,7 @@ class SOM_Seed {
 					'name'        => self::WORKFLOW_NAME,
 					'description' => 'Sample make workflow for bin sticker sets (seed). Ends at Cut — pack/ship is Order Pack & Ship.',
 					'kind'        => 'make',
+					'uses_trays'  => 0, // UP8-S3: seed leaves trays opt-in.
 					'is_active'   => 1,
 				)
 			);
@@ -486,6 +495,7 @@ class SOM_Seed {
 					array(
 						'name'                    => 'Print',
 						'requires_manual_confirm' => 1,
+						'command_template'        => SOM_Copy_Command::EXAMPLE_MAKE_STICKER_TEMPLATE,
 					),
 					array(
 						'name'                    => 'Confirm print',
@@ -512,6 +522,9 @@ class SOM_Seed {
 			}
 		}
 
+		// UP9-S2: ensure seed Print step has the example copy-command template (idempotent).
+		self::ensure_seed_copy_command_template( $template_id );
+
 		$current = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT id, workflow_template_id FROM {$products_t} WHERE id = %d LIMIT 1",
@@ -531,6 +544,61 @@ class SOM_Seed {
 				array( '%d' )
 			);
 		}
+	}
+
+	/**
+	 * Ensure the seed Bin Sticker Make "Print" step has the example copy-command template.
+	 *
+	 * @param int $template_id Workflow template PK.
+	 * @return void
+	 */
+	private static function ensure_seed_copy_command_template( $template_id ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		$steps_t = SOM_DB::table( 'workflow_steps' );
+		$print   = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, command_template, script_config FROM {$steps_t}
+				WHERE workflow_template_id = %d AND name = %s
+				ORDER BY step_order ASC
+				LIMIT 1",
+				$template_id,
+				'Print'
+			)
+		);
+		if ( ! $print ) {
+			return;
+		}
+
+		$updates = array();
+		$formats = array();
+		if ( '' === trim( (string) ( $print->command_template ?? '' ) ) ) {
+			$updates['command_template'] = SOM_Copy_Command::EXAMPLE_MAKE_STICKER_TEMPLATE;
+			$formats[]                   = '%s';
+		}
+		// Clear any legacy script_config on the seed Print step.
+		if ( null !== $print->script_config && '' !== trim( (string) $print->script_config ) ) {
+			$updates['script_config'] = null;
+			$formats[]                = '%s';
+		}
+		if ( empty( $updates ) ) {
+			return;
+		}
+
+		$updates['updated_at'] = current_time( 'mysql', true );
+		$formats[]             = '%s';
+		$wpdb->update(
+			$steps_t,
+			$updates,
+			array( 'id' => (int) $print->id ),
+			$formats,
+			array( '%d' )
+		);
 	}
 
 	/**
@@ -573,6 +641,7 @@ class SOM_Seed {
 					'name'        => self::PACK_WORKFLOW_NAME,
 					'description' => 'Seed pack & ship workflow (order-level). Thank-you is on the Confirm pack checklist — no batch gate.',
 					'kind'        => 'pack',
+					'uses_trays'  => 0, // UP8-S3: seed leaves trays opt-in.
 					'is_active'   => 1,
 				)
 			);
@@ -632,6 +701,166 @@ class SOM_Seed {
 						'name'                    => 'Ship',
 						'requires_manual_confirm' => 1,
 					),
+					// Review reminder moved to Post-ship seed (UP11-S2).
+				)
+			);
+			if ( is_wp_error( $saved ) ) {
+				return;
+			}
+		} else {
+			self::maybe_strip_pack_review_reminder( $template_id );
+		}
+
+		// Set site default Pack template when unset (O18).
+		if ( SOM_Pack::default_template_id() < 1 ) {
+			SOM_Pack::set_default_template_id( $template_id );
+		}
+	}
+
+	/**
+	 * Remove seed Pack "Review reminder" when no open progress uses it (UP11-S2).
+	 *
+	 * Existing sites with in-flight Review on Pack keep the step — docs say Restore or edit.
+	 *
+	 * @param int $pack_template_id Pack template PK.
+	 * @return void
+	 */
+	public static function maybe_strip_pack_review_reminder( $pack_template_id ) {
+		global $wpdb;
+
+		$pack_template_id = (int) $pack_template_id;
+		if ( $pack_template_id < 1 ) {
+			return;
+		}
+
+		$steps_t    = SOM_DB::table( 'workflow_steps' );
+		$progress_t = SOM_DB::table( 'order_step_progress' );
+
+		$review = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id FROM {$steps_t}
+				WHERE workflow_template_id = %d AND name = %s
+				ORDER BY id ASC LIMIT 1",
+				$pack_template_id,
+				'Review reminder'
+			)
+		);
+		if ( ! $review ) {
+			return;
+		}
+
+		$step_id = (int) $review->id;
+		$open    = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$progress_t} WHERE workflow_step_id = %d AND status <> 'done'",
+				$step_id
+			)
+		);
+		if ( $open > 0 ) {
+			return;
+		}
+
+		// Drop finished progress rows then the step definition.
+		$wpdb->delete( $progress_t, array( 'workflow_step_id' => $step_id ), array( '%d' ) );
+		$wpdb->delete( $steps_t, array( 'id' => $step_id ), array( '%d' ) );
+	}
+
+	/**
+	 * Seed Post-ship — Order Aftercare; set site default when unset (UP11-S2).
+	 *
+	 * @return void
+	 */
+	public static function maybe_seed_post_ship_workflow() {
+		global $wpdb;
+
+		$templates_t = SOM_DB::table( 'workflow_templates' );
+		$steps_t     = SOM_DB::table( 'workflow_steps' );
+
+		$template_id = (int) get_option( 'som_seed_post_ship_workflow_id', 0 );
+		if ( $template_id > 0 ) {
+			$still = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE id = %d LIMIT 1",
+					$template_id
+				)
+			);
+			if ( ! $still ) {
+				$template_id = 0;
+				delete_option( 'som_seed_post_ship_workflow_id' );
+			}
+		}
+
+		if ( $template_id < 1 ) {
+			$template_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$templates_t} WHERE name = %s ORDER BY id ASC LIMIT 1",
+					self::POST_SHIP_WORKFLOW_NAME
+				)
+			);
+		}
+
+		if ( $template_id < 1 ) {
+			$created = SOM_Workflows::create(
+				array(
+					'name'        => self::POST_SHIP_WORKFLOW_NAME,
+					'description' => 'Seed post-ship aftercare (order-level). Arrival confirm completes the order; Review reminder may run after.',
+					'kind'        => 'post_ship',
+					'uses_trays'  => 0,
+					'is_active'   => 1,
+				)
+			);
+			if ( is_wp_error( $created ) ) {
+				return;
+			}
+			$template_id = (int) $created;
+		}
+
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		$now = current_time( 'mysql', true );
+		$wpdb->update(
+			$templates_t,
+			array(
+				'name'        => self::POST_SHIP_WORKFLOW_NAME,
+				'kind'        => 'post_ship',
+				'description' => 'Seed post-ship aftercare (order-level). Arrival confirm completes the order; Review reminder may run after.',
+				'is_active'   => 1,
+				'updated_at'  => $now,
+			),
+			array( 'id' => $template_id ),
+			array( '%s', '%s', '%s', '%d', '%s' ),
+			array( '%d' )
+		);
+
+		update_option( 'som_seed_post_ship_workflow_id', $template_id, false );
+
+		$step_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$steps_t} WHERE workflow_template_id = %d",
+				$template_id
+			)
+		);
+
+		if ( $step_count < 1 ) {
+			$saved = SOM_Workflows::save_steps(
+				$template_id,
+				array(
+					array(
+						'name'                    => 'Update buyer / send tracking',
+						'requires_manual_confirm' => 1,
+						'command_template'        => self::EXAMPLE_POST_SHIP_TRACKING_TEMPLATE,
+					),
+					array(
+						'name'                    => 'Confirm shipping details',
+						'requires_manual_confirm' => 1,
+					),
+					array(
+						'name'                    => 'Confirm package arrived',
+						'requires_manual_confirm' => 1,
+						'confirmation_kind'       => 'package_arrived',
+					),
 					array(
 						'name'                    => 'Review reminder',
 						'requires_manual_confirm' => 1,
@@ -645,9 +874,8 @@ class SOM_Seed {
 			}
 		}
 
-		// Set site default Pack template when unset (O18).
-		if ( SOM_Pack::default_template_id() < 1 ) {
-			SOM_Pack::set_default_template_id( $template_id );
+		if ( SOM_Post_Ship::default_template_id() < 1 ) {
+			SOM_Post_Ship::set_default_template_id( $template_id );
 		}
 	}
 
@@ -656,6 +884,169 @@ class SOM_Seed {
 
 	/** Seed material name: laminate sheet. */
 	const MATERIAL_LAMINATE = 'A4 Glossy Laminate';
+
+	/** Seed packaging material: thank-you card. */
+	const MATERIAL_THANKYOU = 'Thank-you card (sample)';
+
+	/** Seed packaging material: envelope. */
+	const MATERIAL_ENVELOPE = 'C5 Envelope (sample)';
+
+	/** Seed small (single-pack) shipping package name. */
+	const PACKAGE_SMALL_NAME = 'Sample C5 envelope (single)';
+
+	/** Seed large (multi-pack) shipping package name. */
+	const PACKAGE_LARGE_NAME = 'Sample large mailer (multi)';
+
+	/**
+	 * Seed small + large shipping packages with packaging materials; wire sample product.
+	 *
+	 * @param int $product_id Sellable sample product PK.
+	 * @return void
+	 */
+	public static function maybe_seed_shipping_packages( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		$thankyou_id = self::ensure_material( self::MATERIAL_THANKYOU, 'each', 50, 10, 0.10 );
+		$envelope_id = self::ensure_material( self::MATERIAL_ENVELOPE, 'each', 50, 10, 0.25 );
+		if ( $thankyou_id < 1 || $envelope_id < 1 ) {
+			return;
+		}
+
+		$small_id = self::ensure_shipping_package(
+			self::PACKAGE_SMALL_NAME,
+			array(
+				'length_mm'         => 220,
+				'width_mm'          => 110,
+				'height_mm'         => 0,
+				'tare_weight_grams' => 15,
+				'is_default'        => 1,
+			),
+			array(
+				array(
+					'material_id'          => $thankyou_id,
+					'quantity_per_package' => 1,
+				),
+				array(
+					'material_id'          => $envelope_id,
+					'quantity_per_package' => 1,
+				),
+			)
+		);
+		$large_id = self::ensure_shipping_package(
+			self::PACKAGE_LARGE_NAME,
+			array(
+				'length_mm'         => 300,
+				'width_mm'          => 220,
+				'height_mm'         => 20,
+				'tare_weight_grams' => 40,
+				'is_default'        => 0,
+			),
+			array(
+				array(
+					'material_id'          => $thankyou_id,
+					'quantity_per_package' => 1,
+				),
+				array(
+					'material_id'          => $envelope_id,
+					'quantity_per_package' => 2,
+				),
+			)
+		);
+
+		if ( $small_id > 0 ) {
+			update_option( 'som_seed_package_small_id', $small_id, false );
+		}
+		if ( $large_id > 0 ) {
+			update_option( 'som_seed_package_large_id', $large_id, false );
+		}
+
+		if ( $small_id < 1 ) {
+			return;
+		}
+
+		$product = SOM_Products::get( $product_id );
+		if ( ! $product || ! empty( $product->is_internal ) ) {
+			return;
+		}
+
+		$need_update = empty( $product->package_id )
+			|| ( $large_id > 0 && empty( $product->package_id_multi ) );
+		if ( ! $need_update ) {
+			return;
+		}
+
+		$data = array();
+		if ( empty( $product->package_id ) ) {
+			$data['package_id'] = $small_id;
+		}
+		if ( $large_id > 0 && empty( $product->package_id_multi ) ) {
+			$data['package_id_multi'] = $large_id;
+		}
+		if ( $data ) {
+			SOM_Products::update( $product_id, $data );
+		}
+	}
+
+	/**
+	 * Ensure a named shipping package exists with materials (idempotent by name).
+	 *
+	 * @param string               $name      Package name.
+	 * @param array<string, mixed> $fields    Create fields (dims, tare, is_default).
+	 * @param array<int, array>    $materials Material rows for save_materials.
+	 * @return int Package ID.
+	 */
+	private static function ensure_shipping_package( $name, array $fields, array $materials ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'shipping_packages' );
+		$id    = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE name = %s ORDER BY id ASC LIMIT 1",
+				$name
+			)
+		);
+
+		if ( $id < 1 ) {
+			$created = SOM_Shipping_Packages::create(
+				array_merge(
+					array(
+						'name'      => $name,
+						'is_active' => 1,
+					),
+					$fields
+				)
+			);
+			if ( is_wp_error( $created ) ) {
+				return 0;
+			}
+			$id = (int) $created;
+		} elseif ( ! empty( $fields['is_default'] ) ) {
+			$existing = SOM_Shipping_Packages::get( $id );
+			if ( $existing && empty( $existing->is_default ) && ! SOM_Shipping_Packages::get_default() ) {
+				SOM_Shipping_Packages::update( $id, array( 'is_default' => 1 ) );
+			}
+		}
+
+		if ( $id < 1 ) {
+			return 0;
+		}
+
+		$recipe_t = SOM_DB::table( 'shipping_package_materials' );
+		$count    = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$recipe_t} WHERE shipping_package_id = %d",
+				$id
+			)
+		);
+		if ( 0 === $count && $materials ) {
+			SOM_Shipping_Packages::save_materials( $id, $materials );
+		}
+
+		return $id;
+	}
 
 	/**
 	 * Seed sample materials + recipe on the demo product.
@@ -859,6 +1250,9 @@ class SOM_Seed {
 	 *   product_id:int,
 	 *   workflow_id:int,
 	 *   pack_workflow_id:int,
+	 *   post_ship_workflow_id:int,
+	 *   package_small_id:int,
+	 *   package_large_id:int,
 	 *   material_ids:array<int,int>,
 	 *   listing_ids:array<int,int>,
 	 *   step_ids:array<int,int>,
@@ -901,8 +1295,48 @@ class SOM_Seed {
 			);
 		}
 
+		$post_ship_workflow_id = (int) get_option( 'som_seed_post_ship_workflow_id', 0 );
+		if ( $post_ship_workflow_id > 0 ) {
+			$still = $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
+					$post_ship_workflow_id
+				)
+			);
+			if ( ! $still ) {
+				$post_ship_workflow_id = 0;
+			}
+		}
+		if ( $post_ship_workflow_id < 1 ) {
+			$post_ship_workflow_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
+					self::POST_SHIP_WORKFLOW_NAME
+				)
+			);
+		}
+
+		$package_small_id = (int) get_option( 'som_seed_package_small_id', 0 );
+		if ( $package_small_id < 1 ) {
+			$package_small_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'shipping_packages' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
+					self::PACKAGE_SMALL_NAME
+				)
+			);
+		}
+		$package_large_id = (int) get_option( 'som_seed_package_large_id', 0 );
+		if ( $package_large_id < 1 ) {
+			$package_large_id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'shipping_packages' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
+					self::PACKAGE_LARGE_NAME
+				)
+			);
+		}
+
 		$material_ids = array();
-		foreach ( array( self::MATERIAL_VINYL, self::MATERIAL_LAMINATE ) as $name ) {
+		foreach ( array( self::MATERIAL_VINYL, self::MATERIAL_LAMINATE, self::MATERIAL_THANKYOU, self::MATERIAL_ENVELOPE ) as $name ) {
 			$id = (int) $wpdb->get_var(
 				$wpdb->prepare(
 					'SELECT id FROM ' . SOM_DB::table( 'materials' ) . ' WHERE name = %s ORDER BY id ASC LIMIT 1',
@@ -962,14 +1396,31 @@ class SOM_Seed {
 			}
 		}
 
+		$post_ship_step_ids = array();
+		if ( $post_ship_workflow_id > 0 ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					'SELECT id FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = %d',
+					$post_ship_workflow_id
+				)
+			);
+			if ( is_array( $rows ) ) {
+				$post_ship_step_ids = array_map( 'intval', $rows );
+			}
+		}
+
 		return array(
-			'product_id'       => $product_id,
-			'workflow_id'      => $workflow_id,
-			'pack_workflow_id' => $pack_workflow_id,
-			'material_ids'     => $material_ids,
-			'listing_ids'      => $listing_ids,
-			'step_ids'         => $step_ids,
-			'pack_step_ids'    => $pack_step_ids,
+			'product_id'             => $product_id,
+			'workflow_id'            => $workflow_id,
+			'pack_workflow_id'       => $pack_workflow_id,
+			'post_ship_workflow_id'  => $post_ship_workflow_id,
+			'package_small_id'       => $package_small_id,
+			'package_large_id'       => $package_large_id,
+			'material_ids'           => $material_ids,
+			'listing_ids'            => $listing_ids,
+			'step_ids'               => $step_ids,
+			'pack_step_ids'          => $pack_step_ids,
+			'post_ship_step_ids'     => $post_ship_step_ids,
 		);
 	}
 
@@ -986,12 +1437,13 @@ class SOM_Seed {
 
 		$ids     = self::resolve_seed_ids();
 		$summary = array(
-			'orders'      => 0,
-			'listings'    => 0,
-			'products'    => 0,
-			'materials'   => 0,
-			'workflows'   => 0,
-			'disconnected'=> 0,
+			'orders'       => 0,
+			'listings'     => 0,
+			'products'     => 0,
+			'materials'    => 0,
+			'workflows'    => 0,
+			'packages'     => 0,
+			'disconnected' => 0,
 		);
 
 		$order_ids = self::collect_seed_related_order_ids( $ids );
@@ -1012,25 +1464,75 @@ class SOM_Seed {
 			);
 		}
 
-		// Recipe then product.
+		// Recipe then product (clear package refs first so packages can delete).
 		if ( $ids['product_id'] > 0 ) {
 			$wpdb->delete(
 				SOM_DB::table( 'product_materials' ),
 				array( 'product_id' => $ids['product_id'] ),
 				array( '%d' )
 			);
+			$wpdb->update(
+				SOM_DB::table( 'products' ),
+				array(
+					'package_id'       => null,
+					'package_id_multi' => null,
+				),
+				array( 'id' => $ids['product_id'] ),
+				array( '%s', '%s' ),
+				array( '%d' )
+			);
 			$wpdb->delete( SOM_DB::table( 'products' ), array( 'id' => $ids['product_id'] ), array( '%d' ) );
 			$summary['products'] = 1;
 		}
 
-		// Clear site default Pack if it pointed at the seed Pack template.
+		// Seed shipping packages + their material BOMs.
+		foreach ( array( 'package_small_id', 'package_large_id' ) as $pkg_key ) {
+			$pkg_id = (int) ( $ids[ $pkg_key ] ?? 0 );
+			if ( $pkg_id < 1 ) {
+				continue;
+			}
+			$wpdb->delete(
+				SOM_DB::table( 'shipping_package_materials' ),
+				array( 'shipping_package_id' => $pkg_id ),
+				array( '%d' )
+			);
+			// Clear other products that may still reference seed packages.
+			$wpdb->query(
+				$wpdb->prepare(
+					'UPDATE ' . SOM_DB::table( 'products' ) . ' SET package_id = NULL WHERE package_id = %d',
+					$pkg_id
+				)
+			);
+			$wpdb->query(
+				$wpdb->prepare(
+					'UPDATE ' . SOM_DB::table( 'products' ) . ' SET package_id_multi = NULL WHERE package_id_multi = %d',
+					$pkg_id
+				)
+			);
+			$wpdb->query(
+				$wpdb->prepare(
+					'UPDATE ' . SOM_DB::table( 'orders' ) . ' SET shipping_package_id = NULL WHERE shipping_package_id = %d',
+					$pkg_id
+				)
+			);
+			$deleted = $wpdb->delete( SOM_DB::table( 'shipping_packages' ), array( 'id' => $pkg_id ), array( '%d' ) );
+			if ( $deleted ) {
+				++$summary['packages'];
+			}
+		}
+
+		// Clear site default Pack / Post-ship if they pointed at seed templates.
 		$seed_pack_id = (int) ( $ids['pack_workflow_id'] ?? 0 );
 		if ( $seed_pack_id > 0 && SOM_Pack::default_template_id() === $seed_pack_id ) {
 			SOM_Pack::set_default_template_id( 0 );
 		}
+		$seed_ps_id = (int) ( $ids['post_ship_workflow_id'] ?? 0 );
+		if ( $seed_ps_id > 0 && SOM_Post_Ship::default_template_id() === $seed_ps_id ) {
+			SOM_Post_Ship::set_default_template_id( 0 );
+		}
 
 		// Workflow steps then templates (progress already cleared with orders).
-		foreach ( array( 'workflow_id', 'pack_workflow_id' ) as $key ) {
+		foreach ( array( 'workflow_id', 'pack_workflow_id', 'post_ship_workflow_id' ) as $key ) {
 			$wf_id = (int) ( $ids[ $key ] ?? 0 );
 			if ( $wf_id < 1 ) {
 				continue;
@@ -1047,11 +1549,17 @@ class SOM_Seed {
 			++$summary['workflows'];
 		}
 
-		// Materials (only if unused by other recipes / POs).
+		// Materials (only if unused by other recipes / package BOMs / POs).
 		foreach ( $ids['material_ids'] as $material_id ) {
 			$in_recipe = (int) $wpdb->get_var(
 				$wpdb->prepare(
 					'SELECT COUNT(*) FROM ' . SOM_DB::table( 'product_materials' ) . ' WHERE material_id = %d',
+					$material_id
+				)
+			);
+			$in_pkg = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT COUNT(*) FROM ' . SOM_DB::table( 'shipping_package_materials' ) . ' WHERE material_id = %d',
 					$material_id
 				)
 			);
@@ -1061,7 +1569,7 @@ class SOM_Seed {
 					$material_id
 				)
 			);
-			if ( $in_recipe > 0 || $in_po > 0 ) {
+			if ( $in_recipe > 0 || $in_pkg > 0 || $in_po > 0 ) {
 				continue;
 			}
 			$wpdb->delete(
@@ -1090,15 +1598,19 @@ class SOM_Seed {
 		delete_option( 'som_seed_product_id' );
 		delete_option( 'som_seed_workflow_id' );
 		delete_option( 'som_seed_pack_workflow_id' );
+		delete_option( 'som_seed_post_ship_workflow_id' );
+		delete_option( 'som_seed_package_small_id' );
+		delete_option( 'som_seed_package_large_id' );
 
 		$summary['message'] = sprintf(
-			/* translators: 1: orders, 2: listings, 3: products, 4: materials, 5: workflows */
-			__( 'Removed seed data: %1$d orders, %2$d listings, %3$d product(s), %4$d material(s), %5$d workflow(s). Dummy channel credentials disconnected where present.', 'order-machine' ),
+			/* translators: 1: orders, 2: listings, 3: products, 4: materials, 5: workflows, 6: packages */
+			__( 'Removed seed data: %1$d orders, %2$d listings, %3$d product(s), %4$d material(s), %5$d workflow(s), %6$d package(s). Dummy channel credentials disconnected where present.', 'order-machine' ),
 			(int) $summary['orders'],
 			(int) $summary['listings'],
 			(int) $summary['products'],
 			(int) $summary['materials'],
-			(int) $summary['workflows']
+			(int) $summary['workflows'],
+			(int) $summary['packages']
 		);
 
 		return $summary;
@@ -1155,8 +1667,9 @@ class SOM_Seed {
 			'removed'          => $removed,
 			'product_id'       => $ids['product_id'],
 			'workflow_id'      => $ids['workflow_id'],
-			'pack_workflow_id' => $ids['pack_workflow_id'],
-			'message'          => __( 'Seed catalogue and dummy channel credentials restored (Bin Sticker Make + Order Pack & Ship). Use Sync now to reload fixture orders.', 'order-machine' ),
+			'pack_workflow_id'      => $ids['pack_workflow_id'],
+			'post_ship_workflow_id' => $ids['post_ship_workflow_id'],
+			'message'               => __( 'Seed catalogue and dummy channel credentials restored (Bin Sticker Make + Order Pack & Ship + Post-ship Aftercare). Use Sync now to reload fixture orders.', 'order-machine' ),
 		);
 	}
 
@@ -1198,7 +1711,8 @@ class SOM_Seed {
 
 		$all_step_ids = array_merge(
 			isset( $ids['step_ids'] ) ? (array) $ids['step_ids'] : array(),
-			isset( $ids['pack_step_ids'] ) ? (array) $ids['pack_step_ids'] : array()
+			isset( $ids['pack_step_ids'] ) ? (array) $ids['pack_step_ids'] : array(),
+			isset( $ids['post_ship_step_ids'] ) ? (array) $ids['post_ship_step_ids'] : array()
 		);
 		$all_step_ids = array_values( array_unique( array_filter( array_map( 'intval', $all_step_ids ) ) ) );
 		if ( ! empty( $all_step_ids ) ) {
@@ -1226,6 +1740,19 @@ class SOM_Seed {
 				$wpdb->prepare(
 					"SELECT id FROM {$orders_t} WHERE pack_workflow_template_id = %d",
 					$pack_wf
+				)
+			);
+			if ( is_array( $rows ) ) {
+				$order_ids = array_merge( $order_ids, array_map( 'intval', $rows ) );
+			}
+		}
+
+		$ps_wf = (int) ( $ids['post_ship_workflow_id'] ?? 0 );
+		if ( $ps_wf > 0 ) {
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT id FROM {$orders_t} WHERE post_ship_workflow_template_id = %d",
+					$ps_wf
 				)
 			);
 			if ( is_array( $rows ) ) {

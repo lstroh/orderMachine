@@ -749,6 +749,8 @@ class SOM_Orders {
 			$cards[] = $card;
 		}
 
+		SOM_Trays::attach_board_tray_numbers( $cards );
+
 		$workflow_steps = array();
 		if ( $workflow_id > 0 ) {
 			$workflow_steps = SOM_Item_Make::filter_make_steps( SOM_Workflows::get_steps( $workflow_id ) );
@@ -1105,25 +1107,351 @@ class SOM_Orders {
 			return '—';
 		}
 
-		$start = strtotime( $started_at . ' GMT' );
-		if ( ! $start ) {
-			$start = strtotime( $started_at );
-		}
+		$start = self::mysql_to_timestamp( $started_at );
 		if ( ! $start ) {
 			return '—';
 		}
 
-		$seconds = max( 0, time() - $start );
-		if ( $seconds < HOUR_IN_SECONDS ) {
-			$mins = max( 1, (int) floor( $seconds / MINUTE_IN_SECONDS ) );
-			return $mins . 'm';
+		return self::format_duration_seconds( max( 0, time() - $start ) );
+	}
+
+	/**
+	 * Format a wall-clock duration in seconds for order detail (e.g. "5m", "1h 30m").
+	 *
+	 * @param int|null $seconds Duration in seconds, or null.
+	 * @return string Em-dash when null / invalid.
+	 */
+	public static function format_duration_seconds( $seconds ) {
+		if ( null === $seconds || '' === $seconds ) {
+			return '—';
 		}
-		if ( $seconds < 2 * DAY_IN_SECONDS ) {
-			$hours = max( 1, (int) floor( $seconds / HOUR_IN_SECONDS ) );
+
+		$seconds = (int) $seconds;
+		if ( $seconds < 0 ) {
+			return '—';
+		}
+		if ( 0 === $seconds ) {
+			return '0s';
+		}
+		if ( $seconds < MINUTE_IN_SECONDS ) {
+			return $seconds . 's';
+		}
+		if ( $seconds < HOUR_IN_SECONDS ) {
+			return (int) floor( $seconds / MINUTE_IN_SECONDS ) . 'm';
+		}
+		if ( $seconds < DAY_IN_SECONDS ) {
+			$hours = (int) floor( $seconds / HOUR_IN_SECONDS );
+			$mins  = (int) floor( ( $seconds % HOUR_IN_SECONDS ) / MINUTE_IN_SECONDS );
+			if ( $mins > 0 ) {
+				return $hours . 'h ' . $mins . 'm';
+			}
 			return $hours . 'h';
 		}
-		$days = max( 1, (int) floor( $seconds / DAY_IN_SECONDS ) );
+		$days  = (int) floor( $seconds / DAY_IN_SECONDS );
+		$hours = (int) floor( ( $seconds % DAY_IN_SECONDS ) / HOUR_IN_SECONDS );
+		if ( $hours > 0 ) {
+			return $days . 'd ' . $hours . 'h';
+		}
 		return $days . 'd';
+	}
+
+	/**
+	 * Optional ± delta label when both planned and actual are set.
+	 *
+	 * @param int|null $planned_seconds Planned duration.
+	 * @param int|null $actual_seconds  Actual duration.
+	 * @return string Empty when either missing; otherwise e.g. "+2m" / "−1m" / "on plan".
+	 */
+	public static function format_vs_plan( $planned_seconds, $actual_seconds ) {
+		if ( null === $planned_seconds || '' === $planned_seconds || null === $actual_seconds || '' === $actual_seconds ) {
+			return '';
+		}
+		$planned = (int) $planned_seconds;
+		$actual  = (int) $actual_seconds;
+		if ( $planned < 1 ) {
+			return '';
+		}
+		$delta = $actual - $planned;
+		if ( 0 === $delta ) {
+			return __( 'on plan', 'order-machine' );
+		}
+		$abs = self::format_duration_seconds( abs( $delta ) );
+		if ( $delta > 0 ) {
+			return '+' . $abs;
+		}
+		return '−' . $abs;
+	}
+
+	/**
+	 * Workflow wall-clock actual: first started_at → last completed_at (O2).
+	 *
+	 * Returns null when either endpoint is missing (legacy / incomplete / cancelled mid-run).
+	 *
+	 * @param array<int, object> $rows Progress rows with started_at / completed_at.
+	 * @return int|null
+	 */
+	public static function progress_span_seconds( array $rows ) {
+		$first_start = null;
+		$last_complete = null;
+
+		foreach ( $rows as $row ) {
+			$started = isset( $row->started_at ) ? trim( (string) $row->started_at ) : '';
+			if ( '' !== $started ) {
+				$ts = self::mysql_to_timestamp( $started );
+				if ( $ts && ( null === $first_start || $ts < $first_start ) ) {
+					$first_start = $ts;
+				}
+			}
+			$completed = isset( $row->completed_at ) ? trim( (string) $row->completed_at ) : '';
+			if ( '' !== $completed ) {
+				$ts = self::mysql_to_timestamp( $completed );
+				if ( $ts && ( null === $last_complete || $ts > $last_complete ) ) {
+					$last_complete = $ts;
+				}
+			}
+		}
+
+		if ( null === $first_start || null === $last_complete ) {
+			return null;
+		}
+
+		return max( 0, $last_complete - $first_start );
+	}
+
+	/**
+	 * Resolve persisted actual_seconds, or derive from timestamps when both set.
+	 *
+	 * @param object $row Progress row.
+	 * @return int|null
+	 */
+	public static function step_actual_seconds( $row ) {
+		if ( ! $row ) {
+			return null;
+		}
+		if ( isset( $row->actual_seconds ) && null !== $row->actual_seconds && '' !== $row->actual_seconds ) {
+			return (int) $row->actual_seconds;
+		}
+		$started   = isset( $row->started_at ) ? trim( (string) $row->started_at ) : '';
+		$completed = isset( $row->completed_at ) ? trim( (string) $row->completed_at ) : '';
+		if ( '' === $started || '' === $completed ) {
+			return null;
+		}
+		return SOM_Workflow_Engine::wall_clock_seconds( $started, $completed );
+	}
+
+	/**
+	 * Live elapsed seconds for an in-progress step (display only; not persisted).
+	 *
+	 * @param object $row Progress row with started_at.
+	 * @return int|null
+	 */
+	public static function step_live_elapsed_seconds( $row ) {
+		if ( ! $row ) {
+			return null;
+		}
+		$status = isset( $row->status ) ? (string) $row->status : '';
+		if ( 'done' === $status || 'pending' === $status ) {
+			return null;
+		}
+		$started = isset( $row->started_at ) ? trim( (string) $row->started_at ) : '';
+		if ( '' === $started ) {
+			return null;
+		}
+		$start = self::mysql_to_timestamp( $started );
+		if ( ! $start ) {
+			return null;
+		}
+		return max( 0, time() - $start );
+	}
+
+	/**
+	 * Parse a MySQL datetime (UTC/GMT preferred) to a unix timestamp.
+	 *
+	 * @param string $mysql_datetime Datetime string.
+	 * @return int|null
+	 */
+	public static function mysql_to_timestamp( $mysql_datetime ) {
+		$mysql_datetime = trim( (string) $mysql_datetime );
+		if ( '' === $mysql_datetime ) {
+			return null;
+		}
+		$ts = strtotime( $mysql_datetime . ' GMT' );
+		if ( ! $ts ) {
+			$ts = strtotime( $mysql_datetime );
+		}
+		return $ts ? (int) $ts : null;
+	}
+
+	/**
+	 * Echo planned · actual (or live elapsed) for one progress step on order detail.
+	 *
+	 * @param object $row        Progress row with planned_seconds / timestamps.
+	 * @param bool   $is_current Whether this is the current in-progress step.
+	 * @return void
+	 */
+	public static function render_step_timing_html( $row, $is_current ) {
+		$planned_raw = isset( $row->planned_seconds ) && null !== $row->planned_seconds && '' !== $row->planned_seconds
+			? (int) $row->planned_seconds
+			: null;
+		if ( null !== $planned_raw && $planned_raw < 1 ) {
+			$planned_raw = null;
+		}
+		$planned_label = self::format_duration_seconds( $planned_raw );
+
+		$status = isset( $row->status ) ? (string) $row->status : '';
+		$is_done = 'done' === $status;
+
+		echo '<p class="som-step-timing description">';
+
+		if ( $is_done ) {
+			$actual = self::step_actual_seconds( $row );
+			$actual_label = null === $actual && ( empty( $row->started_at ) || empty( $row->completed_at ) )
+				? '—'
+				: self::format_duration_seconds( $actual );
+			$delta = self::format_vs_plan( $planned_raw, $actual );
+			printf(
+				/* translators: 1: planned duration, 2: actual duration */
+				esc_html__( 'Planned: %1$s · Actual: %2$s', 'order-machine' ),
+				esc_html( $planned_label ),
+				esc_html( $actual_label )
+			);
+			if ( '' !== $delta ) {
+				echo ' <span class="som-timing-delta">(' . esc_html( $delta ) . ')</span>';
+			}
+		} elseif ( $is_current ) {
+			$elapsed  = self::step_live_elapsed_seconds( $row );
+			$started  = isset( $row->started_at ) ? trim( (string) $row->started_at ) : '';
+			$start_ts = '' !== $started ? self::mysql_to_timestamp( $started ) : null;
+			echo esc_html__( 'Planned:', 'order-machine' ) . ' ' . esc_html( $planned_label ) . ' · ';
+			echo esc_html__( 'Elapsed:', 'order-machine' ) . ' ';
+			if ( null === $elapsed || ! $start_ts ) {
+				echo '—';
+			} else {
+				echo '<span class="som-live-elapsed" data-som-elapsed-from="' . esc_attr( (string) $start_ts ) . '">' . esc_html( self::format_duration_seconds( $elapsed ) ) . '</span>';
+			}
+		} else {
+			// Pending / not started.
+			printf(
+				/* translators: %s: planned duration */
+				esc_html__( 'Planned: %s · Actual: —', 'order-machine' ),
+				esc_html( $planned_label )
+			);
+		}
+
+		echo '</p>';
+	}
+
+	/**
+	 * Echo make-line / pack workflow timing footer (planned sum · span actual).
+	 *
+	 * @param array<int, object> $rows            Progress rows.
+	 * @param bool               $allow_span_total When false (e.g. cancelled mid-run), show — for actual.
+	 * @param string             $label_prefix    e.g. "Make total" / "Pack total".
+	 * @return void
+	 */
+	public static function render_workflow_timing_footer_html( array $rows, $allow_span_total, $label_prefix ) {
+		$summary = SOM_Workflows::planned_total_summary( $rows );
+		$planned_label = self::format_duration_seconds( $summary['total'] );
+
+		$span = null;
+		if ( $allow_span_total ) {
+			$span = self::progress_span_seconds( $rows );
+		}
+		$actual_label = self::format_duration_seconds( $span );
+
+		echo '<p class="som-workflow-timing-total description">';
+		printf(
+			/* translators: 1: "Make total" / "Pack total", 2: planned duration, 3: actual duration */
+			esc_html__( '%1$s — Planned: %2$s · Actual: %3$s', 'order-machine' ),
+			esc_html( (string) $label_prefix ),
+			esc_html( $planned_label ),
+			esc_html( $actual_label )
+		);
+		if ( ! empty( $summary['is_partial'] ) ) {
+			echo ' <span class="som-timing-partial">(' . esc_html__( 'partial plan', 'order-machine' ) . ')</span>';
+		}
+		echo '</p>';
+	}
+
+	/**
+	 * Update structured personalisation fields on an order line (UP9-S1 / O4).
+	 *
+	 * @param int                  $order_id Order PK.
+	 * @param int                  $item_id  Order item PK.
+	 * @param array<string, mixed> $fields   house_number, street_name, style, personalisation_text (optional).
+	 * @return true|WP_Error
+	 */
+	public static function update_item_structured_fields( $order_id, $item_id, array $fields ) {
+		global $wpdb;
+
+		$order_id = (int) $order_id;
+		$item_id  = (int) $item_id;
+		if ( $order_id < 1 || $item_id < 1 ) {
+			return new WP_Error( 'som_item_missing', __( 'Order line not found.', 'order-machine' ) );
+		}
+
+		$table = SOM_DB::table( 'order_items' );
+		$owned = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE id = %d AND order_id = %d LIMIT 1",
+				$item_id,
+				$order_id
+			)
+		);
+		if ( $owned < 1 ) {
+			return new WP_Error( 'som_item_missing', __( 'Order line not found.', 'order-machine' ) );
+		}
+
+		$update = array();
+		$formats = array();
+		foreach ( array(
+			'house_number'         => 64,
+			'street_name'          => 191,
+			'style'                => 191,
+			'personalisation_text' => 0,
+		) as $key => $max ) {
+			if ( ! array_key_exists( $key, $fields ) ) {
+				continue;
+			}
+			if ( 'personalisation_text' === $key ) {
+				$text = sanitize_textarea_field( (string) $fields[ $key ] );
+				$text = trim( $text );
+				$update[ $key ] = '' === $text ? null : $text;
+				$formats[]      = '%s';
+				continue;
+			}
+			$text = sanitize_text_field( (string) $fields[ $key ] );
+			$text = trim( $text );
+			if ( '' === $text ) {
+				$update[ $key ] = null;
+			} else {
+				if ( $max > 0 && strlen( $text ) > $max ) {
+					$text = substr( $text, 0, $max );
+				}
+				$update[ $key ] = $text;
+			}
+			$formats[] = '%s';
+		}
+
+		if ( ! $update ) {
+			return new WP_Error( 'som_item_fields', __( 'No structured fields to update.', 'order-machine' ) );
+		}
+
+		$updated = $wpdb->update(
+			$table,
+			$update,
+			array(
+				'id'       => $item_id,
+				'order_id' => $order_id,
+			),
+			$formats,
+			array( '%d', '%d' )
+		);
+		if ( false === $updated ) {
+			return new WP_Error( 'som_item_update', __( 'Could not update line fields.', 'order-machine' ) );
+		}
+
+		return true;
 	}
 
 	/**

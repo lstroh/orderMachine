@@ -69,39 +69,85 @@ $status_options = array(
 		<?php if ( ! $test_products ) : ?>
 			<p class="description"><?php echo esc_html__( 'Add an active product first, then create a test order.', 'order-machine' ); ?></p>
 		<?php else : ?>
+			<?php
+			$product_option_html = '';
+			foreach ( $test_products as $product ) {
+				$product_option_html .= '<option value="' . esc_attr( (string) $product->id ) . '">' . esc_html(
+					sprintf(
+						/* translators: 1: product name, 2: SKU */
+						__( '%1$s (%2$s)', 'order-machine' ),
+						(string) $product->name,
+						(string) $product->sku
+					)
+				) . '</option>';
+			}
+			?>
 			<form method="post" action="<?php echo esc_url( SOM_Orders::list_url() ); ?>" class="som-create-test-order-form">
 				<?php wp_nonce_field( 'som_create_test_order', 'som_order_nonce' ); ?>
-
-				<label for="som-test-product-id"><?php echo esc_html__( 'Product', 'order-machine' ); ?></label>
-				<select name="som_test_product_id" id="som-test-product-id" required>
-					<option value=""><?php echo esc_html__( 'Select product…', 'order-machine' ); ?></option>
-					<?php foreach ( $test_products as $product ) : ?>
-						<option value="<?php echo esc_attr( (string) $product->id ); ?>">
-							<?php
-							echo esc_html(
-								sprintf(
-									/* translators: 1: product name, 2: SKU */
-									__( '%1$s (%2$s)', 'order-machine' ),
-									(string) $product->name,
-									(string) $product->sku
-								)
-							);
-							?>
-						</option>
-					<?php endforeach; ?>
-				</select>
-
-				<label for="som-test-quantity"><?php echo esc_html__( 'Qty', 'order-machine' ); ?></label>
-				<input type="number" name="som_test_quantity" id="som-test-quantity" value="1" min="1" step="1" />
 
 				<label for="som-test-buyer-name"><?php echo esc_html__( 'Buyer', 'order-machine' ); ?></label>
 				<input type="text" name="som_test_buyer_name" id="som-test-buyer-name" value="" placeholder="<?php echo esc_attr__( 'Test Buyer', 'order-machine' ); ?>" />
 
-				<label for="som-test-unit-price"><?php echo esc_html__( 'Unit price', 'order-machine' ); ?></label>
-				<input type="number" name="som_test_unit_price" id="som-test-unit-price" value="" min="0" step="0.01" placeholder="0.00" />
+				<table class="widefat striped som-test-order-lines" id="som-test-order-lines">
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Product', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Qty', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Unit price', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Personalisation', 'order-machine' ); ?></th>
+							<th class="som-test-order-actions-col"><span class="screen-reader-text"><?php echo esc_html__( 'Actions', 'order-machine' ); ?></span></th>
+						</tr>
+					</thead>
+					<tbody id="som-test-order-rows">
+						<tr class="som-test-order-row" data-index="0">
+							<td>
+								<select name="som_test_lines[0][product_id]" required>
+									<option value=""><?php echo esc_html__( 'Select product…', 'order-machine' ); ?></option>
+									<?php echo $product_option_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built with esc_attr/esc_html above. ?>
+								</select>
+							</td>
+							<td>
+								<input type="number" name="som_test_lines[0][quantity]" value="1" min="1" step="1" />
+							</td>
+							<td>
+								<input type="number" name="som_test_lines[0][unit_price]" value="" min="0" step="0.01" placeholder="0.00" />
+							</td>
+							<td>
+								<input type="text" name="som_test_lines[0][personalisation]" value="" placeholder="<?php echo esc_attr__( 'Optional', 'order-machine' ); ?>" />
+							</td>
+							<td>
+								<button type="button" class="button-link-delete som-test-order-remove"><?php echo esc_html__( 'Remove', 'order-machine' ); ?></button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<p>
+					<button type="button" class="button" id="som-test-order-add-row"><?php echo esc_html__( 'Add line', 'order-machine' ); ?></button>
+					<span class="description"><?php echo esc_html__( 'Up to 5 lines. Different products and quantities supported.', 'order-machine' ); ?></span>
+				</p>
 
-				<label for="som-test-personalisation"><?php echo esc_html__( 'Personalisation', 'order-machine' ); ?></label>
-				<input type="text" name="som_test_personalisation" id="som-test-personalisation" value="" placeholder="<?php echo esc_attr__( 'Optional', 'order-machine' ); ?>" />
+				<template id="som-test-order-row-template">
+					<tr class="som-test-order-row" data-index="__INDEX__">
+						<td>
+							<select name="som_test_lines[__INDEX__][product_id]">
+								<option value=""><?php echo esc_html__( 'Select product…', 'order-machine' ); ?></option>
+								<?php echo $product_option_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built with esc_attr/esc_html above. ?>
+							</select>
+						</td>
+						<td>
+							<input type="number" name="som_test_lines[__INDEX__][quantity]" value="1" min="1" step="1" />
+						</td>
+						<td>
+							<input type="number" name="som_test_lines[__INDEX__][unit_price]" value="" min="0" step="0.01" placeholder="0.00" />
+						</td>
+						<td>
+							<input type="text" name="som_test_lines[__INDEX__][personalisation]" value="" placeholder="<?php echo esc_attr__( 'Optional', 'order-machine' ); ?>" />
+						</td>
+						<td>
+							<button type="button" class="button-link-delete som-test-order-remove"><?php echo esc_html__( 'Remove', 'order-machine' ); ?></button>
+						</td>
+					</tr>
+				</template>
 
 				<?php submit_button( __( 'Create test order', 'order-machine' ), 'secondary', 'som_create_test_order', false ); ?>
 			</form>

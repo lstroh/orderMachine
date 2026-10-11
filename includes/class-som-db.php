@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.16.0';
+	const DB_VERSION = '1.24.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -80,7 +80,8 @@ class SOM_DB {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			description text NULL,
-			kind enum('make','pack') NOT NULL DEFAULT 'make',
+			kind enum('make','pack','post_ship') NOT NULL DEFAULT 'make',
+			uses_trays tinyint(1) NOT NULL DEFAULT 0,
 			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -104,14 +105,28 @@ class SOM_DB {
 			KEY is_active (is_active)
 		) {$charset_collate};";
 
+		$sql[] = "CREATE TABLE {$p}som_shipping_package_materials (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			shipping_package_id bigint(20) unsigned NOT NULL,
+			material_id bigint(20) unsigned NOT NULL,
+			quantity_per_package decimal(10,2) NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY package_material (shipping_package_id,material_id),
+			KEY material_id (material_id)
+		) {$charset_collate};";
+
 		$sql[] = "CREATE TABLE {$p}som_products (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			sku varchar(50) NULL,
 			workflow_template_id bigint(20) unsigned NULL,
+			post_ship_workflow_template_id bigint(20) unsigned NULL,
 			target_selling_price decimal(10,2) NULL,
 			weight_grams decimal(10,2) NULL,
 			package_id bigint(20) unsigned NULL,
+			package_id_multi bigint(20) unsigned NULL,
 			planned_shipping_gbp decimal(10,2) NULL,
 			is_internal tinyint(1) NOT NULL DEFAULT 0,
 			linked_material_id bigint(20) unsigned NULL,
@@ -120,8 +135,10 @@ class SOM_DB {
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY workflow_template_id (workflow_template_id),
+			KEY post_ship_workflow_template_id (post_ship_workflow_template_id),
 			KEY sku (sku),
 			KEY package_id (package_id),
+			KEY package_id_multi (package_id_multi),
 			UNIQUE KEY linked_material_id (linked_material_id)
 		) {$charset_collate};";
 
@@ -174,10 +191,13 @@ class SOM_DB {
 			name varchar(100) NOT NULL,
 			requires_manual_confirm tinyint(1) NOT NULL DEFAULT 0,
 			timer_seconds int(11) NULL,
+			planned_seconds int(10) unsigned NULL,
 			script_config text NULL,
+			command_template text NULL,
 			batch_group_id bigint(20) unsigned NULL,
 			confirmation_kind varchar(40) NULL,
 			instructions text NULL,
+			task_list_json text NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -197,6 +217,18 @@ class SOM_DB {
 			KEY workflow_step_id (workflow_step_id)
 		) {$charset_collate};";
 
+		$sql[] = "CREATE TABLE {$p}som_product_step_tasks (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			product_id bigint(20) unsigned NOT NULL,
+			workflow_step_id bigint(20) unsigned NOT NULL,
+			task_list_json text NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY product_step (product_id,workflow_step_id),
+			KEY workflow_step_id (workflow_step_id)
+		) {$charset_collate};";
+
 		$sql[] = "CREATE TABLE {$p}som_orders (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			channel_id bigint(20) unsigned NOT NULL,
@@ -206,6 +238,10 @@ class SOM_DB {
 			shipping_address text NULL,
 			planned_shipping_gbp decimal(10,2) NULL,
 			pack_workflow_template_id bigint(20) unsigned NULL,
+			post_ship_workflow_template_id bigint(20) unsigned NULL,
+			post_ship_started_at datetime NULL,
+			arrival_confirmed_at datetime NULL,
+			arrival_confirmed_by bigint(20) unsigned NULL,
 			shipping_package_id bigint(20) unsigned NULL,
 			pack_hold_reason text NULL,
 			pack_held_at datetime NULL,
@@ -222,6 +258,7 @@ class SOM_DB {
 			KEY order_date (order_date),
 			KEY current_step_id (current_step_id),
 			KEY pack_workflow_template_id (pack_workflow_template_id),
+			KEY post_ship_workflow_template_id (post_ship_workflow_template_id),
 			KEY shipping_package_id (shipping_package_id)
 		) {$charset_collate};";
 
@@ -231,6 +268,10 @@ class SOM_DB {
 			product_id bigint(20) unsigned NULL,
 			quantity int(11) NOT NULL DEFAULT 1,
 			personalisation_text text NULL,
+			house_number varchar(64) NULL,
+			street_name varchar(191) NULL,
+			style varchar(191) NULL,
+			personalisation_json text NULL,
 			unit_price decimal(10,2) NULL,
 			external_listing_id varchar(100) NULL,
 			PRIMARY KEY  (id),
@@ -277,8 +318,13 @@ class SOM_DB {
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
 			confirmation_state text NULL,
+			task_checks_json text NULL,
+			manual_unblock_at datetime NULL,
+			manual_unblock_by bigint(20) unsigned NULL,
+			manual_unblock_gates varchar(191) NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
+			actual_seconds int(10) unsigned NULL,
 			PRIMARY KEY  (id),
 			KEY order_id (order_id),
 			KEY workflow_step_id (workflow_step_id),
@@ -295,8 +341,13 @@ class SOM_DB {
 			retry_count int(11) NOT NULL DEFAULT 0,
 			last_error text NULL,
 			confirmation_state text NULL,
+			task_checks_json text NULL,
+			manual_unblock_at datetime NULL,
+			manual_unblock_by bigint(20) unsigned NULL,
+			manual_unblock_gates varchar(191) NULL,
 			started_at datetime NULL,
 			completed_at datetime NULL,
+			actual_seconds int(10) unsigned NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -504,6 +555,21 @@ class SOM_DB {
 			KEY incurred_date (incurred_date)
 		) {$charset_collate};";
 
+		$sql[] = "CREATE TABLE {$p}som_tray_assignments (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			tray_number smallint(5) unsigned NOT NULL,
+			order_id bigint(20) unsigned NOT NULL,
+			status enum('held','released') NOT NULL DEFAULT 'held',
+			assigned_at datetime NOT NULL,
+			released_at datetime NULL,
+			release_reason varchar(32) NULL,
+			assigned_by_user_id bigint(20) unsigned NULL,
+			released_by_user_id bigint(20) unsigned NULL,
+			PRIMARY KEY  (id),
+			KEY order_id (order_id),
+			KEY status_tray (status,tray_number)
+		) {$charset_collate};";
+
 		// Migrate reserved `key` → group_key before dbDelta so UNIQUE is not applied to empty placeholders.
 		self::upgrade_batch_groups_key_column();
 
@@ -514,7 +580,15 @@ class SOM_DB {
 		self::upgrade_progress_status_enum();
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_workflow_template_kind();
+		self::upgrade_workflow_template_uses_trays();
+		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
+		self::upgrade_product_package_id_multi();
+		self::upgrade_copy_command_columns();
+		self::upgrade_step_task_list_columns();
+		self::upgrade_workflow_timing_columns();
+		self::upgrade_workflow_template_kind_post_ship();
+		self::upgrade_post_ship_columns();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -683,6 +757,43 @@ class SOM_DB {
 	}
 
 	/**
+	 * Add products.package_id_multi when missing (UP7-S3).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_product_package_id_multi() {
+		global $wpdb;
+
+		$products = self::table( 'products' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $products ) ) !== $products ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$has = $wpdb->get_row( "SHOW COLUMNS FROM {$products} LIKE 'package_id_multi'" );
+		if ( ! $has ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$products} ADD COLUMN package_id_multi bigint(20) unsigned NULL AFTER package_id" );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$indexes = $wpdb->get_results( "SHOW INDEX FROM {$products}" );
+		$have    = array();
+		if ( is_array( $indexes ) ) {
+			foreach ( $indexes as $idx ) {
+				if ( isset( $idx->Key_name ) ) {
+					$have[ $idx->Key_name ] = true;
+				}
+			}
+		}
+		if ( empty( $have['package_id_multi'] ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$products} ADD KEY package_id_multi (package_id_multi)" );
+		}
+	}
+
+	/**
 	 * Ensure workflow_templates.kind exists (dbDelta ENUM add can be flaky).
 	 *
 	 * @return void
@@ -706,9 +817,185 @@ class SOM_DB {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query(
 			"ALTER TABLE {$table}
-			ADD COLUMN kind enum('make','pack') NOT NULL DEFAULT 'make' AFTER description,
+			ADD COLUMN kind enum('make','pack','post_ship') NOT NULL DEFAULT 'make' AFTER description,
 			ADD KEY kind (kind)"
 		);
+	}
+
+	/**
+	 * Extend workflow_templates.kind ENUM with post_ship (UP11-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_template_kind_post_ship() {
+		global $wpdb;
+
+		$table = self::table( 'workflow_templates' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $exists !== $table ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'kind'" );
+		if ( ! $col || empty( $col->Type ) ) {
+			return;
+		}
+		if ( false !== stripos( (string) $col->Type, 'post_ship' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$table}
+			MODIFY COLUMN kind enum('make','pack','post_ship') NOT NULL DEFAULT 'make'"
+		);
+	}
+
+	/**
+	 * Add post-ship bind / arrival columns (UP11-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_post_ship_columns() {
+		global $wpdb;
+
+		$orders   = self::table( 'orders' );
+		$products = self::table( 'products' );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $orders ) ) === $orders ) {
+			$order_cols = array(
+				'post_ship_workflow_template_id' => 'bigint(20) unsigned NULL',
+				'post_ship_started_at'           => 'datetime NULL',
+				'arrival_confirmed_at'           => 'datetime NULL',
+				'arrival_confirmed_by'           => 'bigint(20) unsigned NULL',
+			);
+			foreach ( $order_cols as $name => $def ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$has = $wpdb->get_row( "SHOW COLUMNS FROM {$orders} LIKE '{$name}'" );
+				if ( ! $has ) {
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$wpdb->query( "ALTER TABLE {$orders} ADD COLUMN {$name} {$def}" );
+				}
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$indexes = $wpdb->get_results( "SHOW INDEX FROM {$orders}" );
+			$have    = array();
+			if ( is_array( $indexes ) ) {
+				foreach ( $indexes as $idx ) {
+					$have[ $idx->Key_name ] = true;
+				}
+			}
+			if ( empty( $have['post_ship_workflow_template_id'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$orders} ADD KEY post_ship_workflow_template_id (post_ship_workflow_template_id)" );
+			}
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $products ) ) === $products ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$products} LIKE 'post_ship_workflow_template_id'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$products}
+					ADD COLUMN post_ship_workflow_template_id bigint(20) unsigned NULL AFTER workflow_template_id"
+				);
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$indexes = $wpdb->get_results( "SHOW INDEX FROM {$products}" );
+			$have    = array();
+			if ( is_array( $indexes ) ) {
+				foreach ( $indexes as $idx ) {
+					$have[ $idx->Key_name ] = true;
+				}
+			}
+			if ( empty( $have['post_ship_workflow_template_id'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$products} ADD KEY post_ship_workflow_template_id (post_ship_workflow_template_id)" );
+			}
+		}
+	}
+
+	/**
+	 * Ensure workflow_templates.uses_trays exists (UP8-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_template_uses_trays() {
+		global $wpdb;
+
+		$table = self::table( 'workflow_templates' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $exists !== $table ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'uses_trays'" );
+		if ( $col ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$table}
+			ADD COLUMN uses_trays tinyint(1) NOT NULL DEFAULT 0 AFTER kind"
+		);
+	}
+
+	/**
+	 * Ensure manual_unblock_* audit columns on make + pack progress (UP8-S2).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_manual_unblock_columns() {
+		global $wpdb;
+
+		$tables = array(
+			self::table( 'order_step_progress' ),
+			self::table( 'order_item_step_progress' ),
+		);
+
+		foreach ( $tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( $exists !== $table ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$cols = $wpdb->get_results( "SHOW COLUMNS FROM {$table}", OBJECT_K );
+			if ( ! is_array( $cols ) ) {
+				continue;
+			}
+
+			if ( empty( $cols['manual_unblock_at'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$table}
+					ADD COLUMN manual_unblock_at datetime NULL AFTER confirmation_state"
+				);
+			}
+			if ( empty( $cols['manual_unblock_by'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$table}
+					ADD COLUMN manual_unblock_by bigint(20) unsigned NULL AFTER manual_unblock_at"
+				);
+			}
+			if ( empty( $cols['manual_unblock_gates'] ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					"ALTER TABLE {$table}
+					ADD COLUMN manual_unblock_gates varchar(191) NULL AFTER manual_unblock_by"
+				);
+			}
+		}
 	}
 
 	/**
@@ -749,7 +1036,130 @@ class SOM_DB {
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_progress_status_enum();
 		self::upgrade_workflow_template_kind();
+		self::upgrade_workflow_template_uses_trays();
+		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
+		self::upgrade_product_package_id_multi();
+		self::upgrade_copy_command_columns();
+		self::upgrade_step_task_list_columns();
+		self::upgrade_workflow_timing_columns();
+		self::upgrade_workflow_template_kind_post_ship();
+		self::upgrade_post_ship_columns();
+	}
+
+	/**
+	 * Add planned_seconds on steps + actual_seconds on progress (UP10-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_timing_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) === $steps ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'planned_seconds'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN planned_seconds int(10) unsigned NULL AFTER timer_seconds" );
+			}
+		}
+
+		$progress_tables = array(
+			self::table( 'order_step_progress' ),
+			self::table( 'order_item_step_progress' ),
+		);
+		foreach ( $progress_tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				continue;
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'actual_seconds'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$table} ADD COLUMN actual_seconds int(10) unsigned NULL AFTER completed_at" );
+			}
+		}
+	}
+
+	/**
+	 * Add copy-command template + structured line fields (UP9-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_copy_command_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) === $steps ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'command_template'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN command_template text NULL AFTER script_config" );
+			}
+		}
+
+		$items = self::table( 'order_items' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $items ) ) !== $items ) {
+			return;
+		}
+
+		$item_cols = array(
+			'house_number'         => 'varchar(64) NULL AFTER personalisation_text',
+			'street_name'          => 'varchar(191) NULL AFTER house_number',
+			'style'                => 'varchar(191) NULL AFTER street_name',
+			'personalisation_json' => 'text NULL AFTER style',
+		);
+		foreach ( $item_cols as $name => $def ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$items} LIKE '{$name}'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$items} ADD COLUMN {$name} {$def}" );
+			}
+		}
+	}
+
+	/**
+	 * Add optional step task lists + progress tick state (UP9-S4).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_step_task_list_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) === $steps ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'task_list_json'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN task_list_json text NULL AFTER instructions" );
+			}
+		}
+
+		$progress_tables = array(
+			self::table( 'order_step_progress' ),
+			self::table( 'order_item_step_progress' ),
+		);
+		foreach ( $progress_tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				continue;
+			}
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'task_checks_json'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$table} ADD COLUMN task_checks_json text NULL AFTER confirmation_state" );
+			}
+		}
 	}
 
 	/**

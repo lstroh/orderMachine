@@ -1,6 +1,6 @@
 <?php
 /**
- * Analytics dashboard aggregations (Update Package 3 / Sprint 4).
+ * Analytics dashboard aggregations (Update Package 3 / Sprint 4 + UP10-S2 timing).
  *
  * Live queries only. Profit is order-level: revenue − material COGS − fees once.
  *
@@ -15,6 +15,11 @@ defined( 'ABSPATH' ) || exit;
 class SOM_Analytics {
 
 	/**
+	 * Soft-default over-plan highlight: avg actual > planned × this ratio.
+	 */
+	const OVER_PLAN_RATIO = 1.2;
+
+	/**
 	 * Parse shared GET filters.
 	 *
 	 * @param array<string, mixed> $source Typically $_GET.
@@ -25,6 +30,8 @@ class SOM_Analytics {
 	 *   granularity: string,
 	 *   channel_id: int,
 	 *   material_ids: int[],
+	 *   timing_kind: string,
+	 *   timing_template_id: int,
 	 *   start: string,
 	 *   end: string
 	 * }
@@ -58,15 +65,24 @@ class SOM_Analytics {
 
 		$bounds = self::resolve_date_bounds( $range, $date_from, $date_to );
 
+		$timing_kind = isset( $source['som_timing_kind'] ) ? sanitize_key( wp_unslash( $source['som_timing_kind'] ) ) : 'make';
+		if ( ! in_array( $timing_kind, array( 'make', 'pack' ), true ) ) {
+			$timing_kind = 'make';
+		}
+
+		$timing_template_id = isset( $source['som_timing_template'] ) ? (int) $source['som_timing_template'] : 0;
+
 		return array(
-			'range'        => $range,
-			'date_from'    => $bounds['date_from'],
-			'date_to'      => $bounds['date_to'],
-			'granularity'  => $granularity,
-			'channel_id'   => $channel_id,
-			'material_ids' => $material_ids,
-			'start'        => $bounds['start'],
-			'end'          => $bounds['end'],
+			'range'               => $range,
+			'date_from'           => $bounds['date_from'],
+			'date_to'             => $bounds['date_to'],
+			'granularity'         => $granularity,
+			'channel_id'          => $channel_id,
+			'material_ids'        => $material_ids,
+			'timing_kind'         => $timing_kind,
+			'timing_template_id'  => $timing_template_id,
+			'start'               => $bounds['start'],
+			'end'                 => $bounds['end'],
 		);
 	}
 
@@ -256,15 +272,18 @@ class SOM_Analytics {
 		$sales  = self::aggregate_sales_profit_aov( $orders, $filters, $labels );
 		$by_ch  = self::aggregate_orders_by_channel( $orders, $filters );
 		$stock  = self::aggregate_stock_series( $filters, $labels );
+		$timing = self::timing_payload( $filters );
 
 		return array(
 			'filters'           => array(
-				'range'        => $filters['range'],
-				'date_from'    => $filters['date_from'],
-				'date_to'      => $filters['date_to'],
-				'granularity'  => $filters['granularity'],
-				'channel_id'   => (int) $filters['channel_id'],
-				'material_ids' => $filters['material_ids'],
+				'range'              => $filters['range'],
+				'date_from'          => $filters['date_from'],
+				'date_to'            => $filters['date_to'],
+				'granularity'        => $filters['granularity'],
+				'channel_id'         => (int) $filters['channel_id'],
+				'material_ids'       => $filters['material_ids'],
+				'timing_kind'        => $filters['timing_kind'],
+				'timing_template_id' => (int) $filters['timing_template_id'],
 			),
 			'labels'            => $labels,
 			'sales'             => $sales['sales'],
@@ -273,7 +292,375 @@ class SOM_Analytics {
 			'orders_by_channel' => $by_ch,
 			'stock'             => $stock,
 			'totals'            => $sales['totals'],
+			'timing'            => $timing,
 		);
+	}
+
+	/**
+	 * Active make/pack templates for the Analytics timing filter.
+	 *
+	 * @param string $kind make|pack.
+	 * @return array<int, object> Rows with id, name, kind.
+	 */
+	public static function list_timing_templates( $kind = 'make' ) {
+		$kind = SOM_Workflows::sanitize_kind( $kind );
+		$result = SOM_Workflows::query(
+			array(
+				'status'   => 'active',
+				'kind'     => $kind,
+				'paged'    => 1,
+				'per_page' => 200,
+			)
+		);
+		$templates = isset( $result['templates'] ) && is_array( $result['templates'] ) ? $result['templates'] : array();
+		$out       = array();
+		foreach ( $templates as $row ) {
+			$out[] = (object) array(
+				'id'   => (int) $row->id,
+				'name' => (string) $row->name,
+				'kind' => isset( $row->kind ) ? (string) $row->kind : $kind,
+			);
+		}
+		return $out;
+	}
+
+	/**
+	 * Resolve timing template id (fallback to first active of kind when unset/invalid).
+	 *
+	 * @param array<string, mixed> $filters Filters.
+	 * @return array{kind: string, template_id: int, template: object|null, templates: array<int, object>}
+	 */
+	public static function resolve_timing_template( array $filters ) {
+		$kind      = isset( $filters['timing_kind'] ) ? SOM_Workflows::sanitize_kind( $filters['timing_kind'] ) : 'make';
+		$templates = self::list_timing_templates( $kind );
+		$wanted    = isset( $filters['timing_template_id'] ) ? (int) $filters['timing_template_id'] : 0;
+		$chosen    = null;
+
+		foreach ( $templates as $tpl ) {
+			if ( $wanted > 0 && (int) $tpl->id === $wanted ) {
+				$chosen = $tpl;
+				break;
+			}
+		}
+		if ( ! $chosen && $templates ) {
+			$chosen = $templates[0];
+		}
+
+		return array(
+			'kind'        => $kind,
+			'template_id' => $chosen ? (int) $chosen->id : 0,
+			'template'    => $chosen,
+			'templates'   => $templates,
+		);
+	}
+
+	/**
+	 * Workflow timing section payload (UP10-S2).
+	 *
+	 * @param array<string, mixed> $filters From parse_filters().
+	 * @return array<string, mixed>
+	 */
+	public static function timing_payload( array $filters ) {
+		$resolved = self::resolve_timing_template( $filters );
+		$kind     = $resolved['kind'];
+		$tid      = (int) $resolved['template_id'];
+
+		$empty = array(
+			'kind'               => $kind,
+			'template_id'        => $tid,
+			'template_name'      => $resolved['template'] ? (string) $resolved['template']->name : '',
+			'templates'          => $resolved['templates'],
+			'steps'              => array(),
+			'workflow_totals'    => array(
+				'count'            => 0,
+				'avg_planned'      => null,
+				'avg_actual'       => null,
+				'planned_total'    => null,
+				'is_partial_plan'  => false,
+				'rows'             => array(),
+			),
+			'chart'              => array(
+				'labels'        => array(),
+				'avg_planned'   => array(),
+				'avg_actual'    => array(),
+			),
+			'over_plan_ratio'    => self::OVER_PLAN_RATIO,
+		);
+
+		if ( $tid < 1 ) {
+			return $empty;
+		}
+
+		$steps = self::aggregate_step_timing( $tid, $kind, $filters );
+		$totals = self::aggregate_workflow_timing_totals( $tid, $kind, $filters );
+
+		$chart_labels  = array();
+		$chart_planned = array();
+		$chart_actual  = array();
+		foreach ( $steps as $step ) {
+			$chart_labels[]  = (string) $step['name'];
+			$chart_planned[] = null !== $step['avg_planned'] ? round( (float) $step['avg_planned'] / 60, 2 ) : null;
+			$chart_actual[]  = null !== $step['avg_actual'] ? round( (float) $step['avg_actual'] / 60, 2 ) : null;
+		}
+
+		$empty['steps']           = $steps;
+		$empty['workflow_totals'] = $totals;
+		$empty['chart']           = array(
+			'labels'      => $chart_labels,
+			'avg_planned' => $chart_planned,
+			'avg_actual'  => $chart_actual,
+			'unit'        => 'minutes',
+		);
+
+		return $empty;
+	}
+
+	/**
+	 * Whether avg actual exceeds planned × OVER_PLAN_RATIO.
+	 *
+	 * @param int|float|null $avg_actual  Average actual seconds.
+	 * @param int|float|null $avg_planned Average / template planned seconds.
+	 * @return bool
+	 */
+	public static function is_over_plan( $avg_actual, $avg_planned ) {
+		if ( null === $avg_actual || null === $avg_planned || '' === $avg_actual || '' === $avg_planned ) {
+			return false;
+		}
+		$planned = (float) $avg_planned;
+		$actual  = (float) $avg_actual;
+		if ( $planned <= 0 || $actual < 0 ) {
+			return false;
+		}
+		return $actual > ( $planned * self::OVER_PLAN_RATIO );
+	}
+
+	/**
+	 * Per-step average actual vs planned for a make or pack template.
+	 *
+	 * @param int                  $template_id Template PK.
+	 * @param string               $kind        make|pack.
+	 * @param array<string, mixed> $filters     Date (and channel) filters.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function aggregate_step_timing( $template_id, $kind, array $filters ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return array();
+		}
+
+		$kind     = SOM_Workflows::sanitize_kind( $kind );
+		$steps    = SOM_Workflows::get_steps( $template_id );
+		if ( ! $steps ) {
+			return array();
+		}
+
+		$progress_t = 'pack' === $kind
+			? SOM_DB::table( 'order_step_progress' )
+			: SOM_DB::table( 'order_item_step_progress' );
+		$orders_t   = SOM_DB::table( 'orders' );
+		$channels_t = SOM_DB::table( 'channels' );
+		$excluded   = self::excluded_orders_sql( 'o', 'c' );
+
+		$where  = array(
+			'p.workflow_step_id = %d',
+			"p.status = 'done'",
+			'p.actual_seconds IS NOT NULL',
+			'o.order_date >= %s',
+			'o.order_date <= %s',
+			"NOT {$excluded}",
+			'c.slug <> %s',
+		);
+		$params_base = array( $filters['start'], $filters['end'], SOM_Production::CHANNEL_SLUG );
+
+		if ( (int) $filters['channel_id'] > 0 ) {
+			$where[]       = 'o.channel_id = %d';
+			$params_base[] = (int) $filters['channel_id'];
+		}
+
+		$where_sql = implode( ' AND ', $where );
+		$out       = array();
+
+		foreach ( $steps as $step ) {
+			$step_id = (int) $step->id;
+			$planned = isset( $step->planned_seconds ) && null !== $step->planned_seconds && '' !== $step->planned_seconds
+				? (int) $step->planned_seconds
+				: null;
+			if ( null !== $planned && $planned < 1 ) {
+				$planned = null;
+			}
+
+			$params = array_merge( array( $step_id ), $params_base );
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names + settled fragments.
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT AVG(p.actual_seconds) AS avg_actual, COUNT(p.id) AS sample_count
+					FROM {$progress_t} p
+					INNER JOIN {$orders_t} o ON o.id = p.order_id
+					INNER JOIN {$channels_t} c ON c.id = o.channel_id
+					WHERE {$where_sql}",
+					$params
+				)
+			);
+
+			$avg_actual = null;
+			$samples    = 0;
+			if ( $row && (int) $row->sample_count > 0 ) {
+				$samples    = (int) $row->sample_count;
+				$avg_actual = (int) round( (float) $row->avg_actual );
+			}
+
+			$out[] = array(
+				'step_id'     => $step_id,
+				'name'        => (string) $step->name,
+				'sort_order'  => isset( $step->sort_order ) ? (int) $step->sort_order : 0,
+				'avg_planned' => $planned,
+				'avg_actual'  => $avg_actual,
+				'sample_count'=> $samples,
+				'over_plan'   => self::is_over_plan( $avg_actual, $planned ),
+			);
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Completed workflow span totals (first start → last complete) for a template.
+	 *
+	 * @param int                  $template_id Template PK.
+	 * @param string               $kind        make|pack.
+	 * @param array<string, mixed> $filters     Date filters.
+	 * @return array<string, mixed>
+	 */
+	public static function aggregate_workflow_timing_totals( $template_id, $kind, array $filters ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		$kind        = SOM_Workflows::sanitize_kind( $kind );
+		$steps       = SOM_Workflows::get_steps( $template_id );
+		$step_count  = is_array( $steps ) ? count( $steps ) : 0;
+		$plan_summary = SOM_Workflows::planned_total_summary( is_array( $steps ) ? $steps : array() );
+		$planned_total = $plan_summary['total'];
+
+		$empty = array(
+			'count'           => 0,
+			'avg_planned'     => $planned_total,
+			'avg_actual'      => null,
+			'planned_total'   => $planned_total,
+			'is_partial_plan' => ! empty( $plan_summary['is_partial'] ),
+			'rows'            => array(),
+		);
+
+		if ( $template_id < 1 || $step_count < 1 ) {
+			return $empty;
+		}
+
+		$orders_t   = SOM_DB::table( 'orders' );
+		$channels_t = SOM_DB::table( 'channels' );
+		$steps_t    = SOM_DB::table( 'workflow_steps' );
+		$excluded   = self::excluded_orders_sql( 'o', 'c' );
+
+		$channel_sql = '';
+		$params      = array( $template_id, $filters['start'], $filters['end'], SOM_Production::CHANNEL_SLUG );
+		if ( (int) $filters['channel_id'] > 0 ) {
+			$channel_sql = ' AND o.channel_id = %d';
+			$params[]    = (int) $filters['channel_id'];
+		}
+		$params[] = $step_count;
+
+		if ( 'pack' === $kind ) {
+			$progress_t = SOM_DB::table( 'order_step_progress' );
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$sql = $wpdb->prepare(
+				"SELECT p.order_id AS group_id, p.order_id,
+					MIN(p.started_at) AS first_start,
+					MAX(p.completed_at) AS last_complete,
+					COUNT(DISTINCT p.workflow_step_id) AS done_steps
+				FROM {$progress_t} p
+				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
+				INNER JOIN {$orders_t} o ON o.id = p.order_id
+				INNER JOIN {$channels_t} c ON c.id = o.channel_id
+				WHERE s.workflow_template_id = %d
+					AND p.status = 'done'
+					AND o.order_date >= %s
+					AND o.order_date <= %s
+					AND NOT {$excluded}
+					AND c.slug <> %s
+					{$channel_sql}
+				GROUP BY p.order_id
+				HAVING COUNT(DISTINCT p.workflow_step_id) >= %d
+					AND MIN(p.started_at) IS NOT NULL
+					AND MAX(p.completed_at) IS NOT NULL
+				ORDER BY group_id ASC",
+				$params
+			);
+		} else {
+			$progress_t = SOM_DB::table( 'order_item_step_progress' );
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$sql = $wpdb->prepare(
+				"SELECT p.order_item_id AS group_id, MIN(p.order_id) AS order_id,
+					MIN(p.started_at) AS first_start,
+					MAX(p.completed_at) AS last_complete,
+					COUNT(DISTINCT p.workflow_step_id) AS done_steps
+				FROM {$progress_t} p
+				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
+				INNER JOIN {$orders_t} o ON o.id = p.order_id
+				INNER JOIN {$channels_t} c ON c.id = o.channel_id
+				WHERE s.workflow_template_id = %d
+					AND p.status = 'done'
+					AND o.order_date >= %s
+					AND o.order_date <= %s
+					AND NOT {$excluded}
+					AND c.slug <> %s
+					{$channel_sql}
+				GROUP BY p.order_item_id
+				HAVING COUNT(DISTINCT p.workflow_step_id) >= %d
+					AND MIN(p.started_at) IS NOT NULL
+					AND MAX(p.completed_at) IS NOT NULL
+				ORDER BY group_id ASC",
+				$params
+			);
+		}
+
+		$rows = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( ! is_array( $rows ) || ! $rows ) {
+			return $empty;
+		}
+
+		$detail_rows   = array();
+		$sum_actual    = 0;
+		$count_actual  = 0;
+
+		foreach ( $rows as $row ) {
+			$span = SOM_Orders::progress_span_seconds(
+				array(
+					(object) array(
+						'started_at'   => $row->first_start,
+						'completed_at' => $row->last_complete,
+					),
+				)
+			);
+			if ( null === $span ) {
+				continue;
+			}
+			$sum_actual += $span;
+			++$count_actual;
+			$detail_rows[] = array(
+				'group_id'        => (int) $row->group_id,
+				'order_id'        => (int) $row->order_id,
+				'actual_seconds'  => $span,
+				'planned_seconds' => $planned_total,
+				'over_plan'       => self::is_over_plan( $span, $planned_total ),
+			);
+		}
+
+		$empty['count']       = $count_actual;
+		$empty['avg_actual']  = $count_actual > 0 ? (int) round( $sum_actual / $count_actual ) : null;
+		$empty['avg_planned'] = $planned_total;
+		$empty['rows']        = $detail_rows;
+
+		return $empty;
 	}
 
 	/**
@@ -399,23 +786,27 @@ class SOM_Analytics {
 		$log_t = SOM_DB::table( 'material_stock_log' );
 		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT change_qty, unit_cost_at_time
+				"SELECT change_qty, unit_cost_at_time, reason
 				FROM {$log_t}
-				WHERE order_id = %d AND reason IN (%s, %s)",
+				WHERE order_id = %d AND reason IN (%s, %s, %s, %s, %s)",
 				$order_id,
 				'new_order',
-				'order_usage_extra'
+				'order_usage_extra',
+				'package_reserve',
+				'package_unreserve',
+				'package_usage_extra'
 			)
 		);
 
 		$total = 0.0;
 		if ( is_array( $rows ) ) {
 			foreach ( $rows as $row ) {
-				$total += abs( (float) $row->change_qty ) * (float) $row->unit_cost_at_time;
+				// Consumption (negative change_qty) adds COGS; unreserve (positive) reduces it.
+				$total += -1 * (float) $row->change_qty * (float) $row->unit_cost_at_time;
 			}
 		}
 
-		return SOM_Material_Costing::round4( $total );
+		return SOM_Material_Costing::round4( max( 0.0, $total ) );
 	}
 
 	/**

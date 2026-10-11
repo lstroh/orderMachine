@@ -15,6 +15,9 @@ class SOM_Batch_Groups {
 	/**
 	 * Default groups seeded on upgrade / activate.
 	 *
+	 * UP9-S2 O6: thank_you_card remains action_type=script for existing installs,
+	 * but batch release soft-fails and never executes scripts.
+	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function defaults() {

@@ -19,7 +19,6 @@ $template = isset( $template ) ? $template : null;
 $steps    = ( $template && ! empty( $template->steps ) ) ? $template->steps : array();
 $in_use   = $template && ! empty( $template->in_use );
 $products = ( $template && ! empty( $template->products ) ) ? $template->products : array();
-$actions  = SOM_Workflows::local_action_choices();
 $batch_groups = SOM_Batch_Groups::list_all();
 
 /**
@@ -29,20 +28,34 @@ $batch_groups = SOM_Batch_Groups::list_all();
  * @param object|null $step  Existing step or null for blank.
  * @return void
  */
-$som_render_step = static function ( $index, $step = null ) use ( $actions, $batch_groups ) {
+$som_render_step = static function ( $index, $step = null ) use ( $batch_groups ) {
 	$name     = $step ? (string) $step->name : '';
 	$step_id  = $step ? (int) $step->id : 0;
-	$manual   = $step ? (int) $step->requires_manual_confirm : 0;
+	// New / blank step cards default to manual confirm (UP7-S1) so they do not auto-complete by accident.
+	$manual   = $step ? (int) $step->requires_manual_confirm : 1;
 	$timer    = SOM_Workflows::timer_for_display( $step && null !== $step->timer_seconds ? (int) $step->timer_seconds : null );
-	$script   = SOM_Workflows::script_for_display( $step ? $step->script_config : null );
-	$type     = $script['type'];
+	$planned  = SOM_Workflows::planned_for_display( $step && isset( $step->planned_seconds ) && null !== $step->planned_seconds ? (int) $step->planned_seconds : null );
 	$batch_id = $step && ! empty( $step->batch_group_id ) ? (int) $step->batch_group_id : 0;
 	$confirm  = $step && ! empty( $step->confirmation_kind )
 		? SOM_Step_Confirmations::sanitize_kind( $step->confirmation_kind )
 		: null;
 	$instructions = $step && ! empty( $step->instructions ) ? (string) $step->instructions : '';
+	$command_template = $step && ! empty( $step->command_template ) ? (string) $step->command_template : '';
+	$task_rows = $step && ! empty( $step->task_list_json )
+		? SOM_Step_Tasks::decode_list( $step->task_list_json )
+		: array();
+	if ( empty( $task_rows ) ) {
+		$task_rows = array(
+			array(
+				'id'    => '',
+				'label' => '',
+			),
+		);
+	}
+	$has_legacy_script = $step && SOM_Script_Dispatch::has_script( $step );
 	$prefix   = 'som_step[' . $index . ']';
 	$confirm_choices = SOM_Step_Confirmations::kind_choices();
+	$placeholder_help = '{{order_number}}, {{house_number}}, {{street_name}}, {{style}}, {{buyer_name}}, {{buyer_full_name}}, {{product_name}}, {{personalisation}}';
 	?>
 	<div class="som-step-card" data-som-step>
 		<div class="som-step-card-header">
@@ -56,12 +69,31 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 			</span>
 		</div>
 
-		<div class="som-step-instructions-field">
+		<div class="som-step-instructions-field" data-som-md-editor>
 			<label>
 				<?php echo esc_html__( 'Instructions (default)', 'order-machine' ); ?>
-				<textarea class="large-text" rows="3" name="<?php echo esc_attr( $prefix ); ?>[instructions]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Optional plain-text guidance for this step…', 'order-machine' ); ?>"><?php echo esc_textarea( $instructions ); ?></textarea>
+				<textarea class="large-text som-md-source" rows="3" name="<?php echo esc_attr( $prefix ); ?>[instructions]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Optional Markdown guidance for this step…', 'order-machine' ); ?>"><?php echo esc_textarea( $instructions ); ?></textarea>
 			</label>
 			<p class="description"><?php echo esc_html__( 'Shown on order detail for every product using this template, unless a product sets its own override. Leave blank for no default.', 'order-machine' ); ?></p>
+			<?php SOM_Step_Instructions::render_editor_help(); ?>
+		</div>
+
+		<div class="som-step-tasks-field" data-som-task-list>
+			<label class="som-step-tasks-label"><?php echo esc_html__( 'Tasks (optional)', 'order-machine' ); ?></label>
+			<p class="description"><?php echo esc_html__( 'Optional checklist for operators. Does not block Mark done.', 'order-machine' ); ?></p>
+			<div class="som-task-rows" data-som-task-rows>
+				<?php foreach ( $task_rows as $t_index => $task ) : ?>
+					<div class="som-task-row" data-som-task-row>
+						<input type="hidden" name="<?php echo esc_attr( $prefix ); ?>[tasks][<?php echo esc_attr( (string) $t_index ); ?>][id]" value="<?php echo esc_attr( (string) ( $task['id'] ?? '' ) ); ?>" />
+						<input type="text" class="regular-text" name="<?php echo esc_attr( $prefix ); ?>[tasks][<?php echo esc_attr( (string) $t_index ); ?>][label]" value="<?php echo esc_attr( (string) ( $task['label'] ?? '' ) ); ?>" maxlength="<?php echo esc_attr( (string) SOM_Step_Tasks::MAX_LABEL_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Task label…', 'order-machine' ); ?>" />
+						<button type="button" class="button-link som-task-remove" aria-label="<?php echo esc_attr__( 'Remove task', 'order-machine' ); ?>">&times;</button>
+					</div>
+				<?php endforeach; ?>
+			</div>
+			<p>
+				<button type="button" class="button-link" data-som-task-add><?php echo esc_html__( 'Add task', 'order-machine' ); ?></button>
+			</p>
+			<p class="description"><?php echo esc_html__( 'Leave empty for no Tasks panel on the order. Products may override the whole list (full replace). Pack uses template tasks only.', 'order-machine' ); ?></p>
 		</div>
 
 		<div class="som-step-gates">
@@ -69,6 +101,43 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 				<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[requires_manual_confirm]" value="1" <?php checked( $manual ); ?> data-som-manual-confirm />
 				<?php echo esc_html__( 'Requires manual confirm', 'order-machine' ); ?>
 			</label>
+			<p class="som-zero-gate-warning notice notice-warning inline" data-som-zero-gate-warning hidden>
+				<?php echo esc_html__( 'This step will auto-complete when entered (no manual confirm, checklist, timer, copy command, or batch).', 'order-machine' ); ?>
+			</p>
+
+			<?php if ( $has_legacy_script ) : ?>
+				<div class="som-step-gate som-step-script-legacy-warning notice notice-warning inline" data-som-legacy-script-warning>
+					<p>
+						<strong><?php echo esc_html__( 'Legacy script_config (disabled)', 'order-machine' ); ?></strong>
+						<?php echo esc_html__( 'Local / API / n8n script steps are removed. This stored config is ignored at runtime and will be cleared when you save. Use Copy command instead.', 'order-machine' ); ?>
+					</p>
+				</div>
+			<?php endif; ?>
+
+			<div class="som-step-gate som-step-copy-command" data-som-copy-command-gate>
+				<label>
+					<?php echo esc_html__( 'Copy command template', 'order-machine' ); ?>
+					<textarea
+						class="large-text code som-command-template"
+						rows="5"
+						name="<?php echo esc_attr( $prefix ); ?>[command_template]"
+						maxlength="<?php echo esc_attr( (string) SOM_Copy_Command::MAX_TEMPLATE_LENGTH ); ?>"
+						placeholder="<?php echo esc_attr__( '/make-sticker-order Order number: {{order_number}}', 'order-machine' ); ?>"
+					><?php echo esc_textarea( $command_template ); ?></textarea>
+				</label>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: %s: placeholder list */
+						esc_html__( 'Shown on the make line with a Copy button (not run by WordPress). Placeholders: %s. Cannot combine with timer or batch; Mark done stays manual.', 'order-machine' ),
+						esc_html( $placeholder_help )
+					);
+					?>
+				</p>
+				<p class="som-copy-combo-warning notice notice-warning inline" data-som-copy-warning hidden>
+					<?php echo esc_html__( 'Copy-command steps cannot also use timer or batch gates. Save will be rejected until those are cleared.', 'order-machine' ); ?>
+				</p>
+			</div>
 
 			<div class="som-step-gate som-step-confirmation" data-som-confirmation-gate>
 				<label>
@@ -82,9 +151,9 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 						<?php endforeach; ?>
 					</select>
 				</label>
-				<p class="description"><?php echo esc_html__( 'If set, Mark done stays locked until the checklist on the order is completed. Cannot combine with timer, script, or batch.', 'order-machine' ); ?></p>
+				<p class="description"><?php echo esc_html__( 'If set, Mark done stays locked until the checklist on the order is completed. Cannot combine with timer or batch.', 'order-machine' ); ?></p>
 				<p class="som-confirm-combo-warning notice notice-warning inline" data-som-confirm-warning hidden>
-					<?php echo esc_html__( 'Confirmation steps cannot also use timer, script, or batch gates. Save will be rejected until those are cleared.', 'order-machine' ); ?>
+					<?php echo esc_html__( 'Confirmation steps cannot also use timer or batch gates. Save will be rejected until those are cleared.', 'order-machine' ); ?>
 				</p>
 			</div>
 
@@ -96,7 +165,18 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 					<option value="hours" <?php selected( $timer['unit'], 'hours' ); ?>><?php echo esc_html__( 'hours', 'order-machine' ); ?></option>
 					<option value="days" <?php selected( $timer['unit'], 'days' ); ?>><?php echo esc_html__( 'days', 'order-machine' ); ?></option>
 				</select>
-				<span class="description"><?php echo esc_html__( 'Leave blank for no timer.', 'order-machine' ); ?></span>
+				<span class="description"><?php echo esc_html__( 'Hard gate — leave blank for no timer.', 'order-machine' ); ?></span>
+			</div>
+
+			<div class="som-step-gate som-step-planned">
+				<label><?php echo esc_html__( 'Planned duration', 'order-machine' ); ?></label>
+				<input type="number" min="0" step="1" class="small-text" name="<?php echo esc_attr( $prefix ); ?>[planned_value]" value="<?php echo esc_attr( $planned['value'] ); ?>" placeholder="—" data-som-planned-value />
+				<select name="<?php echo esc_attr( $prefix ); ?>[planned_unit]" data-som-planned-unit>
+					<option value="minutes" <?php selected( $planned['unit'], 'minutes' ); ?>><?php echo esc_html__( 'minutes', 'order-machine' ); ?></option>
+					<option value="hours" <?php selected( $planned['unit'], 'hours' ); ?>><?php echo esc_html__( 'hours', 'order-machine' ); ?></option>
+					<option value="days" <?php selected( $planned['unit'], 'days' ); ?>><?php echo esc_html__( 'days', 'order-machine' ); ?></option>
+				</select>
+				<span class="description"><?php echo esc_html__( 'Target wall-clock for reporting (not a gate). Separate from timer.', 'order-machine' ); ?></span>
 			</div>
 
 			<div class="som-step-gate som-step-batch" data-som-batch-gate>
@@ -112,79 +192,10 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 						<?php endforeach; ?>
 					</select>
 				</label>
-				<p class="description"><?php echo esc_html__( 'If set, this step is batch-only: clear manual, timer, and script gates. Shipping-label grouping is opt-in here.', 'order-machine' ); ?></p>
+				<p class="description"><?php echo esc_html__( 'If set, this step is batch-only: clear manual and timer gates. Shipping-label grouping is opt-in here. Script batch groups are disabled (soft-fail on release).', 'order-machine' ); ?></p>
 				<p class="som-batch-combo-warning notice notice-warning inline" data-som-batch-warning hidden>
-					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, script, or confirmation gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
+					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, confirmation, or copy-command gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
 				</p>
-			</div>
-
-			<div class="som-step-gate som-step-script" data-som-script>
-				<label>
-					<?php echo esc_html__( 'Script / API', 'order-machine' ); ?>
-					<select name="<?php echo esc_attr( $prefix ); ?>[script_type]" class="som-script-type">
-						<option value="none" <?php selected( $type, 'none' ); ?>><?php echo esc_html__( 'None', 'order-machine' ); ?></option>
-						<option value="local" <?php selected( $type, 'local' ); ?>><?php echo esc_html__( 'Local action', 'order-machine' ); ?></option>
-						<option value="api" <?php selected( $type, 'api' ); ?>><?php echo esc_html__( 'API', 'order-machine' ); ?></option>
-						<option value="n8n" <?php selected( $type, 'n8n' ); ?>><?php echo esc_html__( 'n8n webhook', 'order-machine' ); ?></option>
-					</select>
-				</label>
-
-				<div class="som-script-fields som-script-local" data-script-panel="local" <?php echo 'local' === $type ? '' : 'hidden'; ?>>
-					<label>
-						<?php echo esc_html__( 'Action', 'order-machine' ); ?>
-						<select name="<?php echo esc_attr( $prefix ); ?>[script_action]">
-							<option value=""><?php echo esc_html__( '— Select —', 'order-machine' ); ?></option>
-							<?php foreach ( $actions as $key => $label ) : ?>
-								<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $script['action'], $key ); ?>>
-									<?php echo esc_html( $label ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-					</label>
-					<label>
-						<?php echo esc_html__( 'Params (JSON object, optional)', 'order-machine' ); ?>
-						<textarea name="<?php echo esc_attr( $prefix ); ?>[script_params]" rows="3" class="large-text code"><?php echo esc_textarea( $script['params'] ); ?></textarea>
-					</label>
-				</div>
-
-				<div class="som-script-fields som-script-api" data-script-panel="api" <?php echo 'api' === $type ? '' : 'hidden'; ?>>
-					<label>
-						<?php echo esc_html__( 'Method', 'order-machine' ); ?>
-						<select name="<?php echo esc_attr( $prefix ); ?>[script_method]">
-							<?php foreach ( array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' ) as $method ) : ?>
-								<option value="<?php echo esc_attr( $method ); ?>" <?php selected( $script['method'], $method ); ?>><?php echo esc_html( $method ); ?></option>
-							<?php endforeach; ?>
-						</select>
-					</label>
-					<label>
-						<?php echo esc_html__( 'URL', 'order-machine' ); ?>
-						<input type="url" class="large-text" name="<?php echo esc_attr( $prefix ); ?>[script_url]" value="<?php echo esc_attr( $script['url'] ); ?>" />
-					</label>
-					<label>
-						<?php echo esc_html__( 'Body template (JSON)', 'order-machine' ); ?>
-						<textarea name="<?php echo esc_attr( $prefix ); ?>[script_body]" rows="4" class="large-text code"><?php echo esc_textarea( $script['body'] ); ?></textarea>
-					</label>
-				</div>
-
-				<div class="som-script-fields som-script-n8n" data-script-panel="n8n" <?php echo 'n8n' === $type ? '' : 'hidden'; ?>>
-					<label>
-						<?php echo esc_html__( 'Webhook URL', 'order-machine' ); ?>
-						<input type="url" class="large-text" name="<?php echo esc_attr( $prefix ); ?>[script_webhook]" value="<?php echo esc_attr( $script['webhook'] ); ?>" />
-					</label>
-					<label>
-						<?php echo esc_html__( 'Payload template (JSON)', 'order-machine' ); ?>
-						<textarea name="<?php echo esc_attr( $prefix ); ?>[script_payload]" rows="4" class="large-text code"><?php echo esc_textarea( $script['payload'] ); ?></textarea>
-					</label>
-				</div>
-
-				<label class="som-script-raw-toggle">
-					<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[script_raw_mode]" value="1" class="som-script-raw-mode" <?php checked( ! empty( $script['raw_mode'] ) ); ?> />
-					<?php echo esc_html__( 'Use raw JSON for script_config', 'order-machine' ); ?>
-				</label>
-				<div class="som-script-raw" data-script-raw <?php echo ! empty( $script['raw_mode'] ) ? '' : 'hidden'; ?>>
-					<textarea name="<?php echo esc_attr( $prefix ); ?>[script_raw_json]" rows="6" class="large-text code"><?php echo esc_textarea( $script['raw_json'] ); ?></textarea>
-					<p class="description"><?php echo esc_html__( 'When checked, this JSON is stored as-is (must include type: local, api, or n8n). Form fields above are ignored.', 'order-machine' ); ?></p>
-				</div>
 			</div>
 		</div>
 	</div>
@@ -277,7 +288,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 						<input type="hidden" name="som_workflow_kind" value="make" />
 						<p class="description"><?php echo esc_html__( 'Kind is locked to Make while products use this template.', 'order-machine' ); ?></p>
 					<?php else : ?>
-						<p class="description"><?php echo esc_html__( 'Make templates assign to products. Pack templates are for the order Pack board (Package 6).', 'order-machine' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Make templates assign to products. Pack is for Pack & Ship. Post-ship is aftercare after Ship (Package 11).', 'order-machine' ); ?></p>
 					<?php endif; ?>
 				</td>
 			</tr>
@@ -296,10 +307,36 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 					<?php endif; ?>
 				</td>
 			</tr>
+			<?php if ( 'post_ship' !== $current_kind ) : ?>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Trays', 'order-machine' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="som_workflow_uses_trays" value="1" <?php checked( $template && ! empty( $template->uses_trays ) ); ?> />
+						<?php echo esc_html__( 'Uses trays', 'order-machine' ); ?>
+					</label>
+					<p class="description">
+						<?php echo esc_html__( 'When any make or Pack template on an order uses trays, operators must assign numbered trays to that order before Mark done / advance (shared by all make lines and pack).', 'order-machine' ); ?>
+					</p>
+				</td>
+			</tr>
+			<?php endif; ?>
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates). Confirmation checklists cannot combine with timer, script, or batch.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, copy command, and/or timer — or assign a batch group (batch-only; cannot combine with other gates). Copy command and confirmation checklists cannot combine with timer or batch. Local / API / n8n script steps are removed — use Copy command. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block. Planned duration is a reporting target only (not a gate).', 'order-machine' ); ?></p>
+
+		<?php
+		$planned_summary = SOM_Workflows::planned_total_summary( $steps );
+		$planned_total_label = SOM_Orders::format_duration_seconds( $planned_summary['total'] );
+		?>
+		<p class="som-template-planned-total description" id="som-template-planned-total" data-som-planned-total>
+			<?php echo esc_html__( 'Template planned total:', 'order-machine' ); ?>
+			<strong data-som-planned-total-value><?php echo esc_html( $planned_total_label ); ?></strong>
+			<span class="som-timing-partial" data-som-planned-partial <?php echo ! empty( $planned_summary['is_partial'] ) ? '' : 'hidden'; ?>>
+				(<?php echo esc_html__( 'partial plan — some steps have no planned duration', 'order-machine' ); ?>)
+			</span>
+		</p>
 
 		<div id="som-step-list" class="som-step-list">
 			<?php
@@ -401,6 +438,14 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 
 <template id="som-step-card-template">
 	<?php $som_render_step( '__INDEX__', null ); ?>
+</template>
+
+<template id="som-task-row-template">
+	<div class="som-task-row" data-som-task-row>
+		<input type="hidden" name="som_step[__STEP__][tasks][__INDEX__][id]" value="" />
+		<input type="text" class="regular-text" name="som_step[__STEP__][tasks][__INDEX__][label]" value="" maxlength="<?php echo esc_attr( (string) SOM_Step_Tasks::MAX_LABEL_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Task label…', 'order-machine' ); ?>" />
+		<button type="button" class="button-link som-task-remove" aria-label="<?php echo esc_attr__( 'Remove task', 'order-machine' ); ?>">&times;</button>
+	</div>
 </template>
 
 <template id="som-goal-row-template">

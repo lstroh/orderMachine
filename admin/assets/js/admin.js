@@ -4,6 +4,67 @@
 ( function () {
 	'use strict';
 
+	function initTestOrderLines() {
+		var tbody = document.getElementById( 'som-test-order-rows' );
+		var template = document.getElementById( 'som-test-order-row-template' );
+		var addButton = document.getElementById( 'som-test-order-add-row' );
+		var maxLines = 5;
+		var nextIndex = 1;
+
+		if ( ! tbody || ! template ) {
+			return;
+		}
+
+		function rowCount() {
+			return tbody.querySelectorAll( '.som-test-order-row' ).length;
+		}
+
+		function bindRemove( scope ) {
+			( scope || tbody ).querySelectorAll( '.som-test-order-remove' ).forEach( function ( button ) {
+				if ( button.dataset.bound ) {
+					return;
+				}
+				button.dataset.bound = '1';
+				button.addEventListener( 'click', function () {
+					var row = button.closest( 'tr' );
+					if ( ! row ) {
+						return;
+					}
+					if ( rowCount() > 1 ) {
+						row.remove();
+					} else {
+						row.querySelectorAll( 'select, input' ).forEach( function ( field ) {
+							if ( field.type === 'number' && field.name && field.name.indexOf( '[quantity]' ) !== -1 ) {
+								field.value = '1';
+							} else {
+								field.value = '';
+							}
+						} );
+					}
+				} );
+			} );
+		}
+
+		if ( addButton ) {
+			addButton.addEventListener( 'click', function () {
+				if ( rowCount() >= maxLines ) {
+					return;
+				}
+				var html = template.innerHTML.replace( /__INDEX__/g, String( nextIndex ) );
+				nextIndex += 1;
+				var wrapper = document.createElement( 'tbody' );
+				wrapper.innerHTML = html.trim();
+				var row = wrapper.firstElementChild;
+				if ( row ) {
+					tbody.appendChild( row );
+					bindRemove( row );
+				}
+			} );
+		}
+
+		bindRemove( tbody );
+	}
+
 	function initRecipeEditor() {
 		var recipeIndex = 0;
 		var tbody = document.getElementById( 'som-recipe-rows' );
@@ -60,6 +121,7 @@
 		var list = document.getElementById( 'som-step-list' );
 		var template = document.getElementById( 'som-step-card-template' );
 		var addButton = document.getElementById( 'som-step-add' );
+		var form = list ? list.closest( 'form' ) : null;
 		var stepIndex = 0;
 
 		if ( ! list || ! template ) {
@@ -87,19 +149,107 @@
 			} );
 		}
 
-		function syncScriptPanels( card ) {
-			var typeSelect = card.querySelector( '.som-script-type' );
-			var rawToggle = card.querySelector( '.som-script-raw-mode' );
-			var rawPanel = card.querySelector( '[data-script-raw]' );
-			if ( ! typeSelect ) {
+		function stepHasGate( card ) {
+			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
+			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
+			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			var commandField = card.querySelector( '.som-command-template' );
+			var hasManual = manual && manual.checked;
+			var hasTimer = timer && String( timer.value ).trim() !== '';
+			var hasConfirm = confirmSelect && confirmSelect.value !== '';
+			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
+			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
+			return !!( hasManual || hasTimer || hasConfirm || hasBatch || hasCopy );
+		}
+
+		function stepDisplayName( card ) {
+			var nameField = card.querySelector( '.som-step-name' );
+			var name = nameField ? String( nameField.value || '' ).trim() : '';
+			return name || '(unnamed)';
+		}
+
+		function namedCards() {
+			return cards().filter( function ( card ) {
+				var nameField = card.querySelector( '.som-step-name' );
+				return nameField && String( nameField.value || '' ).trim() !== '';
+			} );
+		}
+
+		function syncZeroGateWarning( card ) {
+			var warning = card.querySelector( '[data-som-zero-gate-warning]' );
+			if ( ! warning ) {
 				return;
 			}
-			var type = typeSelect.value;
-			card.querySelectorAll( '[data-script-panel]' ).forEach( function ( panel ) {
-				panel.hidden = panel.getAttribute( 'data-script-panel' ) !== type;
+			var nameField = card.querySelector( '.som-step-name' );
+			var hasName = nameField && String( nameField.value || '' ).trim() !== '';
+			warning.hidden = ! hasName || stepHasGate( card );
+		}
+
+		function plannedSecondsForCard( card ) {
+			var valueField = card.querySelector( '[data-som-planned-value]' );
+			var unitField = card.querySelector( '[data-som-planned-unit]' );
+			if ( ! valueField ) {
+				return null;
+			}
+			var raw = String( valueField.value || '' ).trim();
+			if ( raw === '' || isNaN( Number( raw ) ) || Number( raw ) <= 0 ) {
+				return null;
+			}
+			var unit = unitField ? String( unitField.value || 'minutes' ) : 'minutes';
+			var mult = 60;
+			if ( unit === 'hours' ) {
+				mult = 3600;
+			} else if ( unit === 'days' ) {
+				mult = 86400;
+			}
+			return Math.round( Number( raw ) * mult );
+		}
+
+		function formatPlannedTotal( seconds ) {
+			if ( seconds === null || seconds === undefined ) {
+				return '—';
+			}
+			seconds = Math.max( 0, Math.floor( seconds ) );
+			if ( seconds === 0 ) {
+				return '0s';
+			}
+			if ( seconds < 60 ) {
+				return seconds + 's';
+			}
+			if ( seconds < 3600 ) {
+				return Math.floor( seconds / 60 ) + 'm';
+			}
+			if ( seconds < 86400 ) {
+				var h = Math.floor( seconds / 3600 );
+				var m = Math.floor( ( seconds % 3600 ) / 60 );
+				return m > 0 ? ( h + 'h ' + m + 'm' ) : ( h + 'h' );
+			}
+			var d = Math.floor( seconds / 86400 );
+			var hours = Math.floor( ( seconds % 86400 ) / 3600 );
+			return hours > 0 ? ( d + 'd ' + hours + 'h' ) : ( d + 'd' );
+		}
+
+		function syncPlannedTotal() {
+			var totalEl = document.querySelector( '[data-som-planned-total-value]' );
+			var partialEl = document.querySelector( '[data-som-planned-partial]' );
+			if ( ! totalEl ) {
+				return;
+			}
+			var named = namedCards();
+			var sum = 0;
+			var plannedCount = 0;
+			named.forEach( function ( card ) {
+				var secs = plannedSecondsForCard( card );
+				if ( secs === null ) {
+					return;
+				}
+				plannedCount += 1;
+				sum += secs;
 			} );
-			if ( rawPanel && rawToggle ) {
-				rawPanel.hidden = ! rawToggle.checked;
+			totalEl.textContent = plannedCount > 0 ? formatPlannedTotal( sum ) : '—';
+			if ( partialEl ) {
+				partialEl.hidden = !( plannedCount > 0 && plannedCount < named.length );
 			}
 		}
 
@@ -112,8 +262,6 @@
 			var up = card.querySelector( '.som-step-up' );
 			var down = card.querySelector( '.som-step-down' );
 			var remove = card.querySelector( '.som-step-remove' );
-			var typeSelect = card.querySelector( '.som-script-type' );
-			var rawToggle = card.querySelector( '.som-script-raw-mode' );
 
 			if ( up ) {
 				up.addEventListener( 'click', function () {
@@ -142,10 +290,6 @@
 						card.querySelectorAll( 'input[type="checkbox"]' ).forEach( function ( field ) {
 							field.checked = false;
 						} );
-						var type = card.querySelector( '.som-script-type' );
-						if ( type ) {
-							type.value = 'none';
-						}
 						var batchSelect = card.querySelector( '.som-batch-group-select' );
 						if ( batchSelect ) {
 							batchSelect.value = '0';
@@ -154,51 +298,59 @@
 						if ( confirmSelect ) {
 							confirmSelect.value = '';
 						}
+						var commandField = card.querySelector( '.som-command-template' );
+						if ( commandField ) {
+							commandField.value = '';
+						}
 						var idField = card.querySelector( 'input[name*="[id]"]' );
 						if ( idField ) {
 							idField.value = '0';
 						}
-						syncScriptPanels( card );
+						var taskList = card.querySelector( '[data-som-task-list]' );
+						if ( taskList ) {
+							resetTaskList( taskList );
+						}
 						syncBatchWarning( card );
 						syncConfirmWarning( card );
+						syncCopyWarning( card );
+						syncZeroGateWarning( card );
+						syncPlannedTotal();
 						return;
 					}
 					card.remove();
 					refreshOrder();
-				} );
-			}
-			if ( typeSelect ) {
-				typeSelect.addEventListener( 'change', function () {
-					syncScriptPanels( card );
-					syncBatchWarning( card );
-					syncConfirmWarning( card );
-				} );
-			}
-			if ( rawToggle ) {
-				rawToggle.addEventListener( 'change', function () {
-					syncScriptPanels( card );
+					syncPlannedTotal();
 				} );
 			}
 
 			var batchSelectBind = card.querySelector( '.som-batch-group-select' );
 			var manualBind = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timerBind = card.querySelector( 'input[name*="[timer_value]"]' );
+			var plannedValueBind = card.querySelector( '[data-som-planned-value]' );
+			var plannedUnitBind = card.querySelector( '[data-som-planned-unit]' );
 			var confirmBind = card.querySelector( '.som-confirmation-kind' );
+			var commandBind = card.querySelector( '.som-command-template' );
+			var nameBind = card.querySelector( '.som-step-name' );
 			if ( batchSelectBind ) {
 				batchSelectBind.addEventListener( 'change', function () {
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( manualBind ) {
 				manualBind.addEventListener( 'change', function () {
 					syncBatchWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( timerBind ) {
 				timerBind.addEventListener( 'input', function () {
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( confirmBind ) {
@@ -211,12 +363,41 @@
 					}
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
+			if ( commandBind ) {
+				commandBind.addEventListener( 'input', function () {
+					if ( String( commandBind.value || '' ).trim() !== '' ) {
+						var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+						if ( manual ) {
+							manual.checked = true;
+						}
+					}
+					syncBatchWarning( card );
+					syncConfirmWarning( card );
+					syncCopyWarning( card );
+					syncZeroGateWarning( card );
+				} );
+			}
+			if ( nameBind ) {
+				nameBind.addEventListener( 'input', function () {
+					syncZeroGateWarning( card );
+					syncPlannedTotal();
+				} );
+			}
+			if ( plannedValueBind ) {
+				plannedValueBind.addEventListener( 'input', syncPlannedTotal );
+			}
+			if ( plannedUnitBind ) {
+				plannedUnitBind.addEventListener( 'change', syncPlannedTotal );
+			}
 
-			syncScriptPanels( card );
 			syncBatchWarning( card );
 			syncConfirmWarning( card );
+			syncCopyWarning( card );
+			syncZeroGateWarning( card );
 		}
 
 		function syncBatchWarning( card ) {
@@ -232,13 +413,13 @@
 			}
 			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
-			var typeSelect = card.querySelector( '.som-script-type' );
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
+			var commandField = card.querySelector( '.som-command-template' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
-			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
-			warning.hidden = ! ( hasManual || hasTimer || hasScript || hasConfirm );
+			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
+			warning.hidden = ! ( hasManual || hasTimer || hasConfirm || hasCopy );
 		}
 
 		function syncConfirmWarning( card ) {
@@ -253,12 +434,28 @@
 				return;
 			}
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
-			var typeSelect = card.querySelector( '.som-script-type' );
 			var batchSelect = card.querySelector( '.som-batch-group-select' );
 			var hasTimer = timer && String( timer.value ).trim() !== '';
-			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
-			warning.hidden = ! ( hasTimer || hasScript || hasBatch );
+			warning.hidden = ! ( hasTimer || hasBatch );
+		}
+
+		function syncCopyWarning( card ) {
+			var warning = card.querySelector( '[data-som-copy-warning]' );
+			var commandField = card.querySelector( '.som-command-template' );
+			if ( ! warning || ! commandField ) {
+				return;
+			}
+			var hasCopy = String( commandField.value || '' ).trim() !== '';
+			if ( ! hasCopy ) {
+				warning.hidden = true;
+				return;
+			}
+			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
+			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			var hasTimer = timer && String( timer.value ).trim() !== '';
+			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
+			warning.hidden = ! ( hasTimer || hasBatch );
 		}
 
 		cards().forEach( bindCard );
@@ -271,12 +468,131 @@
 				wrapper.innerHTML = html.trim();
 				var card = wrapper.firstElementChild;
 				if ( card ) {
+					var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+					if ( manual ) {
+						manual.checked = true;
+					}
 					list.appendChild( card );
 					bindCard( card );
+					bindTaskLists( card );
 					refreshOrder();
+					syncPlannedTotal();
 				}
 			} );
 		}
+
+		syncPlannedTotal();
+
+		if ( form ) {
+			form.addEventListener( 'submit', function ( e ) {
+				var ungated = namedCards().filter( function ( card ) {
+					return ! stepHasGate( card );
+				} );
+				if ( ! ungated.length ) {
+					return;
+				}
+				var names = ungated.map( stepDisplayName ).join( ', ' );
+				var msg =
+					'These steps have no gates and will auto-complete when entered:\n\n' +
+					names +
+					'\n\nSave anyway? (Pass-through steps are allowed.)';
+				if ( ! window.confirm( msg ) ) {
+					e.preventDefault();
+				}
+			} );
+		}
+	}
+
+	function reindexTaskRows( container ) {
+		var rows = container.querySelectorAll( '[data-som-task-row]' );
+		rows.forEach( function ( row, i ) {
+			row.querySelectorAll( '[name]' ).forEach( function ( field ) {
+				field.name = field.name.replace( /\[tasks\]\[[^\]]+\]/, '[tasks][' + i + ']' );
+				// Product override: som_step_tasks[STEP][i][…]
+				field.name = field.name.replace( /(som_step_tasks\[[^\]]+\])\[[^\]]+\]/, '$1[' + i + ']' );
+			} );
+		} );
+	}
+
+	function resetTaskList( listEl ) {
+		var rowsWrap = listEl.querySelector( '[data-som-task-rows]' );
+		if ( ! rowsWrap ) {
+			return;
+		}
+		var rows = rowsWrap.querySelectorAll( '[data-som-task-row]' );
+		rows.forEach( function ( row, i ) {
+			if ( i === 0 ) {
+				row.querySelectorAll( 'input' ).forEach( function ( field ) {
+					field.value = '';
+				} );
+			} else {
+				row.remove();
+			}
+		} );
+		reindexTaskRows( rowsWrap );
+	}
+
+	function bindTaskLists( scope ) {
+		var lists = ( scope || document ).querySelectorAll( '[data-som-task-list]' );
+		lists.forEach( function ( listEl ) {
+			if ( listEl.dataset.taskBound ) {
+				return;
+			}
+			listEl.dataset.taskBound = '1';
+
+			var rowsWrap = listEl.querySelector( '[data-som-task-rows]' );
+			var addBtn = listEl.querySelector( '[data-som-task-add]' );
+			if ( ! rowsWrap ) {
+				return;
+			}
+
+			function bindRemove( row ) {
+				var btn = row.querySelector( '.som-task-remove' );
+				if ( ! btn || btn.dataset.bound ) {
+					return;
+				}
+				btn.dataset.bound = '1';
+				btn.addEventListener( 'click', function () {
+					var all = rowsWrap.querySelectorAll( '[data-som-task-row]' );
+					if ( all.length <= 1 ) {
+						row.querySelectorAll( 'input' ).forEach( function ( field ) {
+							field.value = '';
+						} );
+						return;
+					}
+					row.remove();
+					reindexTaskRows( rowsWrap );
+				} );
+			}
+
+			rowsWrap.querySelectorAll( '[data-som-task-row]' ).forEach( bindRemove );
+
+			if ( addBtn ) {
+				addBtn.addEventListener( 'click', function () {
+					var first = rowsWrap.querySelector( '[data-som-task-row]' );
+					var clone;
+					if ( first ) {
+						clone = first.cloneNode( true );
+					} else {
+						return;
+					}
+					clone.querySelectorAll( 'input' ).forEach( function ( field ) {
+						field.value = '';
+					} );
+					var removeBtn = clone.querySelector( '.som-task-remove' );
+					if ( removeBtn ) {
+						delete removeBtn.dataset.bound;
+					}
+					rowsWrap.appendChild( clone );
+					reindexTaskRows( rowsWrap );
+					bindRemove( clone );
+				} );
+			}
+		} );
+	}
+
+	function initStepTaskLists() {
+		bindTaskLists( document );
 	}
 
 	function initListingEditor() {
@@ -342,21 +658,126 @@
 		bindRemove( tbody );
 	}
 
+	initTestOrderLines();
 	initRecipeEditor();
 	initGoalEditor();
 	initPoLineEditor();
 	initPoPreviewImpact();
 	initWorkflowEditor();
+	initStepTaskLists();
+	initMarkdownPreview();
 	initListingEditor();
 	initBatchesPage();
 	initCountdowns();
+	initLiveElapsed();
 	initAdvanceStepRest();
 	initCopyText();
 
+	function initMarkdownPreview() {
+		if ( typeof somAdmin === 'undefined' || ! somAdmin.ajaxUrl || ! somAdmin.markdownPreviewNonce ) {
+			return;
+		}
+
+		document.addEventListener( 'click', function ( event ) {
+			var showBtn = event.target.closest( '[data-som-md-preview-toggle]' );
+			var hideBtn = event.target.closest( '[data-som-md-preview-hide]' );
+			if ( ! showBtn && ! hideBtn ) {
+				return;
+			}
+
+			var editor = ( showBtn || hideBtn ).closest( '[data-som-md-editor]' );
+			if ( ! editor ) {
+				return;
+			}
+
+			var panel = editor.querySelector( '[data-som-md-preview]' );
+			var body = editor.querySelector( '[data-som-md-preview-body]' );
+			var toggle = editor.querySelector( '[data-som-md-preview-toggle]' );
+			var hide = editor.querySelector( '[data-som-md-preview-hide]' );
+			var source = editor.querySelector( '.som-md-source' );
+
+			if ( hideBtn ) {
+				if ( panel ) {
+					panel.hidden = true;
+				}
+				if ( hide ) {
+					hide.hidden = true;
+				}
+				if ( toggle ) {
+					toggle.hidden = false;
+				}
+				return;
+			}
+
+			if ( ! panel || ! body || ! source ) {
+				return;
+			}
+
+			var markdown = source.value || '';
+			var emptyMsg = ( somAdmin.i18n && somAdmin.i18n.mdPreviewEmpty ) ? somAdmin.i18n.mdPreviewEmpty : 'Nothing to preview.';
+			var failMsg = ( somAdmin.i18n && somAdmin.i18n.mdPreviewFailed ) ? somAdmin.i18n.mdPreviewFailed : 'Preview failed.';
+
+			if ( ! markdown.trim() ) {
+				body.textContent = emptyMsg;
+				panel.hidden = false;
+				if ( toggle ) {
+					toggle.hidden = true;
+				}
+				if ( hide ) {
+					hide.hidden = false;
+				}
+				return;
+			}
+
+			body.textContent = '…';
+			panel.hidden = false;
+			if ( toggle ) {
+				toggle.hidden = true;
+			}
+			if ( hide ) {
+				hide.hidden = false;
+			}
+
+			var form = new window.FormData();
+			form.append( 'action', 'som_preview_step_instructions' );
+			form.append( 'nonce', somAdmin.markdownPreviewNonce );
+			form.append( 'markdown', markdown );
+
+			fetch( somAdmin.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: form
+			} )
+				.then( function ( res ) {
+					return res.json();
+				} )
+				.then( function ( payload ) {
+					if ( ! payload || ! payload.success || ! payload.data ) {
+						body.textContent = failMsg;
+						return;
+					}
+					body.innerHTML = payload.data.html || '';
+					if ( ! body.innerHTML ) {
+						body.textContent = emptyMsg;
+					}
+				} )
+				.catch( function () {
+					body.textContent = failMsg;
+				} );
+		} );
+	}
+
 	function initCopyText() {
-		document.querySelectorAll( '[data-som-copy-text]' ).forEach( function ( btn ) {
+		document.querySelectorAll( '[data-som-copy-text], [data-som-copy-from]' ).forEach( function ( btn ) {
 			btn.addEventListener( 'click', function () {
-				var text = btn.getAttribute( 'data-som-copy-text' ) || '';
+				var text = '';
+				var fromId = btn.getAttribute( 'data-som-copy-from' );
+				if ( fromId ) {
+					var el = document.getElementById( fromId );
+					text = el ? String( el.textContent || '' ) : '';
+				} else {
+					text = btn.getAttribute( 'data-som-copy-text' ) || '';
+				}
 				if ( ! text ) {
 					return;
 				}
@@ -369,10 +790,10 @@
 				};
 				if ( navigator.clipboard && navigator.clipboard.writeText ) {
 					navigator.clipboard.writeText( text ).then( done ).catch( function () {
-						window.prompt( 'Copy address:', text );
+						window.prompt( 'Copy:', text );
 					} );
 				} else {
-					window.prompt( 'Copy address:', text );
+					window.prompt( 'Copy:', text );
 				}
 			} );
 		} );
@@ -878,5 +1299,47 @@
 
 		tick();
 		setInterval( tick, 1000 );
+	}
+
+	/**
+	 * Live wall-clock elapsed for in-progress steps (display only; not persisted until Mark done).
+	 */
+	function initLiveElapsed() {
+		var nodes = document.querySelectorAll( '[data-som-elapsed-from]' );
+		if ( ! nodes.length ) {
+			return;
+		}
+
+		function formatElapsed( seconds ) {
+			seconds = Math.max( 0, Math.floor( seconds ) );
+			if ( seconds < 60 ) {
+				return seconds + 's';
+			}
+			if ( seconds < 3600 ) {
+				return Math.floor( seconds / 60 ) + 'm';
+			}
+			if ( seconds < 86400 ) {
+				var h = Math.floor( seconds / 3600 );
+				var m = Math.floor( ( seconds % 3600 ) / 60 );
+				return m > 0 ? ( h + 'h ' + m + 'm' ) : ( h + 'h' );
+			}
+			var d = Math.floor( seconds / 86400 );
+			var hours = Math.floor( ( seconds % 86400 ) / 3600 );
+			return hours > 0 ? ( d + 'd ' + hours + 'h' ) : ( d + 'd' );
+		}
+
+		function tickElapsed() {
+			var now = Math.floor( Date.now() / 1000 );
+			document.querySelectorAll( '[data-som-elapsed-from]' ).forEach( function ( el ) {
+				var start = parseInt( el.getAttribute( 'data-som-elapsed-from' ), 10 );
+				if ( ! start ) {
+					return;
+				}
+				el.textContent = formatElapsed( now - start );
+			} );
+		}
+
+		tickElapsed();
+		setInterval( tickElapsed, 1000 );
 	}
 }() );

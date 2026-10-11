@@ -127,6 +127,55 @@
 		});
 	}
 
+	var timing = payload.timing || null;
+	var timingEl = document.getElementById('som-chart-timing-steps');
+	if (timingEl && timing && timing.chart) {
+		var tLabels = timing.chart.labels || [];
+		var tPlanned = timing.chart.avg_planned || [];
+		var tActual = timing.chart.avg_actual || [];
+		new Chart(timingEl, {
+			type: 'bar',
+			data: {
+				labels: tLabels,
+				datasets: [
+					{
+						label: 'Avg planned (min)',
+						data: tPlanned,
+						backgroundColor: '#72aee6'
+					},
+					{
+						label: 'Avg actual (min)',
+						data: tActual,
+						backgroundColor: '#2271b1'
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				plugins: {
+					legend: { display: true, position: 'bottom' },
+					tooltip: {
+						callbacks: {
+							label: function (ctx) {
+								var v = ctx.parsed && typeof ctx.parsed.y === 'number' ? ctx.parsed.y : ctx.parsed;
+								if (v === null || typeof v === 'undefined') {
+									return ctx.dataset.label + ': —';
+								}
+								return ctx.dataset.label + ': ' + Number(v).toFixed(1) + ' min';
+							}
+						}
+					}
+				},
+				scales: {
+					y: {
+						beginAtZero: true,
+						title: { display: true, text: 'Minutes' }
+					}
+				}
+			}
+		});
+	}
+
 	var range = document.getElementById('som-range');
 	var custom = document.querySelector('.som-analytics-custom-dates');
 	if (range && custom) {

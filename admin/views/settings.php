@@ -46,6 +46,34 @@ if ( $pack_tpl_id > 0 ) {
 	}
 }
 
+$post_ship_tpl_id    = SOM_Post_Ship::default_template_id();
+$post_ship_templates = SOM_Workflows::query(
+	array(
+		'status'   => 'active',
+		'kind'     => 'post_ship',
+		'per_page' => 200,
+	)
+);
+$post_ship_template_rows = isset( $post_ship_templates['templates'] ) && is_array( $post_ship_templates['templates'] )
+	? $post_ship_templates['templates']
+	: array();
+if ( $post_ship_tpl_id > 0 ) {
+	$found_ps = false;
+	foreach ( $post_ship_template_rows as $row ) {
+		if ( (int) $row->id === $post_ship_tpl_id ) {
+			$found_ps = true;
+			break;
+		}
+	}
+	if ( ! $found_ps ) {
+		$current_ps = SOM_Workflows::get( $post_ship_tpl_id );
+		if ( $current_ps ) {
+			array_unshift( $post_ship_template_rows, $current_ps );
+		}
+	}
+}
+$post_ship_auto_start = SOM_Post_Ship::auto_start_enabled();
+
 $connect_ebay_url = wp_nonce_url(
 	add_query_arg(
 		array(
@@ -267,6 +295,23 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 		<h2><?php echo esc_html__( 'General', 'order-machine' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
+				<th scope="row"><label for="som_tray_max"><?php echo esc_html__( 'Max trays', 'order-machine' ); ?></label></th>
+				<td>
+					<input name="som_tray_max" id="som_tray_max" type="number" min="<?php echo esc_attr( (string) SOM_Trays::MIN_MAX ); ?>" max="<?php echo esc_attr( (string) SOM_Trays::MAX_MAX ); ?>" step="1" value="<?php echo esc_attr( (string) SOM_Trays::get_max() ); ?>" class="small-text" />
+					<p class="description">
+						<?php
+						printf(
+							/* translators: 1: min, 2: max, 3: default */
+							esc_html__( 'Numbered tray pool is 1 through this value (allowed %1$d–%2$d; default %3$d). Lowering is blocked while a higher tray is still held.', 'order-machine' ),
+							SOM_Trays::MIN_MAX,
+							SOM_Trays::MAX_MAX,
+							SOM_Trays::DEFAULT_MAX
+						);
+						?>
+					</p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><label for="som_pack_workflow_template_id"><?php echo esc_html__( 'Default Pack workflow', 'order-machine' ); ?></label></th>
 				<td>
 					<select name="som_pack_workflow_template_id" id="som_pack_workflow_template_id">
@@ -301,10 +346,56 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 				</td>
 			</tr>
 			<tr>
+				<th scope="row"><label for="som_post_ship_workflow_template_id"><?php echo esc_html__( 'Default Post-ship workflow', 'order-machine' ); ?></label></th>
+				<td>
+					<select name="som_post_ship_workflow_template_id" id="som_post_ship_workflow_template_id">
+						<option value="0"><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
+						<?php foreach ( $post_ship_template_rows as $ps_tpl ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $ps_tpl->id ); ?>" <?php selected( $post_ship_tpl_id, (int) $ps_tpl->id ); ?>>
+								<?php
+								$ps_label = (string) $ps_tpl->name;
+								if ( empty( $ps_tpl->is_active ) ) {
+									$ps_label .= ' ' . __( '(inactive)', 'order-machine' );
+								}
+								echo esc_html( $ps_label );
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description">
+						<?php
+						echo esc_html__(
+							'Used after Pack Ship when the primary product has no Post-ship override. Create a workflow with kind Post-ship under Workflows.',
+							'order-machine'
+						);
+						?>
+					</p>
+					<?php if ( empty( $post_ship_template_rows ) ) : ?>
+						<p class="description">
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=som-workflows' ) ); ?>">
+								<?php echo esc_html__( 'Open Workflows to create a Post-ship template', 'order-machine' ); ?>
+							</a>
+						</p>
+					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Auto-start Post-ship', 'order-machine' ); ?></th>
+				<td>
+					<label for="som_post_ship_auto_start">
+						<input name="som_post_ship_auto_start" id="som_post_ship_auto_start" type="checkbox" value="1" <?php checked( $post_ship_auto_start ); ?> />
+						<?php echo esc_html__( 'Start Post-ship automatically when Pack Ship completes', 'order-machine' ); ?>
+					</label>
+					<p class="description">
+						<?php echo esc_html__( 'Default on. Turn off to require a manual Start post-ship on the order.', 'order-machine' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><label for="som_n8n_base_url"><?php echo esc_html__( 'n8n base URL', 'order-machine' ); ?></label></th>
 				<td>
 					<input name="som_n8n_base_url" id="som_n8n_base_url" type="url" class="regular-text" value="<?php echo esc_attr( $settings['n8n_base_url'] ); ?>" placeholder="https://n8n.example.com" />
-					<p class="description"><?php echo esc_html__( 'Reference only — workflow steps use the full webhook URL in script_config.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Deprecated (UP9-S2): local / API / n8n script steps are removed. Use Copy command on make steps instead. Field kept for existing installs only.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -319,8 +410,8 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 						<?php
 						printf(
 							/* translators: %s: REST route examples */
-							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s', 'order-machine' ),
-							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/confirm-step</code>, <code>…/workflow-callback/{token}</code>'
+							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s. workflow-callback is unused (script steps removed).', 'order-machine' ),
+							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/confirm-step</code>'
 						);
 						?>
 					</p>

@@ -17,6 +17,11 @@ if ( ! current_user_can( 'manage_options' ) ) {
 $is_new             = ! empty( $is_new );
 $product            = isset( $product ) ? $product : null;
 $workflow_templates = SOM_Products::list_workflow_templates( $product ? (int) $product->workflow_template_id : 0 );
+$post_ship_templates = SOM_Products::list_post_ship_templates(
+	$product && ! empty( $product->post_ship_workflow_template_id )
+		? (int) $product->post_ship_workflow_template_id
+		: 0
+);
 $material_options   = SOM_Materials::list_active();
 $recipe_rows        = ( $product && ! empty( $product->recipe ) ) ? $product->recipe : array();
 $listings           = ( $product && ! empty( $product->listings ) ) ? $product->listings : array();
@@ -159,6 +164,27 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 					<?php endif; ?>
 				</td>
 			</tr>
+			<?php if ( ! $is_internal ) : ?>
+			<tr>
+				<th scope="row"><label for="som_post_ship_workflow_template_id"><?php echo esc_html__( 'Post-ship workflow override', 'order-machine' ); ?></label></th>
+				<td>
+					<select id="som_post_ship_workflow_template_id" name="som_post_ship_workflow_template_id">
+						<option value=""><?php echo esc_html__( '— Site default —', 'order-machine' ); ?></option>
+						<?php foreach ( $post_ship_templates as $ps_tpl ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $ps_tpl->id ); ?>" <?php selected( $product ? (int) ( $product->post_ship_workflow_template_id ?? 0 ) : 0, (int) $ps_tpl->id ); ?>>
+								<?php
+								echo esc_html( (string) $ps_tpl->name );
+								if ( empty( $ps_tpl->is_active ) ) {
+									echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+								}
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php echo esc_html__( 'Optional. When set, customer orders whose primary product is this SKU use this Post-ship template instead of the site default.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<?php endif; ?>
 			<tr>
 				<th scope="row"><label for="som_target_selling_price"><?php echo esc_html__( 'Target selling price', 'order-machine' ); ?></label></th>
 				<td>
@@ -169,19 +195,46 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 			</tr>
 			<?php if ( ! $is_internal ) : ?>
 				<?php
-				$packages       = SOM_Shipping_Packages::list_active();
-				$default_pkg    = SOM_Shipping_Packages::get_default();
-				$selected_pkg   = $product && ! empty( $product->package_id ) ? (int) $product->package_id : 0;
+				$packages         = SOM_Shipping_Packages::list_active();
+				$default_pkg      = SOM_Shipping_Packages::get_default();
+				$selected_pkg     = $product && ! empty( $product->package_id ) ? (int) $product->package_id : 0;
+				$selected_pkg_multi = $product && ! empty( $product->package_id_multi ) ? (int) $product->package_id_multi : 0;
 				if ( $is_new && ! $selected_pkg && $default_pkg ) {
 					$selected_pkg = (int) $default_pkg->id;
 				}
-				// Keep inactive assigned package visible on edit.
-				if ( $product && $selected_pkg > 0 ) {
-					$assigned = SOM_Shipping_Packages::get( $selected_pkg );
-					if ( $assigned && empty( $assigned->is_active ) ) {
+				// Keep inactive assigned packages visible on edit.
+				$ensure_visible = array( $selected_pkg, $selected_pkg_multi );
+				foreach ( $ensure_visible as $pkg_id ) {
+					if ( $pkg_id < 1 ) {
+						continue;
+					}
+					$already = false;
+					foreach ( $packages as $pkg ) {
+						if ( (int) $pkg->id === $pkg_id ) {
+							$already = true;
+							break;
+						}
+					}
+					if ( $already ) {
+						continue;
+					}
+					$assigned = SOM_Shipping_Packages::get( $pkg_id );
+					if ( $assigned ) {
 						array_unshift( $packages, $assigned );
 					}
 				}
+				$package_options = static function ( $packages_list, $selected ) {
+					foreach ( $packages_list as $pkg ) {
+						echo '<option value="' . esc_attr( (string) (int) $pkg->id ) . '" ' . selected( $selected, (int) $pkg->id, false ) . '>';
+						echo esc_html( (string) $pkg->name );
+						if ( empty( $pkg->is_active ) ) {
+							echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+						} elseif ( ! empty( $pkg->is_default ) ) {
+							echo ' (' . esc_html__( 'default', 'order-machine' ) . ')';
+						}
+						echo '</option>';
+					}
+				};
 				?>
 				<tr>
 					<th scope="row"><label for="som_product_weight_g"><?php echo esc_html__( 'Goods weight', 'order-machine' ); ?></label></th>
@@ -195,21 +248,12 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 					<td>
 						<select id="som_product_package_id" name="som_product_package_id">
 							<option value=""><?php echo esc_html__( '— None —', 'order-machine' ); ?></option>
-							<?php foreach ( $packages as $pkg ) : ?>
-								<option value="<?php echo esc_attr( (string) (int) $pkg->id ); ?>" <?php selected( $selected_pkg, (int) $pkg->id ); ?>>
-									<?php
-									echo esc_html( (string) $pkg->name );
-									if ( empty( $pkg->is_active ) ) {
-										echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
-									} elseif ( ! empty( $pkg->is_default ) ) {
-										echo ' (' . esc_html__( 'default', 'order-machine' ) . ')';
-									}
-									?>
-								</option>
-							<?php endforeach; ?>
+							<?php $package_options( $packages, $selected_pkg ); ?>
 						</select>
 						<p class="description">
 							<?php
+							echo esc_html__( 'Suggested when the order has one sellable pack (qty 1).', 'order-machine' );
+							echo ' ';
 							echo wp_kses_post(
 								sprintf(
 									/* translators: %s: packages admin link */
@@ -219,6 +263,16 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 							);
 							?>
 						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="som_product_package_id_multi"><?php echo esc_html__( 'Multi-pack package', 'order-machine' ); ?></label></th>
+					<td>
+						<select id="som_product_package_id_multi" name="som_product_package_id_multi">
+							<option value=""><?php echo esc_html__( '— Same as default —', 'order-machine' ); ?></option>
+							<?php $package_options( $packages, $selected_pkg_multi ); ?>
+						</select>
+						<p class="description"><?php echo esc_html__( 'Suggested when the order’s total sellable qty is 2 or more. If unset, the default package is used for multi-qty votes.', 'order-machine' ); ?></p>
 					</td>
 				</tr>
 				<tr>
@@ -248,11 +302,12 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 			: 0;
 		$instruction_steps     = $workflow_id_for_steps > 0 ? SOM_Workflows::get_steps( $workflow_id_for_steps ) : array();
 		$instruction_overrides = $product ? SOM_Step_Instructions::get_overrides_for_product( (int) $product->id ) : array();
+		$task_overrides        = $product ? SOM_Step_Tasks::get_overrides_for_product( (int) $product->id ) : array();
 		?>
 		<?php if ( ! empty( $instruction_steps ) ) : ?>
 			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
 			<p class="description">
-				<?php echo esc_html__( 'Optional overrides for this product. Leave blank to use the workflow step default. Empty overrides are not stored.', 'order-machine' ); ?>
+				<?php echo esc_html__( 'Optional Markdown overrides for this product. Leave blank to use the workflow step default. Empty overrides are not stored. No images; no HTML editor.', 'order-machine' ); ?>
 			</p>
 			<table class="widefat striped som-step-instructions-table">
 				<thead>
@@ -281,7 +336,71 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 								<?php endif; ?>
 							</td>
 							<td>
-								<textarea class="large-text" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
+								<div data-som-md-editor>
+									<textarea class="large-text som-md-source" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Markdown override…', 'order-machine' ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
+									<?php SOM_Step_Instructions::render_editor_help(); ?>
+								</div>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+
+			<h2><?php echo esc_html__( 'Step tasks', 'order-machine' ); ?></h2>
+			<p class="description">
+				<?php echo esc_html__( 'Optional task-list overrides for this product (make template). Clearing all rows falls back to the workflow default. Override replaces the whole list (not merge). Does not block Mark done. Separate from Confirmation checklist.', 'order-machine' ); ?>
+			</p>
+			<table class="widefat striped som-step-tasks-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Step', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Task list override', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $instruction_steps as $istep ) : ?>
+						<?php
+						$sid           = (int) $istep->id;
+						$default_tasks = ! empty( $istep->task_list_json )
+							? SOM_Step_Tasks::decode_list( $istep->task_list_json )
+							: array();
+						$override_tasks = isset( $task_overrides[ $sid ] ) ? $task_overrides[ $sid ] : array();
+						$edit_tasks     = ! empty( $override_tasks ) ? $override_tasks : array(
+							array(
+								'id'    => '',
+								'label' => '',
+							),
+						);
+						?>
+						<tr>
+							<td>
+								<strong><?php echo esc_html( (string) $istep->name ); ?></strong>
+								<?php if ( ! empty( $default_tasks ) ) : ?>
+									<ul class="description som-step-default-tasks">
+										<li><strong><?php echo esc_html__( 'Template default:', 'order-machine' ); ?></strong></li>
+										<?php foreach ( $default_tasks as $dt ) : ?>
+											<li><?php echo esc_html( (string) $dt['label'] ); ?></li>
+										<?php endforeach; ?>
+									</ul>
+								<?php else : ?>
+									<p class="description som-muted"><?php echo esc_html__( 'No workflow default tasks.', 'order-machine' ); ?></p>
+								<?php endif; ?>
+							</td>
+							<td>
+								<div class="som-step-tasks-field" data-som-task-list data-som-task-name-prefix="som_step_tasks[<?php echo esc_attr( (string) $sid ); ?>]">
+									<div class="som-task-rows" data-som-task-rows>
+										<?php foreach ( $edit_tasks as $t_index => $task ) : ?>
+											<div class="som-task-row" data-som-task-row>
+												<input type="hidden" name="som_step_tasks[<?php echo esc_attr( (string) $sid ); ?>][<?php echo esc_attr( (string) $t_index ); ?>][id]" value="<?php echo esc_attr( (string) ( $task['id'] ?? '' ) ); ?>" />
+												<input type="text" class="regular-text" name="som_step_tasks[<?php echo esc_attr( (string) $sid ); ?>][<?php echo esc_attr( (string) $t_index ); ?>][label]" value="<?php echo esc_attr( (string) ( $task['label'] ?? '' ) ); ?>" maxlength="<?php echo esc_attr( (string) SOM_Step_Tasks::MAX_LABEL_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Override task…', 'order-machine' ); ?>" />
+												<button type="button" class="button-link som-task-remove" aria-label="<?php echo esc_attr__( 'Remove task', 'order-machine' ); ?>">&times;</button>
+											</div>
+										<?php endforeach; ?>
+									</div>
+									<p>
+										<button type="button" class="button-link" data-som-task-add><?php echo esc_html__( 'Add task', 'order-machine' ); ?></button>
+									</p>
+								</div>
 							</td>
 						</tr>
 					<?php endforeach; ?>
@@ -290,6 +409,8 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 		<?php elseif ( $product && empty( $product->workflow_template_id ) ) : ?>
 			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
 			<p class="description"><?php echo esc_html__( 'Assign a workflow template to set per-step instruction overrides.', 'order-machine' ); ?></p>
+			<h2><?php echo esc_html__( 'Step tasks', 'order-machine' ); ?></h2>
+			<p class="description"><?php echo esc_html__( 'Assign a make workflow template to set per-step task list overrides.', 'order-machine' ); ?></p>
 		<?php endif; ?>
 
 		<h2><?php echo esc_html__( 'Material recipe', 'order-machine' ); ?></h2>

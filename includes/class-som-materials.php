@@ -624,13 +624,16 @@ class SOM_Materials {
 	 */
 	public static function reason_label( $reason ) {
 		$labels = array(
-			'manual_adjustment'  => __( 'Manual adjustment', 'order-machine' ),
-			'new_order'          => __( 'New order', 'order-machine' ),
-			'order_usage_extra'  => __( 'Extra material usage', 'order-machine' ),
-			'production_output'  => __( 'Production output', 'order-machine' ),
-			'order_cancelled'    => __( 'Order cancelled', 'order-machine' ),
-			'restock'            => __( 'Restock', 'order-machine' ),
-			'purchase_received'  => __( 'Purchase received', 'order-machine' ),
+			'manual_adjustment'   => __( 'Manual adjustment', 'order-machine' ),
+			'new_order'           => __( 'New order', 'order-machine' ),
+			'package_reserve'     => __( 'Package reserve', 'order-machine' ),
+			'package_unreserve'   => __( 'Package change', 'order-machine' ),
+			'order_usage_extra'   => __( 'Extra material usage', 'order-machine' ),
+			'package_usage_extra' => __( 'Extra material usage', 'order-machine' ),
+			'production_output'   => __( 'Production output', 'order-machine' ),
+			'order_cancelled'     => __( 'Order cancelled', 'order-machine' ),
+			'restock'             => __( 'Restock', 'order-machine' ),
+			'purchase_received'   => __( 'Purchase received', 'order-machine' ),
 		);
 
 		$reason = sanitize_key( (string) $reason );

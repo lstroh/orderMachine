@@ -1,6 +1,7 @@
 <?php
 /**
- * Internal REST API (orders, purchasing, batches, workflow callbacks).
+ * Internal REST API (orders, purchasing, batches).
+ * workflow-callback route remains registered but unused (UP9-S2: scripts removed).
  *
  * @package OrderMachine
  */
@@ -617,7 +618,21 @@ class SOM_REST_API {
 			'is_last_step'      => false,
 		);
 
-		if ( $order && empty( $order->is_complete ) && ! empty( $order->current_step_id ) ) {
+		if ( $order && ! empty( $order->current_step_id ) ) {
+			$step_for_meta = null;
+			if ( ! empty( $order->is_complete ) ) {
+				$steps_t       = SOM_DB::table( 'workflow_steps' );
+				$step_for_meta = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT * FROM {$steps_t} WHERE id = %d LIMIT 1",
+						(int) $order->current_step_id
+					)
+				);
+				if ( ! SOM_Post_Ship::is_post_ship_step( $step_for_meta ) ) {
+					return rest_ensure_response( $payload );
+				}
+			}
+
 			$progress_t = SOM_DB::table( 'order_step_progress' );
 			$status     = $wpdb->get_var(
 				$wpdb->prepare(
@@ -650,7 +665,8 @@ class SOM_REST_API {
 	}
 
 	/**
-	 * n8n / automation callback to complete a waiting_script step.
+	 * Legacy workflow-callback (UP9-S2: unused — script steps removed).
+	 * Route kept so old tokens fail cleanly; prefer Copy command + Mark done.
 	 *
 	 * @param WP_REST_Request $request Request.
 	 * @return WP_REST_Response|WP_Error

@@ -52,15 +52,15 @@ Top-level: **Order Machine**
 | **Materials** | Stock, WA / value, preferred supplier, R&D write-off |
 | **Budgets** | Material + manual budgets, ledger, adjustments |
 | **Suppliers** | Supplier contacts (no delete) |
-| **Shipping packages** | Outer mailers/boxes (mm + tare g); assign on sellable products with planned postage |
+| **Shipping packages** | Outer mailers/boxes (mm + tare g) with optional packaging materials; assign default + multi-pack on sellable products |
 | **Purchase Orders** | Create / receive POs, Preview Impact |
 | **Batches** | Collecting / release / mark done for batch steps |
-| **Workflows** | Templates and step editor (timers, batch groups, goals) |
+| **Workflows** | Templates and step editor (timers, planned duration, batch groups, goals) |
 | **Listings** | Cached marketplace listings; link products; push updates |
-| **Analytics** | Sales, profit, stock, channel mix, AOV charts |
+| **Analytics** | Sales, profit, stock, channel mix, AOV, workflow timing |
 | **Channel Fee Estimates** | Editable estimated fee components per channel |
 | **Recurring Platform Expenses** | Non-order fees (e.g. listing fees) from fee sync |
-| **Settings** | Channels, OAuth, sync, fee sync, MCP, API key |
+| **Settings** | Channels, OAuth, sync, fee sync, MCP, API key, **Max trays**, Default Pack workflow |
 
 ---
 
@@ -80,7 +80,7 @@ define( 'SOM_ENCRYPTION_KEY', 'your-local-dev-key-here' ); // keep stable once s
 
 3. Open any Order Machine admin screen so seed data can run.
 4. **Settings** → confirm eBay and Etsy show as connected (dummy).
-5. Confirm seed catalogue: sample product **BIN-SET-4PK**, materials, make **Bin Sticker Make**, Pack **Order Pack & Ship**.
+5. Confirm seed catalogue: sample product **BIN-SET-4PK**, materials, make **Bin Sticker Make**, Pack **Order Pack & Ship**, Post-ship **Post-ship — Order Aftercare**.
 6. **Settings → Sync now** to pull fixture orders. Optionally **Sync fees now** for fee fixtures.
 
 **Seed tools:** Settings → Seed data — **Remove seed data** / **Restore seed data** (restore needs dummy mode on). After a Package 6 upgrade, use **Repair pack binding** for open orders missing Pack. Does not delete your own products, suppliers, or POs.
@@ -105,7 +105,7 @@ Use this when the WordPress site is online and you have developer apps for the m
 5. Prefer **Sync now** for day-to-day new orders. Use **Import history** only when you want past orders **without** workflow assignment, stock reservation, or budget funding.
 6. Configure **Channel Fee Estimates** if needed, then use **Sync fees now** (and the fee poll interval).  
    **Live eBay:** if Settings warns that Finances scope is missing, **Disconnect** then **Connect** again so fee sync can run. Token refresh alone does not grant a new scope.
-7. Optionally set n8n base URL, poll intervals, MCP toggle, and REST API key.
+7. Optionally set poll intervals, MCP toggle, and REST API key. (n8n base URL is deprecated — script/API/n8n steps are removed; use **Copy command** on make steps.)
 
 Background jobs (WP-Cron) handle periodic order sync, fee sync, timer unlocks / batch retries, and token refresh. You can still use **Sync now** / **Sync fees now** manually.
 
@@ -126,6 +126,61 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Sync now** | Incremental pull of new/updated orders; new matched creates get workflow + stock + budget funding. |
 | **Import history** | Backfill of past orders; does **not** assign workflow / reserve stock / fund budgets like a live create. |
 | **Multipack** | N identical units sold as one SKU (e.g. a 4-pack). Model as a **separate product** with its own recipe and shipping defaults — not a multiplier on a base SKU. |
+| **Trays** | Numbered physical trays (site pool **1 … Max trays**) assigned to an **order**. Shared by all make lines and pack on that order. |
+| **Uses trays** | Template checkbox (make or Pack). If **any** make or Pack template on the order has it on, the order **requires** ≥1 held tray before Mark done / advance. |
+| **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, batch, ship/package/hold, trays). Does **not** complete the step for you. |
+| **Planned duration** | Target time for a step (reporting only). Set in the workflow editor; separate from the timer gate. |
+| **Timer** | Hard gate — Mark done stays blocked until the countdown ends (or you Unblock). Not the same as planned duration. |
+| **Actual (wall clock)** | How long a step really took: started → completed, **including** timer waits. Shown on order detail and Analytics. |
+| **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
+| **Step instructions** | Markdown guidance on a workflow step (default) or product override. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
+| **Tasks** | Optional per-step tick list (template default + make product override). Operators can tick while running; **never** blocks **Mark done**. |
+| **Confirmation checklist** | Hard gate on a step (print / address / packing / package arrived). Must be saved complete before Mark done. Not the same as Tasks. |
+| **Post-ship** | Aftercare workflow after Pack Ship (buyer update, arrival confirm, review reminder). Separate board; order **complete** = shipping details + arrival (not Ship alone). |
+
+---
+
+## Planned vs timer vs actual
+
+Three different concepts — do not mix them up:
+
+| Concept | What it is | Where you set / see it |
+|---|---|---|
+| **Planned duration** | Target time for reporting (minutes / hours / days → seconds) | **Workflows** step editor · order detail · Analytics timing |
+| **Timer** | Hard gate that blocks Mark done until it ends | **Workflows** step editor · order detail countdown |
+| **Actual (wall clock)** | Elapsed start → complete, **includes timer waits** | Order detail (per step + make/pack totals) · **Analytics → Workflow timing** |
+
+Make-line and pack **totals** use span actual: first step start → last step complete (not a sum of overlapping waits). Steps often over plan (actual > planned × 1.2) are highlighted on Analytics.
+
+More detail: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7 / §15.
+
+---
+
+## Copy command (make steps)
+
+Use this when a make step should show a skill/command to run on your machine (e.g. `/make-sticker-order …`).
+
+1. **Workflows** → open a make template → on the step, fill **Copy command template** with placeholders such as `{{order_number}}`, `{{house_number}}`, `{{street_name}}`, `{{style}}`, `{{buyer_name}}`.
+2. Seed **Bin Sticker Make → Print** includes an example `/make-sticker-order` template.
+3. On **order detail**, open the make line: copy the rendered block, run it locally, then **Mark done**.
+4. House / street / style are editable on the order line if eBay data is missing.
+
+Local / API / n8n **script steps are removed**. Script batch groups soft-fail on release (use manual_confirm batches). Details: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7–8.
+
+**Step instructions** on the same editor accept Markdown (bold, lists, links, code, headings). Use **Preview** under the textarea; they render on order detail. Do not put the copy-command block inside instructions — keep Copy command as its own field.
+
+---
+
+## Tasks vs Confirmation checklist
+
+| | **Tasks** | **Confirmation checklist** |
+|---|---|---|
+| Purpose | Optional operator reminders on a step | Required gate before Mark done |
+| Blocks Mark done? | **No** | **Yes** (until saved complete) |
+| Authoring | Workflow step rows + optional make product override (full replace) | Step **Confirmation checklist** kind |
+| Pack | Template tasks only (no product override) | Pack kinds (packing items, address, …) |
+
+On order detail, **Tasks** appear under steps that have a list (current and completed). **Confirmation checklist** stays the hard gate. Do not put tasks inside Markdown instructions.
 
 ---
 
@@ -137,11 +192,36 @@ Sell pack sizes as **separate catalogue products**. There is no pack→base inve
 |---|---|
 | One product per pack size (1-pack, 4-pack, 10-pack, …) | Expect one SKU to “multiply” into N loose units |
 | Recipe = materials for **one sold unit** of that pack | Create a phantom loose-unit SKU unless you actually sell singles |
-| Set goods weight, default package, and planned shipping **per SKU** | Share one planned postage across all pack sizes |
+| Set goods weight, default package, multi-pack package, and planned shipping **per SKU** | Share one planned postage across all pack sizes |
 
-**Naming (seed style):** name like `Bin Sticker Set — 4-pack`, SKU like `BIN-SET-4PK`. Heavier packs usually need a larger package and higher planned postage. Link each pack SKU to its own marketplace listing.
+**Naming (seed style):** name like `Bin Sticker Set — 4-pack`, SKU like `BIN-SET-4PK`. One sold 4-pack uses the **default** package; two or more sold packs on an order suggest the **multi-pack** package when set. Mixed SKUs that disagree fall back to the site default with a Pack confirm flag. Link each pack SKU to its own marketplace listing.
 
-Order notes, planned vs actual postage, and the shipping-packages catalogue are covered in [`USER-REFERENCE.md`](USER-REFERENCE.md).
+Order notes, planned vs actual postage, package materials, and Create test order (multi-line) are covered in [`USER-REFERENCE.md`](USER-REFERENCE.md).
+
+---
+
+## Trays & Unblock step
+
+Physical trays stay with the **order** (not a single make line). There is no make→pack tray transfer and no separate trays overview page — manage them on **order detail** and see numbers as badges on the Make / Pack boards.
+
+### Set up trays
+
+1. **Settings → Max trays** — pool size **1–20** (default **10**). Numbers are **1 … max**. Lowering max is blocked while a higher tray number is still held.
+2. **Workflows** → open a make or Pack template → tick **Uses trays** when orders that use that template must hold trays. Seed templates leave this **off** — turn it on when you are ready.
+
+### Day to day
+
+| Action | Where |
+|---|---|
+| Assign free trays / release held trays | Order detail → **Trays** panel (multi-select) |
+| See held tray numbers | Make Board and Pack Board card badges (**Tray N**) |
+| Bypass a blocked step | Order detail → **Unblock step** on the **current** make or pack step |
+
+**When required:** if any sellable line’s make template **or** the bound Pack template has **Uses trays**, the order needs ≥1 held tray. Mark done / Board advance stay blocked until you assign; the Trays panel highlights. You may assign more trays later; while required and the order is still open you must **keep at least one** held (cannot release the last).
+
+**Auto-release:** when the order completes (pack/ship done, or Internal Produce N when make completes), all held trays for that order free back to the pool.
+
+**Unblock step:** available on order detail when Mark done is gated. Confirm copy: *Allows Mark done without meeting this step’s gates. Does not complete the step.* Still click **Mark done** yourself. Logs who/when and adds an order note. Not on the boards. Concise rules: [`USER-REFERENCE.md`](USER-REFERENCE.md) §3 / §8.
 
 ---
 
@@ -152,11 +232,14 @@ Order notes, planned vs actual postage, and the shipping-packages catalogue are 
 | Cancelled orders | Status is shown; **material stock is not reversed** yet when an order cancels later. |
 | Currency | **GBP only** (fee amounts stored as returned and treated as GBP; no FX conversion). |
 | Make / Pack Boards | **Open / incomplete** only. Make = line cards; Pack = order cards (excludes Internal). Completed history stays on **Orders**. |
-| Batch steps | In v1 a step is **batch-only** (not combined with timer/script/manual on the same step). |
+| Batch steps | In v1 a step is **batch-only** (not combined with timer/manual/copy on the same step). Script batches are disabled. |
+| Script / n8n | Removed — use **Copy command** + Mark done. |
 | PO after first receive | Line quantities/costs **lock**; notes stay editable. Corrections via stock/value adjustment, not rewriting old receives. |
 | Negative stock / budgets | Allowed as a shortage / overspend signal. |
 | Ink | No special type — track via a recipe material or a manual fixed-amount budget. |
 | Mobile Board | Horizontal scroll; no stacked mobile layout. |
+| Trays | Order-level only; cannot double-book a tray; no trays overview page; seed **Uses trays** is off until you opt in. |
+| Unblock step | Order detail only; does not auto Mark done; pack hold flag stays set (Ship gate bypassed for that Mark done). |
 
 ---
 
@@ -167,8 +250,11 @@ Order notes, planned vs actual postage, and the shipping-packages catalogue are 
 | No seed product / workflow | Dummy constant not on; open any Order Machine admin page once. |
 | Sync creates 0 | Already synced — check Orders; or you need new marketplace activity (live). |
 | Matched order has no workflow | Order was created before a workflow was on the product — new Sync after assignment won’t rewrite old rows. |
-| Mark done disabled on a timer step | Wait for the timer, or wait for the engine tick after it ends. |
-| Mark done missing on Thank-you | Expected while **waiting_batch** — use **Batches**. |
+| Mark done disabled on a timer step | Wait for the timer, or wait for the engine tick after it ends — or **Unblock step** on order detail (still Mark done after). |
+| Mark done blocked — trays required | Order detail → **Trays** → assign ≥1 free tray (or Unblock step to bypass without assigning). |
+| Can’t release last tray | Expected while trays are required and the order is still open — keep ≥1. |
+| Can’t lower Max trays | A higher tray number is still held — release it first. |
+| Mark done missing on Thank-you | Expected while **waiting_batch** — use **Batches**, or **Unblock step** (removes the line/order from the open batch). |
 | Stock didn’t move | History import, cancelled, unmatched-only, or already reserved for that order. |
 | Budget didn’t fund | Same as stock skip reasons; inactive budget; product/workflow scope miss; already funded. |
 | Budget didn’t draw on receive | No active material budget for that material; or you used **Mark received** (shortfall) instead of **Receive**. |
@@ -183,6 +269,7 @@ Order notes, planned vs actual postage, and the shipping-packages catalogue are 
 | Order has no Platform fees panel lines | Run **Sync fees now**; live eBay may need Finances reconnect. |
 | Analytics empty | No priced lines in range; cancelled/refunded excluded; or date filter too narrow. |
 | Analytics stock chart blank | Select material(s) and Apply. |
+| Analytics timing empty | No fully completed make/pack for that template in the date range; or no planned durations set yet. |
 | Charts / Board DnD missing | CDN blocked (offline admin) — SortableJS / Chart.js. |
 
 More detail: [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) §7.
@@ -194,12 +281,15 @@ More detail: [`FEATURES-AND-TESTING.md`](FEATURES-AND-TESTING.md) §7.
 When dummy mode seeds successfully you typically get:
 
 - Product **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`) with vinyl + laminate recipe — a **multipack SKU** (materials for one 4-pack sold unit)  
-- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut)  
-- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review)  
+- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) — **Uses trays** off  
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship) — **Uses trays** off; Review reminder is **not** on Pack  
+- Post-ship workflow **Post-ship — Order Aftercare** (Update buyer / send tracking → Confirm shipping details → Confirm package arrived → Review reminder) — set as Default Post-ship when unset; auto-start after Pack Ship is on by default  
 - Batch groups still seeded for optional use; thank-you is checklist-only on Pack (not a batch gate)  
 - Fixture listing matches so some synced lines resolve to that product  
 
-No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
+**Migrate (existing sites):** Upgrade, then open any admin screen so seed can add Aftercare and strip Pack’s Review reminder when no open progress uses it. If Pack still shows Review reminder mid-flight, finish those orders or Restore seed / edit Pack manually. Order complete now means shipment + arrival confirm — not Pack Ship alone.
+
+No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Turn on **Uses trays** on a template when you want the tray gate. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
 
 ---
 

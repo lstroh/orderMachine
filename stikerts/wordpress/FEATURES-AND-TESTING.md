@@ -2,8 +2,8 @@
 
 *Operators running the shop day to day: start with [`USER-GUIDE.md`](USER-GUIDE.md) (hub), [`USER-WORKFLOWS.md`](USER-WORKFLOWS.md), and [`USER-REFERENCE.md`](USER-REFERENCE.md).*
 
-*Review guide for everything shipped through base Sprints 1–11, Update Package 1 (U1–U7), Update Package 2 (U2-1–U2-5), **and** Update Package 3 (UP3-S1–S4) — plugin **v0.22.0**, schema **1.8.0**.*  
-*Companions: [`Sprint-Plan.md`](Sprint-Plan.md), [`Sprint-Progress.md`](Sprint-Progress.md), [`../wordpress v2/Update-Sprint-Plan.md`](../wordpress%20v2/Update-Sprint-Plan.md), [`../wordpress v2/Update-Sprint-Progress.md`](../wordpress%20v2/Update-Sprint-Progress.md), [`../wordpress v3/Update-2-Sprint-Plan.md`](../wordpress%20v3/Update-2-Sprint-Plan.md), [`../wordpress v3/Update-2-Sprint-Progress.md`](../wordpress%20v3/Update-2-Sprint-Progress.md), [`../wordpress v4/Update-3-Sprint-Plan.md`](../wordpress%20v4/Update-3-Sprint-Plan.md), [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md), [`../wordpress v5/01-Update-Overview.md`](../wordpress%20v5/01-Update-Overview.md), [`../wordpress v5/Update-4-Sprint-Plan.md`](../wordpress%20v5/Update-4-Sprint-Plan.md), [`../wordpress v5/Update-4-Sprint-Progress.md`](../wordpress%20v5/Update-4-Sprint-Progress.md) (Package 4 done), [`../wordpress v6/Update-5-Sprint-Plan.md`](../wordpress%20v6/Update-5-Sprint-Plan.md) (Package 5 — UP5-S1 done; S2–S3 next).*
+*Review guide for everything shipped through base Sprints 1–11 and Update Packages 1–8 (trays + Unblock in Package 8). Header versions below may lag the plugin SemVer — prefer smoke scripts for schema checks.*  
+*Companions include [`../wordpress v9/Update-8-Sprint-Plan.md`](../wordpress%20v9/Update-8-Sprint-Plan.md) / [`../wordpress v9/Update-8-Sprint-Progress.md`](../wordpress%20v9/Update-8-Sprint-Progress.md) (Package 8), plus earlier package plans under `wordpress v2`–`v8`.*
 
 ---
 
@@ -21,16 +21,24 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Pack Board + Ship gates | Done (UP6-S2) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
-| Step instructions (default + product override) | Done (UP4-S1) |
+| Step instructions (default + product override) | Done (UP4-S1); Markdown render + editor preview (UP9-S3) |
 | Order material overuse (Materials used) | Done (UP4-S2) |
 | Internal products core (Produce N) | Done (UP4-S3) |
 | Internal products UX / guards / analytics | Done (UP4-S4) |
 | Order notes (threaded log) | Done (UP5-S1) |
 | Shipping packages + planned postage | Done (UP5-S2) |
+| Shipping package materials + Materials used (Package) | Done (UP7-S2) |
+| Order package suggestion (1 vs 2+ / mixed) + multi-line test orders | Done (UP7-S3) |
 | Multipack conventions (docs; separate SKUs) | Done (UP5-S3) |
-| Workflow engine (manual + timer + script + batch + confirmation) | Done |
+| Order-level trays (max, assign/release, require, auto-release, board badges) | Done (UP8-S1–S2) |
+| Unblock step (all gates + audit; order detail) | Done (UP8-S2) |
+| Trays + Unblock operator docs | Done (UP8-S3) |
+| Workflow engine (manual + timer + script + batch + confirmation + trays) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
-| Script / n8n / local actions execution | Done (Sprint 9) |
+| Script / n8n / local actions execution | **Removed** (UP9-S2) — use Copy command |
+| Copy command step + structured eBay fields | Done (UP9-S1–S2) |
+| Step instructions Markdown + styling | Done (UP9-S3) |
+| Optional step task lists (default + product override) | Done (UP9-S4) |
 | Listings push | Done (Sprint 10) |
 | REST API + MCP Abilities | Done (Sprint 11; enriched in U7 + UP3-S3) |
 | Suppliers + purchase orders (receive / close) | Done (Package 1 U2) |
@@ -41,6 +49,8 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Channel fee estimates + actual fee sync | Done (UP3-S1–S2) |
 | Recurring platform expenses UI | Done (UP3-S2) |
 | Analytics Dashboard (Chart.js) | Done (UP3-S4) |
+| Workflow timing (planned + actual) on order detail | Done (UP10-S1) |
+| Analytics workflow timing + planned/timer/actual docs | Done (UP10-S2) |
 
 **Recommended review path:** use **wp-env** for a clean, repeatable fixture walkthrough, then spot-check the same screens on your **Local** `ordermachine` site if you use that day-to-day.
 
@@ -67,9 +77,11 @@ Dummy mode auto-seeds:
 - Encrypted fake eBay + Etsy credentials
 - Sample product **BIN-SET-4PK** with vinyl + laminate recipe
 - Listing matches so some fixture lines resolve to that product
-- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) on the product
-- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review); set as Default Pack when unset
+- Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) on the product — **Uses trays** off
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship); set as Default Pack when unset — **Uses trays** off; Review reminder removed from Pack seed
+- Post-ship workflow **Post-ship — Order Aftercare** (buyer update → confirm shipping details → package arrived → Review reminder); set as Default Post-ship when unset; auto-start after Pack Ship default on
 - Batch groups **thank_you_card** / **shipping_label** still seeded for compatibility; **not** attached to Pack seed steps
+- Settings **Max trays** available (default 10); no trays overview page
 
 More commands: [`WP-ENV.md`](../../WP-ENV.md). Clean reset: `npx @wordpress/env destroy` then `start` again.
 
@@ -98,6 +110,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
 | **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop |
 | **Pack Board** | `som-pack-board` | Kanban of open **orders** in pack/ship; Waiting for make + Held; Internal excluded |
+| **Post-ship Board** | `som-post-ship-board` | Kanban of aftercare orders by post-ship step; Unstarted / Active / Complete; filter by template |
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, recipe, Product Costing |
 | **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history, R&D write-off |
 | **Budgets** | `som-budgets` | Material + manual budgets; balances, ledger, adjustments, R&D write-off |
@@ -107,10 +120,10 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | Batch deep-link | `som-batches&batch_id=N` | Scrolls/expands that batch |
 | **Workflows** | `som-workflows` | Templates + step editor (gates, batch group, material cost goals; kind Make/Pack) |
 | **Listings** | `som-listings` | Cached marketplace listings; refresh + push price/qty/description |
-| **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV charts (Chart.js) |
+| **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV + workflow timing (Chart.js) |
 | **Channel Fee Estimates** | `som-channel-fee-estimates` | Per-channel estimated fee components (tiers, optional ads) |
 | **Recurring Platform Expenses** | `som-recurring-platform-expenses` | Non-order-linked fees (e.g. Etsy listing fees) |
-| **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key, default Pack workflow |
+| **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key, Max trays, default Pack / Post-ship workflows, auto-start Post-ship |
 
 ---
 
@@ -125,7 +138,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Save eBay / Etsy app client ID + secret (secrets stored encrypted; leave blank to keep existing)
 - See OAuth callback URLs for each channel
 - **Connect** / **Disconnect** eBay and Etsy (live OAuth on Local with real apps; wp-env uses dummy tokens)
-- Set **n8n base URL** (used when a step’s `script_config` type is `n8n`)
+- **n8n base URL** (deprecated — script/n8n steps removed in UP9-S2)
 - Configure intervals: order poll, engine tick, token refresh, **fee poll** (default 30 minutes, min 5)
 - Toggle **MCP / Abilities** registration and manage the **REST API key**
 - Choose **Default Pack workflow** (kind Pack) for new non-Internal orders
@@ -187,8 +200,10 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Workflow progress: current step, timers, scripts, **waiting_batch** badge + link to Batches
 - **Confirmation checklist** when the current step has a confirmation kind (print / address / packing)
 - **Open on eBay/Etsy** marketplace order link
-- **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete)
-- **Materials used** — planned vs actual recipe materials; raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
+- **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete; blocked when trays required and none held)
+- **Unblock step** on the current make/pack step when Mark done is gated (order detail only)
+- **Trays** panel — assign free / release held (order-level; shared by make + pack)
+- **Materials used** — planned vs actual from product **Recipe** and selected shipping **Package** (separate Source rows); raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
 - Stock log for the order available under a details disclosure
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
 - **Notes** — admin-only append-only thread (author, time, plain text); not on Board/list; not via REST/MCP
@@ -197,7 +212,9 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 **Workflow rules on the order:**
 
 - **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Legacy open orders may still show order-level progress.
-- **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship**. Settings → **Repair pack binding** for open unbound orders.
+- **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Pack finish does **not** set `is_complete` for customer orders (Package 11). Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship** + **Post-ship — Order Aftercare**. Settings → **Repair pack binding** for open unbound orders.
+- **Post-ship (UP11):** third kind; bind/start auto after Pack Ship and/or manual; site default + product override; Post-ship Board (`som-post-ship-board`); **complete** when shipment exists + arrival confirmed; Review reminder on post-ship (may run after complete).
+- **Trays (UP8):** required when any sellable make template or bound Pack template has `uses_trays`; block until ≥1 held; keep ≥1 while required + open; auto-release on order complete; board badges
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
 - Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
 
@@ -215,7 +232,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Assign a **workflow template**
 - Edit the **material recipe** (material + quantity per unit; inputs for internal products)
 - Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, **planned shipping** when set, fee-aware profit / margin, goal alerts, listing prices side by side)
-- For sellable products: **goods weight (g)**, default **shipping package**, flat **planned shipping** £
+- For sellable products: **goods weight (g)**, **default package** (qty 1), optional **multi-pack package** (qty 2+), flat **planned shipping** £
 - See linked listings (links through to **Listings** admin)
 
 **Products list** also shows costing columns: target price, material cost, **fee-aware margin** with Est. fees / Actual fees badge, goal-alert badges, **Internal** badge, and type filter (sellable / internal).
@@ -224,7 +241,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 **Multipacks (pack sizes):** model each pack size as its **own product SKU** with its own recipe and shipping defaults (e.g. seed `BIN-SET-4PK`). There is no pack→base multiplier or inventory explosion. See [`USER-GUIDE.md`](USER-GUIDE.md) (Pack sizes) and [`USER-REFERENCE.md`](USER-REFERENCE.md) §5.
 
-**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one default for new products.
+**Shipping packages admin:** Order Machine → **Shipping packages** — catalogue of outer dims (mm) + tare (g); one site default; optional **package materials** BOM (reserved when the package is selected on an order — Materials used Source **Package**). New orders suggest a package from product default (sellable qty 1) or multi-pack package (qty ≥ 2); mixed-SKU disagreement → site default + Pack flag. **Create test order** supports multiple product lines.
 
 ---
 
@@ -263,17 +280,19 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 **Where:** Order Machine → Workflows
 
-**Templates:** create / edit / deactivate; name + description.
+**Templates:** create / edit / deactivate; name + description; **Uses trays** (make or Pack). Seed templates leave `uses_trays` **off**.
 
 **Steps (editor):**
 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
-- Set **Instructions (default)** plain text per step (optional); products may override per step on the product edit screen
-- Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer, script, or batch
+- Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); products may override per step; order detail renders safe HTML; editor has cheatsheet + Preview (UP9-S3)
+- Set **Tasks (optional)** per step (repeatable labels); products may override the whole list on make templates (full replace); pack = template only; order detail Tasks panel never blocks Mark done (UP9-S4). Separate from **Confirmation checklist**.
+- Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). Exclusive with timer/batch; implies manual confirm
+- Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer or batch
 - Set **timer** (seconds via friendly min/hr/day UI)
-- Configure **script_config** (form fields + raw JSON fallback for `local` / `api` / `n8n`)
-- Assign a **batch group** (`thank_you_card` or `shipping_label`) — batch-only steps for v1 (combo with manual/timer/script/confirmation shows a warning; save is still rejected by validation)
+- **script_config** (local / api / n8n) **removed** — legacy rows warn in editor and clear on save; ignored at runtime
+- Assign a **batch group** (`thank_you_card` or `shipping_label`) — batch-only steps for v1 (combo with other gates rejected). Script groups soft-fail on release (O6)
 
 **Material cost goals (template-level section on the editor):**
 
@@ -284,7 +303,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 | # | Step | Gates |
 |---|---|---|
-| 1 | Print | Manual confirm |
+| 1 | Print | Manual confirm + Copy command (`/make-sticker-order` template) |
 | 2 | Confirm print | Confirmation `print_vs_request` |
 | 3 | Dry | Timer 15 minutes |
 | 4 | Laminate | Manual confirm |
@@ -298,11 +317,19 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 | 2 | Confirm address | Confirmation `shipping_address` |
 | 3 | Package | Manual confirm (app also requires `shipping_package_id` before Ship) |
 | 4 | Ship | Manual confirm + shipment row |
-| 5 | Review reminder | Timer 7 days + manual confirm |
 
-No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shipping_label` remain for optional custom use; `convert_thankyou_steps` skips Pack templates.
+No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shipping_label` remain for optional custom use; `convert_thankyou_steps` skips Pack templates. **Review reminder** lives on Post-ship seed (not Pack).
 
-**Existing-site migrate:** (1) Upgrade plugin. (2) Ensure Pack template exists (Restore seed or create kind=Pack + Settings default). (3) Trim or replace legacy **Bin Sticker Production** pack/ship steps (or Restore seed). (4) Settings → **Repair pack binding** for open unbound orders (skips legacy monolithic progress). (5) Clear collecting thank-you batches under Batches if you no longer use that path.
+**Seeded post-ship — Post-ship — Order Aftercare** (`kind=post_ship`; Default Post-ship when unset):
+
+| # | Step | Gates |
+|---|---|---|
+| 1 | Update buyer / send tracking | Manual + Copy command template |
+| 2 | Confirm shipping details | Manual confirm |
+| 3 | Confirm package arrived | Confirmation `package_arrived` (complete gate with shipment) |
+| 4 | Review reminder | Timer 7 days + manual confirm |
+
+**Existing-site migrate:** (1) Upgrade plugin. (2) Ensure Pack template exists (Restore seed or create kind=Pack + Settings default). (3) Trim or replace legacy **Bin Sticker Production** pack/ship steps (or Restore seed). (4) Settings → **Repair pack binding** for open unbound orders (skips legacy monolithic progress). (5) Clear collecting thank-you batches under Batches if you no longer use that path. (6) Open admin so seed adds **Post-ship — Order Aftercare** and strips Pack **Review reminder** when no open progress uses it; set Default Post-ship if unset.
 
 ---
 
@@ -312,16 +339,20 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 
 - New order create (incremental sync) → assign steps from primary product’s template
 - Admin **Mark done** on the current step (when gates allow; not while `waiting_batch`)
-- Cron `som_engine_tick` → unlock timer steps; attempt due batch retries
-- Batch release / mark-done / script success → advance **all** batch members
+- Cron `som_engine_tick` → unlock timer steps; batch retries (script batches disabled)
+- Batch release / mark-done → advance **all** batch members (script release soft-fails)
 
 **Gates:**
 
 - Manual confirm: Mark done enabled only when that step is current and confirmed by you
-- Confirmation checklist: order-detail ticks must be saved complete before Mark done / Board drag (`print_vs_request`, `shipping_address`, `packing_items`)
+- Copy command: render + Copy on make line; enters `in_progress` (never `waiting_script`); Mark done manual
+- Confirmation checklist: order-detail ticks must be saved complete before Mark done / Board drag (`print_vs_request`, `shipping_address`, `packing_items`, `package_arrived`)
 - Timer: Mark done disabled until the countdown finishes (or tick unlocks it)
-- Script (`local` / `api` / `n8n`): allowlisted runner + retries + REST callback (Sprint 9)
+- Script (`local` / `api` / `n8n`): **removed** (UP9-S2) — legacy ignored; REST `workflow-callback` unused
 - Batch: entering a step with `batch_group_id` sets progress to `waiting_batch` and enqueues into a collecting batch (other gates ignored on that step in v1)
+- Trays required: when any involved template has `uses_trays` and none held → Mark done / drag blocked until ≥1 tray (or Unblock)
+
+**Unblock step (UP8-S2):** order detail only. Bypasses timer, checklist, batch (removes member), ship/package/hold (hold flag left set), trays-required, and leftover waiting_script/error. Enables Mark done only — does not auto-complete. Audit columns + order note.
 
 **Important for testing:** workflow + stock run on **new creates**. If fixtures were already imported **before** the product had a workflow/recipe, those old rows won’t retroactively get progress or stock. Fix: destroy/reseed wp-env, or sync after seed is in place (fresh env does this automatically).
 
@@ -409,18 +440,18 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 
 | Group key | Action | Default size |
 |---|---|---|
-| `thank_you_card` | Script (multi-order thank-you CLI, 4-up PDF) | 4 |
+| `thank_you_card` | Script (**disabled** UP9-S2 — soft-fail on release) | 4 |
 | `shipping_label` | Manual confirm | 4 |
 
-**State machine:** `collecting` → `ready` → (`processing` for scripts) → `done` / `error`
+**State machine:** `collecting` → `ready` → (`processing` legacy) → `done` / `error`
 
 **Behaviour:**
 
 - Orders with the same `batch_group_id` pool **across workflows**
 - Auto-ready when size reached; manual **Release** on `collecting`
-- Script groups: same request runs `ready` → `processing` → script once for all members, then advances all
+- Script groups: **soft-fail** with a clear message; do **not** execute local/api/n8n (O6)
 - Manual-confirm groups: wait for **Mark done** on the batch
-- On batch `error`, member progress flips to `error` (copied `last_error`); **Retry** resets budget and re-enters processing
+- On batch `error`, member progress flips to `error` (copied `last_error`); script Retry remains unsupported
 - Cancelled orders stay in the collecting/ready batch (not removed); they are skipped on advance
 - List defaults to open statuses only (`collecting` / `ready` / `processing` / `error`); optional include-done
 - Expand a batch for members (name + order ref collapsed; address on expand)
@@ -501,13 +532,53 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 
 ---
 
-### 3.14 Make Board & Pack Board
+### 3.14 Make Board, Pack Board & Post-ship Board
 
 **Make Board** (`som-orders-board`, UP6-S1): Kanban of open **order lines** by make step. Filter by make workflow; columns = that template’s steps. Advancing a card advances that line only. Internal Produce N lines appear here.
 
-**Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings).
+**Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings). Pack finish does not complete the customer order (post-ship does).
 
-**Shared board behaviour:** Incomplete / non-cancelled only; warn ≥200 / cap 500; gated SortableJS DnD for advanceable cards; horizontal scroll on narrow screens. Completed history stays on Orders.
+**Post-ship Board** (`som-post-ship-board`, UP11-S2): Kanban of aftercare **orders** by post-ship step. Scope **Active** / **Unstarted** / **Complete**; filter by Post-ship template (O5). Start from Unstarted cards or order detail. No trays. May show complete orders still on Review reminder (O1).
+
+**Shared board behaviour:** Non-cancelled; warn ≥200 / cap 500; gated SortableJS DnD for advanceable cards; horizontal scroll on narrow screens. Completed history stays on Orders. **Tray N** badges on Make/Pack when the order holds trays (UP8). Unblock is not on boards — use order detail.
+
+---
+
+### 3.14a Trays & Unblock step (Package 8)
+
+**Where:** Settings (Max trays) · Workflow editor (Uses trays) · Order detail (Trays panel + Unblock step) · Make / Pack boards (badges)
+
+**Feature bullets:**
+
+- Site pool **1 … Max trays** (default 10, allowed 1–20); cannot lower max while a higher tray is held
+- Template **Uses trays** → order requires trays if any sellable make or bound Pack template has it
+- Order-level assign many free trays; reject double-book; manual release; keep ≥1 while required + open
+- Auto-release all held trays on order complete (incl. Internal Produce N)
+- **Unblock step** bypasses all Mark-done gates; does not auto Mark done; audit + order note; order detail only
+- Pack hold: leave hold flag; batch unblock removes member from collecting/ready batch
+
+**UAT-style checks:**
+
+| Check | Expect |
+|---|---|
+| Assign free trays on order detail | Held list updates; tray no longer free |
+| Assign tray held by another order | Rejected (conflict) |
+| Release selected trays | Freed to pool; cannot release last while required + open |
+| Turn on Uses trays + no trays held | Mark done / Board drag blocked; panel/notice prompt |
+| Complete order with held trays | All trays auto-released |
+| Unblock timer / checklist / script | Mark done enabled; still need Mark done click |
+| Unblock batch | Member removed from open batch; Mark done enabled |
+| Unblock pack hold / missing package / ship | Mark done enabled; hold flag still set if held |
+| Unblock trays-required | Mark done without assigning trays |
+| Boards | Tray badges visible; no Unblock control |
+
+Regression smokes (full S1/S2 matrix — S3 does not re-test):
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s1-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s3-smoke.php
+```
 
 ---
 
@@ -562,8 +633,11 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 | Material stock over time | Line | Multi-select materials; walk **backward** from `materials.current_stock` via `change_qty`. Empty until materials selected + Apply |
 | Orders by channel | Bar | Order counts for the selected range |
 | Average order value | Line | Revenue ÷ priced-order count per bucket |
+| Workflow timing (UP10-S2) | Bar + tables | Avg actual vs planned per step for selected Make/Pack template; workflow span totals (first start → last complete). Over-plan highlight when actual > planned × 1.2 |
 
-**Filters (shared GET form across charts):** date range (7 / 30 / 90 / this year / custom), granularity (daily / weekly / monthly), channel (order-backed charts), material multi-select (stock). Site timezone bounds → UTC SQL window.
+**Filters (shared GET form across charts):** date range (7 / 30 / 90 / this year / custom), granularity (daily / weekly / monthly), channel (order-backed charts), material multi-select (stock). Timing: Make/Pack tabs + template select. Site timezone bounds → UTC SQL window.
+
+**Planned vs timer vs actual:** planned = reporting target on the step; timer = hard gate; actual = wall clock including timer waits. See USER-GUIDE / USER-REFERENCE.
 
 **Exclusions:** cancelled + best-effort refunded (`raw_payload`). Live aggregation only — no summary tables in v1.
 
@@ -593,6 +667,10 @@ Use this so review time isn’t spent hunting missing screens:
 | FX conversion on fee sync | Store as returned; treat as GBP |
 | Blended opaque “effective fee rate” product | Show £ + % of representative price only |
 | Recurring platform expenses in profit charts | Same as Costing/budgets — order fees only |
+| Trays overview page | O3 — order detail + board badges only |
+| Per-line trays / make→pack transfer | Order-level trays only |
+| Auto Mark done on Unblock | Enables Mark done only |
+| Unblock on Make/Pack boards | Order detail only |
 
 ---
 
@@ -649,11 +727,39 @@ Expect DB version `1.8.0`, plugin `0.22.0`, and **25** `wp_som_*` tables (includ
 
 - [ ] Notes, packages/planned postage, and multipack-as-separate-SKU convention understood
 
+### Test 2c — Package 7 quick verify (package BOM + 1 vs 2+ + multi-line test)
+
+1. **Shipping packages** → open seed **Sample C5 envelope (single)** / **Sample large mailer (multi)** → confirm material BOM rows.
+2. Sample product → **Default package** = single, **Multi-pack package** = large.
+3. **Orders** → Create test order → qty **1** → Pack panel shows small package + Materials used Package planned from small BOM.
+4. Create test order → qty **2** (or two lines) → large package suggested; override still updates package materials.
+5. Mixed SKUs with disagreeing multi-pack packages → site default + **Mixed products — confirm package**.
+
+- [ ] Package BOM, 1 vs 2+ suggestion, mixed flag, and multi-line test order understood
+
+### Test 2d — Package 8 quick verify (trays + Unblock)
+
+1. **Settings** → confirm **Max trays** (default 10).
+2. **Workflows** → open seed **Bin Sticker Make** and **Order Pack & Ship** → **Uses trays** unchecked (operator opts in).
+3. Tick **Uses trays** on the make template → open a matched order → **Trays** panel prompts; Mark done blocked until ≥1 tray assigned.
+4. Assign a free tray → Mark done works; try assigning the same tray on a second order → conflict.
+5. Release trays (keep ≥1 while required); complete an order → trays auto-released.
+6. On a gated step (e.g. Dry timer) → **Unblock step** → confirm dialog → Mark done enabled; click Mark done; note + Unblocked badge.
+7. Make / Pack boards → **Tray N** badges when held; no Unblock on boards.
+
+- [ ] Trays assign / conflict / release / require / auto-release understood
+- [ ] Unblock enables Mark done without auto-completing; audit + note present
+
 Smoke (wp-env):
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up5-s1-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up5-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up7-s3-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s1-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s3-smoke.php
 ```
 
 ---
@@ -780,16 +886,18 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 
 ---
 
-### Test 10 — Workflow editor (gates + goals + batch)
+### Test 10 — Workflow editor (gates + goals + batch + copy command)
 
 1. Workflows → create a small template with 2–3 steps.
-2. Reorder steps; set one timer (e.g. 1 minute); set one manual; add a `script_config` JSON blob; save.
-3. Assign a **batch group** to one step; confirm combo warning if you also tick other gates; save should reject invalid combo.
-4. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
-5. Assign that template to a test product.
-6. (Optional) On a fresh sync path, confirm a new matched order picks up this template.
+2. Reorder steps; set one timer (e.g. 1 minute); set one manual; set a **Copy command template** on another; save.
+3. Confirm there is **no** local/api/n8n script UI. If a legacy step still has `script_config`, editor shows a disabled warning; save clears it.
+4. Assign a **batch group** to one step; confirm combo warning if you also tick other gates; save should reject invalid combo.
+5. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
+6. Assign that template to a test product.
+7. (Optional) On a fresh sync path, confirm a new matched order picks up this template; make line shows Copy panel.
 
-- [ ] Step CRUD / reorder / timer / script_config persist
+- [ ] Step CRUD / reorder / timer / copy-command persist
+- [ ] No script/api/n8n configure UI
 - [ ] Batch group assign works; invalid combo blocked
 - [ ] Goals save round-trip
 - [ ] Assignment on product sticks
@@ -829,15 +937,15 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 
 ### Test 13 — Batches UI + batch advance
 
-1. Advance several matched orders until Thank-you (`waiting_batch`), **or** assign `shipping_label` to a step and park orders there.
+1. Assign `shipping_label` to a pack/test step and park orders there (prefer manual_confirm — thank-you script batches are disabled).
 2. **Batches** → open list shows collecting/ready batches; expand a row for members + addresses.
-3. For a `collecting` thank-you batch under size 4: either wait for size or click **Release** → script should run once and members advance.
+3. For a `thank_you_card` script batch: **Release** soft-fails with a clear message (does **not** run a script).
 4. For a `shipping_label` batch: **Release** then **Mark done** → members advance.
 5. From order detail while `waiting_batch`: confirm Mark done is hidden and the batch link opens `som-batches&batch_id=N`.
 6. Edit a batch group’s display name / size on the Batches page; confirm `group_key` stays fixed.
-7. (Optional) Force a script failure path and confirm **Retry** on an `error` batch.
 
-- [ ] Collecting / release / mark-done / advance work
+- [ ] Collecting / release / mark-done / advance work for manual_confirm
+- [ ] Script batch release soft-fails (no execution)
 - [ ] Order detail links to batch; Mark done hidden while waiting
 - [ ] Group name/size editable
 
@@ -964,10 +1072,12 @@ If you use the Local `ordermachine` site:
 3. Select one or more materials → Apply → stock chart series appears (empty until selection).
 4. Change granularity / channel / custom dates → charts reload via GET.
 5. Confirm cancelled orders do not inflate sales; lines without sold `unit_price` are omitted from sales/profit/AOV.
+6. **Workflow timing** — Make/Pack tabs + template; step averages table + bar chart; workflow totals when completed runs exist in range.
 
-- [ ] Five charts + shared filters
+- [ ] Five sales charts + shared filters
 - [ ] Stock empty until materials selected
 - [ ] Profit uses estimate→actual fees; no Chart.js build step (CDN)
+- [ ] Timing section (Make/Pack + template) with step chart/table
 
 ---
 
@@ -1075,7 +1185,12 @@ Beyond “does it click,” please watch for:
 | [`../wordpress v4/04-Update-Analytics-Dashboard.md`](../wordpress%20v4/04-Update-Analytics-Dashboard.md) | Charts / filters |
 | [`../wordpress v4/Update-3-Sprint-Plan.md`](../wordpress%20v4/Update-3-Sprint-Plan.md) | Package 3 S1–S4 scope + settled decisions |
 | [`../wordpress v4/Update-3-Sprint-Progress.md`](../wordpress%20v4/Update-3-Sprint-Progress.md) | Package 3 sprints verified |
+| [`../wordpress v9/01-Update-Overview.md`](../wordpress%20v9/01-Update-Overview.md) | Package 8 trays + Unblock overview |
+| [`../wordpress v9/03-Update-Trays.md`](../wordpress%20v9/03-Update-Trays.md) | Order-level tray rules |
+| [`../wordpress v9/05-Update-Manual-Step-Unblock.md`](../wordpress%20v9/05-Update-Manual-Step-Unblock.md) | Unblock all gates |
+| [`../wordpress v9/Update-8-Sprint-Plan.md`](../wordpress%20v9/Update-8-Sprint-Plan.md) | Package 8 S1–S3 scope |
+| [`../wordpress v9/Update-8-Sprint-Progress.md`](../wordpress%20v9/Update-8-Sprint-Progress.md) | Package 8 sprints verified |
 
 ---
 
-*End of guide. Base Sprints 1–11, Update Package 1 (U1–U7), Update Package 2 (U2-1–U2-5), and Update Package 3 (UP3-S1–S4) are complete (plugin **0.22.0**, DB **1.8.0**).*
+*End of guide. Update Package 9 step task lists: `tests/sprint-up9-s4-smoke.php`. Markdown instructions: `tests/sprint-up9-s3-smoke.php`. Copy command / script removal: S1–S2 smokes. Package 8 trays: `tests/sprint-up8-s*-smoke.php`.*
