@@ -8,14 +8,16 @@
 
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
-| UP10-S1 | Planned + actual on order detail | Code complete | This PR |
-| UP10-S2 | Analytics + docs | Not started | Charts/docs deferred |
+| UP10-S1 | Planned + actual on order detail | Done | Merged (#27) |
+| UP10-S2 | Analytics + docs | Code complete | This PR |
+
+**Package 10 sprints: complete.**
 
 ---
 
 ## UP10-S1 — Planned + actual on order detail
 
-- **Status:** Code complete (this PR)
+- **Status:** Done (merged to main)
 - **Schema:** 1.23.0 (`workflow_steps.planned_seconds`; `actual_seconds` on `order_item_step_progress` + `order_step_progress`)
 - **Plugin:** unchanged (release bump optional later → ~0.43.0)
 
@@ -36,13 +38,6 @@
 - O3: live elapsed on current step (JS tick; not persisted until complete)
 - Wall clock includes timer waits
 - No manual edit of actuals; no SLA alerts
-- No Analytics work (S2)
-
-### Explicitly deferred
-
-- UP10-S2: Analytics timing charts/tables + USER-GUIDE / REFERENCE docs
-- Active-only time (excluding timers)
-- Package 11 (post-ship)
 
 ### Verification
 
@@ -54,5 +49,42 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 ## UP10-S2 — Analytics + docs
 
-- **Status:** Not started
-- **Scope:** Timing section on Analytics; date/template filters; docs for planned vs timer vs actual; `tests/sprint-up10-s2-smoke.php`
+- **Status:** Code complete (this PR)
+- **Plugin:** unchanged (release bump optional later → ~0.44.0)
+
+### Delivered
+
+- Analytics **Workflow timing** section: Make / Pack tabs + template filter; shared date range with the rest of Analytics
+- Step averages table: avg actual vs avg planned per step; samples; over-plan highlight when actual > planned × 1.2
+- One Chart.js bar chart: avg planned vs avg actual by step (minutes)
+- Workflow totals table (make-line or pack): span actual (first start → last complete) vs template planned sum; averages + detail rows
+- Uses persisted `actual_seconds` / `planned_seconds` from S1
+- Docs: USER-GUIDE / USER-REFERENCE / FEATURES — planned vs timer vs actual; where to see times
+- Smoke: `tests/sprint-up10-s2-smoke.php`
+
+### Soft defaults applied
+
+- O4: table + one chart (not table-only)
+- Wall clock includes timer waits (same as S1)
+- No active-only time; no manual edit of actuals; no SLA notifications
+- Package 11 not started
+
+### Verification
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up10-s2-smoke.php
+```
+
+---
+
+## Package 10 checklist
+
+### UP10-S1
+- [x] planned_seconds + editor
+- [x] actual_seconds on complete
+- [x] Order detail step + make/pack totals
+- [x] Smoke
+
+### UP10-S2
+- [x] Analytics timing
+- [x] Docs + smoke

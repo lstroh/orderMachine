@@ -49,6 +49,8 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Channel fee estimates + actual fee sync | Done (UP3-S1–S2) |
 | Recurring platform expenses UI | Done (UP3-S2) |
 | Analytics Dashboard (Chart.js) | Done (UP3-S4) |
+| Workflow timing (planned + actual) on order detail | Done (UP10-S1) |
+| Analytics workflow timing + planned/timer/actual docs | Done (UP10-S2) |
 
 **Recommended review path:** use **wp-env** for a clean, repeatable fixture walkthrough, then spot-check the same screens on your **Local** `ordermachine` site if you use that day-to-day.
 
@@ -116,7 +118,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | Batch deep-link | `som-batches&batch_id=N` | Scrolls/expands that batch |
 | **Workflows** | `som-workflows` | Templates + step editor (gates, batch group, material cost goals; kind Make/Pack) |
 | **Listings** | `som-listings` | Cached marketplace listings; refresh + push price/qty/description |
-| **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV charts (Chart.js) |
+| **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV + workflow timing (Chart.js) |
 | **Channel Fee Estimates** | `som-channel-fee-estimates` | Per-channel estimated fee components (tiers, optional ads) |
 | **Recurring Platform Expenses** | `som-recurring-platform-expenses` | Non-order-linked fees (e.g. Etsy listing fees) |
 | **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key, Max trays, default Pack workflow |
@@ -618,8 +620,11 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 | Material stock over time | Line | Multi-select materials; walk **backward** from `materials.current_stock` via `change_qty`. Empty until materials selected + Apply |
 | Orders by channel | Bar | Order counts for the selected range |
 | Average order value | Line | Revenue ÷ priced-order count per bucket |
+| Workflow timing (UP10-S2) | Bar + tables | Avg actual vs planned per step for selected Make/Pack template; workflow span totals (first start → last complete). Over-plan highlight when actual > planned × 1.2 |
 
-**Filters (shared GET form across charts):** date range (7 / 30 / 90 / this year / custom), granularity (daily / weekly / monthly), channel (order-backed charts), material multi-select (stock). Site timezone bounds → UTC SQL window.
+**Filters (shared GET form across charts):** date range (7 / 30 / 90 / this year / custom), granularity (daily / weekly / monthly), channel (order-backed charts), material multi-select (stock). Timing: Make/Pack tabs + template select. Site timezone bounds → UTC SQL window.
+
+**Planned vs timer vs actual:** planned = reporting target on the step; timer = hard gate; actual = wall clock including timer waits. See USER-GUIDE / USER-REFERENCE.
 
 **Exclusions:** cancelled + best-effort refunded (`raw_payload`). Live aggregation only — no summary tables in v1.
 
@@ -1054,10 +1059,12 @@ If you use the Local `ordermachine` site:
 3. Select one or more materials → Apply → stock chart series appears (empty until selection).
 4. Change granularity / channel / custom dates → charts reload via GET.
 5. Confirm cancelled orders do not inflate sales; lines without sold `unit_price` are omitted from sales/profit/AOV.
+6. **Workflow timing** — Make/Pack tabs + template; step averages table + bar chart; workflow totals when completed runs exist in range.
 
-- [ ] Five charts + shared filters
+- [ ] Five sales charts + shared filters
 - [ ] Stock empty until materials selected
 - [ ] Profit uses estimate→actual fees; no Chart.js build step (CDN)
+- [ ] Timing section (Make/Pack + template) with step chart/table
 
 ---
 

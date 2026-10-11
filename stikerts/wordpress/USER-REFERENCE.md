@@ -111,6 +111,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Shipping address
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, **waiting_batch** badge + Batches link
+- **Step timing** — Planned · Actual (wall clock) on completed steps; live Elapsed on the current step; Make total / Pack total footers (planned sum · span actual)
 - **Step instructions** — Markdown rendered as HTML on make/pack progress (product override → step default); plain text still works
 - **Tasks** — optional tick list on make/pack steps that have an effective list (product override → template default for make; template only for pack). Shown on current + completed steps; Save tasks persists ticks. **Does not block Mark done.** Separate from Confirmation checklist.
 - **Copy command** on make lines when the step has a `command_template` — monospace rendered command + **Copy** (not executed by WordPress); then Mark done
@@ -323,9 +324,20 @@ Operator can always override on the Pack panel; changing package reverses prior 
 - Requires manual confirm
 - **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist. Stays separate from instructions (not embedded in the Markdown body).
 - **Confirmation checklist** kind (print vs request / shipping address / packing items) — exclusive with timer and batch; hard gate (unlike optional Tasks)
-- Timer (friendly min/hr/day → seconds)
+- Timer (friendly min/hr/day → seconds) — **hard gate**; not the same as planned duration
+- **Planned duration** (minutes / hours / days → `planned_seconds`) — target for reporting only; can differ from the timer. Template shows a **planned total** (sum of steps; “partial plan” if some steps have no plan)
 - Assign **batch group** (batch-only step in v1; combo with other gates is rejected). Script batch groups soft-fail on release.
 - Template-level **material cost goals**
+
+**Planned vs timer vs actual:**
+
+| Concept | Role |
+|---|---|
+| Planned duration | Target for ops reporting / Analytics averages |
+| Timer | Blocks Mark done until countdown ends (or Unblock) |
+| Actual | Wall clock from `started_at` → `completed_at` (includes timer waits). Make/pack totals = first start → last complete |
+
+On **order detail**, each step shows Planned · Actual (or live Elapsed while in progress). Make-line and Pack footers show planned sum · span actual.
 
 **Instructions Markdown (v1):** paragraphs/line breaks, **bold** / *italic*, bullet + numbered lists, links, inline `code`, simple headings. Unsafe HTML is stripped. Legacy plain text still renders readably.
 
@@ -530,8 +542,11 @@ Operator can always override on the Pack panel; changing package reverses prior 
 | Material stock over time | Multi-select materials + Apply; reconstructed from current stock + log |
 | Orders by channel | Counts in range |
 | Average order value | Revenue ÷ priced-order count |
+| Workflow timing | Avg actual vs planned **per step** (bar chart + table); make-line / pack **workflow totals** (span actual). Make / Pack tabs + template filter |
 
-**Filters (shared):** date range, granularity, channel, material multi-select. Site timezone → UTC query window.
+**Filters (shared):** date range, granularity, channel, material multi-select. Site timezone → UTC query window. Timing also uses Make/Pack tabs + template select (same date range).
+
+**Timing notes:** Actual is wall clock (includes timer waits). Workflow total = first step start → last step complete. Steps with avg actual > planned × 1.2 are highlighted. Cancelled / incomplete workflows do not invent totals.
 
 **Exclusions:** cancelled + best-effort refunded. Chart.js loaded from CDN (no build step).
 
