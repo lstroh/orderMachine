@@ -158,23 +158,7 @@ class SOM_Workflow_Engine {
 			return new WP_Error( 'som_not_retriable', __( 'Current step is not waiting on a script retry.', 'order-machine' ) );
 		}
 
-		if ( ! SOM_Script_Dispatch::has_script( $step ) ) {
-			return new WP_Error( 'som_no_script', __( 'Current step has no script_config.', 'order-machine' ) );
-		}
-
-		$wpdb->update(
-			SOM_DB::table( 'order_step_progress' ),
-			array(
-				'status'      => 'waiting_script',
-				'retry_count' => 0,
-				'last_error'  => null,
-			),
-			array( 'id' => (int) $progress->id ),
-			array( '%s', '%d', '%s' ),
-			array( '%d' )
-		);
-
-		$progress = self::get_progress_for_step( $order_id, $current_step_id );
+		// UP9-S2: scripts removed — open step for Mark done instead of re-dispatching.
 		return self::attempt_script( $order_id, $step, $progress );
 	}
 
@@ -262,10 +246,11 @@ class SOM_Workflow_Engine {
 		}
 
 		$step = self::get_step( (int) $progress->workflow_step_id );
-		if ( ! $step || ! SOM_Script_Dispatch::has_script( $step ) ) {
+		if ( ! $step ) {
 			return;
 		}
 
+		// UP9-S2: open for Mark done; never re-dispatch.
 		self::attempt_script( (int) $progress->order_id, $step, $progress );
 	}
 
@@ -316,17 +301,7 @@ class SOM_Workflow_Engine {
 		);
 		if ( is_array( $waiting ) ) {
 			foreach ( $waiting as $row ) {
-				// Skip rows parked for async callback (timer_ends_at far future sentinel unused —
-				// async wait uses last_error prefix).
-				$full = $wpdb->get_row(
-					$wpdb->prepare(
-						"SELECT * FROM {$progress_t} WHERE id = %d LIMIT 1",
-						(int) $row->id
-					)
-				);
-				if ( $full && is_string( $full->last_error ) && 0 === strpos( $full->last_error, 'waiting_callback:' ) ) {
-					continue;
-				}
+				// UP9-S2: open all waiting_script rows (including former async callbacks).
 				self::attempt_script_by_progress_id( (int) $row->id );
 				++$scripts;
 			}
@@ -334,6 +309,7 @@ class SOM_Workflow_Engine {
 
 		$batches = SOM_Batches::process_due_retries();
 		$unlocked += SOM_Item_Make::tick_unlock_timers();
+		$unlocked += SOM_Item_Make::recover_waiting_script();
 
 		return array(
 			'unlocked' => $unlocked,
@@ -420,7 +396,9 @@ class SOM_Workflow_Engine {
 			return false;
 		}
 
-		if ( 'in_progress' !== (string) $progress->status ) {
+		$status = (string) $progress->status;
+		// UP9-S2: leftover waiting_script is treated as manual in_progress (scripts removed).
+		if ( 'in_progress' !== $status && 'waiting_script' !== $status ) {
 			return false;
 		}
 
@@ -488,7 +466,8 @@ class SOM_Workflow_Engine {
 			$gates[] = 'timer';
 		}
 
-		if ( in_array( $status, array( 'waiting_script', 'error' ), true ) ) {
+		// UP9-S2: waiting_script is no longer a blocking script gate (ignored / Mark done).
+		if ( 'error' === $status ) {
 			$gates[] = 'script';
 		}
 
@@ -701,18 +680,9 @@ class SOM_Workflow_Engine {
 	 * @return bool
 	 */
 	public static function can_retry_script( $progress, $step ) {
-		if ( ! $progress || ! $step || ! SOM_Script_Dispatch::has_script( $step ) ) {
-			return false;
-		}
-		$status = (string) $progress->status;
-		if ( 'error' === $status ) {
-			return true;
-		}
-		if ( 'waiting_script' !== $status ) {
-			return false;
-		}
-		// Allow retry after a failed attempt or while waiting on async callback.
-		return ! empty( $progress->last_error ) || (int) $progress->retry_count > 0;
+		unset( $progress, $step );
+		// UP9-S2: script retry UI removed — leftover waiting_script uses Mark done / Unblock.
+		return false;
 	}
 
 	/**
@@ -792,33 +762,7 @@ class SOM_Workflow_Engine {
 
 		$progress_id = (int) $progress->id;
 
-		if ( SOM_Script_Dispatch::has_script( $step ) ) {
-			$updated = $wpdb->update(
-				$progress_t,
-				array(
-					'status'        => 'waiting_script',
-					'timer_ends_at' => null,
-				),
-				array( 'id' => $progress_id ),
-				array( '%s', '%s' ),
-				array( '%d' )
-			);
-			if ( false === $updated || 0 === (int) $updated ) {
-				return false;
-			}
-			/**
-			 * After a waiting_timer step unlocks.
-			 *
-			 * @param int $order_id    Order PK.
-			 * @param int $progress_id order_step_progress PK.
-			 */
-			do_action( self::HOOK_TIMER_UNLOCKED, (int) $order_id, $progress_id );
-			$progress = self::get_progress_for_step( (int) $order_id, (int) $order->current_step_id );
-			if ( $progress ) {
-				self::attempt_script( (int) $order_id, $step, $progress );
-			}
-			return true;
-		}
+		// UP9-S2: never unlock into waiting_script / dispatch.
 
 		$updated = $wpdb->query(
 			$wpdb->prepare(
@@ -990,25 +934,23 @@ class SOM_Workflow_Engine {
 		$now    = current_time( 'mysql', true );
 		$timer  = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
 		$manual = ! empty( $step->requires_manual_confirm );
-		$script = SOM_Script_Dispatch::has_script( $step );
 		$confirm = SOM_Step_Confirmations::has_confirmation( $step );
 		$copy    = SOM_Copy_Command::has_template( $step );
+		// UP9-S2 O5: ignore legacy script_config — never waiting_script / dispatch.
+		$legacy_script = SOM_Script_Dispatch::has_script( $step );
 
 		// Batch gate (batch-only in v1 — ignore other gates on the same step).
 		if ( ! empty( $step->batch_group_id ) ) {
 			return SOM_Batches::enqueue( $order_id, $step );
 		}
 
-		// Confirmation / copy-command steps are always manual gates (copy is display-only).
-		if ( $confirm || $copy ) {
+		// Confirmation / copy-command / legacy script → manual Mark done (no dispatch).
+		if ( $confirm || $copy || $legacy_script ) {
 			$manual = true;
 		}
-		if ( $copy ) {
-			$script = false;
-		}
 
-		// Zero-gate (no timer, no manual, no script) → auto-advance.
-		if ( $timer < 1 && ! $manual && ! $script ) {
+		// Zero-gate (no timer, no manual) → auto-advance.
+		if ( $timer < 1 && ! $manual ) {
 			$wpdb->update(
 				SOM_DB::table( 'order_step_progress' ),
 				array(
@@ -1043,26 +985,7 @@ class SOM_Workflow_Engine {
 			return true;
 		}
 
-		// Script gate (no timer, or after timer unlock handled elsewhere).
-		if ( $script ) {
-			$wpdb->update(
-				SOM_DB::table( 'order_step_progress' ),
-				array(
-					'status'        => 'waiting_script',
-					'started_at'    => $now,
-					'timer_ends_at' => null,
-					'retry_count'   => 0,
-					'last_error'    => null,
-				),
-				array( 'id' => (int) $progress->id ),
-				array( '%s', '%s', '%s', '%d', '%s' ),
-				array( '%d' )
-			);
-			$progress = self::get_progress_for_step( $order_id, $step_id );
-			return self::attempt_script( $order_id, $step, $progress );
-		}
-
-		// Manual-only.
+		// Manual-only (includes legacy script_config treated as Mark done).
 		$wpdb->update(
 			SOM_DB::table( 'order_step_progress' ),
 			array(
@@ -1079,7 +1002,7 @@ class SOM_Workflow_Engine {
 	}
 
 	/**
-	 * Attempt script execution for current waiting_script progress.
+	 * Legacy waiting_script recovery (UP9-S2): never dispatch; open for Mark done.
 	 *
 	 * @param int    $order_id Order PK.
 	 * @param object $step     Step.
@@ -1087,43 +1010,24 @@ class SOM_Workflow_Engine {
 	 * @return true|WP_Error
 	 */
 	private static function attempt_script( $order_id, $step, $progress ) {
+		unset( $order_id, $step );
 		if ( ! $progress ) {
 			return new WP_Error( 'som_progress_missing', __( 'Progress row not found.', 'order-machine' ) );
 		}
 
-		// Already parked waiting for async callback — do not re-fire.
-		if ( is_string( $progress->last_error ) && 0 === strpos( $progress->last_error, 'waiting_callback:' ) ) {
-			return true;
-		}
+		global $wpdb;
+		$wpdb->update(
+			SOM_DB::table( 'order_step_progress' ),
+			array(
+				'status'     => 'in_progress',
+				'last_error' => __( 'Script steps are removed. Use Mark done (or Copy command).', 'order-machine' ),
+			),
+			array( 'id' => (int) $progress->id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
 
-		$order = SOM_Orders::get( (int) $order_id );
-		if ( ! $order ) {
-			return new WP_Error( 'som_order_missing', __( 'Order not found.', 'order-machine' ) );
-		}
-
-		$result = SOM_Script_Dispatch::execute( $order, $step, $progress );
-
-		if ( 'waiting_callback' === $result ) {
-			global $wpdb;
-			$wpdb->update(
-				SOM_DB::table( 'order_step_progress' ),
-				array(
-					'status'     => 'waiting_script',
-					'last_error' => 'waiting_callback:pending',
-				),
-				array( 'id' => (int) $progress->id ),
-				array( '%s', '%s' ),
-				array( '%d' )
-			);
-			return true;
-		}
-
-		if ( true === $result ) {
-			return self::on_script_success( $order_id, $step, $progress );
-		}
-
-		$message = is_wp_error( $result ) ? $result->get_error_message() : __( 'Script step failed.', 'order-machine' );
-		return self::on_script_failure( $order_id, $step, $progress, $message, true );
+		return true;
 	}
 
 	/**

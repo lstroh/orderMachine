@@ -640,53 +640,16 @@ class SOM_Batches {
 	}
 
 	/**
+	 * Script batch release (UP9-S2 O6): disabled — soft-fail, never execute.
+	 *
 	 * @param object $batch Batch row.
 	 * @param object $group Group row.
 	 * @return true|WP_Error
 	 */
 	private static function run_script( $batch, $group ) {
-		$raw = isset( $group->script_config ) ? trim( (string) $group->script_config ) : '';
-		if ( '' === $raw ) {
-			return self::complete_batch( $batch );
-		}
-
-		$decoded = json_decode( $raw, true );
-		if ( ! is_array( $decoded ) || empty( $decoded['type'] ) ) {
-			return self::on_script_failure( $batch, __( 'Invalid batch script_config JSON.', 'order-machine' ), true );
-		}
-
-		$type = (string) $decoded['type'];
-		if ( 'local' !== $type ) {
-			return self::on_script_failure(
-				$batch,
-				__( 'Batch scripts only support type=local in this version.', 'order-machine' ),
-				true
-			);
-		}
-
-		$action = isset( $decoded['action'] ) ? (string) $decoded['action'] : '';
-		$params = isset( $decoded['params'] ) && is_array( $decoded['params'] ) ? $decoded['params'] : array();
-		$params['_batch_id'] = (int) $batch->id;
-
-		$orders = array();
-		foreach ( self::get_items( (int) $batch->id ) as $item ) {
-			$order = SOM_Orders::get( (int) $item->order_id );
-			if ( $order ) {
-				$orders[] = $order;
-			}
-		}
-
-		if ( empty( $orders ) ) {
-			return self::on_script_failure( $batch, __( 'Batch has no orders to process.', 'order-machine' ), true );
-		}
-
-		$result = SOM_Local_Actions::run_for_orders( $action, $params, $orders );
-		if ( true === $result ) {
-			return self::complete_batch( $batch );
-		}
-
-		$message = is_wp_error( $result ) ? $result->get_error_message() : __( 'Batch script failed.', 'order-machine' );
-		return self::on_script_failure( $batch, $message, true );
+		unset( $group );
+		$message = __( 'Script batch actions are disabled. Use a manual_confirm batch group, or complete orders individually. Copy command replaces local/api/n8n scripts.', 'order-machine' );
+		return self::on_script_failure( $batch, $message, false );
 	}
 
 	/**

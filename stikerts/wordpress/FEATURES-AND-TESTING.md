@@ -35,7 +35,8 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Trays + Unblock operator docs | Done (UP8-S3) |
 | Workflow engine (manual + timer + script + batch + confirmation + trays) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
-| Script / n8n / local actions execution | Done (Sprint 9) |
+| Script / n8n / local actions execution | **Removed** (UP9-S2) — use Copy command |
+| Copy command step + structured eBay fields | Done (UP9-S1–S2) |
 | Listings push | Done (Sprint 10) |
 | REST API + MCP Abilities | Done (Sprint 11; enriched in U7 + UP3-S3) |
 | Suppliers + purchase orders (receive / close) | Done (Package 1 U2) |
@@ -131,7 +132,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Save eBay / Etsy app client ID + secret (secrets stored encrypted; leave blank to keep existing)
 - See OAuth callback URLs for each channel
 - **Connect** / **Disconnect** eBay and Etsy (live OAuth on Local with real apps; wp-env uses dummy tokens)
-- Set **n8n base URL** (used when a step’s `script_config` type is `n8n`)
+- **n8n base URL** (deprecated — script/n8n steps removed in UP9-S2)
 - Configure intervals: order poll, engine tick, token refresh, **fee poll** (default 30 minutes, min 5)
 - Toggle **MCP / Abilities** registration and manage the **REST API key**
 - Choose **Default Pack workflow** (kind Pack) for new non-Internal orders
@@ -279,10 +280,11 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
 - Set **Instructions (default)** plain text per step (optional); products may override per step on the product edit screen
-- Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer, script, or batch
+- Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). Exclusive with timer/batch; implies manual confirm
+- Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer or batch
 - Set **timer** (seconds via friendly min/hr/day UI)
-- Configure **script_config** (form fields + raw JSON fallback for `local` / `api` / `n8n`)
-- Assign a **batch group** (`thank_you_card` or `shipping_label`) — batch-only steps for v1 (combo with manual/timer/script/confirmation shows a warning; save is still rejected by validation)
+- **script_config** (local / api / n8n) **removed** — legacy rows warn in editor and clear on save; ignored at runtime
+- Assign a **batch group** (`thank_you_card` or `shipping_label`) — batch-only steps for v1 (combo with other gates rejected). Script groups soft-fail on release (O6)
 
 **Material cost goals (template-level section on the editor):**
 
@@ -293,7 +295,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 | # | Step | Gates |
 |---|---|---|
-| 1 | Print | Manual confirm |
+| 1 | Print | Manual confirm + Copy command (`/make-sticker-order` template) |
 | 2 | Confirm print | Confirmation `print_vs_request` |
 | 3 | Dry | Timer 15 minutes |
 | 4 | Laminate | Manual confirm |
@@ -321,19 +323,20 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 
 - New order create (incremental sync) → assign steps from primary product’s template
 - Admin **Mark done** on the current step (when gates allow; not while `waiting_batch`)
-- Cron `som_engine_tick` → unlock timer steps; attempt due batch retries
-- Batch release / mark-done / script success → advance **all** batch members
+- Cron `som_engine_tick` → unlock timer steps; batch retries (script batches disabled)
+- Batch release / mark-done → advance **all** batch members (script release soft-fails)
 
 **Gates:**
 
 - Manual confirm: Mark done enabled only when that step is current and confirmed by you
+- Copy command: render + Copy on make line; enters `in_progress` (never `waiting_script`); Mark done manual
 - Confirmation checklist: order-detail ticks must be saved complete before Mark done / Board drag (`print_vs_request`, `shipping_address`, `packing_items`)
 - Timer: Mark done disabled until the countdown finishes (or tick unlocks it)
-- Script (`local` / `api` / `n8n`): allowlisted runner + retries + REST callback (Sprint 9)
+- Script (`local` / `api` / `n8n`): **removed** (UP9-S2) — legacy ignored; REST `workflow-callback` unused
 - Batch: entering a step with `batch_group_id` sets progress to `waiting_batch` and enqueues into a collecting batch (other gates ignored on that step in v1)
 - Trays required: when any involved template has `uses_trays` and none held → Mark done / drag blocked until ≥1 tray (or Unblock)
 
-**Unblock step (UP8-S2):** order detail only. Bypasses timer, checklist, script/error, batch (removes member), ship/package/hold (hold flag left set), trays-required. Enables Mark done only — does not auto-complete. Audit columns + order note.
+**Unblock step (UP8-S2):** order detail only. Bypasses timer, checklist, batch (removes member), ship/package/hold (hold flag left set), trays-required, and leftover waiting_script/error. Enables Mark done only — does not auto-complete. Audit columns + order note.
 
 **Important for testing:** workflow + stock run on **new creates**. If fixtures were already imported **before** the product had a workflow/recipe, those old rows won’t retroactively get progress or stock. Fix: destroy/reseed wp-env, or sync after seed is in place (fresh env does this automatically).
 
@@ -421,18 +424,18 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 
 | Group key | Action | Default size |
 |---|---|---|
-| `thank_you_card` | Script (multi-order thank-you CLI, 4-up PDF) | 4 |
+| `thank_you_card` | Script (**disabled** UP9-S2 — soft-fail on release) | 4 |
 | `shipping_label` | Manual confirm | 4 |
 
-**State machine:** `collecting` → `ready` → (`processing` for scripts) → `done` / `error`
+**State machine:** `collecting` → `ready` → (`processing` legacy) → `done` / `error`
 
 **Behaviour:**
 
 - Orders with the same `batch_group_id` pool **across workflows**
 - Auto-ready when size reached; manual **Release** on `collecting`
-- Script groups: same request runs `ready` → `processing` → script once for all members, then advances all
+- Script groups: **soft-fail** with a clear message; do **not** execute local/api/n8n (O6)
 - Manual-confirm groups: wait for **Mark done** on the batch
-- On batch `error`, member progress flips to `error` (copied `last_error`); **Retry** resets budget and re-enters processing
+- On batch `error`, member progress flips to `error` (copied `last_error`); script Retry remains unsupported
 - Cancelled orders stay in the collecting/ready batch (not removed); they are skipped on advance
 - List defaults to open statuses only (`collecting` / `ready` / `processing` / `error`); optional include-done
 - Expand a batch for members (name + order ref collapsed; address on expand)
@@ -862,16 +865,18 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 
 ---
 
-### Test 10 — Workflow editor (gates + goals + batch)
+### Test 10 — Workflow editor (gates + goals + batch + copy command)
 
 1. Workflows → create a small template with 2–3 steps.
-2. Reorder steps; set one timer (e.g. 1 minute); set one manual; add a `script_config` JSON blob; save.
-3. Assign a **batch group** to one step; confirm combo warning if you also tick other gates; save should reject invalid combo.
-4. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
-5. Assign that template to a test product.
-6. (Optional) On a fresh sync path, confirm a new matched order picks up this template.
+2. Reorder steps; set one timer (e.g. 1 minute); set one manual; set a **Copy command template** on another; save.
+3. Confirm there is **no** local/api/n8n script UI. If a legacy step still has `script_config`, editor shows a disabled warning; save clears it.
+4. Assign a **batch group** to one step; confirm combo warning if you also tick other gates; save should reject invalid combo.
+5. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
+6. Assign that template to a test product.
+7. (Optional) On a fresh sync path, confirm a new matched order picks up this template; make line shows Copy panel.
 
-- [ ] Step CRUD / reorder / timer / script_config persist
+- [ ] Step CRUD / reorder / timer / copy-command persist
+- [ ] No script/api/n8n configure UI
 - [ ] Batch group assign works; invalid combo blocked
 - [ ] Goals save round-trip
 - [ ] Assignment on product sticks
@@ -911,15 +916,15 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 
 ### Test 13 — Batches UI + batch advance
 
-1. Advance several matched orders until Thank-you (`waiting_batch`), **or** assign `shipping_label` to a step and park orders there.
+1. Assign `shipping_label` to a pack/test step and park orders there (prefer manual_confirm — thank-you script batches are disabled).
 2. **Batches** → open list shows collecting/ready batches; expand a row for members + addresses.
-3. For a `collecting` thank-you batch under size 4: either wait for size or click **Release** → script should run once and members advance.
+3. For a `thank_you_card` script batch: **Release** soft-fails with a clear message (does **not** run a script).
 4. For a `shipping_label` batch: **Release** then **Mark done** → members advance.
 5. From order detail while `waiting_batch`: confirm Mark done is hidden and the batch link opens `som-batches&batch_id=N`.
 6. Edit a batch group’s display name / size on the Batches page; confirm `group_key` stays fixed.
-7. (Optional) Force a script failure path and confirm **Retry** on an `error` batch.
 
-- [ ] Collecting / release / mark-done / advance work
+- [ ] Collecting / release / mark-done / advance work for manual_confirm
+- [ ] Script batch release soft-fails (no execution)
 - [ ] Order detail links to batch; Mark done hidden while waiting
 - [ ] Group name/size editable
 

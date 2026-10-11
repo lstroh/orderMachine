@@ -19,6 +19,11 @@ class SOM_Copy_Command {
 	const MAX_TEMPLATE_LENGTH = 4000;
 
 	/**
+	 * Seed / example template for small sticker make (operator runs locally).
+	 */
+	const EXAMPLE_MAKE_STICKER_TEMPLATE = "/make-sticker-order Order number: {{order_number}}\nHouse number: {{house_number}}\nStreet: {{street_name}}\neBay design: {{style}}\nBuyer name: {{buyer_name}}";
+
+	/**
 	 * Placeholder keys supported in v1 (without braces).
 	 *
 	 * @return string[]

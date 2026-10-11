@@ -52,7 +52,8 @@ $assert( (bool) $wpdb->get_row( "SHOW COLUMNS FROM {$items_t} LIKE 'personalisat
 $editor_src = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/views/workflow-step-editor.php' );
 $assert( false !== strpos( $editor_src, 'Copy command template' ), 'editor_copy_template_label' );
 $assert( false !== strpos( $editor_src, 'command_template' ), 'editor_command_template_field' );
-$assert( false !== strpos( $editor_src, 'Script / API (legacy' ), 'editor_script_deemphasised' );
+$assert( false === strpos( $editor_src, 'som-script-type' ), 'editor_script_ui_removed' );
+$assert( false !== strpos( $editor_src, 'Legacy script_config (disabled)' ), 'editor_legacy_script_warning' );
 
 $detail_src = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/views/order-detail.php' );
 $assert( false !== strpos( $detail_src, 'som-copy-command-panel' ), 'detail_copy_panel' );

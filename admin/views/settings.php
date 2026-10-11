@@ -321,7 +321,7 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 				<th scope="row"><label for="som_n8n_base_url"><?php echo esc_html__( 'n8n base URL', 'order-machine' ); ?></label></th>
 				<td>
 					<input name="som_n8n_base_url" id="som_n8n_base_url" type="url" class="regular-text" value="<?php echo esc_attr( $settings['n8n_base_url'] ); ?>" placeholder="https://n8n.example.com" />
-					<p class="description"><?php echo esc_html__( 'Reference only — workflow steps use the full webhook URL in script_config.', 'order-machine' ); ?></p>
+					<p class="description"><?php echo esc_html__( 'Deprecated (UP9-S2): local / API / n8n script steps are removed. Use Copy command on make steps instead. Field kept for existing installs only.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -336,8 +336,8 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 						<?php
 						printf(
 							/* translators: %s: REST route examples */
-							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s', 'order-machine' ),
-							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/confirm-step</code>, <code>…/workflow-callback/{token}</code>'
+							esc_html__( 'Send as header X-SOM-API-Key (or Authorization: Bearer) for %s. workflow-callback is unused (script steps removed).', 'order-machine' ),
+							'<code>POST /wp-json/som/v1/orders</code>, <code>…/advance-step</code>, <code>…/confirm-step</code>'
 						);
 						?>
 					</p>

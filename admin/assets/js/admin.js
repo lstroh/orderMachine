@@ -152,17 +152,15 @@
 		function stepHasGate( card ) {
 			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
-			var typeSelect = card.querySelector( '.som-script-type' );
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
 			var batchSelect = card.querySelector( '.som-batch-group-select' );
 			var commandField = card.querySelector( '.som-command-template' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
-			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
 			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
 			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
-			return !!( hasManual || hasTimer || hasScript || hasConfirm || hasBatch || hasCopy );
+			return !!( hasManual || hasTimer || hasConfirm || hasBatch || hasCopy );
 		}
 
 		function stepDisplayName( card ) {
@@ -188,22 +186,6 @@
 			warning.hidden = ! hasName || stepHasGate( card );
 		}
 
-		function syncScriptPanels( card ) {
-			var typeSelect = card.querySelector( '.som-script-type' );
-			var rawToggle = card.querySelector( '.som-script-raw-mode' );
-			var rawPanel = card.querySelector( '[data-script-raw]' );
-			if ( ! typeSelect ) {
-				return;
-			}
-			var type = typeSelect.value;
-			card.querySelectorAll( '[data-script-panel]' ).forEach( function ( panel ) {
-				panel.hidden = panel.getAttribute( 'data-script-panel' ) !== type;
-			} );
-			if ( rawPanel && rawToggle ) {
-				rawPanel.hidden = ! rawToggle.checked;
-			}
-		}
-
 		function bindCard( card ) {
 			if ( card.dataset.bound ) {
 				return;
@@ -213,8 +195,6 @@
 			var up = card.querySelector( '.som-step-up' );
 			var down = card.querySelector( '.som-step-down' );
 			var remove = card.querySelector( '.som-step-remove' );
-			var typeSelect = card.querySelector( '.som-script-type' );
-			var rawToggle = card.querySelector( '.som-script-raw-mode' );
 
 			if ( up ) {
 				up.addEventListener( 'click', function () {
@@ -243,10 +223,6 @@
 						card.querySelectorAll( 'input[type="checkbox"]' ).forEach( function ( field ) {
 							field.checked = false;
 						} );
-						var type = card.querySelector( '.som-script-type' );
-						if ( type ) {
-							type.value = 'none';
-						}
 						var batchSelect = card.querySelector( '.som-batch-group-select' );
 						if ( batchSelect ) {
 							batchSelect.value = '0';
@@ -263,7 +239,6 @@
 						if ( idField ) {
 							idField.value = '0';
 						}
-						syncScriptPanels( card );
 						syncBatchWarning( card );
 						syncConfirmWarning( card );
 						syncCopyWarning( card );
@@ -272,20 +247,6 @@
 					}
 					card.remove();
 					refreshOrder();
-				} );
-			}
-			if ( typeSelect ) {
-				typeSelect.addEventListener( 'change', function () {
-					syncScriptPanels( card );
-					syncBatchWarning( card );
-					syncConfirmWarning( card );
-					syncCopyWarning( card );
-					syncZeroGateWarning( card );
-				} );
-			}
-			if ( rawToggle ) {
-				rawToggle.addEventListener( 'change', function () {
-					syncScriptPanels( card );
 				} );
 			}
 
@@ -351,7 +312,6 @@
 				} );
 			}
 
-			syncScriptPanels( card );
 			syncBatchWarning( card );
 			syncConfirmWarning( card );
 			syncCopyWarning( card );
@@ -371,15 +331,13 @@
 			}
 			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
-			var typeSelect = card.querySelector( '.som-script-type' );
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
 			var commandField = card.querySelector( '.som-command-template' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
-			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
 			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
-			warning.hidden = ! ( hasManual || hasTimer || hasScript || hasConfirm || hasCopy );
+			warning.hidden = ! ( hasManual || hasTimer || hasConfirm || hasCopy );
 		}
 
 		function syncConfirmWarning( card ) {
@@ -394,12 +352,10 @@
 				return;
 			}
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
-			var typeSelect = card.querySelector( '.som-script-type' );
 			var batchSelect = card.querySelector( '.som-batch-group-select' );
 			var hasTimer = timer && String( timer.value ).trim() !== '';
-			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
-			warning.hidden = ! ( hasTimer || hasScript || hasBatch );
+			warning.hidden = ! ( hasTimer || hasBatch );
 		}
 
 		function syncCopyWarning( card ) {
@@ -414,12 +370,10 @@
 				return;
 			}
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
-			var typeSelect = card.querySelector( '.som-script-type' );
 			var batchSelect = card.querySelector( '.som-batch-group-select' );
 			var hasTimer = timer && String( timer.value ).trim() !== '';
-			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
-			warning.hidden = ! ( hasTimer || hasScript || hasBatch );
+			warning.hidden = ! ( hasTimer || hasBatch );
 		}
 
 		cards().forEach( bindCard );

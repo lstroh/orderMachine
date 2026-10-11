@@ -1,6 +1,7 @@
 <?php
 /**
- * Internal REST API (orders, purchasing, batches, workflow callbacks).
+ * Internal REST API (orders, purchasing, batches).
+ * workflow-callback route remains registered but unused (UP9-S2: scripts removed).
  *
  * @package OrderMachine
  */
@@ -650,7 +651,8 @@ class SOM_REST_API {
 	}
 
 	/**
-	 * n8n / automation callback to complete a waiting_script step.
+	 * Legacy workflow-callback (UP9-S2: unused — script steps removed).
+	 * Route kept so old tokens fail cleanly; prefer Copy command + Mark done.
 	 *
 	 * @param WP_REST_Request $request Request.
 	 * @return WP_REST_Response|WP_Error

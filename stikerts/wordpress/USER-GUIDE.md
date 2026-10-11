@@ -105,7 +105,7 @@ Use this when the WordPress site is online and you have developer apps for the m
 5. Prefer **Sync now** for day-to-day new orders. Use **Import history** only when you want past orders **without** workflow assignment, stock reservation, or budget funding.
 6. Configure **Channel Fee Estimates** if needed, then use **Sync fees now** (and the fee poll interval).  
    **Live eBay:** if Settings warns that Finances scope is missing, **Disconnect** then **Connect** again so fee sync can run. Token refresh alone does not grant a new scope.
-7. Optionally set n8n base URL, poll intervals, MCP toggle, and REST API key.
+7. Optionally set poll intervals, MCP toggle, and REST API key. (n8n base URL is deprecated — script/API/n8n steps are removed; use **Copy command** on make steps.)
 
 Background jobs (WP-Cron) handle periodic order sync, fee sync, timer unlocks / batch retries, and token refresh. You can still use **Sync now** / **Sync fees now** manually.
 
@@ -128,7 +128,21 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Multipack** | N identical units sold as one SKU (e.g. a 4-pack). Model as a **separate product** with its own recipe and shipping defaults — not a multiplier on a base SKU. |
 | **Trays** | Numbered physical trays (site pool **1 … Max trays**) assigned to an **order**. Shared by all make lines and pack on that order. |
 | **Uses trays** | Template checkbox (make or Pack). If **any** make or Pack template on the order has it on, the order **requires** ≥1 held tray before Mark done / advance. |
-| **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, script, batch, ship/package/hold, trays). Does **not** complete the step for you. |
+| **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, batch, ship/package/hold, trays). Does **not** complete the step for you. |
+| **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
+
+---
+
+## Copy command (make steps)
+
+Use this when a make step should show a skill/command to run on your machine (e.g. `/make-sticker-order …`).
+
+1. **Workflows** → open a make template → on the step, fill **Copy command template** with placeholders such as `{{order_number}}`, `{{house_number}}`, `{{street_name}}`, `{{style}}`, `{{buyer_name}}`.
+2. Seed **Bin Sticker Make → Print** includes an example `/make-sticker-order` template.
+3. On **order detail**, open the make line: copy the rendered block, run it locally, then **Mark done**.
+4. House / street / style are editable on the order line if eBay data is missing.
+
+Local / API / n8n **script steps are removed**. Script batch groups soft-fail on release (use manual_confirm batches). Details: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7–8.
 
 ---
 
@@ -180,7 +194,8 @@ Physical trays stay with the **order** (not a single make line). There is no mak
 | Cancelled orders | Status is shown; **material stock is not reversed** yet when an order cancels later. |
 | Currency | **GBP only** (fee amounts stored as returned and treated as GBP; no FX conversion). |
 | Make / Pack Boards | **Open / incomplete** only. Make = line cards; Pack = order cards (excludes Internal). Completed history stays on **Orders**. |
-| Batch steps | In v1 a step is **batch-only** (not combined with timer/script/manual on the same step). |
+| Batch steps | In v1 a step is **batch-only** (not combined with timer/manual/copy on the same step). Script batches are disabled. |
+| Script / n8n | Removed — use **Copy command** + Mark done. |
 | PO after first receive | Line quantities/costs **lock**; notes stay editable. Corrections via stock/value adjustment, not rewriting old receives. |
 | Negative stock / budgets | Allowed as a shortage / overspend signal. |
 | Ink | No special type — track via a recipe material or a manual fixed-amount budget. |

@@ -564,21 +564,7 @@ class SOM_Item_Make {
 			return false;
 		}
 
-		// Make v1: no scripts on make steps after filter; still handle if present.
-		if ( SOM_Script_Dispatch::has_script( $step ) ) {
-			$wpdb->update(
-				$progress_t,
-				array(
-					'status'        => 'waiting_script',
-					'timer_ends_at' => null,
-					'updated_at'    => $now,
-				),
-				array( 'id' => (int) $progress->id ),
-				array( '%s', '%s', '%s' ),
-				array( '%d' )
-			);
-			return true;
-		}
+		// UP9-S2: legacy script_config ignored — unlock to in_progress for Mark done.
 
 		$updated = $wpdb->update(
 			$progress_t,
@@ -631,6 +617,55 @@ class SOM_Item_Make {
 			}
 		}
 		return $unlocked;
+	}
+
+	/**
+	 * UP9-S2: convert leftover make waiting_script rows to in_progress (no dispatch).
+	 *
+	 * @return int Number recovered.
+	 */
+	public static function recover_waiting_script() {
+		global $wpdb;
+
+		$progress_t = SOM_DB::table( 'order_item_step_progress' );
+		$orders_t   = SOM_DB::table( 'orders' );
+		$now        = current_time( 'mysql', true );
+		$message    = __( 'Script steps are removed. Use Mark done (or Copy command).', 'order-machine' );
+
+		$ids = $wpdb->get_col(
+			"SELECT p.id
+			FROM {$progress_t} p
+			INNER JOIN {$orders_t} o ON o.id = p.order_id
+			WHERE p.status = 'waiting_script'
+				AND o.is_complete = 0
+				AND o.is_cancelled = 0"
+		);
+		if ( empty( $ids ) || ! is_array( $ids ) ) {
+			return 0;
+		}
+
+		$recovered = 0;
+		foreach ( $ids as $id ) {
+			$ok = $wpdb->update(
+				$progress_t,
+				array(
+					'status'     => 'in_progress',
+					'last_error' => $message,
+					'updated_at' => $now,
+				),
+				array(
+					'id'     => (int) $id,
+					'status' => 'waiting_script',
+				),
+				array( '%s', '%s', '%s' ),
+				array( '%d', '%s' )
+			);
+			if ( false !== $ok && (int) $ok > 0 ) {
+				++$recovered;
+			}
+		}
+
+		return $recovered;
 	}
 
 	/**
@@ -781,10 +816,11 @@ class SOM_Item_Make {
 		$now     = current_time( 'mysql', true );
 		$timer   = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
 		$manual  = ! empty( $step->requires_manual_confirm );
-		$script  = SOM_Script_Dispatch::has_script( $step );
 		$confirm = SOM_Step_Confirmations::has_confirmation( $step );
 		$copy    = SOM_Copy_Command::has_template( $step );
-		$table   = SOM_DB::table( 'order_item_step_progress' );
+		// UP9-S2 O5: ignore legacy script_config — never waiting_script / dispatch.
+		$legacy_script = SOM_Script_Dispatch::has_script( $step );
+		$table         = SOM_DB::table( 'order_item_step_progress' );
 
 		// Batch on make is disallowed at save time; if present, treat as error state.
 		if ( ! empty( $step->batch_group_id ) ) {
@@ -802,16 +838,11 @@ class SOM_Item_Make {
 			return new WP_Error( 'som_make_batch', __( 'Batch groups are not allowed on make steps.', 'order-machine' ) );
 		}
 
-		if ( $confirm || $copy ) {
+		if ( $confirm || $copy || $legacy_script ) {
 			$manual = true;
 		}
 
-		// Copy-command is display-only — never park waiting_script from the template.
-		if ( $copy ) {
-			$script = false;
-		}
-
-		if ( $timer < 1 && ! $manual && ! $script ) {
+		if ( $timer < 1 && ! $manual ) {
 			$wpdb->update(
 				$table,
 				array(
@@ -836,25 +867,6 @@ class SOM_Item_Make {
 					'status'        => 'waiting_timer',
 					'started_at'    => $now,
 					'timer_ends_at' => $timer_ends_at,
-					'retry_count'   => 0,
-					'last_error'    => null,
-					'updated_at'    => $now,
-				),
-				array( 'id' => (int) $progress->id ),
-				array( '%s', '%s', '%s', '%d', '%s', '%s' ),
-				array( '%d' )
-			);
-			return true;
-		}
-
-		if ( $script ) {
-			// Scripts on make are rare; park waiting_script without auto-dispatch complexity.
-			$wpdb->update(
-				$table,
-				array(
-					'status'        => 'waiting_script',
-					'started_at'    => $now,
-					'timer_ends_at' => null,
 					'retry_count'   => 0,
 					'last_error'    => null,
 					'updated_at'    => $now,
