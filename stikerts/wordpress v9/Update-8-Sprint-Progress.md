@@ -110,6 +110,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 - **Seed:** create paths set `uses_trays => 0` explicitly (operator opts in); confirmed seed make/pack leave trays off
 - **Polish:** trays panel required notice wording aligned with Mark done / advance copy; no trays overview page (O3); no board Unblock
 - Smoke: `tests/sprint-up8-s3-smoke.php` (seed `uses_trays=0` + docs presence only)
+- Smoke harden (post-desktop run): S2 Print step is timer-only (confirmation exclusive); S1 teardown force-releases with `order_complete`; S2 picks free trays instead of hardcoding 1/2/4
 
 ### Soft defaults applied
 
@@ -128,11 +129,10 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 ### Verification
 
 - PHP lint on changed files
-- wp-env smoke (when Docker available):
+- wp-env smoke (when Docker available) — run S3 → S1 → S2 in sequence:
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s3-smoke.php
-# Regression (S1/S2 remain the trays/Unblock suite):
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s1-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
 ```

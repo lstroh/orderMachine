@@ -184,10 +184,14 @@ $assert( true === $release_high, 'release_tray_10' );
 $ok_lower = SOM_Trays::set_max( 9 );
 $assert( true === $ok_lower && 9 === SOM_Trays::get_max(), 'lower_max_after_release' );
 
-// Restore max for leftover trays still held (1,5 on A; 2 on B) then clean up.
+// Restore max, then force-release leftover holds (manual release keeps ≥1 while uses_trays + open).
 SOM_Trays::set_max( 10 );
-SOM_Trays::release( $order_a, array(), SOM_Trays::REASON_MANUAL );
-SOM_Trays::release( $order_b, array(), SOM_Trays::REASON_MANUAL );
+$clean_a = SOM_Trays::release( $order_a, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+$clean_b = SOM_Trays::release( $order_b, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+$assert( true === $clean_a || ( is_wp_error( $clean_a ) && 'som_tray_none_held' === $clean_a->get_error_code() ), 'cleanup_release_order_a' );
+$assert( true === $clean_b || ( is_wp_error( $clean_b ) && 'som_tray_none_held' === $clean_b->get_error_code() ), 'cleanup_release_order_b' );
+$assert( array() === SOM_Trays::held_numbers_for_order( $order_a ), 'cleanup_order_a_no_holds' );
+$assert( array() === SOM_Trays::held_numbers_for_order( $order_b ), 'cleanup_order_b_no_holds' );
 
 // Restore prior site max when valid.
 if ( $prev_max >= SOM_Trays::MIN_MAX && $prev_max <= SOM_Trays::MAX_MAX ) {
