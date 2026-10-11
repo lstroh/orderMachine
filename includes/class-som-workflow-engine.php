@@ -721,7 +721,7 @@ class SOM_Workflow_Engine {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
-					s.timer_seconds, s.planned_seconds, s.script_config, s.workflow_template_id, s.batch_group_id,
+					s.timer_seconds, s.planned_seconds, s.script_config, s.command_template, s.workflow_template_id, s.batch_group_id,
 					s.confirmation_kind, t.kind AS template_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
@@ -1359,7 +1359,7 @@ class SOM_Workflow_Engine {
 		);
 
 		$order = SOM_Orders::get( $order_id );
-		if ( ! $order || ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ) {
+		if ( ! $order || ! empty( $order->is_cancelled ) ) {
 			return $out;
 		}
 
@@ -1371,6 +1371,11 @@ class SOM_Workflow_Engine {
 		$progress = self::get_progress_for_step( $order_id, $current_step_id );
 		$step     = self::get_step( $current_step_id );
 		if ( ! $progress || ! $step ) {
+			return $out;
+		}
+
+		// Post-ship may continue after is_complete (O1 review reminder).
+		if ( ! empty( $order->is_complete ) && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
 			return $out;
 		}
 

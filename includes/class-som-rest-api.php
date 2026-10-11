@@ -618,7 +618,21 @@ class SOM_REST_API {
 			'is_last_step'      => false,
 		);
 
-		if ( $order && empty( $order->is_complete ) && ! empty( $order->current_step_id ) ) {
+		if ( $order && ! empty( $order->current_step_id ) ) {
+			$step_for_meta = null;
+			if ( ! empty( $order->is_complete ) ) {
+				$steps_t       = SOM_DB::table( 'workflow_steps' );
+				$step_for_meta = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT * FROM {$steps_t} WHERE id = %d LIMIT 1",
+						(int) $order->current_step_id
+					)
+				);
+				if ( ! SOM_Post_Ship::is_post_ship_step( $step_for_meta ) ) {
+					return rest_ensure_response( $payload );
+				}
+			}
+
 			$progress_t = SOM_DB::table( 'order_step_progress' );
 			$status     = $wpdb->get_var(
 				$wpdb->prepare(

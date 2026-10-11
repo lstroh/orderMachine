@@ -14,6 +14,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 3. [Orders list & detail](#3-orders-list--detail)
 4. [Make Board](#4-make-board)
 4b. [Pack Board](#4b-pack-board)
+4c. [Post-ship Board](#4c-post-ship-board)
 5. [Products](#5-products) (incl. multipacks / pack sizes)
 5b. [Shipping packages](#5b-shipping-packages)
 6. [Materials & stock](#6-materials--stock)
@@ -36,6 +37,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 **Where:** Order Machine → Settings
 
 **Pack:** choose **Default Pack workflow** (active templates with kind Pack). Bound on new non-Internal orders for the Pack Board and Ship gates. Create Pack templates under Workflows.
+
+**Post-ship:** choose **Default Post-ship workflow** (kind Post-ship) and **Auto-start Post-ship** (default on). Used after Pack Ship for aftercare; products may override. Create Post-ship templates under Workflows.
 
 **Trays:** **Max trays** (site pool **1–20**, default **10**). Numbers are **1 … max**. Lowering is blocked while a higher tray is still held.
 
@@ -204,7 +207,31 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Browser print on order detail renders a pack list (buyer, address, lines, notes).
 - Held tray numbers show as **Tray N** badges on cards.
 
-**You will not find:** Internal / Produce N orders; make-line cards (use Make Board); **Unblock step** (use order detail).
+**You will not find:** Internal / Produce N orders; make-line cards (use Make Board); **Unblock step** (use order detail); Review reminder (moved to Post-ship).
+
+---
+
+## 4c. Post-ship Board
+
+**Where:** Order Machine → Post-ship Board
+
+**What it is for:** Aftercare queue after the parcel is shipped — buyer/tracking update, arrival confirm, review reminder.
+
+**Main actions:**
+
+- Scope filters: **Active** (in-progress aftercare), **Unstarted** (shipped, not started), **Complete** (all post-ship steps done)
+- Filter by **Post-ship workflow** (fixes Kanban columns to that template’s steps), channel, search
+- Cards: **Start** (unstarted when a template resolves) / **Open** order detail; pin; drag advance when gates allow
+- Order detail **Post-ship** panel: progress, instructions, tasks, copy-command, confirmation (incl. package arrived), unblock, timer, planned/actual timing
+
+**Important rules:**
+
+- Starts **auto** when Pack Ship completes (Settings toggle, default on) and/or **manual** Start on order detail / board.
+- Template resolve: primary product Post-ship override → site default → unbound (pick on Start).
+- **Order complete** = shipping details recorded **and** package arrived confirmed — **not** at Pack Ship alone. Review reminder may continue after complete.
+- No trays / package materials on post-ship. Internal Produce N never gets post-ship.
+
+**You will not find:** Pack Ship columns; tray badges; marketplace send APIs (use Copy command locally).
 
 ---
 
@@ -346,7 +373,8 @@ On **order detail**, each step shows Planned · Actual (or live Elapsed while in
 **Placeholders (v1):** `{{order_number}}`, `{{house_number}}`, `{{street_name}}`, `{{style}}`, `{{buyer_name}}` (first word), `{{buyer_full_name}}`, `{{product_name}}`, `{{personalisation}}`.
 
 **Seeded make — Bin Sticker Make:** Print (copy-command `/make-sticker-order` example) → Confirm print → Dry → Laminate → Cut.  
-**Seeded pack — Order Pack & Ship:** Confirm pack (lines + thank-you) → Confirm address → Package → Ship → Review reminder. No thank-you batch on Pack. Existing Local templates are not auto-truncated — Restore seed or edit manually, then **Repair pack binding**.
+**Seeded pack — Order Pack & Ship:** Confirm pack (lines + thank-you) → Confirm address → Package → Ship. Review reminder is on Post-ship (not Pack). No thank-you batch on Pack. Existing Local templates are not auto-truncated — Restore seed or edit manually, then **Repair pack binding**.  
+**Seeded post-ship — Post-ship — Order Aftercare:** Update buyer / send tracking (copy-command) → Confirm shipping details → Confirm package arrived → Review reminder (timer 7 days + manual). Set as Default Post-ship when unset.
 
 ---
 
