@@ -83,6 +83,15 @@ class SOM_Admin_Menu {
 
 		add_submenu_page(
 			'som-orders',
+			__( 'Post-ship Board', 'order-machine' ),
+			__( 'Post-ship Board', 'order-machine' ),
+			'manage_options',
+			'som-post-ship-board',
+			array( __CLASS__, 'render_post_ship_board' )
+		);
+
+		add_submenu_page(
+			'som-orders',
 			__( 'Products', 'order-machine' ),
 			__( 'Products', 'order-machine' ),
 			'manage_options',
@@ -211,7 +220,7 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-pack-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-shipping-packages', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
+		if ( ! in_array( $page, array( 'som-orders', 'som-orders-board', 'som-pack-board', 'som-post-ship-board', 'som-products', 'som-materials', 'som-budgets', 'som-suppliers', 'som-shipping-packages', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings', 'som-analytics', 'som-channel-fee-estimates', 'som-recurring-platform-expenses' ), true ) ) {
 			return;
 		}
 
@@ -269,7 +278,7 @@ class SOM_Admin_Menu {
 			);
 		}
 
-		if ( in_array( $page, array( 'som-orders-board', 'som-pack-board' ), true ) ) {
+		if ( in_array( $page, array( 'som-orders-board', 'som-pack-board', 'som-post-ship-board' ), true ) ) {
 			wp_enqueue_script(
 				'sortablejs',
 				'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js',
@@ -374,6 +383,19 @@ class SOM_Admin_Menu {
 	}
 
 	/**
+	 * Post-ship Board (Kanban of orders in aftercare).
+	 *
+	 * @return void
+	 */
+	public static function render_post_ship_board() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		require SOM_PLUGIN_DIR . 'admin/views/orders-post-ship-board.php';
+	}
+
+	/**
 	 * Mark done / retry script on order detail.
 	 *
 	 * @return void
@@ -384,6 +406,38 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		// Post-ship Start from the board posts to order detail URL (page=som-orders).
+		if ( 'som-orders' !== $page && 'som-post-ship-board' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_start_post_ship'] ) ) {
+			check_admin_referer( 'som_start_post_ship', 'som_order_nonce' );
+			$order_id    = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$template_id = isset( $_POST['som_post_ship_template_id'] ) ? (int) $_POST['som_post_ship_template_id'] : 0;
+			$result      = SOM_Post_Ship::start( $order_id, $template_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				$order = SOM_Orders::get( $order_id );
+				if ( $order && SOM_Post_Ship::is_started( $order ) ) {
+					self::flash_notice( __( 'Post-ship workflow started.', 'order-machine' ), 'success', 'som_order_saved' );
+				} else {
+					self::flash_notice(
+						__( 'No Post-ship template available. Set a default under Settings or pick a template.', 'order-machine' ),
+						'error',
+						'som_order_error'
+					);
+				}
+			}
+			if ( ! empty( $_POST['som_redirect_post_ship_board'] ) || 'som-post-ship-board' === $page ) {
+				wp_safe_redirect( SOM_Post_Ship::board_url() );
+			} else {
+				wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-post-ship' );
+			}
+			exit;
+		}
+
 		if ( 'som-orders' !== $page ) {
 			return;
 		}
@@ -790,29 +844,6 @@ class SOM_Admin_Menu {
 				self::flash_notice( __( 'Tracking pushed to channel.', 'order-machine' ), 'success', 'som_order_saved' );
 			}
 			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
-			exit;
-		}
-
-		if ( isset( $_POST['som_start_post_ship'] ) ) {
-			check_admin_referer( 'som_start_post_ship', 'som_order_nonce' );
-			$order_id    = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
-			$template_id = isset( $_POST['som_post_ship_template_id'] ) ? (int) $_POST['som_post_ship_template_id'] : 0;
-			$result      = SOM_Post_Ship::start( $order_id, $template_id );
-			if ( is_wp_error( $result ) ) {
-				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
-			} else {
-				$order = SOM_Orders::get( $order_id );
-				if ( $order && SOM_Post_Ship::is_started( $order ) ) {
-					self::flash_notice( __( 'Post-ship workflow started.', 'order-machine' ), 'success', 'som_order_saved' );
-				} else {
-					self::flash_notice(
-						__( 'No Post-ship template available. Set a default under Settings or pick a template.', 'order-machine' ),
-						'error',
-						'som_order_error'
-					);
-				}
-			}
-			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-post-ship' );
 			exit;
 		}
 

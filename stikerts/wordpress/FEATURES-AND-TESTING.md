@@ -78,7 +78,8 @@ Dummy mode auto-seeds:
 - Sample product **BIN-SET-4PK** with vinyl + laminate recipe
 - Listing matches so some fixture lines resolve to that product
 - Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) on the product — **Uses trays** off
-- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review); set as Default Pack when unset — **Uses trays** off
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship); set as Default Pack when unset — **Uses trays** off; Review reminder removed from Pack seed
+- Post-ship workflow **Post-ship — Order Aftercare** (buyer update → confirm shipping details → package arrived → Review reminder); set as Default Post-ship when unset; auto-start after Pack Ship default on
 - Batch groups **thank_you_card** / **shipping_label** still seeded for compatibility; **not** attached to Pack seed steps
 - Settings **Max trays** available (default 10); no trays overview page
 
@@ -109,6 +110,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
 | **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop |
 | **Pack Board** | `som-pack-board` | Kanban of open **orders** in pack/ship; Waiting for make + Held; Internal excluded |
+| **Post-ship Board** | `som-post-ship-board` | Kanban of aftercare orders by post-ship step; Unstarted / Active / Complete; filter by template |
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, recipe, Product Costing |
 | **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history, R&D write-off |
 | **Budgets** | `som-budgets` | Material + manual budgets; balances, ledger, adjustments, R&D write-off |
@@ -121,7 +123,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV + workflow timing (Chart.js) |
 | **Channel Fee Estimates** | `som-channel-fee-estimates` | Per-channel estimated fee components (tiers, optional ads) |
 | **Recurring Platform Expenses** | `som-recurring-platform-expenses` | Non-order-linked fees (e.g. Etsy listing fees) |
-| **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key, Max trays, default Pack workflow |
+| **Settings** | `som-settings` | Channels, intervals, Sync now, Import history, fee sync, MCP toggle, API key, Max trays, default Pack / Post-ship workflows, auto-start Post-ship |
 
 ---
 
@@ -210,7 +212,8 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 **Workflow rules on the order:**
 
 - **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Legacy open orders may still show order-level progress.
-- **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship**. Settings → **Repair pack binding** for open unbound orders.
+- **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Pack finish does **not** set `is_complete` for customer orders (Package 11). Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship** + **Post-ship — Order Aftercare**. Settings → **Repair pack binding** for open unbound orders.
+- **Post-ship (UP11):** third kind; bind/start auto after Pack Ship and/or manual; site default + product override; Post-ship Board (`som-post-ship-board`); **complete** when shipment exists + arrival confirmed; Review reminder on post-ship (may run after complete).
 - **Trays (UP8):** required when any sellable make template or bound Pack template has `uses_trays`; block until ≥1 held; keep ≥1 while required + open; auto-release on order complete; board badges
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
 - Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
@@ -314,11 +317,19 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 | 2 | Confirm address | Confirmation `shipping_address` |
 | 3 | Package | Manual confirm (app also requires `shipping_package_id` before Ship) |
 | 4 | Ship | Manual confirm + shipment row |
-| 5 | Review reminder | Timer 7 days + manual confirm |
 
-No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shipping_label` remain for optional custom use; `convert_thankyou_steps` skips Pack templates.
+No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shipping_label` remain for optional custom use; `convert_thankyou_steps` skips Pack templates. **Review reminder** lives on Post-ship seed (not Pack).
 
-**Existing-site migrate:** (1) Upgrade plugin. (2) Ensure Pack template exists (Restore seed or create kind=Pack + Settings default). (3) Trim or replace legacy **Bin Sticker Production** pack/ship steps (or Restore seed). (4) Settings → **Repair pack binding** for open unbound orders (skips legacy monolithic progress). (5) Clear collecting thank-you batches under Batches if you no longer use that path.
+**Seeded post-ship — Post-ship — Order Aftercare** (`kind=post_ship`; Default Post-ship when unset):
+
+| # | Step | Gates |
+|---|---|---|
+| 1 | Update buyer / send tracking | Manual + Copy command template |
+| 2 | Confirm shipping details | Manual confirm |
+| 3 | Confirm package arrived | Confirmation `package_arrived` (complete gate with shipment) |
+| 4 | Review reminder | Timer 7 days + manual confirm |
+
+**Existing-site migrate:** (1) Upgrade plugin. (2) Ensure Pack template exists (Restore seed or create kind=Pack + Settings default). (3) Trim or replace legacy **Bin Sticker Production** pack/ship steps (or Restore seed). (4) Settings → **Repair pack binding** for open unbound orders (skips legacy monolithic progress). (5) Clear collecting thank-you batches under Batches if you no longer use that path. (6) Open admin so seed adds **Post-ship — Order Aftercare** and strips Pack **Review reminder** when no open progress uses it; set Default Post-ship if unset.
 
 ---
 
@@ -335,7 +346,7 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 
 - Manual confirm: Mark done enabled only when that step is current and confirmed by you
 - Copy command: render + Copy on make line; enters `in_progress` (never `waiting_script`); Mark done manual
-- Confirmation checklist: order-detail ticks must be saved complete before Mark done / Board drag (`print_vs_request`, `shipping_address`, `packing_items`)
+- Confirmation checklist: order-detail ticks must be saved complete before Mark done / Board drag (`print_vs_request`, `shipping_address`, `packing_items`, `package_arrived`)
 - Timer: Mark done disabled until the countdown finishes (or tick unlocks it)
 - Script (`local` / `api` / `n8n`): **removed** (UP9-S2) — legacy ignored; REST `workflow-callback` unused
 - Batch: entering a step with `batch_group_id` sets progress to `waiting_batch` and enqueues into a collecting batch (other gates ignored on that step in v1)
@@ -521,13 +532,15 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 
 ---
 
-### 3.14 Make Board & Pack Board
+### 3.14 Make Board, Pack Board & Post-ship Board
 
 **Make Board** (`som-orders-board`, UP6-S1): Kanban of open **order lines** by make step. Filter by make workflow; columns = that template’s steps. Advancing a card advances that line only. Internal Produce N lines appear here.
 
-**Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings).
+**Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings). Pack finish does not complete the customer order (post-ship does).
 
-**Shared board behaviour:** Incomplete / non-cancelled only; warn ≥200 / cap 500; gated SortableJS DnD for advanceable cards; horizontal scroll on narrow screens. Completed history stays on Orders. **Tray N** badges when the order holds trays (UP8). Unblock is not on boards — use order detail.
+**Post-ship Board** (`som-post-ship-board`, UP11-S2): Kanban of aftercare **orders** by post-ship step. Scope **Active** / **Unstarted** / **Complete**; filter by Post-ship template (O5). Start from Unstarted cards or order detail. No trays. May show complete orders still on Review reminder (O1).
+
+**Shared board behaviour:** Non-cancelled; warn ≥200 / cap 500; gated SortableJS DnD for advanceable cards; horizontal scroll on narrow screens. Completed history stays on Orders. **Tray N** badges on Make/Pack when the order holds trays (UP8). Unblock is not on boards — use order detail.
 
 ---
 

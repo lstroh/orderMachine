@@ -77,6 +77,9 @@ $pack_tpl    = SOM_Pack::default_template_id();
 	<a href="<?php echo esc_url( SOM_Orders::board_url() ); ?>" class="page-title-action">
 		<?php echo esc_html__( 'Make Board', 'order-machine' ); ?>
 	</a>
+	<a href="<?php echo esc_url( SOM_Post_Ship::board_url() ); ?>" class="page-title-action">
+		<?php echo esc_html__( 'Post-ship Board', 'order-machine' ); ?>
+	</a>
 	<hr class="wp-header-end" />
 
 	<p class="description">

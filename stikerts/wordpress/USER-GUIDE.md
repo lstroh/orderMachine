@@ -80,7 +80,7 @@ define( 'SOM_ENCRYPTION_KEY', 'your-local-dev-key-here' ); // keep stable once s
 
 3. Open any Order Machine admin screen so seed data can run.
 4. **Settings** → confirm eBay and Etsy show as connected (dummy).
-5. Confirm seed catalogue: sample product **BIN-SET-4PK**, materials, make **Bin Sticker Make**, Pack **Order Pack & Ship**.
+5. Confirm seed catalogue: sample product **BIN-SET-4PK**, materials, make **Bin Sticker Make**, Pack **Order Pack & Ship**, Post-ship **Post-ship — Order Aftercare**.
 6. **Settings → Sync now** to pull fixture orders. Optionally **Sync fees now** for fee fixtures.
 
 **Seed tools:** Settings → Seed data — **Remove seed data** / **Restore seed data** (restore needs dummy mode on). After a Package 6 upgrade, use **Repair pack binding** for open orders missing Pack. Does not delete your own products, suppliers, or POs.
@@ -135,7 +135,8 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
 | **Step instructions** | Markdown guidance on a workflow step (default) or product override. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
 | **Tasks** | Optional per-step tick list (template default + make product override). Operators can tick while running; **never** blocks **Mark done**. |
-| **Confirmation checklist** | Hard gate on a step (print / address / packing). Must be saved complete before Mark done. Not the same as Tasks. |
+| **Confirmation checklist** | Hard gate on a step (print / address / packing / package arrived). Must be saved complete before Mark done. Not the same as Tasks. |
+| **Post-ship** | Aftercare workflow after Pack Ship (buyer update, arrival confirm, review reminder). Separate board; order **complete** = shipping details + arrival (not Ship alone). |
 
 ---
 
@@ -281,9 +282,12 @@ When dummy mode seeds successfully you typically get:
 
 - Product **Bin Sticker Set — 100x140mm 4-pack (sample)** (`BIN-SET-4PK`) with vinyl + laminate recipe — a **multipack SKU** (materials for one 4-pack sold unit)  
 - Make workflow **Bin Sticker Make** (Print → Confirm print → Dry → Laminate → Cut) — **Uses trays** off  
-- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship → Review) — **Uses trays** off  
+- Pack workflow **Order Pack & Ship** (Confirm pack + thank-you checklist → Confirm address → Package → Ship) — **Uses trays** off; Review reminder is **not** on Pack  
+- Post-ship workflow **Post-ship — Order Aftercare** (Update buyer / send tracking → Confirm shipping details → Confirm package arrived → Review reminder) — set as Default Post-ship when unset; auto-start after Pack Ship is on by default  
 - Batch groups still seeded for optional use; thank-you is checklist-only on Pack (not a batch gate)  
 - Fixture listing matches so some synced lines resolve to that product  
+
+**Migrate (existing sites):** Upgrade, then open any admin screen so seed can add Aftercare and strip Pack’s Review reminder when no open progress uses it. If Pack still shows Review reminder mid-flight, finish those orders or Restore seed / edit Pack manually. Order complete now means shipment + arrival confirm — not Pack Ship alone.
 
 No second pack size is seeded; add a 1-pack or 10-pack as another product if you need it for demos. Turn on **Uses trays** on a template when you want the tray gate. Use this as a practice path — see [Workflow 5](USER-WORKFLOWS.md#5-bin-sticker-style-production-path).
 
