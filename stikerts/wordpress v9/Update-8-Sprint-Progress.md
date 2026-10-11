@@ -9,8 +9,10 @@
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
 | UP8-S1 | Schema, site max, order-level assign/release | Code complete | Schema 1.19.0; #20 |
-| UP8-S2 | Trays require/complete + Unblock step + boards | Code complete | Schema 1.20.0; this PR |
-| UP8-S3 | Docs / polish | Not started | |
+| UP8-S2 | Trays require/complete + Unblock step + boards | Code complete | Schema 1.20.0; #21 |
+| UP8-S3 | Docs / polish | Code complete | USER docs + seed confirm; this PR |
+
+**Package 8 sprints:** complete (S1–S3). SemVer bump optional later (~0.38.0). Package 9 (copy-command) is out of scope here.
 
 ---
 
@@ -56,7 +58,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 ## UP8-S2 — Trays require/complete + Unblock step (all gates) + boards
 
-- **Status:** Code complete (this PR)
+- **Status:** Code complete (#21)
 - **Schema:** 1.20.0 (`manual_unblock_at` / `manual_unblock_by` / `manual_unblock_gates` on `order_item_step_progress` + `order_step_progress`)
 - **Plugin:** unchanged (release bump optional later → ~0.37.0)
 
@@ -89,5 +91,48 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 - wp-env smoke (when Docker available):
 
 ```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
+```
+
+---
+
+## UP8-S3 — Docs / polish
+
+- **Status:** Code complete (this PR)
+- **Schema:** unchanged (1.20.0)
+- **Plugin:** unchanged (release bump optional later → ~0.38.0)
+
+### Delivered
+
+- **USER-GUIDE:** Max trays; Uses trays on templates; assign/release on order detail; required block until ≥1; keep ≥1; auto-release on complete; board badges; Unblock overview + troubleshooting
+- **USER-REFERENCE:** concise trays + Unblock rules (order-level only; no double-book; keep ≥1; Unblock ≠ Mark done; audit + note; pack hold left set; batch member removed; order detail only); Settings / Workflows / Boards / engine cross-links; out-of-scope rows
+- **FEATURES-AND-TESTING:** feature bullets + UAT-style checks (§3.14a); Test 2d Package 8 quick verify; S1/S2 as regression suite + light S3 smoke
+- **Seed:** create paths set `uses_trays => 0` explicitly (operator opts in); confirmed seed make/pack leave trays off
+- **Polish:** trays panel required notice wording aligned with Mark done / advance copy; no trays overview page (O3); no board Unblock
+- Smoke: `tests/sprint-up8-s3-smoke.php` (seed `uses_trays=0` + docs presence only)
+
+### Soft defaults applied
+
+- O3: no trays overview page
+- No Package 9 (copy-command) work
+- Docs match shipped S2 behaviour (O7–O10)
+- Plain PHP; SemVer bump optional later
+
+### Explicitly out of scope
+
+- Copy-command step (Package 9)
+- Per-line trays / make→pack transfer
+- Auto Mark done on unblock
+- Board Unblock control
+
+### Verification
+
+- PHP lint on changed files
+- wp-env smoke (when Docker available):
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s3-smoke.php
+# Regression (S1/S2 remain the trays/Unblock suite):
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s1-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
 ```

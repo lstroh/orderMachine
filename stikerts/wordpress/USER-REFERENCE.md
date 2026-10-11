@@ -37,6 +37,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **Pack:** choose **Default Pack workflow** (active templates with kind Pack). Bound on new non-Internal orders for the Pack Board and Ship gates. Create Pack templates under Workflows.
 
+**Trays:** **Max trays** (site pool **1–20**, default **10**). Numbers are **1 … max**. Lowering is blocked while a higher tray is still held.
+
 **What it is for:** Connect marketplaces, pull orders and fees, tune background intervals, manage API/MCP access, and (in dummy mode) seed data tools.
 
 **Main actions:**
@@ -45,6 +47,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Copy OAuth callback URLs into developer apps (**live**)
 - **Connect** / **Disconnect** each channel
 - Set **n8n base URL** (for workflow steps that call n8n)
+- Set **Max trays**
 - Intervals: order poll, engine tick, token refresh, fee poll (default 30 min, min 5)
 - Toggle **MCP / Abilities**; manage **REST API key**
 - **Sync now** — incremental orders (fixtures when dummy)
@@ -58,8 +61,9 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Dummy:** connected tokens are fake; Sync uses fixtures.  
 - **Live:** real OAuth; changing `SOM_ENCRYPTION_KEY` after saving credentials breaks decrypt — reconnect.  
 - Cron still runs in the background; manual Sync buttons are for immediate pulls.
+- No trays overview page — assign/release on order detail only.
 
-**You will not find:** Per-order editing of channel credentials; exposed raw secrets in the UI after save.
+**You will not find:** Per-order editing of channel credentials; exposed raw secrets in the UI after save; a site-wide trays occupancy screen.
 
 ---
 
@@ -108,8 +112,10 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, scripts, **waiting_batch** badge + Batches link
 - **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done)
+- **Unblock step** on the current make/pack step when Mark done is gated (confirm: allows Mark done without meeting gates; does not complete the step)
 - **Open on eBay/Etsy** link when channel supports it
-- **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete)
+- **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete; also blocked when trays are required and none held)
+- **Trays** — order-level panel: list held trays; multi-select free trays to assign; release selected held trays
 - **Materials used** — planned from product **Recipe** and selected shipping **Package**; raise Actual above planned when you used more (stock, profit, budget); increase-only; same material can appear once per source
 - **Platform fees** panel when synced fee lines exist
 - **Notes** — admin-only append-only log (cannot edit/delete); not synced to marketplaces
@@ -122,6 +128,30 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - If nothing matches → no progress rows; flags show unmatched / no workflow.
 - Batch advance is batch-level only while `waiting_batch`.
 - Confirmation ticks persist on the order; Mark done / Board drag stay locked until every required box is saved.
+
+**Trays (order-level) — concise rules:**
+
+| Rule | Behaviour |
+|---|---|
+| Holder | **Order** only (shared by all make lines + pack; not per line) |
+| Double-book | Rejected — a held tray cannot be assigned to another order |
+| Required | If any sellable make template or bound Pack template has **Uses trays** → block Mark done / advance until ≥1 tray held |
+| Keep ≥1 | While required and order open, cannot release the last held tray |
+| Auto-release | On order complete → all held trays freed (`order_complete`) |
+| Manual release | Anytime (subject to keep ≥1 when required) |
+| Transfer | No make→pack transfer (same order-level set) |
+
+**Unblock step — concise rules:**
+
+| Rule | Behaviour |
+|---|---|
+| Where | **Order detail only** (not on Make/Pack boards) |
+| Effect | Enables **Mark done** for the current step; does **not** Mark done / auto-advance |
+| Gates | Bypasses timer, checklist, script/error, batch, ship/package/hold, trays-required |
+| Pack hold | Leave hold flag set; only bypass Ship check for this Mark done |
+| Batch | Removes the line/order from the collecting/ready batch |
+| Trays | Allows Mark done without assigning trays (does not assign any) |
+| Audit | Progress who/when/gates + order note; audit remains after Mark done |
 
 ---
 
@@ -143,8 +173,9 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Cards are **lines**, not whole orders. Advancing one line does not advance sibling lines.
 - Internal Produce N lines appear here; they never go to the Pack Board.
 - Incomplete / non-cancelled only; completed history stays on Orders.
+- Held tray numbers show as **Tray N** badges on cards (order-level set).
 
-**You will not find:** Pack/ship columns (use Pack Board); free drag to arbitrary past steps.
+**You will not find:** Pack/ship columns (use Pack Board); free drag to arbitrary past steps; **Unblock step** (use order detail).
 
 ---
 
@@ -166,8 +197,9 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Ship** stays blocked until: all sellable lines make-complete, no pack hold, shipping package selected, packing checklist + thank-you tick, address confirm, and shipment row recorded.
 - Packed-by / packed-at stamps once when the packing checklist first completes; optional pack weight (g) on the shipment.
 - Browser print on order detail renders a pack list (buyer, address, lines, notes).
+- Held tray numbers show as **Tray N** badges on cards.
 
-**You will not find:** Internal / Produce N orders; make-line cards (use Make Board).
+**You will not find:** Internal / Produce N orders; make-line cards (use Make Board); **Unblock step** (use order detail).
 
 ---
 
@@ -274,7 +306,9 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 **What it is for:** Define production templates and step gates.
 
-**Templates:** create / edit / deactivate; name + description.
+**Templates:** create / edit / deactivate; name + description; **Uses trays** checkbox (make or Pack).
+
+**Uses trays:** when **any** make template on a sellable line or the bound Pack template has this on, the order requires ≥1 held tray before Mark done / advance. Seed **Bin Sticker Make** and **Order Pack & Ship** leave this **off** (operator opts in).
 
 **Step editor — main actions:**
 
@@ -311,7 +345,10 @@ Operator can always override on the Pack panel; changing package reverses prior 
 | Timer | Blocked until countdown ends (or tick unlocks) |
 | Script | Allowlisted runner + retries + callback |
 | Batch | Entering sets `waiting_batch` and enqueues; other gates ignored on that step in v1 |
+| Trays required | If order requires trays and none held → Mark done / drag blocked until ≥1 assigned (or Unblock) |
 | **Zero-gate** (none of the above) | Step **auto-completes** as soon as it is entered, and the engine advances to the next step. Useful for intentional pass-throughs. The workflow editor warns on Save (does not hard-block) and defaults **Requires manual confirm** on newly added step cards |
+
+**Unblock step:** on order detail for the current make/pack step when any gate blocks Mark done. One-shot bypass so `can_mark_done` passes; you still click Mark done. See §3 rules table.
 
 **Important:** Workflow + stock run on **new creates**. Orders imported before a product had a workflow/recipe do not get progress or stock retroactively. Already-Done zero-gate steps on open orders are not rewritten when you later add gates to the template.
 
@@ -515,6 +552,10 @@ So you do not hunt for missing features:
 | Recurring expenses in profit charts | Order fees only |
 | Dedicated ink type | Recipe material or manual fixed budget |
 | Stacked mobile Board | Horizontal scroll only |
+| Trays overview page | Assign/release on order detail; badges on boards |
+| Per-line trays / make→pack transfer | Order-level trays only |
+| Auto Mark done on Unblock | Unblock enables Mark done only |
+| Unblock on Make/Pack boards | Order detail only |
 
 ---
 

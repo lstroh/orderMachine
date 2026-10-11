@@ -444,6 +444,7 @@ class SOM_Seed {
 					'name'        => self::WORKFLOW_NAME,
 					'description' => 'Sample make workflow for bin sticker sets (seed). Ends at Cut — pack/ship is Order Pack & Ship.',
 					'kind'        => 'make',
+					'uses_trays'  => 0, // UP8-S3: seed leaves trays opt-in.
 					'is_active'   => 1,
 				)
 			);
@@ -574,6 +575,7 @@ class SOM_Seed {
 					'name'        => self::PACK_WORKFLOW_NAME,
 					'description' => 'Seed pack & ship workflow (order-level). Thank-you is on the Confirm pack checklist — no batch gate.',
 					'kind'        => 'pack',
+					'uses_trays'  => 0, // UP8-S3: seed leaves trays opt-in.
 					'is_active'   => 1,
 				)
 			);
