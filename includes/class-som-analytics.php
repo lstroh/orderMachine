@@ -589,17 +589,17 @@ class SOM_Analytics {
 					AND c.slug <> %s
 					{$channel_sql}
 				GROUP BY p.order_id
-				HAVING done_steps >= %d
+				HAVING COUNT(DISTINCT p.workflow_step_id) >= %d
 					AND MIN(p.started_at) IS NOT NULL
 					AND MAX(p.completed_at) IS NOT NULL
-				ORDER BY p.order_id ASC",
+				ORDER BY group_id ASC",
 				$params
 			);
 		} else {
 			$progress_t = SOM_DB::table( 'order_item_step_progress' );
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$sql = $wpdb->prepare(
-				"SELECT p.order_item_id AS group_id, p.order_id,
+				"SELECT p.order_item_id AS group_id, MIN(p.order_id) AS order_id,
 					MIN(p.started_at) AS first_start,
 					MAX(p.completed_at) AS last_complete,
 					COUNT(DISTINCT p.workflow_step_id) AS done_steps
@@ -615,10 +615,10 @@ class SOM_Analytics {
 					AND c.slug <> %s
 					{$channel_sql}
 				GROUP BY p.order_item_id
-				HAVING done_steps >= %d
+				HAVING COUNT(DISTINCT p.workflow_step_id) >= %d
 					AND MIN(p.started_at) IS NOT NULL
 					AND MAX(p.completed_at) IS NOT NULL
-				ORDER BY p.order_item_id ASC",
+				ORDER BY group_id ASC",
 				$params
 			);
 		}

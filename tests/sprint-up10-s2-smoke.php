@@ -35,7 +35,6 @@ $out( 'plugin', SOM_VERSION );
 $out( 'db', (string) get_option( 'som_db_version', '' ) );
 
 $assert( class_exists( 'SOM_Analytics' ), 'class_analytics' );
-$assert( defined( 'SOM_Analytics::OVER_PLAN_RATIO' ) || 1.2 === SOM_Analytics::OVER_PLAN_RATIO, 'over_plan_ratio_const' );
 $assert( 1.2 === (float) SOM_Analytics::OVER_PLAN_RATIO, 'over_plan_ratio_1_2' );
 
 // Static over-plan helper.
