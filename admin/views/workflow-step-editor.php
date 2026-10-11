@@ -40,6 +40,17 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		: null;
 	$instructions = $step && ! empty( $step->instructions ) ? (string) $step->instructions : '';
 	$command_template = $step && ! empty( $step->command_template ) ? (string) $step->command_template : '';
+	$task_rows = $step && ! empty( $step->task_list_json )
+		? SOM_Step_Tasks::decode_list( $step->task_list_json )
+		: array();
+	if ( empty( $task_rows ) ) {
+		$task_rows = array(
+			array(
+				'id'    => '',
+				'label' => '',
+			),
+		);
+	}
 	$has_legacy_script = $step && SOM_Script_Dispatch::has_script( $step );
 	$prefix   = 'som_step[' . $index . ']';
 	$confirm_choices = SOM_Step_Confirmations::kind_choices();
@@ -64,6 +75,24 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 			</label>
 			<p class="description"><?php echo esc_html__( 'Shown on order detail for every product using this template, unless a product sets its own override. Leave blank for no default.', 'order-machine' ); ?></p>
 			<?php SOM_Step_Instructions::render_editor_help(); ?>
+		</div>
+
+		<div class="som-step-tasks-field" data-som-task-list>
+			<label class="som-step-tasks-label"><?php echo esc_html__( 'Tasks (optional)', 'order-machine' ); ?></label>
+			<p class="description"><?php echo esc_html__( 'Optional checklist for operators. Does not block Mark done.', 'order-machine' ); ?></p>
+			<div class="som-task-rows" data-som-task-rows>
+				<?php foreach ( $task_rows as $t_index => $task ) : ?>
+					<div class="som-task-row" data-som-task-row>
+						<input type="hidden" name="<?php echo esc_attr( $prefix ); ?>[tasks][<?php echo esc_attr( (string) $t_index ); ?>][id]" value="<?php echo esc_attr( (string) ( $task['id'] ?? '' ) ); ?>" />
+						<input type="text" class="regular-text" name="<?php echo esc_attr( $prefix ); ?>[tasks][<?php echo esc_attr( (string) $t_index ); ?>][label]" value="<?php echo esc_attr( (string) ( $task['label'] ?? '' ) ); ?>" maxlength="<?php echo esc_attr( (string) SOM_Step_Tasks::MAX_LABEL_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Task label…', 'order-machine' ); ?>" />
+						<button type="button" class="button-link som-task-remove" aria-label="<?php echo esc_attr__( 'Remove task', 'order-machine' ); ?>">&times;</button>
+					</div>
+				<?php endforeach; ?>
+			</div>
+			<p>
+				<button type="button" class="button-link" data-som-task-add><?php echo esc_html__( 'Add task', 'order-machine' ); ?></button>
+			</p>
+			<p class="description"><?php echo esc_html__( 'Leave empty for no Tasks panel on the order. Products may override the whole list (full replace). Pack uses template tasks only.', 'order-machine' ); ?></p>
 		</div>
 
 		<div class="som-step-gates">
@@ -383,6 +412,14 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 
 <template id="som-step-card-template">
 	<?php $som_render_step( '__INDEX__', null ); ?>
+</template>
+
+<template id="som-task-row-template">
+	<div class="som-task-row" data-som-task-row>
+		<input type="hidden" name="som_step[__STEP__][tasks][__INDEX__][id]" value="" />
+		<input type="text" class="regular-text" name="som_step[__STEP__][tasks][__INDEX__][label]" value="" maxlength="<?php echo esc_attr( (string) SOM_Step_Tasks::MAX_LABEL_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Task label…', 'order-machine' ); ?>" />
+		<button type="button" class="button-link som-task-remove" aria-label="<?php echo esc_attr__( 'Remove task', 'order-machine' ); ?>">&times;</button>
+	</div>
 </template>
 
 <template id="som-goal-row-template">

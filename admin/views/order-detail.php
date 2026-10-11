@@ -454,6 +454,13 @@ if ( ! empty( $order->raw_payload ) ) {
 									$product_id_l,
 									(int) $row->workflow_step_id
 								);
+								$step_tasks = SOM_Step_Tasks::effective(
+									$product_id_l,
+									(int) $row->workflow_step_id
+								);
+								$step_task_checks = SOM_Step_Tasks::decode_checks( $row );
+								$show_tasks       = ! empty( $step_tasks )
+									&& ( $is_current || 'done' === $status );
 								$step_obj = (object) array(
 									'name'                    => $row->step_name,
 									'timer_seconds'           => $row->timer_seconds,
@@ -500,6 +507,34 @@ if ( ! empty( $order->raw_payload ) ) {
 										<div class="som-step-instructions">
 											<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
 											<div class="som-step-instructions-body"><?php echo SOM_Step_Instructions::render_html( $step_instructions ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- kses in render_html. ?></div>
+										</div>
+									<?php endif; ?>
+									<?php if ( $show_tasks ) : ?>
+										<div class="som-tasks-panel">
+											<strong class="som-tasks-label"><?php echo esc_html__( 'Tasks', 'order-machine' ); ?></strong>
+											<p class="description"><?php echo esc_html__( 'Optional — does not block Mark done. Separate from Confirmation checklist.', 'order-machine' ); ?></p>
+											<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-tasks-form">
+												<?php wp_nonce_field( 'som_save_tasks', 'som_order_nonce' ); ?>
+												<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+												<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
+												<input type="hidden" name="som_workflow_step_id" value="<?php echo esc_attr( (string) (int) $row->workflow_step_id ); ?>" />
+												<input type="hidden" name="som_save_tasks" value="1" />
+												<ul class="som-tasks-list">
+													<?php foreach ( $step_tasks as $task ) : ?>
+														<li>
+															<label class="som-task-check">
+																<input type="checkbox" name="som_task_checks[<?php echo esc_attr( $task['id'] ); ?>]" value="1" <?php checked( SOM_Step_Tasks::is_checked( $step_task_checks, $task['id'] ) ); ?> <?php disabled( ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ); ?> />
+																<?php echo esc_html( $task['label'] ); ?>
+															</label>
+														</li>
+													<?php endforeach; ?>
+												</ul>
+												<?php
+												if ( empty( $order->is_cancelled ) && empty( $order->is_complete ) ) {
+													submit_button( __( 'Save tasks', 'order-machine' ), 'secondary', 'submit', false );
+												}
+												?>
+											</form>
 										</div>
 									<?php endif; ?>
 									<?php if ( is_array( $copy_rendered ) ) : ?>
@@ -903,6 +938,11 @@ if ( ! empty( $order->raw_payload ) ) {
 						$primary_product_id ? (int) $primary_product_id : 0,
 						(int) $row->workflow_step_id
 					);
+					// Pack: template tasks only (O13 — no product overrides).
+					$step_tasks       = SOM_Step_Tasks::effective( 0, (int) $row->workflow_step_id );
+					$step_task_checks = SOM_Step_Tasks::decode_checks( $row );
+					$show_tasks       = ! empty( $step_tasks )
+						&& ( $is_current || 'done' === $status );
 					$step_obj   = (object) array(
 						'name'                    => $row->step_name,
 						'timer_seconds'           => $row->timer_seconds,
@@ -963,6 +1003,33 @@ if ( ! empty( $order->raw_payload ) ) {
 							<div class="som-step-instructions">
 								<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
 								<div class="som-step-instructions-body"><?php echo SOM_Step_Instructions::render_html( $step_instructions ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- kses in render_html. ?></div>
+							</div>
+						<?php endif; ?>
+						<?php if ( $show_tasks ) : ?>
+							<div class="som-tasks-panel">
+								<strong class="som-tasks-label"><?php echo esc_html__( 'Tasks', 'order-machine' ); ?></strong>
+								<p class="description"><?php echo esc_html__( 'Optional — does not block Mark done. Separate from Confirmation checklist.', 'order-machine' ); ?></p>
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-tasks-form">
+									<?php wp_nonce_field( 'som_save_tasks', 'som_order_nonce' ); ?>
+									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+									<input type="hidden" name="som_workflow_step_id" value="<?php echo esc_attr( (string) (int) $row->workflow_step_id ); ?>" />
+									<input type="hidden" name="som_save_tasks" value="1" />
+									<ul class="som-tasks-list">
+										<?php foreach ( $step_tasks as $task ) : ?>
+											<li>
+												<label class="som-task-check">
+													<input type="checkbox" name="som_task_checks[<?php echo esc_attr( $task['id'] ); ?>]" value="1" <?php checked( SOM_Step_Tasks::is_checked( $step_task_checks, $task['id'] ) ); ?> <?php disabled( ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ); ?> />
+													<?php echo esc_html( $task['label'] ); ?>
+												</label>
+											</li>
+										<?php endforeach; ?>
+									</ul>
+									<?php
+									if ( empty( $order->is_cancelled ) && empty( $order->is_complete ) ) {
+										submit_button( __( 'Save tasks', 'order-machine' ), 'secondary', 'submit', false );
+									}
+									?>
+								</form>
 							</div>
 						<?php endif; ?>
 						<?php if ( $is_current && $timer_ready ) : ?>

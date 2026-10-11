@@ -276,6 +276,7 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 			: 0;
 		$instruction_steps     = $workflow_id_for_steps > 0 ? SOM_Workflows::get_steps( $workflow_id_for_steps ) : array();
 		$instruction_overrides = $product ? SOM_Step_Instructions::get_overrides_for_product( (int) $product->id ) : array();
+		$task_overrides        = $product ? SOM_Step_Tasks::get_overrides_for_product( (int) $product->id ) : array();
 		?>
 		<?php if ( ! empty( $instruction_steps ) ) : ?>
 			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
@@ -318,9 +319,72 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+
+			<h2><?php echo esc_html__( 'Step tasks', 'order-machine' ); ?></h2>
+			<p class="description">
+				<?php echo esc_html__( 'Optional task-list overrides for this product (make template). Clearing all rows falls back to the workflow default. Override replaces the whole list (not merge). Does not block Mark done. Separate from Confirmation checklist.', 'order-machine' ); ?>
+			</p>
+			<table class="widefat striped som-step-tasks-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Step', 'order-machine' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Task list override', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $instruction_steps as $istep ) : ?>
+						<?php
+						$sid           = (int) $istep->id;
+						$default_tasks = ! empty( $istep->task_list_json )
+							? SOM_Step_Tasks::decode_list( $istep->task_list_json )
+							: array();
+						$override_tasks = isset( $task_overrides[ $sid ] ) ? $task_overrides[ $sid ] : array();
+						$edit_tasks     = ! empty( $override_tasks ) ? $override_tasks : array(
+							array(
+								'id'    => '',
+								'label' => '',
+							),
+						);
+						?>
+						<tr>
+							<td>
+								<strong><?php echo esc_html( (string) $istep->name ); ?></strong>
+								<?php if ( ! empty( $default_tasks ) ) : ?>
+									<ul class="description som-step-default-tasks">
+										<li><strong><?php echo esc_html__( 'Template default:', 'order-machine' ); ?></strong></li>
+										<?php foreach ( $default_tasks as $dt ) : ?>
+											<li><?php echo esc_html( (string) $dt['label'] ); ?></li>
+										<?php endforeach; ?>
+									</ul>
+								<?php else : ?>
+									<p class="description som-muted"><?php echo esc_html__( 'No workflow default tasks.', 'order-machine' ); ?></p>
+								<?php endif; ?>
+							</td>
+							<td>
+								<div class="som-step-tasks-field" data-som-task-list data-som-task-name-prefix="som_step_tasks[<?php echo esc_attr( (string) $sid ); ?>]">
+									<div class="som-task-rows" data-som-task-rows>
+										<?php foreach ( $edit_tasks as $t_index => $task ) : ?>
+											<div class="som-task-row" data-som-task-row>
+												<input type="hidden" name="som_step_tasks[<?php echo esc_attr( (string) $sid ); ?>][<?php echo esc_attr( (string) $t_index ); ?>][id]" value="<?php echo esc_attr( (string) ( $task['id'] ?? '' ) ); ?>" />
+												<input type="text" class="regular-text" name="som_step_tasks[<?php echo esc_attr( (string) $sid ); ?>][<?php echo esc_attr( (string) $t_index ); ?>][label]" value="<?php echo esc_attr( (string) ( $task['label'] ?? '' ) ); ?>" maxlength="<?php echo esc_attr( (string) SOM_Step_Tasks::MAX_LABEL_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Override task…', 'order-machine' ); ?>" />
+												<button type="button" class="button-link som-task-remove" aria-label="<?php echo esc_attr__( 'Remove task', 'order-machine' ); ?>">&times;</button>
+											</div>
+										<?php endforeach; ?>
+									</div>
+									<p>
+										<button type="button" class="button-link" data-som-task-add><?php echo esc_html__( 'Add task', 'order-machine' ); ?></button>
+									</p>
+								</div>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 		<?php elseif ( $product && empty( $product->workflow_template_id ) ) : ?>
 			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
 			<p class="description"><?php echo esc_html__( 'Assign a workflow template to set per-step instruction overrides.', 'order-machine' ); ?></p>
+			<h2><?php echo esc_html__( 'Step tasks', 'order-machine' ); ?></h2>
+			<p class="description"><?php echo esc_html__( 'Assign a make workflow template to set per-step task list overrides.', 'order-machine' ); ?></p>
 		<?php endif; ?>
 
 		<h2><?php echo esc_html__( 'Material recipe', 'order-machine' ); ?></h2>

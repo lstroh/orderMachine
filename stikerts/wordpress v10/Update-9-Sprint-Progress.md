@@ -10,8 +10,8 @@
 |---|---|---|---|
 | UP9-S1 | eBay structured fields + Copy command step | Done on main | Schema 1.21.0; #23 |
 | UP9-S2 | Remove local/api/n8n + docs/seed | Done on main | #24 |
-| UP9-S3 | Markdown instructions + styling | Code complete | This PR |
-| UP9-S4 | Optional step task lists | Not started | |
+| UP9-S3 | Markdown instructions + styling | Done on main | #25 |
+| UP9-S4 | Optional step task lists | Code complete | This PR — **Package 9 complete** |
 
 ---
 
@@ -109,7 +109,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 ## UP9-S3 — Markdown instructions + styling
 
-- **Status:** Code complete (this PR)
+- **Status:** Done on `main` (#25)
 - **Schema:** unchanged (still TEXT; no bump)
 - **Plugin:** unchanged (release bump optional later → ~0.41.0)
 
@@ -148,4 +148,46 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s3-smoke.php
+```
+
+---
+
+## UP9-S4 — Optional step task lists
+
+- **Status:** Code complete (this PR) — **Package 9 sprints complete**
+- **Schema:** 1.22.0 (`workflow_steps.task_list_json`; `product_step_tasks`; `task_checks_json` on make + pack progress)
+- **Plugin:** unchanged (release bump optional later → ~0.42.0)
+
+### Delivered
+
+- `SOM_Step_Tasks` — decode/encode, sanitize, effective (override → template → none), product sync (full replace), tick save
+- Schema + `SOM_DB::upgrade_step_task_list_columns()`
+- Workflow editor: repeatable task rows + help (“Optional checklist… Does not block Mark done.”)
+- Product edit: task list override per make-template step (clear → fall back); pack has no product overrides (O13)
+- Order detail make + pack: **Tasks** panel with checkboxes on current + completed steps that have a list; form save persists ticks
+- `can_mark_done` unchanged — tasks never consulted (O11)
+- Confirmation checklist gating unchanged
+- Docs: USER-GUIDE / USER-REFERENCE / FEATURES — Tasks vs Confirmation checklist
+- Smoke: `tests/sprint-up9-s4-smoke.php`
+
+### Soft defaults applied
+
+- O11: always optional — no require-all flag
+- O12: product override = full replace (not merge)
+- O13: pack uses template tasks only
+- Tasks not embedded in Markdown instructions
+- Confirmation checklist remains the hard gate
+
+### Explicitly deferred
+
+- Package 10 (timing)
+- Package 11 (post-ship)
+- Require-all tasks flag
+- Pack product task overrides
+- Merging override with default
+
+### Verification
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s4-smoke.php
 ```

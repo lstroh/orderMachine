@@ -492,6 +492,24 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_save_tasks'] ) ) {
+			check_admin_referer( 'som_save_tasks', 'som_order_nonce' );
+			$order_id         = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$order_item_id    = isset( $_POST['som_order_item_id'] ) ? (int) $_POST['som_order_item_id'] : 0;
+			$workflow_step_id = isset( $_POST['som_workflow_step_id'] ) ? (int) $_POST['som_workflow_step_id'] : 0;
+			$input            = isset( $_POST['som_task_checks'] ) && is_array( $_POST['som_task_checks'] )
+				? wp_unslash( $_POST['som_task_checks'] )
+				: array();
+			$result           = SOM_Step_Tasks::save_for_order( $order_id, $workflow_step_id, $input, $order_item_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Tasks saved.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_save_line_fields'] ) ) {
 			check_admin_referer( 'som_save_line_fields', 'som_order_nonce' );
 			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
@@ -1660,6 +1678,16 @@ class SOM_Admin_Menu {
 		$instr_result = SOM_Step_Instructions::sync_for_product( $product_id, $template_id, $instr_rows );
 		if ( is_wp_error( $instr_result ) ) {
 			self::flash_notice( $instr_result->get_error_message(), 'error', 'som_instructions_error' );
+			wp_safe_redirect( SOM_Products::detail_url( $product_id ) );
+			exit;
+		}
+
+		$task_rows   = isset( $_POST['som_step_tasks'] ) && is_array( $_POST['som_step_tasks'] )
+			? wp_unslash( $_POST['som_step_tasks'] )
+			: array();
+		$task_result = SOM_Step_Tasks::sync_for_product( $product_id, $template_id, $task_rows );
+		if ( is_wp_error( $task_result ) ) {
+			self::flash_notice( $task_result->get_error_message(), 'error', 'som_tasks_error' );
 			wp_safe_redirect( SOM_Products::detail_url( $product_id ) );
 			exit;
 		}

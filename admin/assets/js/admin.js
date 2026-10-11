@@ -239,6 +239,10 @@
 						if ( idField ) {
 							idField.value = '0';
 						}
+						var taskList = card.querySelector( '[data-som-task-list]' );
+						if ( taskList ) {
+							resetTaskList( taskList );
+						}
 						syncBatchWarning( card );
 						syncConfirmWarning( card );
 						syncCopyWarning( card );
@@ -392,6 +396,7 @@
 					}
 					list.appendChild( card );
 					bindCard( card );
+					bindTaskLists( card );
 					refreshOrder();
 				}
 			} );
@@ -415,6 +420,98 @@
 				}
 			} );
 		}
+	}
+
+	function reindexTaskRows( container ) {
+		var rows = container.querySelectorAll( '[data-som-task-row]' );
+		rows.forEach( function ( row, i ) {
+			row.querySelectorAll( '[name]' ).forEach( function ( field ) {
+				field.name = field.name.replace( /\[tasks\]\[[^\]]+\]/, '[tasks][' + i + ']' );
+				// Product override: som_step_tasks[STEP][i][…]
+				field.name = field.name.replace( /(som_step_tasks\[[^\]]+\])\[[^\]]+\]/, '$1[' + i + ']' );
+			} );
+		} );
+	}
+
+	function resetTaskList( listEl ) {
+		var rowsWrap = listEl.querySelector( '[data-som-task-rows]' );
+		if ( ! rowsWrap ) {
+			return;
+		}
+		var rows = rowsWrap.querySelectorAll( '[data-som-task-row]' );
+		rows.forEach( function ( row, i ) {
+			if ( i === 0 ) {
+				row.querySelectorAll( 'input' ).forEach( function ( field ) {
+					field.value = '';
+				} );
+			} else {
+				row.remove();
+			}
+		} );
+		reindexTaskRows( rowsWrap );
+	}
+
+	function bindTaskLists( scope ) {
+		var lists = ( scope || document ).querySelectorAll( '[data-som-task-list]' );
+		lists.forEach( function ( listEl ) {
+			if ( listEl.dataset.taskBound ) {
+				return;
+			}
+			listEl.dataset.taskBound = '1';
+
+			var rowsWrap = listEl.querySelector( '[data-som-task-rows]' );
+			var addBtn = listEl.querySelector( '[data-som-task-add]' );
+			if ( ! rowsWrap ) {
+				return;
+			}
+
+			function bindRemove( row ) {
+				var btn = row.querySelector( '.som-task-remove' );
+				if ( ! btn || btn.dataset.bound ) {
+					return;
+				}
+				btn.dataset.bound = '1';
+				btn.addEventListener( 'click', function () {
+					var all = rowsWrap.querySelectorAll( '[data-som-task-row]' );
+					if ( all.length <= 1 ) {
+						row.querySelectorAll( 'input' ).forEach( function ( field ) {
+							field.value = '';
+						} );
+						return;
+					}
+					row.remove();
+					reindexTaskRows( rowsWrap );
+				} );
+			}
+
+			rowsWrap.querySelectorAll( '[data-som-task-row]' ).forEach( bindRemove );
+
+			if ( addBtn ) {
+				addBtn.addEventListener( 'click', function () {
+					var first = rowsWrap.querySelector( '[data-som-task-row]' );
+					var clone;
+					if ( first ) {
+						clone = first.cloneNode( true );
+					} else {
+						return;
+					}
+					clone.querySelectorAll( 'input' ).forEach( function ( field ) {
+						field.value = '';
+					} );
+					var removeBtn = clone.querySelector( '.som-task-remove' );
+					if ( removeBtn ) {
+						delete removeBtn.dataset.bound;
+					}
+					rowsWrap.appendChild( clone );
+					reindexTaskRows( rowsWrap );
+					bindRemove( clone );
+				} );
+			}
+		} );
+	}
+
+	function initStepTaskLists() {
+		bindTaskLists( document );
 	}
 
 	function initListingEditor() {
@@ -486,6 +583,7 @@
 	initPoLineEditor();
 	initPoPreviewImpact();
 	initWorkflowEditor();
+	initStepTaskLists();
 	initMarkdownPreview();
 	initListingEditor();
 	initBatchesPage();
