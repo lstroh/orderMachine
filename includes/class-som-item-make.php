@@ -620,6 +620,55 @@ class SOM_Item_Make {
 	}
 
 	/**
+	 * UP9-S2: convert leftover make waiting_script rows to in_progress (no dispatch).
+	 *
+	 * @return int Number recovered.
+	 */
+	public static function recover_waiting_script() {
+		global $wpdb;
+
+		$progress_t = SOM_DB::table( 'order_item_step_progress' );
+		$orders_t   = SOM_DB::table( 'orders' );
+		$now        = current_time( 'mysql', true );
+		$message    = __( 'Script steps are removed. Use Mark done (or Copy command).', 'order-machine' );
+
+		$ids = $wpdb->get_col(
+			"SELECT p.id
+			FROM {$progress_t} p
+			INNER JOIN {$orders_t} o ON o.id = p.order_id
+			WHERE p.status = 'waiting_script'
+				AND o.is_complete = 0
+				AND o.is_cancelled = 0"
+		);
+		if ( empty( $ids ) || ! is_array( $ids ) ) {
+			return 0;
+		}
+
+		$recovered = 0;
+		foreach ( $ids as $id ) {
+			$ok = $wpdb->update(
+				$progress_t,
+				array(
+					'status'     => 'in_progress',
+					'last_error' => $message,
+					'updated_at' => $now,
+				),
+				array(
+					'id'     => (int) $id,
+					'status' => 'waiting_script',
+				),
+				array( '%s', '%s', '%s' ),
+				array( '%d', '%s' )
+			);
+			if ( false !== $ok && (int) $ok > 0 ) {
+				++$recovered;
+			}
+		}
+
+		return $recovered;
+	}
+
+	/**
 	 * Unassigned / flag reason for make on an order (multi-line aware).
 	 *
 	 * @param object $order Order from SOM_Orders::get().

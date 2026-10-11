@@ -583,7 +583,7 @@ if ( ! empty( $order->raw_payload ) ) {
 											<span class="description"><?php echo esc_html__( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ); ?></span>
 										</form>
 									<?php endif; ?>
-									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && 'waiting_script' !== $status ) : ?>
+									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) ) : ?>
 										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
 											<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
 											<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
@@ -1193,7 +1193,7 @@ if ( ! empty( $order->raw_payload ) ) {
 									<span class="description"><?php echo esc_html__( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ); ?></span>
 								</form>
 							<?php endif; ?>
-							<?php if ( 'error' !== $status && 'waiting_script' !== $status && 'waiting_batch' !== $status ) : ?>
+							<?php if ( 'error' !== $status && 'waiting_batch' !== $status ) : ?>
 								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form" data-som-advance-step data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>">
 									<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
 									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />

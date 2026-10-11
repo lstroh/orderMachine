@@ -301,17 +301,7 @@ class SOM_Workflow_Engine {
 		);
 		if ( is_array( $waiting ) ) {
 			foreach ( $waiting as $row ) {
-				// Skip rows parked for async callback (timer_ends_at far future sentinel unused —
-				// async wait uses last_error prefix).
-				$full = $wpdb->get_row(
-					$wpdb->prepare(
-						"SELECT * FROM {$progress_t} WHERE id = %d LIMIT 1",
-						(int) $row->id
-					)
-				);
-				if ( $full && is_string( $full->last_error ) && 0 === strpos( $full->last_error, 'waiting_callback:' ) ) {
-					continue;
-				}
+				// UP9-S2: open all waiting_script rows (including former async callbacks).
 				self::attempt_script_by_progress_id( (int) $row->id );
 				++$scripts;
 			}
@@ -319,6 +309,7 @@ class SOM_Workflow_Engine {
 
 		$batches = SOM_Batches::process_due_retries();
 		$unlocked += SOM_Item_Make::tick_unlock_timers();
+		$unlocked += SOM_Item_Make::recover_waiting_script();
 
 		return array(
 			'unlocked' => $unlocked,
@@ -405,7 +396,9 @@ class SOM_Workflow_Engine {
 			return false;
 		}
 
-		if ( 'in_progress' !== (string) $progress->status ) {
+		$status = (string) $progress->status;
+		// UP9-S2: leftover waiting_script is treated as manual in_progress (scripts removed).
+		if ( 'in_progress' !== $status && 'waiting_script' !== $status ) {
 			return false;
 		}
 
@@ -473,7 +466,8 @@ class SOM_Workflow_Engine {
 			$gates[] = 'timer';
 		}
 
-		if ( in_array( $status, array( 'waiting_script', 'error' ), true ) ) {
+		// UP9-S2: waiting_script is no longer a blocking script gate (ignored / Mark done).
+		if ( 'error' === $status ) {
 			$gates[] = 'script';
 		}
 
@@ -686,18 +680,9 @@ class SOM_Workflow_Engine {
 	 * @return bool
 	 */
 	public static function can_retry_script( $progress, $step ) {
-		if ( ! $progress || ! $step || ! SOM_Script_Dispatch::has_script( $step ) ) {
-			return false;
-		}
-		$status = (string) $progress->status;
-		if ( 'error' === $status ) {
-			return true;
-		}
-		if ( 'waiting_script' !== $status ) {
-			return false;
-		}
-		// Allow retry after a failed attempt or while waiting on async callback.
-		return ! empty( $progress->last_error ) || (int) $progress->retry_count > 0;
+		unset( $progress, $step );
+		// UP9-S2: script retry UI removed — leftover waiting_script uses Mark done / Unblock.
+		return false;
 	}
 
 	/**
