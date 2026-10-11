@@ -173,6 +173,60 @@ class SOM_Batches {
 	}
 
 	/**
+	 * Remove an order from a collecting or ready batch (UP8-S2 Unblock / O9).
+	 * Leaves processing/error batches alone; no-op if not a member.
+	 *
+	 * @param int $order_id Order PK.
+	 * @return true|WP_Error
+	 */
+	public static function remove_order_from_open_batch( $order_id ) {
+		global $wpdb;
+
+		$order_id = (int) $order_id;
+		if ( $order_id < 1 ) {
+			return true;
+		}
+
+		$batches_t = SOM_DB::table( 'step_batches' );
+		$items_t   = SOM_DB::table( 'step_batch_items' );
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT i.id AS item_row_id, i.batch_id, b.status AS batch_status
+				FROM {$items_t} i
+				INNER JOIN {$batches_t} b ON b.id = i.batch_id
+				WHERE i.order_id = %d
+					AND b.status IN ('collecting', 'ready')
+				ORDER BY FIELD(b.status, 'ready', 'collecting'), b.id DESC
+				LIMIT 1",
+				$order_id
+			)
+		);
+		if ( ! $row ) {
+			return true;
+		}
+
+		$deleted = $wpdb->delete(
+			$items_t,
+			array( 'id' => (int) $row->item_row_id ),
+			array( '%d' )
+		);
+		if ( false === $deleted ) {
+			return new WP_Error( 'som_batch_remove', __( 'Could not remove order from batch.', 'order-machine' ) );
+		}
+
+		$wpdb->update(
+			$batches_t,
+			array( 'updated_at' => current_time( 'mysql', true ) ),
+			array( 'id' => (int) $row->batch_id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+
+		return true;
+	}
+
+	/**
 	 * Find the most relevant open batch containing an order (for order detail).
 	 *
 	 * @param int $order_id Order PK.

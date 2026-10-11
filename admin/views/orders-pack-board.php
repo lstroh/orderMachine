@@ -203,9 +203,25 @@ $pack_tpl    = SOM_Pack::default_template_id();
 										<a href="<?php echo esc_url( $detail_url ); ?>"><code><?php echo esc_html( (string) $order->external_order_id ); ?></code></a>
 									</div>
 									<div class="som-board-card-buyer"><?php echo esc_html( (string) $order->buyer_name ); ?></div>
-									<?php if ( ! empty( $order->current_step_name ) && SOM_Pack::BOARD_WAITING_MAKE !== $col_key && SOM_Pack::BOARD_HELD !== $col_key ) : ?>
+									<?php if ( ( ! empty( $order->current_step_name ) && SOM_Pack::BOARD_WAITING_MAKE !== $col_key && SOM_Pack::BOARD_HELD !== $col_key )
+										|| ( ! empty( $order->tray_numbers ) && is_array( $order->tray_numbers ) ) ) : ?>
 										<div class="som-board-card-meta">
-											<span class="som-badge som-badge-open" data-som-card-step><?php echo esc_html( (string) $order->current_step_name ); ?></span>
+											<?php if ( ! empty( $order->current_step_name ) && SOM_Pack::BOARD_WAITING_MAKE !== $col_key && SOM_Pack::BOARD_HELD !== $col_key ) : ?>
+												<span class="som-badge som-badge-open" data-som-card-step><?php echo esc_html( (string) $order->current_step_name ); ?></span>
+											<?php endif; ?>
+											<?php if ( ! empty( $order->tray_numbers ) && is_array( $order->tray_numbers ) ) : ?>
+												<?php foreach ( $order->tray_numbers as $tray_num ) : ?>
+													<span class="som-badge som-badge-tray" title="<?php echo esc_attr__( 'Tray', 'order-machine' ); ?>">
+														<?php
+														printf(
+															/* translators: %d: tray number */
+															esc_html__( 'Tray %d', 'order-machine' ),
+															(int) $tray_num
+														);
+														?>
+													</span>
+												<?php endforeach; ?>
+											<?php endif; ?>
 										</div>
 									<?php endif; ?>
 									<div class="som-board-card-batch" data-som-card-batch hidden></div>

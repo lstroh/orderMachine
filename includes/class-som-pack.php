@@ -764,6 +764,8 @@ class SOM_Pack {
 			$cards[] = $card;
 		}
 
+		SOM_Trays::attach_board_tray_numbers( $cards );
+
 		return array(
 			'orders' => $cards,
 			'total'  => $total,

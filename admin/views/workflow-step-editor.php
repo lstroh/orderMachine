@@ -308,7 +308,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 						<?php echo esc_html__( 'Uses trays', 'order-machine' ); ?>
 					</label>
 					<p class="description">
-						<?php echo esc_html__( 'When any make or Pack template on an order uses trays, operators assign numbered trays to that order (shared by all make lines and pack). Require-on-advance lands in a later sprint.', 'order-machine' ); ?>
+						<?php echo esc_html__( 'When any make or Pack template on an order uses trays, operators must assign numbered trays to that order before Mark done / advance (shared by all make lines and pack).', 'order-machine' ); ?>
 					</p>
 				</td>
 			</tr>

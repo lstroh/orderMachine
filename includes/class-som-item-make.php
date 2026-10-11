@@ -390,11 +390,20 @@ class SOM_Item_Make {
 			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
 		}
 
-		if ( SOM_Step_Confirmations::has_confirmation( $step )
+		$unblocked = SOM_Workflow_Engine::has_manual_unblock( $current );
+
+		if ( ! $unblocked && SOM_Step_Confirmations::has_confirmation( $step )
 			&& ! SOM_Step_Confirmations::progress_is_complete( $current, $step, $order ) ) {
 			return new WP_Error(
 				'som_confirmation_required',
 				__( 'Complete the confirmation checklist before marking this step done.', 'order-machine' )
+			);
+		}
+
+		if ( ! $unblocked && ! SOM_Trays::trays_gate_ok( $order ) ) {
+			return new WP_Error(
+				'som_trays_required',
+				__( 'Assign at least one tray to this order before marking the step done.', 'order-machine' )
 			);
 		}
 

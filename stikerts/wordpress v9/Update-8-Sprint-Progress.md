@@ -8,15 +8,15 @@
 
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
-| UP8-S1 | Schema, site max, order-level assign/release | Code complete | Schema 1.19.0; this PR |
-| UP8-S2 | Trays require/complete + Unblock step + boards | Not started | |
+| UP8-S1 | Schema, site max, order-level assign/release | Code complete | Schema 1.19.0; #20 |
+| UP8-S2 | Trays require/complete + Unblock step + boards | Code complete | Schema 1.20.0; this PR |
 | UP8-S3 | Docs / polish | Not started | |
 
 ---
 
 ## UP8-S1 — Schema, site max, order-level assign/release
 
-- **Status:** Code complete (this PR)
+- **Status:** Code complete (#20)
 - **Schema:** 1.19.0 (`workflow_templates.uses_trays`, `wp_som_tray_assignments`, option `som_tray_max`)
 - **Plugin:** unchanged (release bump optional later → ~0.36.0)
 
@@ -50,4 +50,44 @@
 
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s1-smoke.php
+```
+
+---
+
+## UP8-S2 — Trays require/complete + Unblock step (all gates) + boards
+
+- **Status:** Code complete (this PR)
+- **Schema:** 1.20.0 (`manual_unblock_at` / `manual_unblock_by` / `manual_unblock_gates` on `order_item_step_progress` + `order_step_progress`)
+- **Plugin:** unchanged (release bump optional later → ~0.37.0)
+
+### Delivered
+
+- **Required?** Order requires trays if any sellable line’s make template or bound pack template has `uses_trays`
+- **First-step / advance:** order-detail prompt + trays panel highlight when required and none held; `can_mark_done` / `mark_done` block until ≥1 tray (O1)
+- **Soft keep ≥1 (O2):** manual release cannot free the last held tray while required and order open
+- **Auto-release:** `som_order_completed` → release all held trays (`release_reason = order_complete`), including Internal Produce N
+- **Unblock step (order detail only — O10):** bypasses timer, checklist, script/error, batch (O9 remove from collecting/ready), ship/package/hold (O8 leave hold flag), trays-required; enables Mark done only (no auto-complete); audit columns + order note (O7); audit left after Mark done
+- **Boards:** tray number badges on Make + Pack board cards
+- Smoke: `tests/sprint-up8-s2-smoke.php`
+
+### Soft defaults applied
+
+- O1/O2/O6–O10 as settled in the sprint plan
+- No trays overview page (O3 → S3)
+- No auto Mark done on unblock
+- Minimal UI copy only (no USER-GUIDE / REFERENCE polish — S3)
+
+### Explicitly deferred to UP8-S3
+
+- Docs (USER-GUIDE / REFERENCE / FEATURES)
+- Seed leave `uses_trays` off on seed templates (already the case; confirm in S3)
+- Optional board Unblock control
+
+### Verification
+
+- PHP lint on changed files
+- wp-env smoke (when Docker available):
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
 ```

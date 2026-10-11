@@ -337,11 +337,25 @@ if ( ! empty( $order->raw_payload ) ) {
 		<?php endif; ?>
 	</section>
 
+	<?php
+	$trays_required     = SOM_Trays::order_requires_trays( $order );
+	$trays_held_numbers = SOM_Trays::held_numbers_for_order( (int) $order->id );
+	$trays_need_assign  = $trays_required && empty( $trays_held_numbers )
+		&& empty( $order->is_complete ) && empty( $order->is_cancelled );
+	?>
 	<section class="som-panel som-panel-make">
 		<h2><?php echo esc_html__( 'Make', 'order-machine' ); ?></h2>
 		<p class="description">
 			<a href="<?php echo esc_url( SOM_Orders::board_url() ); ?>"><?php echo esc_html__( 'Open Make Board', 'order-machine' ); ?></a>
 		</p>
+		<?php if ( $trays_need_assign ) : ?>
+			<div class="notice notice-warning inline som-trays-required-notice">
+				<p>
+					<?php echo esc_html__( 'Trays are required for this order. Assign at least one tray before Mark done / advance.', 'order-machine' ); ?>
+					<a href="#som-trays"><?php echo esc_html__( 'Assign trays', 'order-machine' ); ?></a>
+				</p>
+			</div>
+		<?php endif; ?>
 		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
 			<p class="description"><?php echo esc_html__( 'Cancelled — make actions are blocked.', 'order-machine' ); ?></p>
 		<?php elseif ( empty( $order->make_lines ) ) : ?>
@@ -409,6 +423,8 @@ if ( ! empty( $order->raw_payload ) ) {
 									'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
 								);
 								$can_done    = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
+								$can_unblock = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete )
+									&& SOM_Workflow_Engine::can_unblock_step( $row, $step_obj, $order );
 								$timer_ends  = ! empty( $row->timer_ends_at ) ? (string) $row->timer_ends_at : '';
 								$ends_ts     = $timer_ends ? strtotime( $timer_ends . ' UTC' ) : 0;
 								if ( ! $ends_ts && $timer_ends ) {
@@ -428,6 +444,9 @@ if ( ! empty( $order->raw_payload ) ) {
 										<span class="som-badge som-badge-step-<?php echo esc_attr( preg_replace( '/[^a-z0-9_]/', '', $badge_status ) ); ?>">
 											<?php echo esc_html( SOM_Orders::progress_status_label( $badge_status ) ); ?>
 										</span>
+										<?php if ( $is_current && SOM_Workflow_Engine::has_manual_unblock( $row ) ) : ?>
+											<span class="som-badge som-badge-unblocked"><?php echo esc_html__( 'Unblocked', 'order-machine' ); ?></span>
+										<?php endif; ?>
 									</div>
 									<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
 										<div class="som-step-instructions">
@@ -482,6 +501,23 @@ if ( ! empty( $order->raw_payload ) ) {
 											</form>
 										</div>
 									<?php endif; ?>
+									<?php if ( $can_unblock ) : ?>
+										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-unblock-step-form" onsubmit="return confirm('<?php echo esc_js( __( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ) ); ?>');">
+											<?php wp_nonce_field( 'som_unblock_step', 'som_order_nonce' ); ?>
+											<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+											<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
+											<input type="hidden" name="som_unblock_step" value="1" />
+											<?php
+											submit_button(
+												__( 'Unblock step', 'order-machine' ),
+												'secondary',
+												'submit',
+												false
+											);
+											?>
+											<span class="description"><?php echo esc_html__( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ); ?></span>
+										</form>
+									<?php endif; ?>
 									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && 'waiting_script' !== $status ) : ?>
 										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
 											<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
@@ -512,8 +548,12 @@ if ( ! empty( $order->raw_payload ) ) {
 	$held_trays  = SOM_Trays::held_for_order( (int) $order->id );
 	$free_trays  = SOM_Trays::free_tray_numbers();
 	$tray_max    = SOM_Trays::get_max();
+	$trays_panel_class = 'som-panel som-panel-trays';
+	if ( $trays_need_assign ) {
+		$trays_panel_class .= ' is-required';
+	}
 	?>
-	<section class="som-panel som-panel-trays" id="som-trays">
+	<section class="<?php echo esc_attr( $trays_panel_class ); ?>" id="som-trays">
 		<h2><?php echo esc_html__( 'Trays', 'order-machine' ); ?></h2>
 		<p class="description">
 			<?php
@@ -524,6 +564,17 @@ if ( ! empty( $order->raw_payload ) ) {
 			);
 			?>
 		</p>
+		<?php if ( $trays_required && empty( $order->is_complete ) ) : ?>
+			<p class="description">
+				<strong><?php echo esc_html__( 'Required for this order.', 'order-machine' ); ?></strong>
+				<?php echo esc_html__( 'Keep at least one tray held while the order is open.', 'order-machine' ); ?>
+			</p>
+		<?php endif; ?>
+		<?php if ( $trays_need_assign ) : ?>
+			<div class="notice notice-warning inline som-trays-required-notice">
+				<p><?php echo esc_html__( 'Assign at least one free tray below before advancing Make or Pack steps.', 'order-machine' ); ?></p>
+			</div>
+		<?php endif; ?>
 
 		<?php if ( ! empty( $held_trays ) ) : ?>
 			<form method="post" action="" class="som-trays-release-form">
@@ -605,6 +656,14 @@ if ( ! empty( $order->raw_payload ) ) {
 		<p class="description">
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=som-pack-board' ) ); ?>"><?php echo esc_html__( 'Open Pack Board', 'order-machine' ); ?></a>
 		</p>
+		<?php if ( $trays_need_assign ) : ?>
+			<div class="notice notice-warning inline som-trays-required-notice">
+				<p>
+					<?php echo esc_html__( 'Trays are required for this order. Assign at least one tray before Mark done / advance.', 'order-machine' ); ?>
+					<a href="#som-trays"><?php echo esc_html__( 'Assign trays', 'order-machine' ); ?></a>
+				</p>
+			</div>
+		<?php endif; ?>
 
 		<?php if ( empty( $order->pack_workflow_template_id ) ) : ?>
 			<div class="notice notice-warning inline">
@@ -787,10 +846,12 @@ if ( ! empty( $order->raw_payload ) ) {
 						'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
 						'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
 					);
-					$can_done   = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
-					$can_retry  = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_retry_script( $row, $step_obj );
-					$timer_ends = ! empty( $row->timer_ends_at ) ? (string) $row->timer_ends_at : '';
-					$ends_ts    = $timer_ends ? strtotime( $timer_ends . ' UTC' ) : 0;
+					$can_done    = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
+					$can_unblock = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete )
+						&& SOM_Workflow_Engine::can_unblock_step( $row, $step_obj, $order );
+					$can_retry   = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_retry_script( $row, $step_obj );
+					$timer_ends  = ! empty( $row->timer_ends_at ) ? (string) $row->timer_ends_at : '';
+					$ends_ts     = $timer_ends ? strtotime( $timer_ends . ' UTC' ) : 0;
 					if ( ! $ends_ts && $timer_ends ) {
 						$ends_ts = strtotime( $timer_ends );
 					}
@@ -828,6 +889,9 @@ if ( ! empty( $order->raw_payload ) ) {
 							</span>
 							<?php if ( ! empty( $row->confirmation_kind ) ) : ?>
 								<span class="som-badge som-badge-confirm"><?php echo esc_html__( 'Confirm', 'order-machine' ); ?></span>
+							<?php endif; ?>
+							<?php if ( $is_current && SOM_Workflow_Engine::has_manual_unblock( $row ) ) : ?>
+								<span class="som-badge som-badge-unblocked"><?php echo esc_html__( 'Unblocked', 'order-machine' ); ?></span>
 							<?php endif; ?>
 						</div>
 						<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
@@ -1048,6 +1112,22 @@ if ( ! empty( $order->raw_payload ) ) {
 									?>
 								</form>
 							<?php endif; ?>
+							<?php if ( $can_unblock ) : ?>
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-unblock-step-form" onsubmit="return confirm('<?php echo esc_js( __( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ) ); ?>');">
+									<?php wp_nonce_field( 'som_unblock_step', 'som_order_nonce' ); ?>
+									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+									<input type="hidden" name="som_unblock_step" value="1" />
+									<?php
+									submit_button(
+										__( 'Unblock step', 'order-machine' ),
+										'secondary',
+										'submit',
+										false
+									);
+									?>
+									<span class="description"><?php echo esc_html__( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ); ?></span>
+								</form>
+							<?php endif; ?>
 							<?php if ( 'error' !== $status && 'waiting_script' !== $status && 'waiting_batch' !== $status ) : ?>
 								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form" data-som-advance-step data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>">
 									<?php wp_nonce_field( 'som_mark_step_done', 'som_order_nonce' ); ?>
@@ -1063,7 +1143,7 @@ if ( ! empty( $order->raw_payload ) ) {
 									);
 									?>
 								</form>
-							<?php elseif ( 'waiting_batch' === $status ) : ?>
+							<?php elseif ( 'waiting_batch' === $status && ! $can_unblock ) : ?>
 								<p class="description"><?php echo esc_html__( 'This step advances when the batch is released / marked done — not per order.', 'order-machine' ); ?></p>
 							<?php endif; ?>
 						<?php endif; ?>
