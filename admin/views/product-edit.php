@@ -17,6 +17,11 @@ if ( ! current_user_can( 'manage_options' ) ) {
 $is_new             = ! empty( $is_new );
 $product            = isset( $product ) ? $product : null;
 $workflow_templates = SOM_Products::list_workflow_templates( $product ? (int) $product->workflow_template_id : 0 );
+$post_ship_templates = SOM_Products::list_post_ship_templates(
+	$product && ! empty( $product->post_ship_workflow_template_id )
+		? (int) $product->post_ship_workflow_template_id
+		: 0
+);
 $material_options   = SOM_Materials::list_active();
 $recipe_rows        = ( $product && ! empty( $product->recipe ) ) ? $product->recipe : array();
 $listings           = ( $product && ! empty( $product->listings ) ) ? $product->listings : array();
@@ -159,6 +164,27 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 					<?php endif; ?>
 				</td>
 			</tr>
+			<?php if ( ! $is_internal ) : ?>
+			<tr>
+				<th scope="row"><label for="som_post_ship_workflow_template_id"><?php echo esc_html__( 'Post-ship workflow override', 'order-machine' ); ?></label></th>
+				<td>
+					<select id="som_post_ship_workflow_template_id" name="som_post_ship_workflow_template_id">
+						<option value=""><?php echo esc_html__( '— Site default —', 'order-machine' ); ?></option>
+						<?php foreach ( $post_ship_templates as $ps_tpl ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $ps_tpl->id ); ?>" <?php selected( $product ? (int) ( $product->post_ship_workflow_template_id ?? 0 ) : 0, (int) $ps_tpl->id ); ?>>
+								<?php
+								echo esc_html( (string) $ps_tpl->name );
+								if ( empty( $ps_tpl->is_active ) ) {
+									echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+								}
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php echo esc_html__( 'Optional. When set, customer orders whose primary product is this SKU use this Post-ship template instead of the site default.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<?php endif; ?>
 			<tr>
 				<th scope="row"><label for="som_target_selling_price"><?php echo esc_html__( 'Target selling price', 'order-machine' ); ?></label></th>
 				<td>

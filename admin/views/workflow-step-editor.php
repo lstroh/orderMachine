@@ -288,7 +288,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 						<input type="hidden" name="som_workflow_kind" value="make" />
 						<p class="description"><?php echo esc_html__( 'Kind is locked to Make while products use this template.', 'order-machine' ); ?></p>
 					<?php else : ?>
-						<p class="description"><?php echo esc_html__( 'Make templates assign to products. Pack templates are for the order Pack board (Package 6).', 'order-machine' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Make templates assign to products. Pack is for Pack & Ship. Post-ship is aftercare after Ship (Package 11).', 'order-machine' ); ?></p>
 					<?php endif; ?>
 				</td>
 			</tr>
@@ -307,6 +307,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 					<?php endif; ?>
 				</td>
 			</tr>
+			<?php if ( 'post_ship' !== $current_kind ) : ?>
 			<tr>
 				<th scope="row"><?php echo esc_html__( 'Trays', 'order-machine' ); ?></th>
 				<td>
@@ -319,6 +320,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 					</p>
 				</td>
 			</tr>
+			<?php endif; ?>
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>

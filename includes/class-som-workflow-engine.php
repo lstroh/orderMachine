@@ -68,10 +68,6 @@ class SOM_Workflow_Engine {
 			return new WP_Error( 'som_order_cancelled', __( 'Cancelled orders cannot advance.', 'order-machine' ) );
 		}
 
-		if ( ! empty( $order->is_complete ) ) {
-			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
-		}
-
 		$current_step_id = (int) $order->current_step_id;
 		if ( $current_step_id < 1 ) {
 			return new WP_Error( 'som_no_workflow', __( 'This order has no workflow assigned.', 'order-machine' ) );
@@ -81,6 +77,11 @@ class SOM_Workflow_Engine {
 		$step     = self::get_step( $current_step_id );
 		if ( ! $progress || ! $step ) {
 			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
+		}
+
+		// O1: post-ship steps (e.g. Review reminder) may continue after is_complete.
+		if ( ! empty( $order->is_complete ) && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
+			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
 		}
 
 		$unblocked = self::has_manual_unblock( $progress );
@@ -106,7 +107,8 @@ class SOM_Workflow_Engine {
 			);
 		}
 
-		if ( ! $unblocked && ! SOM_Trays::trays_gate_ok( $order ) ) {
+		// Post-ship never uses trays; skip gate so pack trays do not block aftercare.
+		if ( ! $unblocked && ! SOM_Post_Ship::is_post_ship_step( $step ) && ! SOM_Trays::trays_gate_ok( $order ) ) {
 			return new WP_Error(
 				'som_trays_required',
 				__( 'Assign at least one tray to this order before marking the step done.', 'order-machine' )
@@ -115,6 +117,13 @@ class SOM_Workflow_Engine {
 
 		if ( ! self::can_mark_done( $progress, $step ) ) {
 			return new WP_Error( 'som_step_locked', __( 'This step cannot be marked done yet.', 'order-machine' ) );
+		}
+
+		if ( SOM_Post_Ship::is_arrival_step( $step ) ) {
+			$arrived = SOM_Post_Ship::confirm_arrival( $order_id );
+			if ( is_wp_error( $arrived ) ) {
+				return $arrived;
+			}
 		}
 
 		$result = self::complete_current_and_advance( $order_id, $progress, $step );
@@ -517,7 +526,10 @@ class SOM_Workflow_Engine {
 		if ( ! $progress || ! $step || ! $order ) {
 			return false;
 		}
-		if ( ! empty( $order->is_cancelled ) || ! empty( $order->is_complete ) ) {
+		if ( ! empty( $order->is_cancelled ) ) {
+			return false;
+		}
+		if ( ! empty( $order->is_complete ) && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
 			return false;
 		}
 		$status = (string) $progress->status;
@@ -557,11 +569,11 @@ class SOM_Workflow_Engine {
 		if ( ! empty( $order->is_cancelled ) ) {
 			return new WP_Error( 'som_order_cancelled', __( 'Cancelled orders cannot be unblocked.', 'order-machine' ) );
 		}
-		if ( ! empty( $order->is_complete ) ) {
-			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
-		}
 
 		if ( $order_item_id > 0 ) {
+			if ( ! empty( $order->is_complete ) ) {
+				return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
+			}
 			$progress = SOM_Item_Make::current_item_progress( $order_item_id );
 			$table    = SOM_DB::table( 'order_item_step_progress' );
 		} else {
@@ -580,6 +592,10 @@ class SOM_Workflow_Engine {
 		$step = self::get_step( (int) $progress->workflow_step_id );
 		if ( ! $step ) {
 			return new WP_Error( 'som_step_missing', __( 'Current workflow step not found.', 'order-machine' ) );
+		}
+
+		if ( ! empty( $order->is_complete ) && $order_item_id < 1 && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
+			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
 		}
 
 		$status = (string) $progress->status;
@@ -700,13 +716,16 @@ class SOM_Workflow_Engine {
 
 		self::unlock_elapsed_for_order( $order_id );
 
+		$templates_t = SOM_DB::table( 'workflow_templates' );
+
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
 					s.timer_seconds, s.planned_seconds, s.script_config, s.workflow_template_id, s.batch_group_id,
-					s.confirmation_kind
+					s.confirmation_kind, t.kind AS template_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
+				LEFT JOIN {$templates_t} t ON t.id = s.workflow_template_id
 				WHERE p.order_id = %d
 				ORDER BY s.step_order ASC, s.id ASC",
 				$order_id
@@ -737,7 +756,7 @@ class SOM_Workflow_Engine {
 				(int) $order_id
 			)
 		);
-		if ( ! $order || ! empty( $order->is_complete ) || empty( $order->current_step_id ) ) {
+		if ( ! $order || empty( $order->current_step_id ) ) {
 			return false;
 		}
 
@@ -757,6 +776,11 @@ class SOM_Workflow_Engine {
 
 		$step = self::get_step( (int) $order->current_step_id );
 		if ( ! $step ) {
+			return false;
+		}
+
+		// Timers on post-ship may unlock after is_complete (O1).
+		if ( ! empty( $order->is_complete ) && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
 			return false;
 		}
 
@@ -824,13 +848,17 @@ class SOM_Workflow_Engine {
 			'is_cancelled'      => ! empty( $order->is_cancelled ),
 		);
 
-		if ( ! empty( $order->is_complete ) || ! empty( $order->is_cancelled ) || empty( $order->current_step_id ) ) {
+		if ( ! empty( $order->is_cancelled ) || empty( $order->current_step_id ) ) {
 			return $payload;
 		}
 
 		$progress = self::get_progress_for_step( $order_id, (int) $order->current_step_id );
 		$step     = self::get_step( (int) $order->current_step_id );
 		if ( ! $progress || ! $step ) {
+			return $payload;
+		}
+
+		if ( ! empty( $order->is_complete ) && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
 			return $payload;
 		}
 
@@ -1185,7 +1213,11 @@ class SOM_Workflow_Engine {
 	}
 
 	/**
-	 * Move to next step or mark order complete.
+	 * Move to next step within the same template, or finish the lane.
+	 *
+	 * Pack finish (customer): does not set is_complete; may auto-start post-ship.
+	 * Post-ship finish: clears current_step_id; is_complete only via arrival (O1).
+	 * Legacy order-level: still sets is_complete when the lane ends.
 	 *
 	 * @param int $order_id Order PK.
 	 * @param int $step_id  Completed step PK.
@@ -1195,8 +1227,40 @@ class SOM_Workflow_Engine {
 		global $wpdb;
 
 		$now  = current_time( 'mysql', true );
+		$step = self::get_step( (int) $step_id );
+		$kind = $step ? SOM_Workflows::get_kind( (int) $step->workflow_template_id ) : 'make';
 		$next = self::next_step_after( $order_id, $step_id );
 		if ( ! $next ) {
+			if ( 'pack' === $kind ) {
+				$wpdb->update(
+					SOM_DB::table( 'orders' ),
+					array(
+						'current_step_id' => null,
+						'updated_at'      => $now,
+					),
+					array( 'id' => (int) $order_id ),
+					array( '%s', '%s' ),
+					array( '%d' )
+				);
+				// Auto-start post-ship when Pack lane ends (typically after Ship).
+				return SOM_Post_Ship::maybe_auto_start_after_pack( (int) $order_id );
+			}
+
+			if ( 'post_ship' === $kind ) {
+				// Do not force is_complete here — arrival confirm owns complete (O1).
+				$wpdb->update(
+					SOM_DB::table( 'orders' ),
+					array(
+						'current_step_id' => null,
+						'updated_at'      => $now,
+					),
+					array( 'id' => (int) $order_id ),
+					array( '%s', '%s' ),
+					array( '%d' )
+				);
+				return true;
+			}
+
 			$wpdb->update(
 				SOM_DB::table( 'orders' ),
 				array(
@@ -1322,7 +1386,9 @@ class SOM_Workflow_Engine {
 	}
 
 	/**
-	 * Next step in this order's progress after the given step (by step_order).
+	 * Next step in the same workflow template after the given step (by step_order).
+	 *
+	 * Scoped by template so pack and post-ship progress rows do not interleave.
 	 *
 	 * @param int $order_id        Order PK.
 	 * @param int $current_step_id Current workflow_steps.id.
@@ -1331,17 +1397,27 @@ class SOM_Workflow_Engine {
 	private static function next_step_after( $order_id, $current_step_id ) {
 		global $wpdb;
 
-		$progress_t = SOM_DB::table( 'order_step_progress' );
-		$steps_t    = SOM_DB::table( 'workflow_steps' );
+		$progress_t  = SOM_DB::table( 'order_step_progress' );
+		$steps_t     = SOM_DB::table( 'workflow_steps' );
+		$template_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT workflow_template_id FROM {$steps_t} WHERE id = %d LIMIT 1",
+				(int) $current_step_id
+			)
+		);
+		if ( $template_id < 1 ) {
+			return null;
+		}
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT s.id, s.step_order, s.name
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
-				WHERE p.order_id = %d
+				WHERE p.order_id = %d AND s.workflow_template_id = %d
 				ORDER BY s.step_order ASC, s.id ASC",
-				(int) $order_id
+				(int) $order_id,
+				$template_id
 			)
 		);
 

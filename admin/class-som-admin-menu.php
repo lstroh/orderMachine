@@ -793,6 +793,29 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_start_post_ship'] ) ) {
+			check_admin_referer( 'som_start_post_ship', 'som_order_nonce' );
+			$order_id    = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$template_id = isset( $_POST['som_post_ship_template_id'] ) ? (int) $_POST['som_post_ship_template_id'] : 0;
+			$result      = SOM_Post_Ship::start( $order_id, $template_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				$order = SOM_Orders::get( $order_id );
+				if ( $order && SOM_Post_Ship::is_started( $order ) ) {
+					self::flash_notice( __( 'Post-ship workflow started.', 'order-machine' ), 'success', 'som_order_saved' );
+				} else {
+					self::flash_notice(
+						__( 'No Post-ship template available. Set a default under Settings or pick a template.', 'order-machine' ),
+						'error',
+						'som_order_error'
+					);
+				}
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-post-ship' );
+			exit;
+		}
+
 		if ( ! isset( $_POST['som_mark_step_done'] ) ) {
 			return;
 		}
@@ -1623,16 +1646,17 @@ class SOM_Admin_Menu {
 
 		$product_id = isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0;
 		$data       = array(
-			'name'                  => isset( $_POST['som_product_name'] ) ? wp_unslash( $_POST['som_product_name'] ) : '',
-			'sku'                   => isset( $_POST['som_product_sku'] ) ? wp_unslash( $_POST['som_product_sku'] ) : '',
-			'workflow_template_id'  => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
-			'target_selling_price'  => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
-			'weight_grams'          => isset( $_POST['som_product_weight_g'] ) ? wp_unslash( $_POST['som_product_weight_g'] ) : '',
-			'package_id'            => isset( $_POST['som_product_package_id'] ) ? wp_unslash( $_POST['som_product_package_id'] ) : '',
-			'package_id_multi'      => isset( $_POST['som_product_package_id_multi'] ) ? wp_unslash( $_POST['som_product_package_id_multi'] ) : '',
-			'planned_shipping_gbp'  => isset( $_POST['som_product_planned_shipping'] ) ? wp_unslash( $_POST['som_product_planned_shipping'] ) : '',
-			'is_active'             => ! empty( $_POST['som_product_is_active'] ),
-			'is_internal'           => ! empty( $_POST['som_product_is_internal'] ),
+			'name'                           => isset( $_POST['som_product_name'] ) ? wp_unslash( $_POST['som_product_name'] ) : '',
+			'sku'                            => isset( $_POST['som_product_sku'] ) ? wp_unslash( $_POST['som_product_sku'] ) : '',
+			'workflow_template_id'           => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
+			'post_ship_workflow_template_id' => isset( $_POST['som_post_ship_workflow_template_id'] ) ? wp_unslash( $_POST['som_post_ship_workflow_template_id'] ) : '',
+			'target_selling_price'           => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
+			'weight_grams'                   => isset( $_POST['som_product_weight_g'] ) ? wp_unslash( $_POST['som_product_weight_g'] ) : '',
+			'package_id'                     => isset( $_POST['som_product_package_id'] ) ? wp_unslash( $_POST['som_product_package_id'] ) : '',
+			'package_id_multi'               => isset( $_POST['som_product_package_id_multi'] ) ? wp_unslash( $_POST['som_product_package_id_multi'] ) : '',
+			'planned_shipping_gbp'           => isset( $_POST['som_product_planned_shipping'] ) ? wp_unslash( $_POST['som_product_planned_shipping'] ) : '',
+			'is_active'                      => ! empty( $_POST['som_product_is_active'] ),
+			'is_internal'                    => ! empty( $_POST['som_product_is_internal'] ),
 		);
 
 		if ( $product_id > 0 ) {
@@ -2460,6 +2484,15 @@ class SOM_Admin_Menu {
 			wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
 			exit;
 		}
+
+		$post_ship_tpl_posted = isset( $_POST['som_post_ship_workflow_template_id'] ) ? (int) $_POST['som_post_ship_workflow_template_id'] : 0;
+		$post_ship_set        = SOM_Post_Ship::set_default_template_id( $post_ship_tpl_posted );
+		if ( is_wp_error( $post_ship_set ) ) {
+			self::flash_notice( $post_ship_set->get_error_message(), 'error', 'som_post_ship_template' );
+			wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+			exit;
+		}
+		SOM_Post_Ship::set_auto_start_enabled( ! empty( $_POST['som_post_ship_auto_start'] ) );
 
 		$tray_max_posted = isset( $_POST['som_tray_max'] ) ? (int) $_POST['som_tray_max'] : SOM_Trays::DEFAULT_MAX;
 		$tray_max_set    = SOM_Trays::set_max( $tray_max_posted );
