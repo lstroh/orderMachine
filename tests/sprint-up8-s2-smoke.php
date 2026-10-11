@@ -71,6 +71,13 @@ $prev_pack = SOM_Pack::default_template_id();
 $prev_max  = SOM_Trays::get_max();
 SOM_Trays::set_max( 10 );
 
+// Clear leftover holds from prior smoke runs so free-tray picks stay reliable.
+foreach ( array_unique( array_map( 'intval', array_values( SOM_Trays::held_tray_numbers() ) ) ) as $held_oid ) {
+	if ( $held_oid > 0 ) {
+		SOM_Trays::release( $held_oid, array(), SOM_Trays::REASON_ORDER_COMPLETE );
+	}
+}
+
 // Pack template with uses_trays + ship step (for hold/package/ship gates).
 $wf_pack = SOM_Workflows::create(
 	array(

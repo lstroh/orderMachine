@@ -110,7 +110,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 - **Seed:** create paths set `uses_trays => 0` explicitly (operator opts in); confirmed seed make/pack leave trays off
 - **Polish:** trays panel required notice wording aligned with Mark done / advance copy; no trays overview page (O3); no board Unblock
 - Smoke: `tests/sprint-up8-s3-smoke.php` (seed `uses_trays=0` + docs presence only)
-- Smoke harden (post-desktop run): S2 Print step is timer-only (confirmation exclusive); S1 teardown force-releases with `order_complete`; S2 picks free trays instead of hardcoding 1/2/4
+- Smoke harden: S2 Print timer-only; S1/S2 preflight clear leftover holds; S1/S2 pick free trays (no hardcoded 1/2/3/5/10); S1 teardown uses `order_complete`
 
 ### Soft defaults applied
 
