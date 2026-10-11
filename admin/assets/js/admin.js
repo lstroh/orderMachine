@@ -486,11 +486,106 @@
 	initPoLineEditor();
 	initPoPreviewImpact();
 	initWorkflowEditor();
+	initMarkdownPreview();
 	initListingEditor();
 	initBatchesPage();
 	initCountdowns();
 	initAdvanceStepRest();
 	initCopyText();
+
+	function initMarkdownPreview() {
+		if ( typeof somAdmin === 'undefined' || ! somAdmin.ajaxUrl || ! somAdmin.markdownPreviewNonce ) {
+			return;
+		}
+
+		document.addEventListener( 'click', function ( event ) {
+			var showBtn = event.target.closest( '[data-som-md-preview-toggle]' );
+			var hideBtn = event.target.closest( '[data-som-md-preview-hide]' );
+			if ( ! showBtn && ! hideBtn ) {
+				return;
+			}
+
+			var editor = ( showBtn || hideBtn ).closest( '[data-som-md-editor]' );
+			if ( ! editor ) {
+				return;
+			}
+
+			var panel = editor.querySelector( '[data-som-md-preview]' );
+			var body = editor.querySelector( '[data-som-md-preview-body]' );
+			var toggle = editor.querySelector( '[data-som-md-preview-toggle]' );
+			var hide = editor.querySelector( '[data-som-md-preview-hide]' );
+			var source = editor.querySelector( '.som-md-source' );
+
+			if ( hideBtn ) {
+				if ( panel ) {
+					panel.hidden = true;
+				}
+				if ( hide ) {
+					hide.hidden = true;
+				}
+				if ( toggle ) {
+					toggle.hidden = false;
+				}
+				return;
+			}
+
+			if ( ! panel || ! body || ! source ) {
+				return;
+			}
+
+			var markdown = source.value || '';
+			var emptyMsg = ( somAdmin.i18n && somAdmin.i18n.mdPreviewEmpty ) ? somAdmin.i18n.mdPreviewEmpty : 'Nothing to preview.';
+			var failMsg = ( somAdmin.i18n && somAdmin.i18n.mdPreviewFailed ) ? somAdmin.i18n.mdPreviewFailed : 'Preview failed.';
+
+			if ( ! markdown.trim() ) {
+				body.textContent = emptyMsg;
+				panel.hidden = false;
+				if ( toggle ) {
+					toggle.hidden = true;
+				}
+				if ( hide ) {
+					hide.hidden = false;
+				}
+				return;
+			}
+
+			body.textContent = '…';
+			panel.hidden = false;
+			if ( toggle ) {
+				toggle.hidden = true;
+			}
+			if ( hide ) {
+				hide.hidden = false;
+			}
+
+			var form = new window.FormData();
+			form.append( 'action', 'som_preview_step_instructions' );
+			form.append( 'nonce', somAdmin.markdownPreviewNonce );
+			form.append( 'markdown', markdown );
+
+			fetch( somAdmin.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: form
+			} )
+				.then( function ( res ) {
+					return res.json();
+				} )
+				.then( function ( payload ) {
+					if ( ! payload || ! payload.success || ! payload.data ) {
+						body.textContent = failMsg;
+						return;
+					}
+					body.innerHTML = payload.data.html || '';
+					if ( ! body.innerHTML ) {
+						body.textContent = emptyMsg;
+					}
+				} )
+				.catch( function () {
+					body.textContent = failMsg;
+				} );
+		} );
+	}
 
 	function initCopyText() {
 		document.querySelectorAll( '[data-som-copy-text], [data-som-copy-from]' ).forEach( function ( btn ) {

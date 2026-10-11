@@ -9,8 +9,8 @@
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
 | UP9-S1 | eBay structured fields + Copy command step | Done on main | Schema 1.21.0; #23 |
-| UP9-S2 | Remove local/api/n8n + docs/seed | Code complete | This PR |
-| UP9-S3 | Markdown instructions + styling | Not started | |
+| UP9-S2 | Remove local/api/n8n + docs/seed | Done on main | #24 |
+| UP9-S3 | Markdown instructions + styling | Code complete | This PR |
 | UP9-S4 | Optional step task lists | Not started | |
 
 ---
@@ -68,7 +68,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 
 ## UP9-S2 — Remove local/api/n8n + docs/seed
 
-- **Status:** Code complete (this PR)
+- **Status:** Done on `main` (#24)
 - **Schema:** unchanged (1.21.0)
 - **Plugin:** unchanged (release bump optional later → ~0.40.0)
 
@@ -103,4 +103,49 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 ```bash
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s2-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s1-smoke.php
+```
+
+---
+
+## UP9-S3 — Markdown instructions + styling
+
+- **Status:** Code complete (this PR)
+- **Schema:** unchanged (still TEXT; no bump)
+- **Plugin:** unchanged (release bump optional later → ~0.41.0)
+
+### Parser choice (O9)
+
+- **Vendored [Parsedown](https://github.com/erusev/parsedown) 1.7.4** (MIT) at `includes/lib/parsedown/Parsedown.php`
+- WP has no core Markdown parser; single file under `includes/` ships in release zips
+- `setSafeMode( true )` + `setBreaksEnabled( true )`; then tight `wp_kses` allowlist via `SOM_Step_Instructions::allowed_html()` (not full `wp_kses_post` — **no `<img>`**)
+
+### Delivered
+
+- `SOM_Step_Instructions::render_html( $markdown )` — Markdown → safe HTML; do not `esc_html` the body
+- Order detail make + pack: rendered HTML in `.som-step-instructions-body` (same `effective()` resolution)
+- CSS: spacing, lists, headings, `code` / `pre` under `.som-step-instructions-body`
+- Workflow step editor + product overrides: “Markdown supported” help, cheatsheet, simple AJAX **Preview** (O10)
+- Max length unchanged (**5000**)
+- Docs: USER-REFERENCE (+ brief GUIDE / FEATURES) — Markdown; no images; no HTML editor; Copy command stays separate
+- Smoke: `tests/sprint-up9-s3-smoke.php`
+
+### Soft defaults applied
+
+- O8: no images in instructions Markdown
+- O9: Parsedown 1.7.4 vendored at kickoff
+- O10: simple editor preview (AJAX → same `render_html`)
+- Keep MAX_LENGTH 5000
+- Copy-command remains its own gate / field
+- No UP9-S4 task lists
+
+### Explicitly deferred
+
+- UP9-S4: optional step task lists
+- TinyMCE / block editor
+- Images in instructions
+
+### Verification
+
+```bash
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up9-s3-smoke.php
 ```

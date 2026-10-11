@@ -499,7 +499,7 @@ if ( ! empty( $order->raw_payload ) ) {
 									<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
 										<div class="som-step-instructions">
 											<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
-											<div class="som-step-instructions-body"><?php echo esc_html( $step_instructions ); ?></div>
+											<div class="som-step-instructions-body"><?php echo SOM_Step_Instructions::render_html( $step_instructions ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- kses in render_html. ?></div>
 										</div>
 									<?php endif; ?>
 									<?php if ( is_array( $copy_rendered ) ) : ?>
@@ -962,7 +962,7 @@ if ( ! empty( $order->raw_payload ) ) {
 						<?php if ( null !== $step_instructions && '' !== $step_instructions ) : ?>
 							<div class="som-step-instructions">
 								<strong class="som-step-instructions-label"><?php echo esc_html__( 'Instructions', 'order-machine' ); ?></strong>
-								<div class="som-step-instructions-body"><?php echo esc_html( $step_instructions ); ?></div>
+								<div class="som-step-instructions-body"><?php echo SOM_Step_Instructions::render_html( $step_instructions ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- kses in render_html. ?></div>
 							</div>
 						<?php endif; ?>
 						<?php if ( $is_current && $timer_ready ) : ?>

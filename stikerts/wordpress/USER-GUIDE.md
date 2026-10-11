@@ -130,6 +130,7 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Uses trays** | Template checkbox (make or Pack). If **any** make or Pack template on the order has it on, the order **requires** ≥1 held tray before Mark done / advance. |
 | **Unblock step** | Order-detail control that lets you **Mark done** despite gates (timer, checklist, batch, ship/package/hold, trays). Does **not** complete the step for you. |
 | **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
+| **Step instructions** | Markdown guidance on a workflow step (default) or product override. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
 
 ---
 
@@ -143,6 +144,8 @@ Use this when a make step should show a skill/command to run on your machine (e.
 4. House / street / style are editable on the order line if eBay data is missing.
 
 Local / API / n8n **script steps are removed**. Script batch groups soft-fail on release (use manual_confirm batches). Details: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7–8.
+
+**Step instructions** on the same editor accept Markdown (bold, lists, links, code, headings). Use **Preview** under the textarea; they render on order detail. Do not put the copy-command block inside instructions — keep Copy command as its own field.
 
 ---
 

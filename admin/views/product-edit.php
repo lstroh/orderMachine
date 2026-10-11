@@ -280,7 +280,7 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 		<?php if ( ! empty( $instruction_steps ) ) : ?>
 			<h2><?php echo esc_html__( 'Step instructions', 'order-machine' ); ?></h2>
 			<p class="description">
-				<?php echo esc_html__( 'Optional overrides for this product. Leave blank to use the workflow step default. Empty overrides are not stored.', 'order-machine' ); ?>
+				<?php echo esc_html__( 'Optional Markdown overrides for this product. Leave blank to use the workflow step default. Empty overrides are not stored. No images; no HTML editor.', 'order-machine' ); ?>
 			</p>
 			<table class="widefat striped som-step-instructions-table">
 				<thead>
@@ -309,7 +309,10 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 								<?php endif; ?>
 							</td>
 							<td>
-								<textarea class="large-text" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
+								<div data-som-md-editor>
+									<textarea class="large-text som-md-source" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Markdown override…', 'order-machine' ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
+									<?php SOM_Step_Instructions::render_editor_help(); ?>
+								</div>
 							</td>
 						</tr>
 					<?php endforeach; ?>

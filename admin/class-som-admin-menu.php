@@ -33,6 +33,7 @@ class SOM_Admin_Menu {
 		add_action( 'admin_init', array( __CLASS__, 'handle_listings_actions' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_channel_fee_estimates_actions' ) );
 		add_action( 'wp_ajax_som_preview_po_impact', array( __CLASS__, 'ajax_preview_po_impact' ) );
+		add_action( 'wp_ajax_som_preview_step_instructions', array( __CLASS__, 'ajax_preview_step_instructions' ) );
 		add_action( 'wp_ajax_som_board_toggle_pin', array( __CLASS__, 'ajax_board_toggle_pin' ) );
 		add_action( 'wp_ajax_som_board_save_columns', array( __CLASS__, 'ajax_board_save_columns' ) );
 	}
@@ -238,6 +239,13 @@ class SOM_Admin_Menu {
 			if ( 'som-purchase-orders' === $page ) {
 				$localize['ajaxUrl']      = admin_url( 'admin-ajax.php' );
 				$localize['previewNonce'] = wp_create_nonce( 'som_preview_po_impact' );
+			}
+			if ( in_array( $page, array( 'som-workflows', 'som-products' ), true ) ) {
+				$localize['ajaxUrl']                 = admin_url( 'admin-ajax.php' );
+				$localize['markdownPreviewNonce']    = wp_create_nonce( 'som_preview_step_instructions' );
+				$localize['i18n']                    = isset( $localize['i18n'] ) && is_array( $localize['i18n'] ) ? $localize['i18n'] : array();
+				$localize['i18n']['mdPreviewEmpty']  = __( 'Nothing to preview.', 'order-machine' );
+				$localize['i18n']['mdPreviewFailed'] = __( 'Preview failed.', 'order-machine' );
 			}
 			if ( $localize ) {
 				wp_localize_script( 'som-admin', 'somAdmin', $localize );
@@ -2532,6 +2540,31 @@ class SOM_Admin_Menu {
 	 *
 	 * @return void
 	 */
+	/**
+	 * AJAX: Markdown preview for step instructions (workflow editor + product overrides).
+	 *
+	 * @return void
+	 */
+	public static function ajax_preview_step_instructions() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Forbidden.', 'order-machine' ) ), 403 );
+		}
+
+		check_ajax_referer( 'som_preview_step_instructions', 'nonce' );
+
+		$raw = isset( $_POST['markdown'] ) ? wp_unslash( $_POST['markdown'] ) : '';
+		$raw = is_string( $raw ) ? $raw : '';
+		if ( strlen( $raw ) > SOM_Step_Instructions::MAX_LENGTH ) {
+			$raw = substr( $raw, 0, SOM_Step_Instructions::MAX_LENGTH );
+		}
+
+		wp_send_json_success(
+			array(
+				'html' => SOM_Step_Instructions::render_html( $raw ),
+			)
+		);
+	}
+
 	public static function ajax_preview_po_impact() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Forbidden.', 'order-machine' ) ), 403 );
