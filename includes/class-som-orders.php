@@ -1129,6 +1129,87 @@ class SOM_Orders {
 	}
 
 	/**
+	 * Update structured personalisation fields on an order line (UP9-S1 / O4).
+	 *
+	 * @param int                  $order_id Order PK.
+	 * @param int                  $item_id  Order item PK.
+	 * @param array<string, mixed> $fields   house_number, street_name, style, personalisation_text (optional).
+	 * @return true|WP_Error
+	 */
+	public static function update_item_structured_fields( $order_id, $item_id, array $fields ) {
+		global $wpdb;
+
+		$order_id = (int) $order_id;
+		$item_id  = (int) $item_id;
+		if ( $order_id < 1 || $item_id < 1 ) {
+			return new WP_Error( 'som_item_missing', __( 'Order line not found.', 'order-machine' ) );
+		}
+
+		$table = SOM_DB::table( 'order_items' );
+		$owned = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE id = %d AND order_id = %d LIMIT 1",
+				$item_id,
+				$order_id
+			)
+		);
+		if ( $owned < 1 ) {
+			return new WP_Error( 'som_item_missing', __( 'Order line not found.', 'order-machine' ) );
+		}
+
+		$update = array();
+		$formats = array();
+		foreach ( array(
+			'house_number'         => 64,
+			'street_name'          => 191,
+			'style'                => 191,
+			'personalisation_text' => 0,
+		) as $key => $max ) {
+			if ( ! array_key_exists( $key, $fields ) ) {
+				continue;
+			}
+			if ( 'personalisation_text' === $key ) {
+				$text = sanitize_textarea_field( (string) $fields[ $key ] );
+				$text = trim( $text );
+				$update[ $key ] = '' === $text ? null : $text;
+				$formats[]      = '%s';
+				continue;
+			}
+			$text = sanitize_text_field( (string) $fields[ $key ] );
+			$text = trim( $text );
+			if ( '' === $text ) {
+				$update[ $key ] = null;
+			} else {
+				if ( $max > 0 && strlen( $text ) > $max ) {
+					$text = substr( $text, 0, $max );
+				}
+				$update[ $key ] = $text;
+			}
+			$formats[] = '%s';
+		}
+
+		if ( ! $update ) {
+			return new WP_Error( 'som_item_fields', __( 'No structured fields to update.', 'order-machine' ) );
+		}
+
+		$updated = $wpdb->update(
+			$table,
+			$update,
+			array(
+				'id'       => $item_id,
+				'order_id' => $order_id,
+			),
+			$formats,
+			array( '%d', '%d' )
+		);
+		if ( false === $updated ) {
+			return new WP_Error( 'som_item_update', __( 'Could not update line fields.', 'order-machine' ) );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Truncate personalisation preview for board cards.
 	 *
 	 * @param string $text Personalisation text.

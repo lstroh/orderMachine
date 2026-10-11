@@ -416,6 +416,11 @@ class SOM_Workflows {
 				return $batch_group_id;
 			}
 
+			$command_template = self::resolve_command_template( $row, $step_id, $template_id );
+			if ( is_wp_error( $command_template ) ) {
+				return $command_template;
+			}
+
 			if ( $batch_group_id && 'make' === $template_kind ) {
 				return new WP_Error(
 					'som_make_no_batch',
@@ -430,17 +435,18 @@ class SOM_Workflows {
 			);
 
 			if ( $batch_group_id ) {
-				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || null !== $confirmation_kind;
+				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || null !== $confirmation_kind || null !== $command_template;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_batch_only_step',
-						__( 'A batch step cannot also have manual, timer, script, or confirmation gates.', 'order-machine' )
+						__( 'A batch step cannot also have manual, timer, script, confirmation, or copy-command gates.', 'order-machine' )
 					);
 				}
 				$manual            = 0;
 				$timer             = null;
 				$script            = null;
 				$confirmation_kind = null;
+				$command_template  = null;
 			}
 
 			if ( null !== $confirmation_kind ) {
@@ -449,6 +455,20 @@ class SOM_Workflows {
 					return new WP_Error(
 						'som_confirmation_only_step',
 						__( 'A confirmation step cannot also have timer, script, or batch gates.', 'order-machine' )
+					);
+				}
+				$manual = 1;
+				$timer  = null;
+				$script = null;
+			}
+
+			// Copy-command: exclusive with timer / script / batch; may combine with manual confirm (O3).
+			if ( null !== $command_template ) {
+				$has_other = ( null !== $timer && (int) $timer > 0 ) || ( null !== $script && '' !== $script ) || $batch_group_id;
+				if ( $has_other ) {
+					return new WP_Error(
+						'som_copy_command_exclusive',
+						__( 'A copy-command step cannot also have timer, script, or batch gates.', 'order-machine' )
 					);
 				}
 				$manual = 1;
@@ -471,6 +491,7 @@ class SOM_Workflows {
 				'requires_manual_confirm' => $manual,
 				'timer_seconds'           => $timer,
 				'script_config'           => $script,
+				'command_template'        => $command_template,
 				'batch_group_id'          => $batch_group_id,
 				'confirmation_kind'       => $confirmation_kind,
 				'instructions'            => '' !== $instructions ? $instructions : null,
@@ -496,6 +517,7 @@ class SOM_Workflows {
 				'requires_manual_confirm' => $row['requires_manual_confirm'],
 				'timer_seconds'           => $row['timer_seconds'],
 				'script_config'           => $row['script_config'],
+				'command_template'        => $row['command_template'],
 				'batch_group_id'          => $row['batch_group_id'],
 				'confirmation_kind'       => $row['confirmation_kind'],
 				'instructions'            => $row['instructions'],
@@ -510,7 +532,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -524,7 +546,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -602,6 +624,42 @@ class SOM_Workflows {
 		}
 		$id = (int) $existing;
 		return $id > 0 ? $id : null;
+	}
+
+	/**
+	 * Resolve command_template for a step row.
+	 *
+	 * When the form omits command_template, preserve the existing DB value.
+	 *
+	 * @param array<string, mixed> $row         Form row.
+	 * @param int                  $step_id     Existing step PK or 0.
+	 * @param int                  $template_id Template PK.
+	 * @return string|null|WP_Error
+	 */
+	public static function resolve_command_template( array $row, $step_id, $template_id ) {
+		global $wpdb;
+
+		if ( array_key_exists( 'command_template', $row ) ) {
+			return SOM_Copy_Command::sanitize_template( $row['command_template'] );
+		}
+
+		$step_id = (int) $step_id;
+		if ( $step_id < 1 ) {
+			return null;
+		}
+
+		$table    = SOM_DB::table( 'workflow_steps' );
+		$existing = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT command_template FROM {$table} WHERE id = %d AND workflow_template_id = %d LIMIT 1",
+				$step_id,
+				(int) $template_id
+			)
+		);
+		if ( null === $existing || '' === trim( (string) $existing ) ) {
+			return null;
+		}
+		return (string) $existing;
 	}
 
 	/**

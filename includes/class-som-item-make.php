@@ -320,7 +320,7 @@ class SOM_Item_Make {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
-					s.timer_seconds, s.script_config, s.workflow_template_id, s.batch_group_id,
+					s.timer_seconds, s.script_config, s.command_template, s.workflow_template_id, s.batch_group_id,
 					s.confirmation_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
@@ -783,6 +783,7 @@ class SOM_Item_Make {
 		$manual  = ! empty( $step->requires_manual_confirm );
 		$script  = SOM_Script_Dispatch::has_script( $step );
 		$confirm = SOM_Step_Confirmations::has_confirmation( $step );
+		$copy    = SOM_Copy_Command::has_template( $step );
 		$table   = SOM_DB::table( 'order_item_step_progress' );
 
 		// Batch on make is disallowed at save time; if present, treat as error state.
@@ -801,8 +802,13 @@ class SOM_Item_Make {
 			return new WP_Error( 'som_make_batch', __( 'Batch groups are not allowed on make steps.', 'order-machine' ) );
 		}
 
-		if ( $confirm ) {
+		if ( $confirm || $copy ) {
 			$manual = true;
+		}
+
+		// Copy-command is display-only — never park waiting_script from the template.
+		if ( $copy ) {
+			$script = false;
 		}
 
 		if ( $timer < 1 && ! $manual && ! $script ) {

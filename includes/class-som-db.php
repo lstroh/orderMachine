@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.20.0';
+	const DB_VERSION = '1.21.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -190,6 +190,7 @@ class SOM_DB {
 			requires_manual_confirm tinyint(1) NOT NULL DEFAULT 0,
 			timer_seconds int(11) NULL,
 			script_config text NULL,
+			command_template text NULL,
 			batch_group_id bigint(20) unsigned NULL,
 			confirmation_kind varchar(40) NULL,
 			instructions text NULL,
@@ -246,6 +247,10 @@ class SOM_DB {
 			product_id bigint(20) unsigned NULL,
 			quantity int(11) NOT NULL DEFAULT 1,
 			personalisation_text text NULL,
+			house_number varchar(64) NULL,
+			street_name varchar(191) NULL,
+			style varchar(191) NULL,
+			personalisation_json text NULL,
 			unit_price decimal(10,2) NULL,
 			external_listing_id varchar(100) NULL,
 			PRIMARY KEY  (id),
@@ -554,6 +559,7 @@ class SOM_DB {
 		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
+		self::upgrade_copy_command_columns();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -907,6 +913,48 @@ class SOM_DB {
 		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
+		self::upgrade_copy_command_columns();
+	}
+
+	/**
+	 * Add copy-command template + structured line fields (UP9-S1).
+	 *
+	 * @return void
+	 */
+	private static function upgrade_copy_command_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) === $steps ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'command_template'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN command_template text NULL AFTER script_config" );
+			}
+		}
+
+		$items = self::table( 'order_items' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $items ) ) !== $items ) {
+			return;
+		}
+
+		$item_cols = array(
+			'house_number'         => 'varchar(64) NULL AFTER personalisation_text',
+			'street_name'          => 'varchar(191) NULL AFTER house_number',
+			'style'                => 'varchar(191) NULL AFTER street_name',
+			'personalisation_json' => 'text NULL AFTER style',
+		);
+		foreach ( $item_cols as $name => $def ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$has = $wpdb->get_row( "SHOW COLUMNS FROM {$items} LIKE '{$name}'" );
+			if ( ! $has ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$items} ADD COLUMN {$name} {$def}" );
+			}
+		}
 	}
 
 	/**

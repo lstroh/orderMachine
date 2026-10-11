@@ -45,6 +45,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-workflows.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-step-instructions.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-local-actions.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-script-dispatch.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-copy-command.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-step-confirmations.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-engine.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-item-make.php';

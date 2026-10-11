@@ -155,12 +155,14 @@
 			var typeSelect = card.querySelector( '.som-script-type' );
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
 			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			var commandField = card.querySelector( '.som-command-template' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
 			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
 			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
-			return !!( hasManual || hasTimer || hasScript || hasConfirm || hasBatch );
+			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
+			return !!( hasManual || hasTimer || hasScript || hasConfirm || hasBatch || hasCopy );
 		}
 
 		function stepDisplayName( card ) {
@@ -253,6 +255,10 @@
 						if ( confirmSelect ) {
 							confirmSelect.value = '';
 						}
+						var commandField = card.querySelector( '.som-command-template' );
+						if ( commandField ) {
+							commandField.value = '';
+						}
 						var idField = card.querySelector( 'input[name*="[id]"]' );
 						if ( idField ) {
 							idField.value = '0';
@@ -260,6 +266,7 @@
 						syncScriptPanels( card );
 						syncBatchWarning( card );
 						syncConfirmWarning( card );
+						syncCopyWarning( card );
 						syncZeroGateWarning( card );
 						return;
 					}
@@ -272,6 +279,7 @@
 					syncScriptPanels( card );
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
 					syncZeroGateWarning( card );
 				} );
 			}
@@ -285,11 +293,13 @@
 			var manualBind = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timerBind = card.querySelector( 'input[name*="[timer_value]"]' );
 			var confirmBind = card.querySelector( '.som-confirmation-kind' );
+			var commandBind = card.querySelector( '.som-command-template' );
 			var nameBind = card.querySelector( '.som-step-name' );
 			if ( batchSelectBind ) {
 				batchSelectBind.addEventListener( 'change', function () {
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
 					syncZeroGateWarning( card );
 				} );
 			}
@@ -303,6 +313,7 @@
 				timerBind.addEventListener( 'input', function () {
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
 					syncZeroGateWarning( card );
 				} );
 			}
@@ -316,6 +327,21 @@
 					}
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncCopyWarning( card );
+					syncZeroGateWarning( card );
+				} );
+			}
+			if ( commandBind ) {
+				commandBind.addEventListener( 'input', function () {
+					if ( String( commandBind.value || '' ).trim() !== '' ) {
+						var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+						if ( manual ) {
+							manual.checked = true;
+						}
+					}
+					syncBatchWarning( card );
+					syncConfirmWarning( card );
+					syncCopyWarning( card );
 					syncZeroGateWarning( card );
 				} );
 			}
@@ -328,6 +354,7 @@
 			syncScriptPanels( card );
 			syncBatchWarning( card );
 			syncConfirmWarning( card );
+			syncCopyWarning( card );
 			syncZeroGateWarning( card );
 		}
 
@@ -346,11 +373,13 @@
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
 			var typeSelect = card.querySelector( '.som-script-type' );
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
+			var commandField = card.querySelector( '.som-command-template' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
 			var hasScript = typeSelect && typeSelect.value !== 'none';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
-			warning.hidden = ! ( hasManual || hasTimer || hasScript || hasConfirm );
+			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
+			warning.hidden = ! ( hasManual || hasTimer || hasScript || hasConfirm || hasCopy );
 		}
 
 		function syncConfirmWarning( card ) {
@@ -361,6 +390,26 @@
 			}
 			var hasConfirm = confirmSelect.value !== '';
 			if ( ! hasConfirm ) {
+				warning.hidden = true;
+				return;
+			}
+			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
+			var typeSelect = card.querySelector( '.som-script-type' );
+			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			var hasTimer = timer && String( timer.value ).trim() !== '';
+			var hasScript = typeSelect && typeSelect.value !== 'none';
+			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
+			warning.hidden = ! ( hasTimer || hasScript || hasBatch );
+		}
+
+		function syncCopyWarning( card ) {
+			var warning = card.querySelector( '[data-som-copy-warning]' );
+			var commandField = card.querySelector( '.som-command-template' );
+			if ( ! warning || ! commandField ) {
+				return;
+			}
+			var hasCopy = String( commandField.value || '' ).trim() !== '';
+			if ( ! hasCopy ) {
 				warning.hidden = true;
 				return;
 			}
@@ -490,9 +539,16 @@
 	initCopyText();
 
 	function initCopyText() {
-		document.querySelectorAll( '[data-som-copy-text]' ).forEach( function ( btn ) {
+		document.querySelectorAll( '[data-som-copy-text], [data-som-copy-from]' ).forEach( function ( btn ) {
 			btn.addEventListener( 'click', function () {
-				var text = btn.getAttribute( 'data-som-copy-text' ) || '';
+				var text = '';
+				var fromId = btn.getAttribute( 'data-som-copy-from' );
+				if ( fromId ) {
+					var el = document.getElementById( fromId );
+					text = el ? String( el.textContent || '' ) : '';
+				} else {
+					text = btn.getAttribute( 'data-som-copy-text' ) || '';
+				}
 				if ( ! text ) {
 					return;
 				}
@@ -505,10 +561,10 @@
 				};
 				if ( navigator.clipboard && navigator.clipboard.writeText ) {
 					navigator.clipboard.writeText( text ).then( done ).catch( function () {
-						window.prompt( 'Copy address:', text );
+						window.prompt( 'Copy:', text );
 					} );
 				} else {
-					window.prompt( 'Copy address:', text );
+					window.prompt( 'Copy:', text );
 				}
 			} );
 		} );

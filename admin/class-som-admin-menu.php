@@ -484,6 +484,32 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_save_line_fields'] ) ) {
+			check_admin_referer( 'som_save_line_fields', 'som_order_nonce' );
+			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$order_item_id = isset( $_POST['som_order_item_id'] ) ? (int) $_POST['som_order_item_id'] : 0;
+			$raw           = isset( $_POST['som_line'] ) && is_array( $_POST['som_line'] )
+				? wp_unslash( $_POST['som_line'] )
+				: array();
+			$result        = SOM_Orders::update_item_structured_fields(
+				$order_id,
+				$order_item_id,
+				array(
+					'house_number'         => isset( $raw['house_number'] ) ? $raw['house_number'] : '',
+					'street_name'          => isset( $raw['street_name'] ) ? $raw['street_name'] : '',
+					'style'                => isset( $raw['style'] ) ? $raw['style'] : '',
+					'personalisation_text' => isset( $raw['personalisation_text'] ) ? $raw['personalisation_text'] : '',
+				)
+			);
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( __( 'Line fields saved.', 'order-machine' ), 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-make-line-' . $order_item_id );
+			exit;
+		}
+
 		if ( isset( $_POST['som_add_order_note'] ) ) {
 			check_admin_referer( 'som_add_order_note', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
