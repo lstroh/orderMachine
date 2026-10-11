@@ -102,7 +102,13 @@
 
 ---
 
-## 6. Quick checklist
+## 6. Related follow-on
+
+**Copy command** step (replace script/api/n8n) is Package 9 — [`../wordpress v10/Update-9-Sprint-Plan.md`](../wordpress%20v10/Update-9-Sprint-Plan.md).
+
+---
+
+## 7. Quick checklist
 
 ### UP8-S1
 - [ ] Site max + template `uses_trays`
