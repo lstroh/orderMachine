@@ -15,6 +15,7 @@ class SOM_Step_Confirmations {
 	const KIND_PRINT_VS_REQUEST  = 'print_vs_request';
 	const KIND_SHIPPING_ADDRESS  = 'shipping_address';
 	const KIND_PACKING_ITEMS     = 'packing_items';
+	const KIND_PACKAGE_ARRIVED   = 'package_arrived';
 
 	/**
 	 * Allowed confirmation_kind values.
@@ -26,6 +27,7 @@ class SOM_Step_Confirmations {
 			self::KIND_PRINT_VS_REQUEST,
 			self::KIND_SHIPPING_ADDRESS,
 			self::KIND_PACKING_ITEMS,
+			self::KIND_PACKAGE_ARRIVED,
 		);
 	}
 
@@ -39,6 +41,7 @@ class SOM_Step_Confirmations {
 			self::KIND_PRINT_VS_REQUEST => __( 'Print vs client request', 'order-machine' ),
 			self::KIND_SHIPPING_ADDRESS => __( 'Shipping address vs marketplace', 'order-machine' ),
 			self::KIND_PACKING_ITEMS    => __( 'Packing items', 'order-machine' ),
+			self::KIND_PACKAGE_ARRIVED  => __( 'Package arrived', 'order-machine' ),
 		);
 	}
 
@@ -143,6 +146,10 @@ class SOM_Step_Confirmations {
 			return true;
 		}
 
+		if ( self::KIND_PACKAGE_ARRIVED === $kind ) {
+			return ! empty( $state['package_arrived'] );
+		}
+
 		return false;
 	}
 
@@ -184,7 +191,8 @@ class SOM_Step_Confirmations {
 		if ( ! empty( $order->is_cancelled ) ) {
 			return new WP_Error( 'som_order_cancelled', __( 'Cancelled orders cannot be confirmed.', 'order-machine' ) );
 		}
-		if ( ! empty( $order->is_complete ) ) {
+		// Post-ship may continue after is_complete (O1 review reminder); block make lines only.
+		if ( ! empty( $order->is_complete ) && $order_item_id > 0 ) {
 			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
 		}
 
@@ -238,6 +246,10 @@ class SOM_Step_Confirmations {
 		$kind = self::kind_from_step( $step );
 		if ( null === $kind ) {
 			return new WP_Error( 'som_no_confirmation', __( 'The current step has no confirmation checklist.', 'order-machine' ) );
+		}
+
+		if ( ! empty( $order->is_complete ) && ! SOM_Post_Ship::is_post_ship_step( $step ) ) {
+			return new WP_Error( 'som_order_complete', __( 'Order workflow is already complete.', 'order-machine' ) );
 		}
 
 		$progress = $wpdb->get_row(
@@ -309,6 +321,11 @@ class SOM_Step_Confirmations {
 			return array(
 				'items'              => $items_state,
 				'thank_you_included' => ! empty( $input['thank_you_included'] ),
+			);
+		}
+		if ( self::KIND_PACKAGE_ARRIVED === $kind ) {
+			return array(
+				'package_arrived' => ! empty( $input['package_arrived'] ),
 			);
 		}
 		return array();

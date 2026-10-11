@@ -36,8 +36,9 @@ class SOM_Workflows {
 	 */
 	public static function kind_choices() {
 		return array(
-			'make' => __( 'Make', 'order-machine' ),
-			'pack' => __( 'Pack', 'order-machine' ),
+			'make'      => __( 'Make', 'order-machine' ),
+			'pack'      => __( 'Pack', 'order-machine' ),
+			'post_ship' => __( 'Post-ship', 'order-machine' ),
 		);
 	}
 
@@ -45,11 +46,33 @@ class SOM_Workflows {
 	 * Sanitize template kind.
 	 *
 	 * @param mixed $kind Raw kind.
-	 * @return string make|pack
+	 * @return string make|pack|post_ship
 	 */
 	public static function sanitize_kind( $kind ) {
 		$kind = sanitize_key( (string) $kind );
-		return 'pack' === $kind ? 'pack' : 'make';
+		return isset( self::kind_choices()[ $kind ] ) ? $kind : 'make';
+	}
+
+	/**
+	 * Lightweight kind lookup (no steps / products).
+	 *
+	 * @param int $template_id Template PK.
+	 * @return string make|pack|post_ship
+	 */
+	public static function get_kind( $template_id ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return 'make';
+		}
+		$kind = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT kind FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
+				$template_id
+			)
+		);
+		return self::sanitize_kind( $kind );
 	}
 
 	/**
@@ -85,7 +108,7 @@ class SOM_Workflows {
 		}
 
 		$kind = sanitize_key( (string) $args['kind'] );
-		if ( 'make' === $kind || 'pack' === $kind ) {
+		if ( isset( self::kind_choices()[ $kind ] ) ) {
 			$where[]  = 't.kind = %s';
 			$params[] = $kind;
 		}
@@ -265,7 +288,8 @@ class SOM_Workflows {
 
 		$description = isset( $data['description'] ) ? sanitize_textarea_field( (string) $data['description'] ) : '';
 		$kind        = self::sanitize_kind( isset( $data['kind'] ) ? $data['kind'] : 'make' );
-		$uses_trays  = ! empty( $data['uses_trays'] ) ? 1 : 0;
+		// Post-ship never uses trays (Package 11).
+		$uses_trays  = ( 'post_ship' !== $kind && ! empty( $data['uses_trays'] ) ) ? 1 : 0;
 		$now         = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
@@ -340,16 +364,20 @@ class SOM_Workflows {
 		if ( array_key_exists( 'kind', $data ) ) {
 			$fields['kind'] = self::sanitize_kind( $data['kind'] );
 			$format[]       = '%s';
-			if ( 'pack' === $fields['kind'] && (int) $existing->product_count > 0 ) {
+			if ( in_array( $fields['kind'], array( 'pack', 'post_ship' ), true ) && (int) $existing->product_count > 0 ) {
 				return new WP_Error(
 					'som_workflow_kind_pack',
-					__( 'Cannot set kind to Pack while products still use this template.', 'order-machine' )
+					__( 'Cannot set kind to Pack or Post-ship while products still use this template as Make.', 'order-machine' )
 				);
 			}
 		}
 
-		if ( array_key_exists( 'uses_trays', $data ) ) {
-			$fields['uses_trays'] = ! empty( $data['uses_trays'] ) ? 1 : 0;
+		if ( array_key_exists( 'uses_trays', $data ) || array_key_exists( 'kind', $data ) ) {
+			$kind_for_trays = array_key_exists( 'kind', $fields )
+				? $fields['kind']
+				: self::sanitize_kind( isset( $existing->kind ) ? $existing->kind : 'make' );
+			$want_trays = array_key_exists( 'uses_trays', $data ) ? ! empty( $data['uses_trays'] ) : ! empty( $existing->uses_trays );
+			$fields['uses_trays'] = ( 'post_ship' !== $kind_for_trays && $want_trays ) ? 1 : 0;
 			$format[]             = '%d';
 		}
 
