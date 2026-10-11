@@ -65,8 +65,34 @@ If style missing: fallback to line item title from payload if present.
 
 ---
 
-## D. Open items (data)
+## D. Optional step task lists (UP9-S4)
+
+### `workflow_steps.task_list_json` (or child table)
+
+JSON array of `{ "id": "t1", "label": "Load vinyl" }` (stable ids for tick persistence).
+
+### `wp_som_product_step_tasks` (override, like instructions)
+
+| Column | Type | Notes |
+|---|---|---|
+| `product_id` | BIGINT | |
+| `workflow_step_id` | BIGINT | |
+| `task_list_json` | TEXT | Full replacement list |
+| UNIQUE `(product_id, workflow_step_id)` | | |
+
+### Progress tick state
+
+On `order_item_step_progress` / `order_step_progress`:
+
+| Column | Type | Notes |
+|---|---|---|
+| `task_checks_json` | TEXT NULL | Map of task id → true/false or completed_at |
+
+---
+
+## E. Open items (data)
 
 1. `buyer_name` placeholder = first name only vs full — **default: first word** for “Thank you, …!”.  
 2. Store aspects only in columns vs also `personalisation_json` — **default: columns + keep summary text**.  
 3. Etsy / External / test orders: same columns editable on test-order form or order detail — **default: yes, editable on order detail for non-eBay fills**.  
+4. Task list storage JSON vs child table — **default: JSON**.  

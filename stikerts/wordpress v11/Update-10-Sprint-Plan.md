@@ -68,8 +68,8 @@
 
 | After | Plugin (approx) |
 |---|---|
-| UP10-S1 | 0.42.0* |
-| UP10-S2 | 0.43.0* |
+| UP10-S1 | 0.43.0* |
+| UP10-S2 | 0.44.0* |
 
 \*After Packages 7–9 bumps.
 

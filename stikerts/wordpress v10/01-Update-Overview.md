@@ -22,6 +22,7 @@
 | Template | Editable on the workflow step with placeholders e.g. `{{order_number}}` |
 | Example skill shape | `/make-sticker-order Order number: … House number: … Street: … eBay design: … Buyer name: …` |
 | Step instructions | **Markdown** (not plain-only); nicer typography on order detail / editor preview |
+| Step task lists | Optional tasks (like instructions: default + product override); **never** block Mark done; confirmation checklists stay as hard gates |
 
 ## What's in this update
 
@@ -29,12 +30,14 @@
 2. **Structured eBay fields** — map order/line data into placeholder values (`order_number`, `house_number`, `street_name`, `style`, `buyer_name`, …).  
 3. **Remove script execution** — drop local/api/n8n from editor and engine; migrate/docs for legacy steps.  
 4. **Formatted instructions** — Markdown in step defaults + product overrides; safe render + improved styling.  
+5. **Optional step task lists** — tickable tasks on the order; always optional (`06-Update-Step-Task-Lists.md`).  
 
 ## Recommended build order
 
 1. **UP9-S1** — Structured placeholders from eBay + copy-command step (store template, render, Copy UI)  
 2. **UP9-S2** — Remove local/api/n8n from product; engine/batch cleanup; docs/seed  
 3. **UP9-S3** — Markdown step instructions + UI polish  
+4. **UP9-S4** — Optional step task lists (+ product overrides)  
 
 ## Out of scope
 
@@ -42,6 +45,7 @@
 - Rebuilding thank-you PDF automation (pack checklist remains)  
 - Full free-form templating language (fixed placeholder set only)  
 - TinyMCE / arbitrary HTML in instructions (Markdown only)  
+- Requiring all tasks before Mark done  
 
 ## Files
 
@@ -49,5 +53,6 @@
 2. `02-Update-Data-Model.md`  
 3. `03-Update-Copy-Command-Step.md`  
 4. `05-Update-Markdown-Instructions.md`  
-5. `Update-9-Sprint-Plan.md`  
-6. `04-Update-Cursor-Prompt.md`  
+5. `06-Update-Step-Task-Lists.md`  
+6. `Update-9-Sprint-Plan.md`  
+7. `04-Update-Cursor-Prompt.md`  

@@ -11,7 +11,8 @@
 - Editable step template with `{{placeholders}}`.  
 - Example skill: `/make-sticker-order` with order number, house, street, design, buyer name.  
 - Operator runs locally; SOM only displays + Copy + Mark done.  
-- Step **instructions** support **Markdown** + better styling (not TinyMCE).
+- Step **instructions** support **Markdown** + better styling (not TinyMCE).  
+- Optional **step task lists** (like instructions: default + product override); never gate Mark done; confirmation checklists unchanged.
 
 ---
 
@@ -29,6 +30,9 @@
 | O8 | Instructions images in Markdown? | UP9-S3 | **Default: no** |
 | O9 | Markdown parser (core vs lib) | UP9-S3 | **Choose at kickoff** |
 | O10 | Editor preview for instructions? | UP9-S3 | **Default: yes, simple** |
+| O11 | Task list require-all flag? | UP9-S4 | **Settled: no — always optional** |
+| O12 | Task override = full replace | UP9-S4 | **Default: yes** |
+| O13 | Pack task product overrides | UP9-S4 | **Default: no** (template only) |
 
 ---
 
@@ -40,6 +44,7 @@
 | Personalisation | Single text blob | + `house_number`, `street_name`, `style` from eBay |
 | Make line UI | Gates / Mark done | + rendered command + Copy |
 | Instructions | Plain `esc_html` | **Markdown** → kses HTML + CSS polish |
+| Step tasks | None (only gating confirmations) | Optional tick list; confirmations stay gates |
 | Thank-you | Pack checklist (P6) | Unchanged |
 
 ---
@@ -93,6 +98,22 @@
 
 ---
 
+### UP9-S4 — Optional step task lists
+
+- **Covers:** `06-Update-Step-Task-Lists.md`; `02` §D  
+
+| Work | Detail |
+|---|---|
+| Schema | Step `task_list_json`; product override table/JSON; progress `task_checks_json` |
+| Editor | Task rows on workflow steps; product override UI (like instructions) |
+| Order detail | Tasks panel + tick save (AJAX or form); never affects `can_mark_done` |
+| Docs | Distinguish Tasks vs Confirmation checklist |
+| Tests | `tests/sprint-up9-s4-smoke.php` — override wins; Mark done with unticked tasks |
+
+**Done when:** operators can tick optional tasks per step; Mark done works regardless; smoke passes.
+
+---
+
 ## 4. Suggested SemVer
 
 | After | Plugin (approx) |
@@ -100,8 +121,9 @@
 | UP9-S1 | 0.39.0* |
 | UP9-S2 | 0.40.0* |
 | UP9-S3 | 0.41.0* |
+| UP9-S4 | 0.42.0* |
 
-\*After Packages 7–8 version bumps.
+\*After Packages 7–8 version bumps (Package 10 timing versions shift after this if needed).
 
 ---
 
@@ -111,6 +133,7 @@
 - Restoring n8n webhooks  
 - AI parsing of unstructured personalisation  
 - TinyMCE / block editor for instructions  
+- Requiring all tasks before Mark done  
 
 ---
 
@@ -132,4 +155,9 @@
 ### UP9-S3
 - [ ] Markdown render + kses
 - [ ] Order detail / editor styling + preview
+- [ ] Docs + smoke
+
+### UP9-S4
+- [ ] Task list on steps + product overrides
+- [ ] Order detail ticks (optional; no Mark done gate)
 - [ ] Docs + smoke
