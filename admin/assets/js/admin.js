@@ -60,6 +60,7 @@
 		var list = document.getElementById( 'som-step-list' );
 		var template = document.getElementById( 'som-step-card-template' );
 		var addButton = document.getElementById( 'som-step-add' );
+		var form = list ? list.closest( 'form' ) : null;
 		var stepIndex = 0;
 
 		if ( ! list || ! template ) {
@@ -85,6 +86,43 @@
 			cards().forEach( function ( card, i ) {
 				reindexNames( card, i + 1 );
 			} );
+		}
+
+		function stepHasGate( card ) {
+			var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
+			var typeSelect = card.querySelector( '.som-script-type' );
+			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
+			var batchSelect = card.querySelector( '.som-batch-group-select' );
+			var hasManual = manual && manual.checked;
+			var hasTimer = timer && String( timer.value ).trim() !== '';
+			var hasScript = typeSelect && typeSelect.value !== 'none';
+			var hasConfirm = confirmSelect && confirmSelect.value !== '';
+			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
+			return !!( hasManual || hasTimer || hasScript || hasConfirm || hasBatch );
+		}
+
+		function stepDisplayName( card ) {
+			var nameField = card.querySelector( '.som-step-name' );
+			var name = nameField ? String( nameField.value || '' ).trim() : '';
+			return name || '(unnamed)';
+		}
+
+		function namedCards() {
+			return cards().filter( function ( card ) {
+				var nameField = card.querySelector( '.som-step-name' );
+				return nameField && String( nameField.value || '' ).trim() !== '';
+			} );
+		}
+
+		function syncZeroGateWarning( card ) {
+			var warning = card.querySelector( '[data-som-zero-gate-warning]' );
+			if ( ! warning ) {
+				return;
+			}
+			var nameField = card.querySelector( '.som-step-name' );
+			var hasName = nameField && String( nameField.value || '' ).trim() !== '';
+			warning.hidden = ! hasName || stepHasGate( card );
 		}
 
 		function syncScriptPanels( card ) {
@@ -161,6 +199,7 @@
 						syncScriptPanels( card );
 						syncBatchWarning( card );
 						syncConfirmWarning( card );
+						syncZeroGateWarning( card );
 						return;
 					}
 					card.remove();
@@ -172,6 +211,7 @@
 					syncScriptPanels( card );
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( rawToggle ) {
@@ -184,21 +224,25 @@
 			var manualBind = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
 			var timerBind = card.querySelector( 'input[name*="[timer_value]"]' );
 			var confirmBind = card.querySelector( '.som-confirmation-kind' );
+			var nameBind = card.querySelector( '.som-step-name' );
 			if ( batchSelectBind ) {
 				batchSelectBind.addEventListener( 'change', function () {
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( manualBind ) {
 				manualBind.addEventListener( 'change', function () {
 					syncBatchWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( timerBind ) {
 				timerBind.addEventListener( 'input', function () {
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncZeroGateWarning( card );
 				} );
 			}
 			if ( confirmBind ) {
@@ -211,12 +255,19 @@
 					}
 					syncBatchWarning( card );
 					syncConfirmWarning( card );
+					syncZeroGateWarning( card );
+				} );
+			}
+			if ( nameBind ) {
+				nameBind.addEventListener( 'input', function () {
+					syncZeroGateWarning( card );
 				} );
 			}
 
 			syncScriptPanels( card );
 			syncBatchWarning( card );
 			syncConfirmWarning( card );
+			syncZeroGateWarning( card );
 		}
 
 		function syncBatchWarning( card ) {
@@ -271,9 +322,32 @@
 				wrapper.innerHTML = html.trim();
 				var card = wrapper.firstElementChild;
 				if ( card ) {
+					var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+					if ( manual ) {
+						manual.checked = true;
+					}
 					list.appendChild( card );
 					bindCard( card );
 					refreshOrder();
+				}
+			} );
+		}
+
+		if ( form ) {
+			form.addEventListener( 'submit', function ( e ) {
+				var ungated = namedCards().filter( function ( card ) {
+					return ! stepHasGate( card );
+				} );
+				if ( ! ungated.length ) {
+					return;
+				}
+				var names = ungated.map( stepDisplayName ).join( ', ' );
+				var msg =
+					'These steps have no gates and will auto-complete when entered:\n\n' +
+					names +
+					'\n\nSave anyway? (Pass-through steps are allowed.)';
+				if ( ! window.confirm( msg ) ) {
+					e.preventDefault();
 				}
 			} );
 		}

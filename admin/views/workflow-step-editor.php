@@ -32,7 +32,8 @@ $batch_groups = SOM_Batch_Groups::list_all();
 $som_render_step = static function ( $index, $step = null ) use ( $actions, $batch_groups ) {
 	$name     = $step ? (string) $step->name : '';
 	$step_id  = $step ? (int) $step->id : 0;
-	$manual   = $step ? (int) $step->requires_manual_confirm : 0;
+	// New / blank step cards default to manual confirm (UP7-S1) so they do not auto-complete by accident.
+	$manual   = $step ? (int) $step->requires_manual_confirm : 1;
 	$timer    = SOM_Workflows::timer_for_display( $step && null !== $step->timer_seconds ? (int) $step->timer_seconds : null );
 	$script   = SOM_Workflows::script_for_display( $step ? $step->script_config : null );
 	$type     = $script['type'];
@@ -69,6 +70,9 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 				<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[requires_manual_confirm]" value="1" <?php checked( $manual ); ?> data-som-manual-confirm />
 				<?php echo esc_html__( 'Requires manual confirm', 'order-machine' ); ?>
 			</label>
+			<p class="som-zero-gate-warning notice notice-warning inline" data-som-zero-gate-warning hidden>
+				<?php echo esc_html__( 'This step will auto-complete when entered (no manual confirm, checklist, timer, script, or batch).', 'order-machine' ); ?>
+			</p>
 
 			<div class="som-step-gate som-step-confirmation" data-som-confirmation-gate>
 				<label>
@@ -299,7 +303,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $actions, $bat
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates). Confirmation checklists cannot combine with timer, script, or batch.', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, timer, and/or script — or assign a batch group (batch-only; cannot combine with other gates). Confirmation checklists cannot combine with timer, script, or batch. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block.', 'order-machine' ); ?></p>
 
 		<div id="som-step-list" class="som-step-list">
 			<?php

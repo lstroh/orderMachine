@@ -107,7 +107,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Shipping address
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, scripts, **waiting_batch** badge + Batches link
-- **Confirmation checklist** panel when the current step has a confirmation kind (print / address / packing) — Save checklist, then Mark done
+- **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done)
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete)
 - **Materials used** — raise Actual above planned when you used more (stock, profit, budget); increase-only
@@ -297,8 +297,9 @@ Also see order **Notes** (§3) and **Planned shipping** on order detail (§3) / 
 | Timer | Blocked until countdown ends (or tick unlocks) |
 | Script | Allowlisted runner + retries + callback |
 | Batch | Entering sets `waiting_batch` and enqueues; other gates ignored on that step in v1 |
+| **Zero-gate** (none of the above) | Step **auto-completes** as soon as it is entered, and the engine advances to the next step. Useful for intentional pass-throughs. The workflow editor warns on Save (does not hard-block) and defaults **Requires manual confirm** on newly added step cards |
 
-**Important:** Workflow + stock run on **new creates**. Orders imported before a product had a workflow/recipe do not get progress or stock retroactively.
+**Important:** Workflow + stock run on **new creates**. Orders imported before a product had a workflow/recipe do not get progress or stock retroactively. Already-Done zero-gate steps on open orders are not rewritten when you later add gates to the template.
 
 ---
 

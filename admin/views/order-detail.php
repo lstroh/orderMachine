@@ -341,7 +341,6 @@ if ( ! empty( $order->raw_payload ) ) {
 		<h2><?php echo esc_html__( 'Make', 'order-machine' ); ?></h2>
 		<p class="description">
 			<a href="<?php echo esc_url( SOM_Orders::board_url() ); ?>"><?php echo esc_html__( 'Open Make Board', 'order-machine' ); ?></a>
-			— <?php echo esc_html__( 'Pack & Ship controls arrive in UP6-S2.', 'order-machine' ); ?>
 		</p>
 		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
 			<p class="description"><?php echo esc_html__( 'Cancelled — make actions are blocked.', 'order-machine' ); ?></p>
@@ -358,6 +357,14 @@ if ( ! empty( $order->raw_payload ) ) {
 				$line_progress = isset( $make_item->make_progress ) && is_array( $make_item->make_progress ) ? $make_item->make_progress : array();
 				$line_current  = isset( $make_item->make_current ) ? $make_item->make_current : null;
 				$product_id_l  = isset( $make_item->product_id ) ? (int) $make_item->product_id : 0;
+				$line_confirm_kind  = null;
+				$line_confirm_state = array();
+				if ( $line_current ) {
+					$line_confirm_kind  = SOM_Step_Confirmations::sanitize_kind(
+						isset( $line_current->confirmation_kind ) ? $line_current->confirmation_kind : null
+					);
+					$line_confirm_state = SOM_Step_Confirmations::decode_state( $line_current );
+				}
 				?>
 				<div class="som-make-line" data-som-order-item-id="<?php echo esc_attr( (string) $line_id ); ?>">
 					<h3>
@@ -384,41 +391,6 @@ if ( ! empty( $order->raw_payload ) ) {
 					<?php if ( $is_internal_l || $line_complete || empty( $line_progress ) ) : ?>
 						<?php /* status badge above is enough */ ?>
 					<?php else : ?>
-						<?php
-						$line_confirm_kind  = null;
-						$line_confirm_state = array();
-						if ( $line_current ) {
-							$line_confirm_kind  = SOM_Step_Confirmations::sanitize_kind(
-								isset( $line_current->confirmation_kind ) ? $line_current->confirmation_kind : null
-							);
-							$line_confirm_state = SOM_Step_Confirmations::decode_state( $line_current );
-						}
-						?>
-						<?php if ( $line_confirm_kind && empty( $order->is_cancelled ) && empty( $order->is_complete ) ) : ?>
-							<div class="som-confirmation-panel">
-								<h4><?php echo esc_html__( 'Confirmation checklist', 'order-machine' ); ?></h4>
-								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>">
-									<?php wp_nonce_field( 'som_save_confirmation', 'som_order_nonce' ); ?>
-									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
-									<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
-									<input type="hidden" name="som_save_confirmation" value="1" />
-									<?php if ( SOM_Step_Confirmations::KIND_PRINT_VS_REQUEST === $line_confirm_kind ) : ?>
-										<label class="som-confirm-check">
-											<input type="checkbox" name="som_confirm[print_matches_request]" value="1" <?php checked( ! empty( $line_confirm_state['print_matches_request'] ) ); ?> />
-											<?php echo esc_html__( 'I confirmed the print matches the client request', 'order-machine' ); ?>
-										</label>
-									<?php endif; ?>
-									<?php
-									submit_button( __( 'Save checklist', 'order-machine' ), 'secondary', 'submit', false );
-									$line_confirm_ok = $line_current && SOM_Step_Confirmations::is_complete( $line_confirm_kind, $line_confirm_state, $order );
-									?>
-									<?php if ( $line_confirm_ok ) : ?>
-										<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Checklist complete', 'order-machine' ); ?></span>
-									<?php endif; ?>
-								</form>
-							</div>
-						<?php endif; ?>
-
 						<ol class="som-workflow-progress">
 							<?php foreach ( $line_progress as $row ) : ?>
 								<?php
@@ -475,6 +447,40 @@ if ( ! empty( $order->raw_payload ) ) {
 											);
 											?>
 										</p>
+									<?php endif; ?>
+									<?php if ( $is_current && $line_confirm_kind && empty( $order->is_cancelled ) && empty( $order->is_complete ) ) : ?>
+										<div class="som-confirmation-panel">
+											<h4>
+												<?php
+												printf(
+													/* translators: %s: workflow step name */
+													esc_html__( 'Confirmation checklist — %s', 'order-machine' ),
+													esc_html( (string) $row->step_name )
+												);
+												?>
+											</h4>
+											<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>">
+												<?php wp_nonce_field( 'som_save_confirmation', 'som_order_nonce' ); ?>
+												<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+												<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
+												<input type="hidden" name="som_save_confirmation" value="1" />
+												<?php if ( SOM_Step_Confirmations::KIND_PRINT_VS_REQUEST === $line_confirm_kind ) : ?>
+													<label class="som-confirm-check">
+														<input type="checkbox" name="som_confirm[print_matches_request]" value="1" <?php checked( ! empty( $line_confirm_state['print_matches_request'] ) ); ?> />
+														<?php echo esc_html__( 'I confirmed the print matches the client request', 'order-machine' ); ?>
+													</label>
+												<?php endif; ?>
+												<?php
+												submit_button( __( 'Save checklist', 'order-machine' ), 'secondary', 'submit', false );
+												$line_confirm_ok = $line_current && SOM_Step_Confirmations::is_complete( $line_confirm_kind, $line_confirm_state, $order );
+												?>
+												<?php if ( $line_confirm_ok ) : ?>
+													<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Checklist complete', 'order-machine' ); ?></span>
+												<?php else : ?>
+													<span class="description"><?php echo esc_html__( 'Mark done unlocks after every required box is ticked and saved.', 'order-machine' ); ?></span>
+												<?php endif; ?>
+											</form>
+										</div>
 									<?php endif; ?>
 									<?php if ( $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete ) && 'waiting_script' !== $status ) : ?>
 										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-mark-done-form">
@@ -672,134 +678,6 @@ if ( ! empty( $order->raw_payload ) ) {
 					break;
 				}
 			}
-			?>
-			<?php if ( $current_confirm_kind && empty( $order->is_cancelled ) ) : ?>
-				<div class="som-confirmation-panel" data-som-confirmation-kind="<?php echo esc_attr( $current_confirm_kind ); ?>">
-					<h3><?php echo esc_html__( 'Confirmation checklist', 'order-machine' ); ?></h3>
-					<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-confirm-step-form" data-som-confirm-step data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>">
-						<?php wp_nonce_field( 'som_save_confirmation', 'som_order_nonce' ); ?>
-						<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
-						<input type="hidden" name="som_save_confirmation" value="1" />
-
-						<?php if ( SOM_Step_Confirmations::KIND_PRINT_VS_REQUEST === $current_confirm_kind ) : ?>
-							<p class="description"><?php echo esc_html__( 'Compare what you will print with the client request on the marketplace order.', 'order-machine' ); ?></p>
-							<ul class="som-confirm-compare-list">
-								<?php foreach ( $order->items as $item ) : ?>
-									<?php
-									$listing_id  = SOM_Step_Confirmations::listing_id_for_item( $item, $order );
-									$listing_url = SOM_Step_Confirmations::marketplace_listing_url( (string) $order->channel_slug, $listing_id );
-									$pname       = ! empty( $item->product_name ) ? (string) $item->product_name : __( 'Unmatched item', 'order-machine' );
-									$person      = isset( $item->personalisation_text ) ? trim( (string) $item->personalisation_text ) : '';
-									?>
-									<li>
-										<strong><?php echo esc_html( (string) (int) $item->quantity ); ?>× <?php echo esc_html( $pname ); ?></strong>
-										<?php if ( ! empty( $item->product_sku ) ) : ?>
-											<code><?php echo esc_html( (string) $item->product_sku ); ?></code>
-										<?php endif; ?>
-										<?php if ( '' !== $person ) : ?>
-											<div class="som-confirm-person"><?php echo esc_html( $person ); ?></div>
-										<?php else : ?>
-											<div class="som-muted"><?php echo esc_html__( 'No personalisation text.', 'order-machine' ); ?></div>
-										<?php endif; ?>
-										<p class="som-confirm-links">
-											<?php if ( $marketplace_order_url ) : ?>
-												<a href="<?php echo esc_url( $marketplace_order_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open marketplace order', 'order-machine' ); ?></a>
-											<?php endif; ?>
-											<?php if ( $listing_url ) : ?>
-												<?php if ( $marketplace_order_url ) : ?> · <?php endif; ?>
-												<a href="<?php echo esc_url( $listing_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open listing', 'order-machine' ); ?></a>
-											<?php endif; ?>
-										</p>
-									</li>
-								<?php endforeach; ?>
-							</ul>
-							<div class="som-confirm-files som-muted">
-								<p><?php echo esc_html__( 'Print files are not attached yet — they will appear here later.', 'order-machine' ); ?></p>
-							</div>
-							<label class="som-confirm-check">
-								<input type="checkbox" name="som_confirm[print_matches_request]" value="1" <?php checked( ! empty( $current_confirm_state['print_matches_request'] ) ); ?> />
-								<?php echo esc_html__( 'I confirmed the print matches the client request', 'order-machine' ); ?>
-							</label>
-
-						<?php elseif ( SOM_Step_Confirmations::KIND_SHIPPING_ADDRESS === $current_confirm_kind ) : ?>
-							<p class="description"><?php echo esc_html__( 'Compare the shipping address you will print (e.g. Click & Drop) with the marketplace order.', 'order-machine' ); ?></p>
-							<?php if ( '' !== $address_text ) : ?>
-								<div class="som-confirm-address-block">
-									<address class="som-shipping-address"><?php echo nl2br( esc_html( $address_text ) ); ?></address>
-									<button type="button" class="button button-small" data-som-copy-text="<?php echo esc_attr( $address_text ); ?>">
-										<?php echo esc_html__( 'Copy address', 'order-machine' ); ?>
-									</button>
-								</div>
-							<?php else : ?>
-								<p class="som-muted"><?php echo esc_html__( 'No shipping address stored.', 'order-machine' ); ?></p>
-							<?php endif; ?>
-							<p>
-								<?php
-								printf(
-									/* translators: %s: buyer name */
-									esc_html__( 'Buyer: %s', 'order-machine' ),
-									esc_html( (string) $order->buyer_name )
-								);
-								?>
-							</p>
-							<?php if ( $marketplace_order_url ) : ?>
-								<p>
-									<a class="button button-secondary" href="<?php echo esc_url( $marketplace_order_url ); ?>" target="_blank" rel="noopener noreferrer">
-										<?php echo esc_html__( 'Open marketplace order', 'order-machine' ); ?>
-									</a>
-								</p>
-							<?php endif; ?>
-							<label class="som-confirm-check">
-								<input type="checkbox" name="som_confirm[address_matches_marketplace]" value="1" <?php checked( ! empty( $current_confirm_state['address_matches_marketplace'] ) ); ?> />
-								<?php echo esc_html__( 'I confirmed the shipping address matches the marketplace', 'order-machine' ); ?>
-							</label>
-
-						<?php elseif ( SOM_Step_Confirmations::KIND_PACKING_ITEMS === $current_confirm_kind ) : ?>
-							<p class="description"><?php echo esc_html__( 'Tick each line once it is in the package, plus thank-you included.', 'order-machine' ); ?></p>
-							<?php
-							$items_checked = isset( $current_confirm_state['items'] ) && is_array( $current_confirm_state['items'] )
-								? $current_confirm_state['items']
-								: array();
-							?>
-							<ul class="som-confirm-pack-list">
-								<?php foreach ( $order->items as $item ) : ?>
-									<?php $iid = (string) (int) $item->id; ?>
-									<li>
-										<label class="som-confirm-check">
-											<input type="checkbox" name="som_confirm[items][<?php echo esc_attr( $iid ); ?>]" value="1" <?php checked( ! empty( $items_checked[ $iid ] ) ); ?> />
-											<?php echo esc_html( SOM_Step_Confirmations::packing_item_label( $item ) ); ?>
-										</label>
-									</li>
-								<?php endforeach; ?>
-								<li>
-									<label class="som-confirm-check">
-										<input type="checkbox" name="som_confirm[thank_you_included]" value="1" <?php checked( ! empty( $current_confirm_state['thank_you_included'] ) ); ?> />
-										<?php echo esc_html__( 'Thank-you included', 'order-machine' ); ?>
-									</label>
-								</li>
-							</ul>
-						<?php endif; ?>
-
-						<?php
-						submit_button(
-							__( 'Save checklist', 'order-machine' ),
-							'secondary',
-							'submit',
-							false
-						);
-						$confirm_complete = $current_confirm_row
-							&& SOM_Step_Confirmations::is_complete( $current_confirm_kind, $current_confirm_state, $order );
-						?>
-						<?php if ( $confirm_complete ) : ?>
-							<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Checklist complete', 'order-machine' ); ?></span>
-						<?php else : ?>
-							<span class="description"><?php echo esc_html__( 'Mark done unlocks after every required box is ticked and saved.', 'order-machine' ); ?></span>
-						<?php endif; ?>
-					</form>
-				</div>
-			<?php endif; ?>
-
-			<?php
 			$primary_product_id = SOM_Workflow_Engine::primary_product_id( $order );
 			?>
 			<ol class="som-workflow-progress">
@@ -889,6 +767,139 @@ if ( ! empty( $order->raw_payload ) ) {
 								);
 								?>
 							</p>
+						<?php endif; ?>
+						<?php if ( $is_current && $current_confirm_kind && empty( $order->is_cancelled ) ) : ?>
+							<div class="som-confirmation-panel" data-som-confirmation-kind="<?php echo esc_attr( $current_confirm_kind ); ?>">
+								<h3>
+									<?php
+									printf(
+										/* translators: %s: workflow step name */
+										esc_html__( 'Confirmation checklist — %s', 'order-machine' ),
+										esc_html( (string) $row->step_name )
+									);
+									?>
+								</h3>
+								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-confirm-step-form" data-som-confirm-step data-order-id="<?php echo esc_attr( (string) (int) $order->id ); ?>">
+									<?php wp_nonce_field( 'som_save_confirmation', 'som_order_nonce' ); ?>
+									<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+									<input type="hidden" name="som_save_confirmation" value="1" />
+
+									<?php if ( SOM_Step_Confirmations::KIND_PRINT_VS_REQUEST === $current_confirm_kind ) : ?>
+										<p class="description"><?php echo esc_html__( 'Compare what you will print with the client request on the marketplace order.', 'order-machine' ); ?></p>
+										<ul class="som-confirm-compare-list">
+											<?php foreach ( $order->items as $item ) : ?>
+												<?php
+												$listing_id  = SOM_Step_Confirmations::listing_id_for_item( $item, $order );
+												$listing_url = SOM_Step_Confirmations::marketplace_listing_url( (string) $order->channel_slug, $listing_id );
+												$pname       = ! empty( $item->product_name ) ? (string) $item->product_name : __( 'Unmatched item', 'order-machine' );
+												$person      = isset( $item->personalisation_text ) ? trim( (string) $item->personalisation_text ) : '';
+												?>
+												<li>
+													<strong><?php echo esc_html( (string) (int) $item->quantity ); ?>× <?php echo esc_html( $pname ); ?></strong>
+													<?php if ( ! empty( $item->product_sku ) ) : ?>
+														<code><?php echo esc_html( (string) $item->product_sku ); ?></code>
+													<?php endif; ?>
+													<?php if ( '' !== $person ) : ?>
+														<div class="som-confirm-person"><?php echo esc_html( $person ); ?></div>
+													<?php else : ?>
+														<div class="som-muted"><?php echo esc_html__( 'No personalisation text.', 'order-machine' ); ?></div>
+													<?php endif; ?>
+													<p class="som-confirm-links">
+														<?php if ( $marketplace_order_url ) : ?>
+															<a href="<?php echo esc_url( $marketplace_order_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open marketplace order', 'order-machine' ); ?></a>
+														<?php endif; ?>
+														<?php if ( $listing_url ) : ?>
+															<?php if ( $marketplace_order_url ) : ?> · <?php endif; ?>
+															<a href="<?php echo esc_url( $listing_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open listing', 'order-machine' ); ?></a>
+														<?php endif; ?>
+													</p>
+												</li>
+											<?php endforeach; ?>
+										</ul>
+										<div class="som-confirm-files som-muted">
+											<p><?php echo esc_html__( 'Print files are not attached yet — they will appear here later.', 'order-machine' ); ?></p>
+										</div>
+										<label class="som-confirm-check">
+											<input type="checkbox" name="som_confirm[print_matches_request]" value="1" <?php checked( ! empty( $current_confirm_state['print_matches_request'] ) ); ?> />
+											<?php echo esc_html__( 'I confirmed the print matches the client request', 'order-machine' ); ?>
+										</label>
+
+									<?php elseif ( SOM_Step_Confirmations::KIND_SHIPPING_ADDRESS === $current_confirm_kind ) : ?>
+										<p class="description"><?php echo esc_html__( 'Compare the shipping address you will print (e.g. Click & Drop) with the marketplace order.', 'order-machine' ); ?></p>
+										<?php if ( '' !== $address_text ) : ?>
+											<div class="som-confirm-address-block">
+												<address class="som-shipping-address"><?php echo nl2br( esc_html( $address_text ) ); ?></address>
+												<button type="button" class="button button-small" data-som-copy-text="<?php echo esc_attr( $address_text ); ?>">
+													<?php echo esc_html__( 'Copy address', 'order-machine' ); ?>
+												</button>
+											</div>
+										<?php else : ?>
+											<p class="som-muted"><?php echo esc_html__( 'No shipping address stored.', 'order-machine' ); ?></p>
+										<?php endif; ?>
+										<p>
+											<?php
+											printf(
+												/* translators: %s: buyer name */
+												esc_html__( 'Buyer: %s', 'order-machine' ),
+												esc_html( (string) $order->buyer_name )
+											);
+											?>
+										</p>
+										<?php if ( $marketplace_order_url ) : ?>
+											<p>
+												<a class="button button-secondary" href="<?php echo esc_url( $marketplace_order_url ); ?>" target="_blank" rel="noopener noreferrer">
+													<?php echo esc_html__( 'Open marketplace order', 'order-machine' ); ?>
+												</a>
+											</p>
+										<?php endif; ?>
+										<label class="som-confirm-check">
+											<input type="checkbox" name="som_confirm[address_matches_marketplace]" value="1" <?php checked( ! empty( $current_confirm_state['address_matches_marketplace'] ) ); ?> />
+											<?php echo esc_html__( 'I confirmed the shipping address matches the marketplace', 'order-machine' ); ?>
+										</label>
+
+									<?php elseif ( SOM_Step_Confirmations::KIND_PACKING_ITEMS === $current_confirm_kind ) : ?>
+										<p class="description"><?php echo esc_html__( 'Tick each line once it is in the package, plus thank-you included.', 'order-machine' ); ?></p>
+										<?php
+										$items_checked = isset( $current_confirm_state['items'] ) && is_array( $current_confirm_state['items'] )
+											? $current_confirm_state['items']
+											: array();
+										?>
+										<ul class="som-confirm-pack-list">
+											<?php foreach ( $order->items as $item ) : ?>
+												<?php $iid = (string) (int) $item->id; ?>
+												<li>
+													<label class="som-confirm-check">
+														<input type="checkbox" name="som_confirm[items][<?php echo esc_attr( $iid ); ?>]" value="1" <?php checked( ! empty( $items_checked[ $iid ] ) ); ?> />
+														<?php echo esc_html( SOM_Step_Confirmations::packing_item_label( $item ) ); ?>
+													</label>
+												</li>
+											<?php endforeach; ?>
+											<li>
+												<label class="som-confirm-check">
+													<input type="checkbox" name="som_confirm[thank_you_included]" value="1" <?php checked( ! empty( $current_confirm_state['thank_you_included'] ) ); ?> />
+													<?php echo esc_html__( 'Thank-you included', 'order-machine' ); ?>
+												</label>
+											</li>
+										</ul>
+									<?php endif; ?>
+
+									<?php
+									submit_button(
+										__( 'Save checklist', 'order-machine' ),
+										'secondary',
+										'submit',
+										false
+									);
+									$confirm_complete = $current_confirm_row
+										&& SOM_Step_Confirmations::is_complete( $current_confirm_kind, $current_confirm_state, $order );
+									?>
+									<?php if ( $confirm_complete ) : ?>
+										<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Checklist complete', 'order-machine' ); ?></span>
+									<?php else : ?>
+										<span class="description"><?php echo esc_html__( 'Mark done unlocks after every required box is ticked and saved.', 'order-machine' ); ?></span>
+									<?php endif; ?>
+								</form>
+							</div>
 						<?php endif; ?>
 						<?php if ( $is_current && 'waiting_batch' === $status ) : ?>
 							<?php
