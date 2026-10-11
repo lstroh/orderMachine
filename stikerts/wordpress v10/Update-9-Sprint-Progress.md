@@ -17,7 +17,7 @@
 
 ## UP9-S1 — eBay structured fields + Copy command step
 
-- **Status:** In progress (this PR)
+- **Status:** Code complete (this PR)
 - **Schema:** 1.21.0 (`workflow_steps.command_template`; `order_items.house_number` / `street_name` / `style` / `personalisation_json`)
 - **Plugin:** unchanged (release bump optional later → ~0.39.0)
 
