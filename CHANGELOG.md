@@ -8,6 +8,35 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-10-12
+
+Packages 7–11: package materials and suggestion, trays and Unblock, Copy command, workflow timing, and post-ship.
+
+### Added
+
+- Make step gate UX: confirmation checklists sit under the current step, and a step with no gates warns instead of showing Done before any work (BUG-003)
+- Shipping package materials (BOM) and a Package source on Materials used when a package is reserved (schema 1.17.0)
+- Package suggestion for quantity 1 versus 2+ or mixed lines, plus multi-line test orders (schema 1.18.0)
+- Order trays: site maximum, assign and release on the order (schema 1.19.0)
+- Tray required before complete, an Unblock step on order detail that bypasses gates, and tray badges on the boards (schema 1.20.0)
+- Copy command on a workflow step, and structured eBay order fields (schema 1.21.0)
+- Step instructions as Markdown, rendered to safe HTML on order detail
+- Optional step task lists that do not gate Mark done; confirmation checklists still do (schema 1.22.0)
+- Planned and actual workflow timing on order detail, including span totals (schema 1.23.0)
+- Analytics for planned, timer, and actual time, including steps over plan (actual greater than 1.2× planned)
+- Post-ship workflow: Pack Ship does not complete a customer order; auto-start binds and enters post-ship; confirming arrival with a shipment completes the order while later post-ship steps can still run; a product post-ship override wins over the site default; Internal Produce N skips post-ship (schema 1.24.0)
+- Post-ship board (unstarted and active), aftercare seed, and operator docs. Seed Pack no longer includes Review reminder
+
+### Changed
+
+- Local, API, and n8n script steps are removed; seed steps use Copy command instead
+
+### Notes
+
+- Schema moves from **1.16.0** to **1.24.0**
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.33.0.zip`, not the repository source zipball
+
 ## [0.32.2] - 2026-09-29
 
 First GitHub Release since 0.23.0. Plugin versions 0.24–0.32.1 were in `main` but not tagged.
