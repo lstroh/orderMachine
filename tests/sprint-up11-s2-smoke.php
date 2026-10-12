@@ -241,10 +241,12 @@ $wpdb->insert(
 		'buyer_name'                => 'UP11 S2 Buyer',
 		'is_complete'               => 0,
 		'pack_workflow_template_id' => (int) $pack_wf,
+		// Non-NULL so cancelled_sql() (raw_payload LIKE …) does not drop the row.
+		'raw_payload'               => '{}',
 		'created_at'                => $now,
 		'updated_at'                => $now,
 	),
-	array( '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s' )
+	array( '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s' )
 );
 $order_id = (int) $wpdb->insert_id;
 $assert( $order_id > 0, 'insert_order' );
