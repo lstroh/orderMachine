@@ -254,7 +254,7 @@ $wpdb->update(
 	array( '%d' )
 );
 
-// Pack: Confirm 12m (over 10m), Ship 2m (under 5m).
+// Pack: Confirm 13m (strictly over 10m × 1.2 = 12m), Ship 2m (under 5m).
 $order = SOM_Orders::get( $order_id );
 $assert( (int) $order->pack_workflow_template_id === $wf_pack_id, 'pack_bound' );
 
@@ -290,13 +290,14 @@ foreach ( $order->workflow_progress as $prow ) {
 		$pack_ship = $prow;
 	}
 }
-$confirm_end = gmdate( 'Y-m-d H:i:s', strtotime( '2026-09-15 11:12:00' ) );
+// 13m actual > planned 10m × 1.2 (exactly 12m is not over-plan).
+$confirm_end = gmdate( 'Y-m-d H:i:s', strtotime( '2026-09-15 11:13:00' ) );
 $wpdb->update(
 	$order_prog_t,
 	array(
 		'started_at'     => $confirm_start,
 		'completed_at'   => $confirm_end,
-		'actual_seconds' => 720,
+		'actual_seconds' => 780,
 	),
 	array( 'id' => (int) $pack_confirm->id ),
 	array( '%s', '%s', '%d' ),
@@ -328,7 +329,7 @@ $ship_ok = SOM_Shipments::upsert(
 $assert( ! is_wp_error( $ship_ok ), 'save_shipment' );
 
 $ship_start = $confirm_end;
-$ship_end   = gmdate( 'Y-m-d H:i:s', strtotime( '2026-09-15 11:14:00' ) );
+$ship_end   = gmdate( 'Y-m-d H:i:s', strtotime( '2026-09-15 11:15:00' ) );
 $wpdb->update(
 	$order_prog_t,
 	array( 'started_at' => $ship_start ),
@@ -421,13 +422,13 @@ foreach ( $pack_timing['steps'] as $step ) {
 	$pack_steps[ (string) $step['name'] ] = $step;
 }
 $assert( isset( $pack_steps['Confirm pack'], $pack_steps['Ship'] ), 'pack_steps_present' );
-$assert( 720 === (int) $pack_steps['Confirm pack']['avg_actual'], 'pack_confirm_avg_720' );
+$assert( 780 === (int) $pack_steps['Confirm pack']['avg_actual'], 'pack_confirm_avg_780' );
 $assert( true === $pack_steps['Confirm pack']['over_plan'], 'pack_confirm_over_plan' );
 $assert( 120 === (int) $pack_steps['Ship']['avg_actual'], 'pack_ship_avg_120' );
 $assert( false === $pack_steps['Ship']['over_plan'], 'pack_ship_not_over_plan' );
 $assert( 1 === (int) $pack_timing['workflow_totals']['count'], 'pack_workflow_count_1' );
-// Span 11:00 → 11:14 = 840s; planned 900s.
-$assert( 840 === (int) $pack_timing['workflow_totals']['avg_actual'], 'pack_span_840' );
+// Span 11:00 → 11:15 = 900s; planned 900s.
+$assert( 900 === (int) $pack_timing['workflow_totals']['avg_actual'], 'pack_span_900' );
 
 // Empty range → zero samples.
 $empty_filters = SOM_Analytics::parse_filters(
