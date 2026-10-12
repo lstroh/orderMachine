@@ -34,7 +34,7 @@ SOM_Seed::maybe_seed_catalogue();
 $out( 'plugin', SOM_VERSION );
 $out( 'db', (string) get_option( 'som_db_version', '' ) );
 $assert( class_exists( 'SOM_Copy_Command' ), 'class_SOM_Copy_Command' );
-$assert( '1.21.0' === (string) get_option( 'som_db_version', '' ), 'db_version_1.21.0' );
+$assert( version_compare( (string) get_option( 'som_db_version', '' ), '1.21.0', '>=' ), 'db_gte_1.21.0' );
 
 $steps_t = SOM_DB::table( 'workflow_steps' );
 $items_t = SOM_DB::table( 'order_items' );

@@ -87,7 +87,9 @@ $assert( '' === SOM_Step_Instructions::render_html( null ), 'null_input' );
 // Order detail uses render helper (not esc_html on body).
 $detail = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/views/order-detail.php' );
 $assert( false !== strpos( $detail, 'SOM_Step_Instructions::render_html' ), 'order_detail_uses_render_html' );
-$assert( false === preg_match( '/som-step-instructions-body">\s*<\?php echo esc_html\(\s*\$step_instructions/', $detail ), 'order_detail_no_esc_html_body' );
+// preg_match returns 0 (not false) when there is no match.
+$assert( 1 !== preg_match( '/som-step-instructions-body">\s*<\?php echo esc_html\(\s*\$step_instructions/', $detail ), 'order_detail_no_esc_html_body' );
+$assert( false === strpos( $detail, 'esc_html( $step_instructions' ), 'order_detail_no_esc_html_call' );
 
 // Editor surfaces: Markdown help + preview hooks.
 $editor = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/views/workflow-step-editor.php' );
