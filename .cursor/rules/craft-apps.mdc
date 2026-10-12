@@ -1,0 +1,40 @@
+---
+description: How to use the PdfCraft and VectorCraft MCP servers when generating, checking or editing sticker-business PDFs and vector artwork
+alwaysApply: false
+---
+
+# PdfCraft and VectorCraft MCP servers
+
+Both servers can only read and write inside `G:\My Drive\cursor_mcps`. Before using a file with them, write or copy it into that folder. Paths outside it will fail.
+
+## After regenerating any PDF from a script, check it with PdfCraft
+
+This applies to `instructions_card.py`, `thankyou_card.py`, `sticker_wrap.py`, `bin_sticker*.py` and `make_order.py`.
+
+1. Save the output into `G:\My Drive\cursor_mcps`, or copy it there.
+2. Run `doc_open`, then `doc_info` and `doc_inspect` (font details are in `doc_inspect`). Check:
+   - the page count
+   - the page size: A4 is 595 × 842pt, A5 is 420 × 595pt, A6 is 298 × 420pt
+   - that every font is embedded
+3. Run `text_extract` and check the printed wording against the script's strings, looking for typos and missing lines.
+4. Run `page_render` on each changed page. Look at the image before reporting the change as done.
+5. Run `doc_close`. Don't save, because these are read-only checks.
+
+Never use PdfCraft to edit a PDF's text or layout. Its text editing is unreliable (alpha). Change the script and regenerate the file.
+
+PdfCraft is fine for combining, splitting and extracting pages. For example, use it to combine several order sheets into one print file.
+
+## VectorCraft: artwork and cut lines
+
+- **Never open a PNG to trace it.** Opening ignores the DPI, and a 600dpi file comes in about 8× too big. Use `file.new` with mm sizes (for example `{"width":"20 mm","height":"20 mm","units":"Millimeters"}`), then `file.place {path, link:false}`. Placing respects the DPI.
+- **Tracing:** `imageTrace.makeAndExpand {ids, preset:"Black and White Logo"}`.
+- **Cut line:** `object.path.offsetPath {ids, offset:"1.5 mm"}`.
+- **Making a path outline-only:** use the `set_paint` tool with `fill:"none"`. `paint.setFill` refuses `"none"`.
+- **Checking sizes:** `inspect_document` reports bounds in points. 1mm is 2.8346pt. Report the sizes in mm.
+- **SVG export is unitless** (points at 72/in). Flag that the size Design Space shows on import still needs checking.
+- **For cuts on the Cricut Explore 5:** export SVG. Print Then Cut's A4 limit is about 183 × 270mm.
+
+## Don'ts
+
+- Don't use GridCraft for any cost or pricing sheet. Those stay `.xlsx` with live formulas.
+- Don't change the production scripts' output paths permanently just to suit the MCP folder. Copy the files instead, unless the user asks for the change.
