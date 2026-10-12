@@ -116,6 +116,27 @@ $assert( SOM_Post_Ship::default_template_id() === $ps_id || SOM_Post_Ship::defau
 $pack_id = (int) ( $ids['pack_workflow_id'] ?? 0 );
 $assert( $pack_id > 0, 'seed_pack_exists' );
 SOM_Seed::maybe_strip_pack_review_reminder( $pack_id );
+
+// Smoke-only: clear leftover open progress on seed Pack Review reminder so strip can run
+// (production migrate keeps the step while in-flight rows exist).
+$pack_review = $wpdb->get_row(
+	$wpdb->prepare(
+		'SELECT id FROM ' . SOM_DB::table( 'workflow_steps' ) . ' WHERE workflow_template_id = %d AND name = %s ORDER BY id ASC LIMIT 1',
+		$pack_id,
+		'Review reminder'
+	)
+);
+if ( $pack_review ) {
+	$wpdb->query(
+		$wpdb->prepare(
+			'DELETE FROM ' . SOM_DB::table( 'order_step_progress' ) . ' WHERE workflow_step_id = %d AND status <> %s',
+			(int) $pack_review->id,
+			'done'
+		)
+	);
+	SOM_Seed::maybe_strip_pack_review_reminder( $pack_id );
+}
+
 $pack_steps = SOM_Workflows::get_steps( $pack_id );
 $pack_names = array_map(
 	static function ( $s ) {
@@ -214,18 +235,16 @@ $now = current_time( 'mysql', true );
 $wpdb->insert(
 	SOM_DB::table( 'orders' ),
 	array(
-		'channel_id'                 => (int) $ebay->id,
-		'external_order_id'          => $ext,
-		'order_date'                 => $now,
-		'buyer_name'                 => 'UP11 S2 Buyer',
-		'currency'                   => 'GBP',
-		'order_total'                => 10,
-		'is_complete'                => 0,
-		'pack_workflow_template_id'  => (int) $pack_wf,
-		'created_at'                 => $now,
-		'updated_at'                 => $now,
+		'channel_id'                => (int) $ebay->id,
+		'external_order_id'         => $ext,
+		'order_date'                => $now,
+		'buyer_name'                => 'UP11 S2 Buyer',
+		'is_complete'               => 0,
+		'pack_workflow_template_id' => (int) $pack_wf,
+		'created_at'                => $now,
+		'updated_at'                => $now,
 	),
-	array( '%d', '%s', '%s', '%s', '%s', '%f', '%d', '%d', '%s', '%s' )
+	array( '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s' )
 );
 $order_id = (int) $wpdb->insert_id;
 $assert( $order_id > 0, 'insert_order' );
@@ -233,16 +252,13 @@ $assert( $order_id > 0, 'insert_order' );
 $wpdb->insert(
 	SOM_DB::table( 'order_items' ),
 	array(
-		'order_id'              => $order_id,
-		'external_line_id'      => 'L1',
-		'product_id'            => $product_id,
-		'quantity'              => 1,
-		'unit_price'            => 10,
-		'personalisation_text'  => 'S2',
-		'created_at'            => $now,
-		'updated_at'            => $now,
+		'order_id'             => $order_id,
+		'product_id'           => $product_id,
+		'quantity'             => 1,
+		'unit_price'           => 10,
+		'personalisation_text' => 'S2',
 	),
-	array( '%d', '%s', '%d', '%d', '%f', '%s', '%s', '%s' )
+	array( '%d', '%d', '%d', '%f', '%s' )
 );
 
 // Pack done + shipment → unstarted board.
@@ -266,8 +282,8 @@ $ship_ok = SOM_Shipments::upsert(
 	array(
 		'carrier'      => 'Royal Mail',
 		'service'      => 'Tracked 48',
-		'shipped_at'   => gmdate( 'Y-m-d' ),
-		'postage_paid' => 1.5,
+		'shipped_at'   => gmdate( 'Y-m-d H:i:s' ),
+		'postage_paid' => '1.50',
 	)
 );
 $assert( ! is_wp_error( $ship_ok ), 'shipment_upsert' );
