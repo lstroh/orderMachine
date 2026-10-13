@@ -13,6 +13,7 @@ bin_sticker_core.py, sticker_wrap.py and the assets/ folder.
 Small (140 x 100mm) bin stickers only for now.
 """
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 import os
 import re
 

@@ -44,6 +44,7 @@ flip the sheet on its LONG edge. Every card is identical, so print in batches.
                                                         print PDFs with the real code
 """
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 import os
 import re
 import sys

@@ -64,6 +64,7 @@ print-test results once done (same convention as every Small-size style's
 own history of print-test corrections).
 """
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor

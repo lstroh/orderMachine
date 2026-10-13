@@ -52,6 +52,7 @@ identically. Still first-pass, still not print-validated -- treat every
 constant the same way as Medium's own pilot was treated.
 """
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor

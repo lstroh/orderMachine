@@ -42,6 +42,7 @@ Net layout (mm, origin bottom-left, A4 portrait, long axis vertical):
 Net: 180 x 232mm.
 """
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor

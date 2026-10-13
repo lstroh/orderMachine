@@ -1,5 +1,6 @@
 """Render one A4 sheet of bin stickers via bin_sticker.render_sheet."""
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 import os
 from datetime import datetime
 

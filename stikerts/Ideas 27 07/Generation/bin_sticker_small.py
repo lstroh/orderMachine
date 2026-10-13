@@ -35,6 +35,7 @@ border" was dropped as a differentiator (p09a_borderless is the one
 deliberate exception, kept as a DRAFT).
 """
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor, white

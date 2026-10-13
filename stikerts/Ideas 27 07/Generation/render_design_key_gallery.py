@@ -17,6 +17,7 @@ Examples:
 
 from __future__ import annotations
 
+import embedded_fonts  # embeds the fonts in every PDF (12 Oct 2026, see embedded_fonts.py)
 import argparse
 import os
 import sys
