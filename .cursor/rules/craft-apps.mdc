@@ -34,7 +34,17 @@ PdfCraft is fine for combining, splitting and extracting pages. For example, use
 - **SVG export is unitless** (points at 72/in). Flag that the size Design Space shows on import still needs checking.
 - **For cuts on the Cricut Explore 5:** export SVG. Print Then Cut's A4 limit is about 183 × 270mm.
 
+## Fonts
+
+Follow `claude/Font-Policy.md` (copy it into the scripts folder if useful):
+- Use a Windows font first (Arial, Times New Roman, Arial Black, Impact, Georgia, Segoe UI, Calibri, Verdana, Bahnschrift).
+- Otherwise use a free Google Font (OFL/Apache) that the user has installed "for all users" in `C:\Windows\Fonts`. Use its static `.ttf`, not the variable one.
+- Never use personal-use or paid fonts.
+- In new scripts, register the font file with `TTFont` so it is embedded. Fall back to `assets/fonts/` or Helvetica with a printed warning, never crash.
+- Don't change the fonts of the existing production scripts unless the user asks.
+
 ## Don'ts
 
+- **Never overwrite or delete the user's files.** Export to a new file name (for example add `_traced` or `_v2`). If a target name already exists, ask first.
 - Don't use GridCraft for any cost or pricing sheet. Those stay `.xlsx` with live formulas.
 - Don't change the production scripts' output paths permanently just to suit the MCP folder. Copy the files instead, unless the user asks for the change.
