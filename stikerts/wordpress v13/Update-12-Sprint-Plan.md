@@ -2,7 +2,7 @@
 
 *Planning only. Specs in this folder. Baseline tag: **v0.33.0** (Packages 7–11); continue from current `main`.*
 
-**Sequencing:** List/filter honesty first (cheap, unblocks trust) → order detail Make UI for Produce N → instructions toolbar (independent; can run before S1/S2 if preferred) → Copy command placeholder dropdown (after S3; reuses its insert helper) → later sprints as new issues are reported.
+**Sequencing:** List/filter honesty first (cheap, unblocks trust) → order detail Make UI for Produce N → instructions toolbar (independent; can run before S1/S2 if preferred) → Copy command placeholder dropdown (after S3; reuses its insert helper) → Post-ship arrival-step rule (independent) → later sprints as new issues are reported.
 
 ## Locked decisions (operator)
 
@@ -16,6 +16,7 @@
 - Instructions stay **Markdown** (Package 9 lock). Toolbar inserts Markdown into the existing textarea — **no** WYSIWYG / TinyMCE.
 - Toolbar buttons: Bold, Italic, Bullet list, Numbered list, H2, H3, Link, Inline code, Preview. On workflow step editor **and** product overrides. **No** keyboard shortcuts. **No** new rendered formats / kses changes. Multi-line selection → sequential `1.` `2.` `3.` (bullets → `- ` per line).
 - Copy command: **Insert placeholder…** dropdown above the template (existing 8 keys only, friendly labels, `{{key}}` on hover), inserts at cursor / replaces selection. No example-template button; no new placeholders.
+- **BUG-005:** Post-ship template save is **hard-blocked** unless ≥1 step has Confirmation checklist **Package arrived** (create / edit / kind change; active or inactive); validate before any write. Existing invalid templates warned (list + editor); Settings default picker **warn only**; stuck orders **notice only**. **No** Pack Ship-step rule.
 
 ---
 
@@ -25,13 +26,16 @@
 |---|---|---|---|
 | O1 | Multi-line Status when several make lines in progress | UP12-S1 | **Default:** earliest in-progress make step name (lowest `step_order`) |
 | O2 | Produce N complete badge copy on detail | UP12-S2 | **Default:** same “Ready”/complete treatment as sellable make-complete — **not** “Pack-ready (internal)” |
-| O3 | Combined vs split smoke files | UP12-S1–S4 | **Default:** one smoke per sprint (`sprint-up12-s1…s4-smoke.php`) |
+| O3 | Combined vs split smoke files | UP12-S1–S5 | **Default:** one smoke per sprint (`sprint-up12-s1…s5-smoke.php`) |
 | O4 | Further Package 12 sprints | Later | **Open** — operator will paste more bugs/UX; plan grows before implementation kickoff |
 | O5 | Toolbar toggle-off for list/heading prefixes | UP12-S3 | **Default:** same prefix again removes it; bold/italic/code do not unwrap |
 | O6 | Over-length insert | UP12-S3 | **Default:** skip insert if it would exceed 5000 chars |
 | T1–T6 | Toolbar scope | UP12-S3 | **Settled** (operator 2026-10-14) — see `05-Update-Instructions-Toolbar.md` §3 |
 | P1–P6 | Placeholder picker scope | UP12-S4 | **Settled** (operator 2026-10-14) — see `06-Update-Copy-Command-Placeholder-Picker.md` §3 |
 | O7 | Placeholder friendly labels | UP12-S4 | **Default:** table in `06` §4 |
+| A1–A6 | Post-ship arrival rule scope | UP12-S5 | **Settled** (operator 2026-10-14) — see `07-Update-Post-Ship-Arrival-Required.md` §3 |
+| O8 | Browser pre-submit check for the arrival rule | UP12-S5 | **Default:** yes — avoids losing unsaved step edits; server stays authoritative |
+| O9 | Error / notice copy | UP12-S5 | **Default:** wording in `07` §4 |
 
 ---
 
@@ -47,6 +51,8 @@
 | Instructions editor | Textarea + cheatsheet + Preview (type Markdown by hand) | + Markdown toolbar above textarea (both surfaces) |
 | Instructions render | Parsedown safe mode + kses allowlist | **Unchanged** |
 | Copy command editor | Placeholders listed as text; typed by hand | + **Insert placeholder…** dropdown (from `placeholder_keys()`) |
+| Post-ship template save | Per-step checks only; template meta written before step validation | + template-level **Package arrived** rule; validate whole submission first (atomic) |
+| Post-ship visibility | Nothing flags a template without arrival | Badges / notices on Workflows list, editor, Settings, order detail |
 
 ---
 
@@ -120,7 +126,26 @@
 
 ---
 
-### UP12-S5+ — Reserved
+### UP12-S5 — Post-ship must have a Package arrived step (BUG-005)
+
+| Work | Detail |
+|---|---|
+| Validation | Side-effect-free submission validator in `SOM_Workflows` (resulting kind + normalised steps); `handle_save_workflow` calls it **before** `update` / `create`; `save_steps` also calls it |
+| Atomic | On failure: no template update, no new template row, no step writes; flash error + redirect |
+| Browser | Pre-submit check on the editor for Post-ship kind (O8) |
+| Warnings | `template_has_arrival_step()` helper → Workflows list badge, editor top notice, Settings option suffix `(no arrival step)` + notice when selected (warn only) |
+| Order detail | Post-ship panel notice when bound steps have no arrival step and order is open |
+| Unchanged | Pack Ship detection; complete rule; seed Aftercare |
+| Tests | `tests/sprint-up12-s5-smoke.php` — cases in `07` §5 |
+| Docs | USER-REFERENCE / USER-WORKFLOWS / FEATURES-AND-TESTING; BUG-005 status |
+
+**Done when:** a Post-ship template can’t be saved (any path, active or inactive) without a Package arrived step, and a failed save writes nothing; existing invalid templates and stuck orders are clearly flagged; Pack templates unaffected; smoke + docs done.
+
+**Suggested SemVer after merge:** `0.38.0`.
+
+---
+
+### UP12-S6+ — Reserved
 
 Placeholder for issues filed after this draft. Do not invent work here.
 
@@ -134,6 +159,7 @@ Placeholder for issues filed after this draft. Do not invent work here.
 | UP12-S2 | 0.35.0 |
 | UP12-S3 | 0.36.0 |
 | UP12-S4 | 0.37.0 |
+| UP12-S5 | 0.38.0 |
 
 Planning does not require tagging; cut releases when the operator asks.
 
@@ -148,6 +174,7 @@ Planning does not require tagging; cut releases when the operator asks.
 - WYSIWYG / TinyMCE; keyboard shortcuts; new rendered formats (underline, colour, tables, callouts, code blocks, images)  
 - Markdown toolbar on non-instruction textareas (notes, copy command, tasks)  
 - New Copy command placeholders; example-template button; Pack Copy UI; copy command on boards  
+- Pack “must have Ship step” rule / explicit Ship checkbox; rebinding orders on invalid Post-ship templates; carrier-tracking auto-arrival  
 
 ---
 
@@ -174,6 +201,14 @@ Planning does not require tagging; cut releases when the operator asks.
 - [ ] Placeholder labels from `placeholder_keys()`
 - [ ] Insert placeholder dropdown on every Copy command field (incl. new steps)
 - [ ] Insert at cursor / replace selection
+- [ ] Docs + smoke
+
+### UP12-S5
+- [ ] Post-ship save blocked without Package arrived step (create / edit / kind change; inactive too)
+- [ ] Atomic — nothing written on failure
+- [ ] Browser pre-submit check
+- [ ] Warnings: list, editor, Settings (warn only), order detail notice
+- [ ] Pack templates unaffected
 - [ ] Docs + smoke
 
 ### Later
