@@ -19,7 +19,32 @@
 
 ## Open
 
-*(None right now — add new `BUG-NNN` entries here as testing continues.)*
+### BUG-004 — Produce N shows “No workflow”; Make UI missing on order detail
+
+| | |
+|---|---|
+| **Severity** | Major / UX |
+| **Status** | Open |
+| **Found in** | Products → Produce N → Make Board vs Orders list / order detail |
+| **Env** | Operator testing; 2026-10-14 |
+| **Plan** | Package 12 — [`../wordpress v13/`](../wordpress%20v13/) (`03-Update-Produce-N-Workflow-Visibility.md`, UP12-S1 / UP12-S2) |
+
+**Symptoms**
+
+- After **Produce N** on an internal product (workflow + recipe set), channel **Internal**.  
+- **Make Board** shows the line and drag-advance works.  
+- Orders list Flags: **No workflow**; Status often **Open**.  
+- Order detail Make section does not show step progress / Mark done (looks like no workflow).
+
+**Likely cause**
+
+- List badge / `needs_workflow` filter still key off order-level `current_step_id` + `order_step_progress` only; Produce N uses **`order_item_step_progress`** and never binds Pack.  
+- Order detail hides Make controls whenever `product.is_internal`, which is correct for internal lines on **customer** orders but wrong for Internal-channel Produce N jobs that have item progress.
+
+**Expected**
+
+- List must not false-flag Produce N as **No workflow**; Status should surface current make step when appropriate.  
+- Order detail must show the Make step UI for Produce N; keep **Pack-ready (internal)** only for internal lines on non-Internal orders.
 
 ---
 

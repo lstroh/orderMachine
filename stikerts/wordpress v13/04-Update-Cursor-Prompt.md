@@ -1,0 +1,41 @@
+# Update Package 12 — Cursor kickoff prompt
+
+*Use when the operator asks to start UP12-S1 / S2 (or later appended sprints). Do **not** implement from planning alone.*
+
+## Locked model
+
+- **BUG-004:** Produce N has real item make progress; Orders list must not show false **No workflow**; order detail must show Make UI for Internal-channel jobs.  
+- Customer-order internal lines stay **Pack-ready (internal)** with no make progress (Package 6 — locked).  
+- No Pack/Post-ship bind on Internal. No schema for BUG-004.  
+- Plain PHP admin; SemVer `0.x.y` alpha; custom `wp_som_*` tables.  
+
+## Rules
+
+- Read `01-Update-Overview.md`, `03-Update-Produce-N-Workflow-Visibility.md`, **`Update-12-Sprint-Plan.md`**, and `stikerts/wordpress/BUGS.md` (BUG-004).  
+- Honor Package 6 make/pack separation; do not silently overturn Packages 6–11 settled decisions.  
+- One sprint per chat unless the operator says otherwise.  
+- After merge: update `Update-12-Sprint-Progress.md` + move BUG-004 toward Fixed when both parts land.  
+
+## Sprints
+
+| Sprint | Focus |
+|---|---|
+| UP12-S1 | List / filter / status honesty |
+| UP12-S2 | Order detail Produce N Make UI + docs |
+| UP12-S3+ | Only after new issues are planned into this package |
+
+## Kickoff snippet (copy into implementation chat)
+
+```
+Implement Order Machine UP12-S1 only (Package 12).
+
+Read:
+- stikerts/wordpress v13/01-Update-Overview.md
+- stikerts/wordpress v13/03-Update-Produce-N-Workflow-Visibility.md
+- stikerts/wordpress v13/Update-12-Sprint-Plan.md (UP12-S1 section)
+- stikerts/wordpress/BUGS.md → BUG-004
+- .cursor/rules/order-machine-architecture.mdc
+
+Do not start UP12-S2. No Pack bind on Internal. No schema unless proven necessary.
+Done when: Produce N list row is not false “No workflow”; needs_workflow filter agrees; smoke tests/sprint-up12-s1-smoke.php passes.
+```
