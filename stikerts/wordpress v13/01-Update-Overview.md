@@ -40,6 +40,10 @@ Copy command templates need placeholders typed by hand. Operator wants a control
 
 A custom Post-ship workflow had no **Package arrived** step, so the order sat on **Awaiting arrival** and could never complete. Settled: **hard block** saving any Post-ship template (create / edit / kind change; active or inactive) unless at least one step uses Confirmation checklist **Package arrived**; atomic save (nothing written on failure). Existing invalid templates: warnings (list, editor, Settings picker — warn only); stuck orders: notice only. **No** Pack “Ship step” rule. Spec: [`07-Update-Post-Ship-Arrival-Required.md`](07-Update-Post-Ship-Arrival-Required.md).
 
+## Operator request 5 — Clone workflows and products
+
+**Clone** on list rows + edit screens; copy opens in its editor as “X (copy)” with the same active state. Workflow clone copies all steps + goals + budget links (no products/orders moved; Post-ship clone without an arrival step is blocked). Product clone copies fields, recipe, step overrides, budget links; SKU blank; no listings/orders/stock; same workflow; internal clone gets a new output material. Split into UP12-S6 (workflows) and UP12-S7 (products). Spec: [`08-Update-Clone-Products-Workflows.md`](08-Update-Clone-Products-Workflows.md).
+
 ## Settled product decisions (operator)
 
 | Topic | Decision |
@@ -53,6 +57,7 @@ A custom Post-ship workflow had no **Package arrived** step, so the order sat on
 | Instructions editor | Markdown **toolbar** above textarea on workflow step editor + product overrides: Bold, Italic, Bullet, Numbered, H2, H3, Link, Inline code, Preview. No WYSIWYG, no shortcuts, no new formats. Multi-line selection numbers `1.` `2.` `3.` |
 | Copy command editor | **Insert placeholder…** dropdown (existing 8 keys, friendly labels, token on hover) inserts at cursor. No new placeholders, no example-template button |
 | Post-ship arrival step | **Required** on save (hard block, atomic); existing invalid templates warned; Settings picker warns only; stuck orders get a notice. Pack Ship detection unchanged |
+| Clone | Workflows + products; “X (copy)”; same active state; see `08` §3 C1–C8 |
 | Release cut | Optional after sprints land; SemVer suggestions only in the sprint plan |
 | Deferred from 7–11 | Stay deferred unless a new report clearly needs them |
 
@@ -63,7 +68,8 @@ A custom Post-ship workflow had no **Package arrived** step, so the order sat on
 3. Markdown formatting toolbar for step instructions (both editing surfaces).  
 4. Placeholder dropdown for Copy command templates.  
 5. Post-ship templates must contain a Package arrived step (BUG-005).  
-6. Docs + smoke for each.  
+6. Clone workflow templates and products.  
+7. Docs + smoke for each.  
 
 ## Recommended build order
 
@@ -72,8 +78,10 @@ A custom Post-ship workflow had no **Package arrived** step, so the order sat on
 3. **UP12-S3** — Instructions Markdown toolbar + docs + smoke  
 4. **UP12-S4** — Copy command placeholder dropdown (after S3; reuses its insert helper)  
 5. **UP12-S5** — Post-ship arrival step required + warnings (independent; can run any time)  
+6. **UP12-S6** — Clone workflow templates (after S5 so the arrival rule exists to reuse)  
+7. **UP12-S7** — Clone products  
 
-Further sprints (**UP12-S6+**) reserved for issues reported after this draft.
+Further sprints (**UP12-S8+**) reserved for issues reported after this draft.
 
 ## Out of scope (unless later reports land here)
 
@@ -87,6 +95,7 @@ Further sprints (**UP12-S6+**) reserved for issues reported after this draft.
 - WYSIWYG / TinyMCE for instructions; new rendered formats (underline, colour, tables, callouts…)  
 - New Copy command placeholders; example-template button; Pack Copy UI  
 - Pack “must have Ship step” rule; rebinding orders on invalid Post-ship templates; carrier-tracking auto-arrival  
+- Cloning listings / orders / stock; “also clone workflow” on product clone; bulk clone  
 
 ## Files
 
@@ -95,6 +104,7 @@ Further sprints (**UP12-S6+**) reserved for issues reported after this draft.
 3. `05-Update-Instructions-Toolbar.md`  
 4. `06-Update-Copy-Command-Placeholder-Picker.md`  
 5. `07-Update-Post-Ship-Arrival-Required.md`  
-6. `Update-12-Sprint-Plan.md`  
-7. `Update-12-Sprint-Progress.md`  
-8. `04-Update-Cursor-Prompt.md`  
+6. `08-Update-Clone-Products-Workflows.md`  
+7. `Update-12-Sprint-Plan.md`  
+8. `Update-12-Sprint-Progress.md`  
+9. `04-Update-Cursor-Prompt.md`  

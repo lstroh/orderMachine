@@ -2,7 +2,7 @@
 
 *Planning only. Specs in this folder. Baseline tag: **v0.33.0** (Packages 7–11); continue from current `main`.*
 
-**Sequencing:** List/filter honesty first (cheap, unblocks trust) → order detail Make UI for Produce N → instructions toolbar (independent; can run before S1/S2 if preferred) → Copy command placeholder dropdown (after S3; reuses its insert helper) → Post-ship arrival-step rule (independent) → later sprints as new issues are reported.
+**Sequencing:** List/filter honesty first (cheap, unblocks trust) → order detail Make UI for Produce N → instructions toolbar (independent; can run before S1/S2 if preferred) → Copy command placeholder dropdown (after S3; reuses its insert helper) → Post-ship arrival-step rule (independent) → clone workflows (after S5; reuses its validator) → clone products → later sprints as new issues are reported.
 
 ## Locked decisions (operator)
 

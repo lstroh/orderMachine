@@ -13,9 +13,11 @@
 | UP12-S3 | Instructions Markdown toolbar | Not started | Planning only |
 | UP12-S4 | Copy command placeholder dropdown | Not started | Planning only |
 | UP12-S5 | Post-ship arrival step required (BUG-005) | Not started | Planning only |
-| UP12-S6+ | Reserved | — | Waiting for further operator reports |
+| UP12-S6 | Clone workflow templates | Not started | Planning only |
+| UP12-S7 | Clone products | Not started | Planning only |
+| UP12-S8+ | Reserved | — | Waiting for further operator reports |
 
-**Package 12 sprints: planning draft (BUG-004, instructions toolbar, placeholder dropdown, BUG-005).**
+**Package 12 sprints: planning draft (BUG-004, instructions toolbar, placeholder dropdown, BUG-005, clone).**
 
 ---
 

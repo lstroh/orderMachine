@@ -10,6 +10,7 @@
 - **Instructions toolbar (UP12-S3):** Markdown-inserting buttons only (Bold, Italic, Bullet, Numbered, H2, H3, Link, Inline code, Preview) on workflow step editor + product overrides. No WYSIWYG, no shortcuts, no render/allowlist changes.  
 - **Copy command picker (UP12-S4):** “Insert placeholder…” dropdown over the existing 8 keys; inserts at cursor. No new placeholders, no example-template button.  
 - **Post-ship arrival rule (UP12-S5 / BUG-005):** hard-block saving a Post-ship template without a Package arrived step; validate before any write; warnings elsewhere are warn-only. No Pack Ship-step rule.  
+- **Clone (UP12-S6 workflows / UP12-S7 products):** POST + nonce, atomic, “X (copy)”, same active state; product clone keeps same workflow, SKU blank, no listings; internal clone gets a new output material; Post-ship clone without arrival step blocked.  
 - Plain PHP admin; SemVer `0.x.y` alpha; custom `wp_som_*` tables.  
 
 ## Rules
