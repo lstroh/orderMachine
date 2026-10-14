@@ -32,6 +32,10 @@ Logged as **BUG-004** in [`../wordpress/BUGS.md`](../wordpress/BUGS.md).
 
 Step instructions are Markdown (Package 9) but styling requires typing syntax. Operator wants buttons (bold, numbered list, bullet list, etc.). Settled as a **Markdown toolbar** that inserts syntax into the existing textarea — **no** WYSIWYG, no new rendered formats. Spec: [`05-Update-Instructions-Toolbar.md`](05-Update-Instructions-Toolbar.md).
 
+## Operator request 3 — Copy command placeholder picker
+
+Copy command templates need placeholders typed by hand. Operator wants a control to insert any supported placeholder. Settled: **dropdown** above the template textarea, friendly labels, inserts at cursor; no new placeholders, no example-template button. Spec: [`06-Update-Copy-Command-Placeholder-Picker.md`](06-Update-Copy-Command-Placeholder-Picker.md).
+
 ## Settled product decisions (operator)
 
 | Topic | Decision |
@@ -43,6 +47,7 @@ Step instructions are Markdown (Package 9) but styling requires typing syntax. O
 | Pack-ready badge | Keep **Pack-ready (internal)** only for internal product lines on **non-Internal** orders |
 | Schema | **None** expected for BUG-004 or the toolbar |
 | Instructions editor | Markdown **toolbar** above textarea on workflow step editor + product overrides: Bold, Italic, Bullet, Numbered, H2, H3, Link, Inline code, Preview. No WYSIWYG, no shortcuts, no new formats. Multi-line selection numbers `1.` `2.` `3.` |
+| Copy command editor | **Insert placeholder…** dropdown (existing 8 keys, friendly labels, token on hover) inserts at cursor. No new placeholders, no example-template button |
 | Release cut | Optional after sprints land; SemVer suggestions only in the sprint plan |
 | Deferred from 7–11 | Stay deferred unless a new report clearly needs them |
 
@@ -51,15 +56,17 @@ Step instructions are Markdown (Package 9) but styling requires typing syntax. O
 1. Correct Orders list / status / `needs_workflow` for orders that only have item make progress (Produce N).  
 2. Show Make workflow controls on order detail for Produce N Internal-channel lines.  
 3. Markdown formatting toolbar for step instructions (both editing surfaces).  
-4. Docs + smoke for each.  
+4. Placeholder dropdown for Copy command templates.  
+5. Docs + smoke for each.  
 
 ## Recommended build order
 
 1. **UP12-S1** — List / filter / status: stop false **No workflow**; surface current make step  
 2. **UP12-S2** — Order detail Produce N Make UI + USER docs + smoke  
 3. **UP12-S3** — Instructions Markdown toolbar + docs + smoke  
+4. **UP12-S4** — Copy command placeholder dropdown (after S3; reuses its insert helper)  
 
-Further sprints (**UP12-S4+**) reserved for issues reported after this draft.
+Further sprints (**UP12-S5+**) reserved for issues reported after this draft.
 
 ## Out of scope (unless later reports land here)
 
@@ -71,12 +78,14 @@ Further sprints (**UP12-S4+**) reserved for issues reported after this draft.
 - SemVer release bumps for Packages 7–11  
 - Changing Produce N stock/credit rules  
 - WYSIWYG / TinyMCE for instructions; new rendered formats (underline, colour, tables, callouts…)  
+- New Copy command placeholders; example-template button; Pack Copy UI  
 
 ## Files
 
 1. `01-Update-Overview.md` (this file)  
 2. `03-Update-Produce-N-Workflow-Visibility.md`  
 3. `05-Update-Instructions-Toolbar.md`  
-4. `Update-12-Sprint-Plan.md`  
-5. `Update-12-Sprint-Progress.md`  
-6. `04-Update-Cursor-Prompt.md`  
+4. `06-Update-Copy-Command-Placeholder-Picker.md`  
+5. `Update-12-Sprint-Plan.md`  
+6. `Update-12-Sprint-Progress.md`  
+7. `04-Update-Cursor-Prompt.md`  

@@ -8,11 +8,12 @@
 - Customer-order internal lines stay **Pack-ready (internal)** with no make progress (Package 6 — locked).  
 - No Pack/Post-ship bind on Internal. No schema for BUG-004.  
 - **Instructions toolbar (UP12-S3):** Markdown-inserting buttons only (Bold, Italic, Bullet, Numbered, H2, H3, Link, Inline code, Preview) on workflow step editor + product overrides. No WYSIWYG, no shortcuts, no render/allowlist changes.  
+- **Copy command picker (UP12-S4):** “Insert placeholder…” dropdown over the existing 8 keys; inserts at cursor. No new placeholders, no example-template button.  
 - Plain PHP admin; SemVer `0.x.y` alpha; custom `wp_som_*` tables.  
 
 ## Rules
 
-- Read `01-Update-Overview.md`, `03-Update-Produce-N-Workflow-Visibility.md`, **`Update-12-Sprint-Plan.md`**, and `stikerts/wordpress/BUGS.md` (BUG-004).  
+- Read `01-Update-Overview.md`, **`Update-12-Sprint-Plan.md`**, plus the sprint’s spec: `03-Update-Produce-N-Workflow-Visibility.md` + `stikerts/wordpress/BUGS.md` (BUG-004) for S1/S2; `05-Update-Instructions-Toolbar.md` for S3; `06-Update-Copy-Command-Placeholder-Picker.md` for S4.  
 - Honor Package 6 make/pack separation; do not silently overturn Packages 6–11 settled decisions.  
 - One sprint per chat unless the operator says otherwise.  
 - After merge: update `Update-12-Sprint-Progress.md` + move BUG-004 toward Fixed when both parts land.  
@@ -23,7 +24,9 @@
 |---|---|
 | UP12-S1 | List / filter / status honesty |
 | UP12-S2 | Order detail Produce N Make UI + docs |
-| UP12-S3+ | Only after new issues are planned into this package |
+| UP12-S3 | Instructions Markdown toolbar + docs |
+| UP12-S4 | Copy command placeholder dropdown + docs |
+| UP12-S5+ | Only after new issues are planned into this package |
 
 ## Kickoff snippet (copy into implementation chat)
 
