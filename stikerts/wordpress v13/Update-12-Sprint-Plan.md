@@ -2,7 +2,7 @@
 
 *Planning only. Specs in this folder. Baseline tag: **v0.33.0** (Packages 7–11); continue from current `main`.*
 
-**Sequencing:** List/filter honesty first (cheap, unblocks trust) → order detail Make UI for Produce N → later sprints as new issues are reported.
+**Sequencing:** List/filter honesty first (cheap, unblocks trust) → order detail Make UI for Produce N → instructions toolbar (independent; can run before S1/S2 if preferred) → later sprints as new issues are reported.
 
 ## Locked decisions (operator)
 
@@ -13,6 +13,8 @@
 - Do **not** overturn Package 6: internal lines on **customer** orders stay pack-ready with no make progress.  
 - Deferred items from Packages 7–11 stay out of scope unless a new report clearly needs them.  
 - Packages 7–11 already released as **0.33.0**; no back-release work required to start UP12-S1.
+- Instructions stay **Markdown** (Package 9 lock). Toolbar inserts Markdown into the existing textarea — **no** WYSIWYG / TinyMCE.
+- Toolbar buttons: Bold, Italic, Bullet list, Numbered list, H2, H3, Link, Inline code, Preview. On workflow step editor **and** product overrides. **No** keyboard shortcuts. **No** new rendered formats / kses changes. Multi-line selection → sequential `1.` `2.` `3.` (bullets → `- ` per line).
 
 ---
 
@@ -22,8 +24,11 @@
 |---|---|---|---|
 | O1 | Multi-line Status when several make lines in progress | UP12-S1 | **Default:** earliest in-progress make step name (lowest `step_order`) |
 | O2 | Produce N complete badge copy on detail | UP12-S2 | **Default:** same “Ready”/complete treatment as sellable make-complete — **not** “Pack-ready (internal)” |
-| O3 | Combined vs split smoke files | UP12-S1/S2 | **Default:** separate `sprint-up12-s1-smoke.php` + `sprint-up12-s2-smoke.php` |
+| O3 | Combined vs split smoke files | UP12-S1/S2/S3 | **Default:** one smoke per sprint (`sprint-up12-s1/s2/s3-smoke.php`) |
 | O4 | Further Package 12 sprints | Later | **Open** — operator will paste more bugs/UX; plan grows before implementation kickoff |
+| O5 | Toolbar toggle-off for list/heading prefixes | UP12-S3 | **Default:** same prefix again removes it; bold/italic/code do not unwrap |
+| O6 | Over-length insert | UP12-S3 | **Default:** skip insert if it would exceed 5000 chars |
+| T1–T6 | Toolbar scope | UP12-S3 | **Settled** (operator 2026-10-14) — see `05-Update-Instructions-Toolbar.md` §3 |
 
 ---
 
@@ -36,6 +41,8 @@
 | Filter `needs_workflow` | Order-level only | Same definition as Flags |
 | Order detail Make (Produce N) | Hidden when `product_is_internal` | Show full Make UI when channel=internal **and** item progress exists |
 | Internal line on customer order | Pack-ready badge, no make | **Unchanged** |
+| Instructions editor | Textarea + cheatsheet + Preview (type Markdown by hand) | + Markdown toolbar above textarea (both surfaces) |
+| Instructions render | Parsedown safe mode + kses allowlist | **Unchanged** |
 
 ---
 
@@ -73,7 +80,24 @@
 
 ---
 
-### UP12-S3+ — Reserved
+### UP12-S3 — Instructions Markdown toolbar
+
+| Work | Detail |
+|---|---|
+| Markup | Shared helper renders a `role="toolbar"` button group directly above `.som-md-source` in every `[data-som-md-editor]` (workflow step editor + product overrides); Preview toggle joins the toolbar |
+| JS | `initMarkdownToolbar` in `admin/assets/js/admin.js`: delegated `[data-som-md-action]` clicks (works on dynamically added step cards); wrap / line-prefix / sequential numbering helpers; restore focus + selection; fire `input` |
+| CSS | Toolbar spacing in `admin/assets/css/admin.css` |
+| Render | No change to `render_html` / allowlist |
+| Tests | `tests/sprint-up12-s3-smoke.php` — toolbar markup + all actions present on both surfaces; toolbar-shaped Markdown still renders `<strong>`, `<em>`, `<ul>`, `<ol>`, `<h2>`, `<h3>`, `<a>`, `<code>`; allowlist unchanged |
+| Docs | USER-REFERENCE / USER-GUIDE / FEATURES-AND-TESTING (manual check: select 3 lines → Numbered → `1.` `2.` `3.`) |
+
+**Done when:** both instruction editors show the toolbar; every button inserts the right Markdown (with and without selection); multi-line numbered/bullet works; Preview still works; no schema/render changes; smoke + docs done.
+
+**Suggested SemVer after merge:** `0.36.0`.
+
+---
+
+### UP12-S4+ — Reserved
 
 Placeholder for issues filed after this draft. Do not invent work here.
 
@@ -85,6 +109,7 @@ Placeholder for issues filed after this draft. Do not invent work here.
 |---|---|
 | UP12-S1 | 0.34.0 |
 | UP12-S2 | 0.35.0 |
+| UP12-S3 | 0.36.0 |
 
 Planning does not require tagging; cut releases when the operator asks.
 
@@ -96,6 +121,8 @@ Planning does not require tagging; cut releases when the operator asks.
 - Product Costing packaging line, Pack Copy UI, Unblock on boards, Trays overview  
 - Hard-delete unused script/callback routes  
 - Pack/Post-ship on Internal channel  
+- WYSIWYG / TinyMCE; keyboard shortcuts; new rendered formats (underline, colour, tables, callouts, code blocks, images)  
+- Toolbar on non-instruction textareas (notes, copy command, tasks)  
 
 ---
 
@@ -109,6 +136,13 @@ Planning does not require tagging; cut releases when the operator asks.
 ### UP12-S2
 - [ ] Produce N order detail Make UI
 - [ ] Customer internal lines still Pack-ready only
+- [ ] Docs + smoke
+
+### UP12-S3
+- [ ] Toolbar on workflow step editor + product overrides
+- [ ] Bold / Italic / Code / Link wrap-or-insert
+- [ ] Bullet / Numbered (multi-line, sequential) / H2 / H3 line prefixes
+- [ ] Preview unchanged; render/allowlist unchanged
 - [ ] Docs + smoke
 
 ### Later

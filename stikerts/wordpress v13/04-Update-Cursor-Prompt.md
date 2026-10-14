@@ -7,6 +7,7 @@
 - **BUG-004:** Produce N has real item make progress; Orders list must not show false **No workflow**; order detail must show Make UI for Internal-channel jobs.  
 - Customer-order internal lines stay **Pack-ready (internal)** with no make progress (Package 6 — locked).  
 - No Pack/Post-ship bind on Internal. No schema for BUG-004.  
+- **Instructions toolbar (UP12-S3):** Markdown-inserting buttons only (Bold, Italic, Bullet, Numbered, H2, H3, Link, Inline code, Preview) on workflow step editor + product overrides. No WYSIWYG, no shortcuts, no render/allowlist changes.  
 - Plain PHP admin; SemVer `0.x.y` alpha; custom `wp_som_*` tables.  
 
 ## Rules
