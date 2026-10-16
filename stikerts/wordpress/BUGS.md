@@ -19,38 +19,6 @@
 
 ## Open
 
-### BUG-004 — Produce N shows “No workflow”; Make UI missing on order detail
-
-| | |
-|---|---|
-| **Severity** | Major / UX |
-| **Status** | Open |
-| **Found in** | Products → Produce N → Make Board vs Orders list / order detail |
-| **Env** | Operator testing; 2026-10-14 |
-| **Plan** | Package 12 — [`../wordpress v13/`](../wordpress%20v13/) (`03-Update-Produce-N-Workflow-Visibility.md`, UP12-S1 / UP12-S2) |
-
-**Symptoms**
-
-- After **Produce N** on an internal product (workflow + recipe set), channel **Internal**.  
-- **Make Board** shows the line and drag-advance works.  
-- Orders list Flags: **No workflow**; Status often **Open**.  
-- Order detail Make section does not show step progress / Mark done (looks like no workflow).
-
-**Likely cause**
-
-- List badge / `needs_workflow` filter still key off order-level `current_step_id` + `order_step_progress` only; Produce N uses **`order_item_step_progress`** and never binds Pack.  
-- Order detail hides Make controls whenever `product.is_internal`, which is correct for internal lines on **customer** orders but wrong for Internal-channel Produce N jobs that have item progress.
-
-**Expected**
-
-- List must not false-flag Produce N as **No workflow**; Status should surface current make step when appropriate.  
-- Order detail must show the Make step UI for Produce N; keep **Pack-ready (internal)** only for internal lines on non-Internal orders.
-
-**Progress**
-
-- **UP12-S1** (this change): Orders list Flags, Status, and the Needs workflow filter use per-line make progress. An open Produce N job is not flagged **No workflow**; Status shows the current make step when no order-level step is set. Smoke: `tests/sprint-up12-s1-smoke.php` (pending wp-env).  
-- Order detail Make UI is still missing. Status stays **Open** until UP12-S2.
-
 ### BUG-005 — Post-ship workflow can be saved without a Package arrived step
 
 | | |
@@ -79,6 +47,33 @@
 ---
 
 ## Closed / fixed
+
+### BUG-004 — Produce N shows “No workflow”; Make UI missing on order detail
+
+| | |
+|---|---|
+| **Severity** | Major / UX |
+| **Status** | Fixed |
+| **Found in** | Products → Produce N → Make Board vs Orders list / order detail |
+| **Fixed** | 2026-10-16 |
+| **Env** | Operator testing; 2026-10-14 |
+| **Plan** | Package 12 — [`../wordpress v13/`](../wordpress%20v13/) (`03-Update-Produce-N-Workflow-Visibility.md`, UP12-S1 / UP12-S2) |
+
+**Symptoms**
+
+- After **Produce N** on an internal product (workflow + recipe set), channel **Internal**.  
+- **Make Board** shows the line and drag-advance works.  
+- Orders list Flags: **No workflow**; Status often **Open**.  
+- Order detail Make section does not show step progress / Mark done (looks like no workflow).
+
+**Root cause / fix**
+
+- List badge / `needs_workflow` keyed off order-level `current_step_id` + `order_step_progress` only. Produce N uses **`order_item_step_progress`** and never binds Pack. **UP12-S1:** Flags, Status, and the Needs workflow filter use per-line make progress.  
+- Order detail hid Make controls whenever `product.is_internal`. That stays correct for internal lines on **customer** orders. **UP12-S2:** Internal-channel lines that already have item progress render the same step list, Mark done, instructions, tasks, and copy command as a sellable line. Mid-job is the current step (not **Pack-ready (internal)**). Make-complete uses the same **Ready to pack** treatment. `unassigned_reason` stays empty when item progress exists, and still flags true gaps.
+
+**Files:** `includes/class-som-orders.php`, `admin/views/orders-list.php`, `includes/class-som-item-make.php`, `admin/views/order-detail.php`, `tests/sprint-up12-s1-smoke.php`, `tests/sprint-up12-s2-smoke.php`
+
+---
 
 ### BUG-003 — Make step shows Done before work; checklist not tied to step
 
@@ -182,6 +177,7 @@ Fixture unmatched rows are **expected** for UAT §5.2 — not a defect.
 | §4.2 – §8.1 | Re-check Add material after BUG-002 |
 | §8.2+ | Continue |
 | Order detail Make (BUG-003) | Fixed in UP7-S1 — checklist nested; zero-gate warn |
+| Produce N list + detail (BUG-004) | Fixed in UP12-S1 / UP12-S2 — smoke pending wp-env |
 
 **Automated coverage:** `tests/bugfix-001-002-smoke.php` (wp-env) — PASS 2026-08-02; `tests/sprint-up7-s1-smoke.php` — UP7-S1 / BUG-003.
 

@@ -368,9 +368,24 @@ if ( ! empty( $order->raw_payload ) ) {
 				$line_product  = (string) ( $make_item->product_name ?? '' );
 				$line_person   = isset( $make_item->personalisation_text ) ? trim( (string) $make_item->personalisation_text ) : '';
 				$is_internal_l = ! empty( $make_item->product_is_internal );
-				$line_complete = ! empty( $make_item->make_complete );
 				$line_progress = isset( $make_item->make_progress ) && is_array( $make_item->make_progress ) ? $make_item->make_progress : array();
 				$line_current  = isset( $make_item->make_current ) ? $make_item->make_current : null;
+				$channel_slug  = isset( $order->channel_slug ) ? (string) $order->channel_slug : '';
+				$steps_all_done = SOM_Item_Make::progress_steps_all_done( $line_progress );
+				$show_make_controls = SOM_Item_Make::detail_shows_make_controls(
+					$channel_slug,
+					$is_internal_l,
+					! empty( $line_progress )
+				);
+				$make_badge = SOM_Item_Make::detail_make_badge(
+					$channel_slug,
+					$is_internal_l,
+					! empty( $line_progress ),
+					$steps_all_done
+				);
+				// Internal products are always make-complete for pack. Follow the step
+				// rows when controls render, or a mid-job Produce N line hides Mark done.
+				$line_complete = $show_make_controls ? $steps_all_done : ! empty( $make_item->make_complete );
 				$product_id_l  = isset( $make_item->product_id ) ? (int) $make_item->product_id : 0;
 				$line_confirm_kind  = null;
 				$line_confirm_state = array();
@@ -391,11 +406,11 @@ if ( ! empty( $order->raw_payload ) ) {
 							$line_product !== '' ? $line_product : __( 'Unmatched item', 'order-machine' )
 						);
 						?>
-						<?php if ( $is_internal_l ) : ?>
+						<?php if ( 'pack_ready_internal' === $make_badge ) : ?>
 							<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Pack-ready (internal)', 'order-machine' ); ?></span>
-						<?php elseif ( $line_complete ) : ?>
+						<?php elseif ( 'ready' === $make_badge ) : ?>
 							<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Ready to pack', 'order-machine' ); ?></span>
-						<?php elseif ( empty( $line_progress ) ) : ?>
+						<?php elseif ( 'no_progress' === $make_badge ) : ?>
 							<span class="som-badge som-badge-needs-workflow"><?php echo esc_html__( 'No make progress', 'order-machine' ); ?></span>
 						<?php endif; ?>
 					</h3>
@@ -443,8 +458,8 @@ if ( ! empty( $order->raw_payload ) ) {
 						</form>
 					</details>
 
-					<?php if ( $is_internal_l || empty( $line_progress ) ) : ?>
-						<?php /* internal / no progress — badge above is enough */ ?>
+					<?php if ( ! $show_make_controls ) : ?>
+						<?php /* Customer-order internal lines, or no item progress — badge above is enough. */ ?>
 					<?php else : ?>
 						<ol class="som-workflow-progress">
 							<?php foreach ( $line_progress as $row ) : ?>
