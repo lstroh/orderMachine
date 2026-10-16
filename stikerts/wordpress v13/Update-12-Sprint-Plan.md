@@ -186,9 +186,9 @@ Planning does not require tagging; cut releases when the operator asks.
 - [ ] Smoke
 
 ### UP12-S2
-- [ ] Produce N order detail Make UI
-- [ ] Customer internal lines still Pack-ready only
-- [ ] Docs + smoke
+- [x] Produce N order detail Make UI
+- [x] Customer internal lines still Pack-ready only
+- [x] Docs + smoke
 
 ### UP12-S3
 - [ ] Toolbar on workflow step editor + product overrides

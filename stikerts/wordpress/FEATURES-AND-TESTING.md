@@ -190,7 +190,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 - Filters: status, channel, date range, search
 - Badges / flags: open, complete, cancelled, unmatched items, no workflow
-- **No workflow** (flag and Needs workflow filter) only when the order is open, not cancelled, and has neither per-line make progress nor order-level Pack/Post-ship progress. Produce N is not false-flagged (BUG-004 list/filter, UP12-S1). Order detail Make UI is still UP12-S2.
+- **No workflow** (flag and Needs workflow filter) only when the order is open, not cancelled, and has neither per-line make progress nor order-level Pack/Post-ship progress. Produce N is not false-flagged (BUG-004, UP12-S1). Order detail Make shows the step controls for an Internal Produce N line that already has make progress (UP12-S2).
 - Status prefers the order-level current step name; otherwise the current in-progress make step (earliest `step_order` when several lines are in progress); otherwise **Open**
 
 **Detail (open an order):**
@@ -213,7 +213,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 **Workflow rules on the order:**
 
-- **Make (UP6-S1):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). Internal product lines are always pack-ready (no make rows). Legacy open orders may still show order-level progress.
+- **Make (UP6-S1, UP12-S2):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). An internal product line on a **customer** order is pack-ready (no make rows, badge **Pack-ready (internal)**, no Make controls). **Produce N** (Internal channel) keeps its item make progress and the order detail Make section shows the same step list, Mark done, instructions, tasks, and copy command as a sellable line — advance it there or on Make Board. Mid-job is the current step, not Pack-ready; when every make step is done the badge is **Ready to pack** (there is no pack). Legacy open orders may still show order-level progress.
 - **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Pack finish does **not** set `is_complete` for customer orders (Package 11). Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship** + **Post-ship — Order Aftercare**. Settings → **Repair pack binding** for open unbound orders.
 - **Post-ship (UP11):** third kind; bind/start auto after Pack Ship and/or manual; site default + product override; Post-ship Board (`som-post-ship-board`); **complete** when shipment exists + arrival confirmed; Review reminder on post-ship (may run after complete).
 - **Trays (UP8):** required when any sellable make template or bound Pack template has `uses_trays`; block until ≥1 held; keep ≥1 while required + open; auto-release on order complete; board badges
@@ -230,7 +230,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 - Create / edit name, SKU, active flag
 - Mark as **Internal product** (make-to-stock component) — auto-creates a linked output material; never sold on marketplaces
-- **Produce N** on internal products → Internal-channel production order; inputs reserved now; linked material credited on workflow complete (`production_output`). The Orders list counts that make progress (not **No workflow**); order detail Make controls are still UP12-S2 (BUG-004)
+- **Produce N** on internal products → Internal-channel production order; inputs reserved now; linked material credited on workflow complete (`production_output`). Advance the job on **Make Board** or the order detail **Make** section. The Orders list counts that make progress (not **No workflow**) (BUG-004)
 - Assign a **workflow template**
 - Edit the **material recipe** (material + quantity per unit; inputs for internal products)
 - Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, **planned shipping** when set, fee-aware profit / margin, goal alerts, listing prices side by side)
@@ -536,7 +536,7 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 
 ### 3.14 Make Board, Pack Board & Post-ship Board
 
-**Make Board** (`som-orders-board`, UP6-S1): Kanban of open **order lines** by make step. Filter by make workflow; columns = that template’s steps. Advancing a card advances that line only. Internal Produce N lines appear here.
+**Make Board** (`som-orders-board`, UP6-S1): Kanban of open **order lines** by make step. Filter by make workflow; columns = that template’s steps. Advancing a card advances that line only. Internal Produce N lines appear here and can also be advanced from the order detail Make section.
 
 **Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings). Pack finish does not complete the customer order (post-ship does).
 
@@ -1016,10 +1016,12 @@ If you use the Local `ordermachine` site:
 6. Drag an **In progress** card toward a wrong column → snap-back. Drag to the correct next-step column (including an empty prefilled column) → advances; badges update.
 7. Waiting / error / Unassigned cards do not drag.
 8. Final-step advanceable card → **Complete** zone → card removed (`is_complete`).
-9. (Optional) Volume notices with many open orders (≥200 warn; &gt;500 hard cap).
+9. **Produce N** (internal product): the line is on Make Board and the order detail **Make** section shows the same step list / Mark done / instructions / tasks / copy command. It is not labelled **Pack-ready (internal)** while a step is in progress. A customer-order internal line still shows only **Pack-ready (internal)**.
+10. (Optional) Volume notices with many open orders (≥200 warn; &gt;500 hard cap).
 
 - [ ] Columns / Unassigned / filters / pins / column reorder
 - [ ] Gated DnD + Complete zone; locked cards stay put
+- [ ] Produce N advances from Make Board or order detail Make; customer internal lines stay Pack-ready only
 - [ ] History link; horizontal scroll works on a narrow window
 
 ---

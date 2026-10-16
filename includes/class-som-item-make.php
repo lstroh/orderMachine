@@ -303,6 +303,76 @@ class SOM_Item_Make {
 	}
 
 	/**
+	 * Whether order detail should render Make step controls for this line.
+	 *
+	 * Sellable lines with item progress render the step list. Internal product
+	 * lines on a customer order stay pack-ready with no controls. Internal-channel
+	 * Produce N lines render the same controls once item progress exists.
+	 *
+	 * @param string $channel_slug        Order channel slug.
+	 * @param bool   $product_is_internal Line product is internal.
+	 * @param bool   $has_item_progress   Line has order_item_step_progress rows.
+	 * @return bool
+	 */
+	public static function detail_shows_make_controls( $channel_slug, $product_is_internal, $has_item_progress ) {
+		if ( ! $has_item_progress ) {
+			return false;
+		}
+		if ( ! $product_is_internal ) {
+			return true;
+		}
+		return SOM_Production::CHANNEL_SLUG === (string) $channel_slug;
+	}
+
+	/**
+	 * Heading badge for one Make line on order detail.
+	 *
+	 * Empty means the line is in progress: the step list shows the current step.
+	 * Produce N complete uses the same ready treatment as a finished sellable line.
+	 *
+	 * @param string $channel_slug        Order channel slug.
+	 * @param bool   $product_is_internal Line product is internal.
+	 * @param bool   $has_item_progress   Line has item make progress.
+	 * @param bool   $steps_all_done      Every progress row is done.
+	 * @return string pack_ready_internal|ready|no_progress|''
+	 */
+	public static function detail_make_badge( $channel_slug, $product_is_internal, $has_item_progress, $steps_all_done ) {
+		$is_produce_n = $product_is_internal && SOM_Production::CHANNEL_SLUG === (string) $channel_slug;
+		if ( $product_is_internal && ! $is_produce_n ) {
+			return 'pack_ready_internal';
+		}
+		if ( $has_item_progress && $steps_all_done ) {
+			return 'ready';
+		}
+		if ( ! $has_item_progress ) {
+			return 'no_progress';
+		}
+		return '';
+	}
+
+	/**
+	 * Whether every item-progress row is done.
+	 *
+	 * Internal products are always make-complete for pack. Order detail must not
+	 * use that flag for Produce N, or a mid-job line looks finished.
+	 *
+	 * @param array<int, object> $progress Item progress rows.
+	 * @return bool
+	 */
+	public static function progress_steps_all_done( array $progress ) {
+		if ( empty( $progress ) ) {
+			return false;
+		}
+		foreach ( $progress as $row ) {
+			$status = is_object( $row ) && isset( $row->status ) ? (string) $row->status : '';
+			if ( 'done' !== $status ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
 	 * Progress rows for one order item, joined with step metadata.
 	 *
 	 * @param int $order_item_id Order item PK.

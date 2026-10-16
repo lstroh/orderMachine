@@ -62,6 +62,8 @@ Top-level: **Order Machine**
 | **Recurring Platform Expenses** | Non-order fees (e.g. listing fees) from fee sync |
 | **Settings** | Channels, OAuth, sync, fee sync, MCP, API key, **Max trays**, Default Pack workflow |
 
+**Produce N:** On an internal product, Produce N creates an Internal-channel job. Advance it on **Make Board** or on that order’s **Make** section (step list, Mark done, instructions, tasks, copy command). While the job is in progress the line is not labelled Pack-ready. When make finishes it uses the same Ready treatment as a finished sellable line. There is no Pack or Post-ship panel. An internal product line on a **customer** order stays **Pack-ready (internal)** with no make controls.
+
 ---
 
 ## Two setup paths

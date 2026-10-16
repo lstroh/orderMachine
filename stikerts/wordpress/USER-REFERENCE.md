@@ -134,6 +134,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 - One workflow per order from the **primary product** = first line with a matched product.
 - If nothing matches → no progress rows; flags show unmatched / no workflow.
+- **Produce N** (Internal channel): the Make section shows the same step list, Mark done, instructions, tasks, and copy command as a sellable make line. Advance the job there or on Make Board. While it is in progress the line is not **Pack-ready (internal)**. When make finishes it uses the same **Ready to pack** treatment as a finished sellable line (there is no pack). An internal product line on a **customer** order stays **Pack-ready (internal)** with no make controls.
 - Batch advance is batch-level only while `waiting_batch`.
 - Confirmation ticks persist on the order; Mark done / Board drag stay locked until every required box is saved.
 
@@ -179,7 +180,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 **Important rules:**
 
 - Cards are **lines**, not whole orders. Advancing one line does not advance sibling lines.
-- Internal Produce N lines appear here; they never go to the Pack Board.
+- Internal Produce N lines appear here; they never go to the Pack Board. Advance them on this board or from the order’s Make section.
 - Incomplete / non-cancelled only; completed history stays on Orders.
 - Held tray numbers show as **Tray N** badges on cards (order-level set).
 
@@ -244,7 +245,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 **Main actions:**
 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
-- Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order)
+- Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order you advance on Make Board or the order’s Make section)
 - Assign workflow template
 - **Step instruction overrides** (Markdown; leave blank for workflow default; Preview in editor)
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
