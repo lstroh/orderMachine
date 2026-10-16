@@ -46,6 +46,11 @@
 - List must not false-flag Produce N as **No workflow**; Status should surface current make step when appropriate.  
 - Order detail must show the Make step UI for Produce N; keep **Pack-ready (internal)** only for internal lines on non-Internal orders.
 
+**Progress**
+
+- **UP12-S1** (this change): Orders list Flags, Status, and the Needs workflow filter use per-line make progress. An open Produce N job is not flagged **No workflow**; Status shows the current make step when no order-level step is set. Smoke: `tests/sprint-up12-s1-smoke.php` (pending wp-env).  
+- Order detail Make UI is still missing. Status stays **Open** until UP12-S2.
+
 ### BUG-005 — Post-ship workflow can be saved without a Package arrived step
 
 | | |

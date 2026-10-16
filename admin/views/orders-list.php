@@ -240,12 +240,15 @@ $status_options = array(
 			<?php else : ?>
 				<?php foreach ( $orders as $order ) : ?>
 					<?php
-					$detail_url = SOM_Orders::detail_url( (int) $order->id );
-					$has_unmatched   = (int) $order->unmatched_count > 0;
-					$is_cancelled    = ! empty( $order->is_cancelled );
-					$is_complete     = ! empty( $order->is_complete );
-					$needs_workflow  = ! $is_complete && ! $is_cancelled && empty( $order->current_step_id ) && (int) $order->progress_count < 1;
-					$person          = trim( (string) $order->personalisation_summary );
+					$detail_url       = SOM_Orders::detail_url( (int) $order->id );
+					$has_unmatched    = (int) $order->unmatched_count > 0;
+					$is_cancelled     = ! empty( $order->is_cancelled );
+					$is_complete      = ! empty( $order->is_complete );
+					$needs_workflow   = 1 === (int) $order->needs_workflow;
+					$order_level_step = trim( (string) ( $order->current_step_name ?? '' ) );
+					$make_step_name   = trim( (string) ( $order->current_make_step_name ?? '' ) );
+					$status_step      = '' !== $order_level_step ? $order_level_step : $make_step_name;
+					$person           = trim( (string) $order->personalisation_summary );
 					?>
 					<tr>
 						<td class="column-date">
@@ -289,8 +292,8 @@ $status_options = array(
 						<td class="column-status">
 							<?php if ( $is_complete ) : ?>
 								<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Complete', 'order-machine' ); ?></span>
-							<?php elseif ( ! empty( $order->current_step_name ) ) : ?>
-								<span class="som-badge som-badge-open"><?php echo esc_html( (string) $order->current_step_name ); ?></span>
+							<?php elseif ( '' !== $status_step ) : ?>
+								<span class="som-badge som-badge-open"><?php echo esc_html( $status_step ); ?></span>
 							<?php else : ?>
 								<span class="som-badge som-badge-open"><?php echo esc_html__( 'Open', 'order-machine' ); ?></span>
 							<?php endif; ?>
