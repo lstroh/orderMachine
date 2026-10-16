@@ -32,14 +32,14 @@ BRAND = {"brand_name": "Doorstep Studio", "handle": "doorstepstudio",
 # listed 4 times, with "wrap": False on 3 of them. Every entry needs
 # order_number; entries that share one are written into one folder.
 ORDERS = [
-    {"order_number": "test1", "house_number": "40", "street_name": "OAK AVENUE",
+    {"order_number": "test2", "house_number": "40", "street_name": "OAK AVENUE",
      "style": "p25_landscape_flourish", "accent": "black",
      "buyer_name": "Liron", "paper": "white", "quantity": 4},
-    {"order_number": "test1", "house_number": "40", "street_name": "OAK AVENUE",
+    {"order_number": "test2", "house_number": "40", "street_name": "OAK AVENUE",
      "style": "p25_landscape_flourish", "accent": "black", "wrap": False},
-    {"order_number": "test1", "house_number": "40", "street_name": "OAK AVENUE",
+    {"order_number": "test2", "house_number": "40", "street_name": "OAK AVENUE",
      "style": "p25_landscape_flourish", "accent": "black", "wrap": False},
-    {"order_number": "test1", "house_number": "40", "street_name": "OAK AVENUE",
+    {"order_number": "test2", "house_number": "40", "street_name": "OAK AVENUE",
      "style": "p25_landscape_flourish", "accent": "black", "wrap": False},
 ]
 
