@@ -247,7 +247,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
 - Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order you advance on Make Board or the order’s Make section)
 - Assign workflow template
-- **Step instruction overrides** (Markdown; leave blank for workflow default; Preview in editor)
+- **Step instruction overrides** (Markdown; formatting toolbar; leave blank for workflow default; Preview in editor)
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, planned shipping when set, fee-aware profit/margin, goal alerts, listing prices)
 - For sellable products: goods weight (g), **default package** (qty 1), optional **multi-pack package** (qty 2+), flat **planned shipping** £ (hidden on internal products)
@@ -347,7 +347,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 **Step editor — main actions:**
 
 - Add / remove / reorder steps
-- **Instructions (default)** — Markdown (bold, lists, links, inline code, `##` / `###`); cheatsheet + Preview under the textarea. Max 5000 characters. No images; no TinyMCE / HTML editor. Products may override per step.
+- **Instructions (default)** — Markdown (bold, lists, links, inline code, `##` / `###`). Formatting toolbar above the textarea: Bold, Italic, Bullet list, Numbered list, Heading H2, Heading H3, Link, Inline code, Preview. Collapsed cheatsheet stays under the field. Max 5000 characters. No images; no TinyMCE / HTML editor. Products may override per step (same toolbar).
 - **Tasks (optional)** — repeatable task rows (stable ids + labels). Empty = no Tasks panel. Help: does not block Mark done. Make products may override the whole list (full replace, not merge). Pack uses template tasks only.
 - Requires manual confirm
 - **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist. Stays separate from instructions (not embedded in the Markdown body).

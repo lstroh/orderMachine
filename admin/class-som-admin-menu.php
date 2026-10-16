@@ -233,9 +233,16 @@ class SOM_Admin_Menu {
 
 		if ( in_array( $page, array( 'som-orders', 'som-products', 'som-purchase-orders', 'som-batches', 'som-workflows', 'som-listings' ), true ) ) {
 			wp_enqueue_script(
+				'som-md-insert',
+				SOM_PLUGIN_URL . 'admin/assets/js/som-md-insert.js',
+				array(),
+				SOM_VERSION,
+				true
+			);
+			wp_enqueue_script(
 				'som-admin',
 				SOM_PLUGIN_URL . 'admin/assets/js/admin.js',
-				array(),
+				array( 'som-md-insert' ),
 				SOM_VERSION,
 				true
 			);

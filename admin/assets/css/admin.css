@@ -707,10 +707,35 @@
 	margin: 0 0 12px;
 }
 
+.som-md-field-label {
+	display: block;
+	margin: 0 0 4px;
+}
+
+.som-md-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin: 0 0 4px;
+}
+
+.som-md-toolbar .button {
+	margin: 0;
+}
+
+.som-md-toolbar .button strong {
+	font-weight: 700;
+}
+
+.som-md-toolbar .button em {
+	font-style: italic;
+}
+
 .som-step-instructions-field textarea {
 	width: 100%;
 	max-width: 100%;
-	margin-top: 4px;
+	margin-top: 0;
 }
 
 .som-step-instructions-table {

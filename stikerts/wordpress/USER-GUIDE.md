@@ -135,7 +135,7 @@ Continue with [Workflow 2](USER-WORKFLOWS.md#2-connect--sync) and [Workflow 3](U
 | **Timer** | Hard gate — Mark done stays blocked until the countdown ends (or you Unblock). Not the same as planned duration. |
 | **Actual (wall clock)** | How long a step really took: started → completed, **including** timer waits. Shown on order detail and Analytics. |
 | **Copy command** | Make-step template with `{{placeholders}}` (order number, house, street, style, buyer…). Shows a filled command + **Copy** on the make line; you run it locally. WordPress never executes it. Replaces local/API/n8n script steps. |
-| **Step instructions** | Markdown guidance on a workflow step (default) or product override. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
+| **Step instructions** | Markdown guidance on a workflow step (default) or product override. A formatting toolbar inserts bold, lists, headings, links, and inline code. Shown formatted on order detail. No images; no HTML editor. Separate from Copy command. |
 | **Tasks** | Optional per-step tick list (template default + make product override). Operators can tick while running; **never** blocks **Mark done**. |
 | **Confirmation checklist** | Hard gate on a step (print / address / packing / package arrived). Must be saved complete before Mark done. Not the same as Tasks. |
 | **Post-ship** | Aftercare workflow after Pack Ship (buyer update, arrival confirm, review reminder). Separate board; order **complete** = shipping details + arrival (not Ship alone). |
@@ -169,7 +169,7 @@ Use this when a make step should show a skill/command to run on your machine (e.
 
 Local / API / n8n **script steps are removed**. Script batch groups soft-fail on release (use manual_confirm batches). Details: [`USER-REFERENCE.md`](USER-REFERENCE.md) §7–8.
 
-**Step instructions** on the same editor accept Markdown (bold, lists, links, code, headings). Use **Preview** under the textarea; they render on order detail. Do not put the copy-command block inside instructions — keep Copy command as its own field.
+**Step instructions** on the same editor accept Markdown (bold, lists, links, code, headings). Use the formatting toolbar above the textarea, or the collapsed cheatsheet. **Preview** is on that toolbar; instructions render on order detail. Do not put the copy-command block inside instructions — keep Copy command as its own field.
 
 ---
 

@@ -75,7 +75,75 @@ class SOM_Step_Instructions {
 	}
 
 	/**
+	 * Formatting toolbar for a `[data-som-md-editor]` block (above `.som-md-source`).
+	 *
+	 * Buttons insert Markdown. Preview stays the existing toggle. Both instruction
+	 * surfaces call this so the buttons stay in sync, including step cards cloned
+	 * from the workflow editor template.
+	 *
+	 * @return void
+	 */
+	public static function render_editor_toolbar() {
+		$buttons = array(
+			'bold'     => array(
+				'label' => __( 'Bold', 'order-machine' ),
+				'text'  => 'B',
+				'tag'   => 'strong',
+			),
+			'italic'   => array(
+				'label' => __( 'Italic', 'order-machine' ),
+				'text'  => 'I',
+				'tag'   => 'em',
+			),
+			'bullet'   => array(
+				'label' => __( 'Bullet list', 'order-machine' ),
+				'text'  => '•',
+			),
+			'numbered' => array(
+				'label' => __( 'Numbered list', 'order-machine' ),
+				'text'  => '1.',
+			),
+			'h2'       => array(
+				'label' => __( 'Heading H2', 'order-machine' ),
+				'text'  => 'H2',
+			),
+			'h3'       => array(
+				'label' => __( 'Heading H3', 'order-machine' ),
+				'text'  => 'H3',
+			),
+			'link'     => array(
+				'label' => __( 'Link', 'order-machine' ),
+				'text'  => __( 'Link', 'order-machine' ),
+			),
+			'code'     => array(
+				'label' => __( 'Inline code', 'order-machine' ),
+				'text'  => __( 'Code', 'order-machine' ),
+			),
+		);
+		?>
+		<div class="som-md-toolbar" role="toolbar" aria-label="<?php echo esc_attr__( 'Formatting', 'order-machine' ); ?>">
+			<?php foreach ( $buttons as $action => $button ) : ?>
+				<?php
+				$tag = ( isset( $button['tag'] ) && in_array( $button['tag'], array( 'strong', 'em' ), true ) ) ? $button['tag'] : '';
+				?>
+				<button type="button" class="button button-small" data-som-md-action="<?php echo esc_attr( $action ); ?>" aria-label="<?php echo esc_attr( $button['label'] ); ?>" title="<?php echo esc_attr( $button['label'] ); ?>"><?php
+				if ( '' !== $tag ) {
+					echo '<' . $tag . '>' . esc_html( $button['text'] ) . '</' . $tag . '>';
+				} else {
+					echo esc_html( $button['text'] );
+				}
+				?></button>
+			<?php endforeach; ?>
+			<button type="button" class="button button-small" data-som-md-action="preview" data-som-md-preview-toggle aria-label="<?php echo esc_attr__( 'Preview', 'order-machine' ); ?>" title="<?php echo esc_attr__( 'Preview', 'order-machine' ); ?>"><?php echo esc_html__( 'Preview', 'order-machine' ); ?></button>
+			<button type="button" class="button button-small" data-som-md-preview-hide hidden aria-label="<?php echo esc_attr__( 'Hide preview', 'order-machine' ); ?>" title="<?php echo esc_attr__( 'Hide preview', 'order-machine' ); ?>"><?php echo esc_html__( 'Hide preview', 'order-machine' ); ?></button>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Editor help + Markdown cheatsheet markup (after a `.som-md-source` textarea).
+	 *
+	 * Preview toggle lives in {@see render_editor_toolbar()}.
 	 *
 	 * @return void
 	 */
@@ -95,14 +163,6 @@ class SOM_Step_Instructions {
 				<li><?php echo esc_html__( 'Blank line between paragraphs', 'order-machine' ); ?></li>
 			</ul>
 		</details>
-		<p class="som-md-preview-actions">
-			<button type="button" class="button-link" data-som-md-preview-toggle>
-				<?php echo esc_html__( 'Preview', 'order-machine' ); ?>
-			</button>
-			<button type="button" class="button-link" data-som-md-preview-hide hidden>
-				<?php echo esc_html__( 'Hide preview', 'order-machine' ); ?>
-			</button>
-		</p>
 		<div class="som-step-instructions som-md-preview" data-som-md-preview hidden>
 			<strong class="som-step-instructions-label"><?php echo esc_html__( 'Preview', 'order-machine' ); ?></strong>
 			<div class="som-step-instructions-body" data-som-md-preview-body></div>

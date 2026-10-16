@@ -10,14 +10,14 @@
 |---|---|---|---|
 | UP12-S1 | Orders list / filter honesty | Done | Code complete; smoke written, pending wp-env |
 | UP12-S2 | Order detail Produce N Make UI | Done | Code complete; smoke written, pending wp-env |
-| UP12-S3 | Instructions Markdown toolbar | Not started | Planning only |
+| UP12-S3 | Instructions Markdown toolbar | Done | Code complete; smoke written, pending wp-env |
 | UP12-S4 | Copy command placeholder dropdown | Not started | Planning only |
 | UP12-S5 | Post-ship arrival step required (BUG-005) | Not started | Planning only |
 | UP12-S6 | Clone workflow templates | Not started | Planning only |
 | UP12-S7 | Clone products | Not started | Planning only |
 | UP12-S8+ | Reserved | — | Waiting for further operator reports |
 
-**Package 12:** UP12-S1 and UP12-S2 code complete. S3+ not started.
+**Package 12:** UP12-S1, UP12-S2, and UP12-S3 code complete. S4+ not started.
 
 ---
 
@@ -30,7 +30,7 @@
 - 2026-10-14: added Copy command placeholder dropdown (P1–P6 settled) → UP12-S4; spec [`06-Update-Copy-Command-Placeholder-Picker.md`](06-Update-Copy-Command-Placeholder-Picker.md).  
 - 2026-10-14: filed **BUG-005** (Post-ship saved without Package arrived step; A1–A6 settled) → UP12-S5; spec [`07-Update-Post-Ship-Arrival-Required.md`](07-Update-Post-Ship-Arrival-Required.md).  
 - 2026-10-14 (answered in chat, no sprint): timer works (make steps show static UTC unlock time — operator OK as-is); Pack template is site-wide (no per-product); packaging materials live on Shipping packages; Materials used is increase-only; completion = shipment + arrival.  
-- UP12-S1 implemented when requested. UP12-S2 implemented when requested. S3+ wait for a sprint kickoff.
+- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. S4+ wait for a sprint kickoff.
 
 ---
 
@@ -51,3 +51,13 @@
 - **Files:** `includes/class-som-item-make.php` (`detail_shows_make_controls`, `detail_make_badge`, `progress_steps_all_done`), `admin/views/order-detail.php`, `tests/sprint-up12-s2-smoke.php`, `CHANGELOG.md`, `stikerts/wordpress/BUGS.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/USER-GUIDE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
 - **Smoke:** `tests/sprint-up12-s2-smoke.php` — Produce N detail path shows make controls and is not pack-ready mid-job; complete is Ready; customer internal line stays pack-ready with no progress; no unassigned notice when item progress exists; a true gap still returns `needs_mapping`. Not executed (no wp-env).
 - **BUG-004:** **Fixed** (list/filter was S1; order detail Make is this sprint). No schema. No Version bump.
+
+---
+
+## UP12-S3 — Instructions Markdown toolbar
+
+- **Status:** done (code). Tests pending wp-env — smoke not run in this sprint.
+- **Behaviour:** Both instruction editors (workflow step cards, including ones added later, and product step-instruction overrides) show one Markdown toolbar above the textarea. Buttons insert Markdown: Bold, Italic, Bullet list, Numbered list, Heading H2, Heading H3, Link, Inline code. Preview stays on the toolbar. A selection is wrapped or line-prefixed; no selection inserts a placeholder (lists and headings use the current line). Numbered lines run `1.` `2.` `3.` and skip blanks. The same list or heading prefix again removes it. An insert that would pass 5000 characters is skipped. `render_html` and the kses allowlist are unchanged. `SOMMdInsert.insertAtCursor` is the shared insert helper for UP12-S4.
+- **Files:** `includes/class-som-step-instructions.php` (`render_editor_toolbar`), `admin/views/workflow-step-editor.php`, `admin/views/product-edit.php`, `admin/assets/js/som-md-insert.js`, `admin/assets/js/admin.js`, `admin/assets/css/admin.css`, `admin/class-som-admin-menu.php`, `tests/sprint-up12-s3-smoke.php`, `tests/som-md-insert.test.js`, `CHANGELOG.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/USER-GUIDE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
+- **Smoke:** `tests/sprint-up12-s3-smoke.php` — toolbar markup and each `data-som-md-action` on both surfaces; toolbar-shaped Markdown still renders strong, em, ul, ol, h2, h3, a, code; allowlist unchanged. Not executed (no wp-env). Node unit test `tests/som-md-insert.test.js` covers wrap, line prefix, numbered lists, toggle-off, and the 5000-character skip.
+- **Schema:** none. No Version bump.
