@@ -1,6 +1,6 @@
 # eBay read-only testing — Plan
 
-*Planning only. Not implemented. Builds on `02-API-Integration.md`.*
+*Planning only. Not implemented. Builds on `02-API-Integration.md`. Open items settled — see §5.*
 
 **Goal:** connect a real eBay account (sandbox first, then production) and test every eBay **read** without Order Machine changing anything on eBay. Writes stay off until read-only testing is signed off.
 
@@ -33,7 +33,7 @@ REST API and MCP Abilities do not call either write.
 | Tracking button | Order detail **Push tracking to channel** disabled for eBay orders with the same note. |
 | Listing push when off | Push button disabled on eBay listings with the note; Refresh stays enabled. Server-side gate still rejects a forced POST. |
 | Etsy | Unchanged. |
-| OAuth scopes | Unchanged (still request `sell.fulfillment` / `sell.inventory` write scopes) so turning writes on later does not need a reconnect. See O2. |
+| OAuth scopes | Unchanged (still request `sell.fulfillment` / `sell.inventory` write scopes) so turning writes on later does not need a reconnect (O2). |
 | Settings badge | Show **Read-only** next to the eBay connection status while writes are off. |
 
 ---
@@ -69,9 +69,9 @@ Report issues in `BUGS.md` with the raw payload where relevant.
 
 ---
 
-## 5. Open items
+## 5. Locked decisions (operator, 16 Oct 2026)
 
-| # | Item | Default |
+| # | Item | Decision |
 |---|---|---|
 | O1 | Setting + `wp-config` override, or `wp-config` only | **Both** |
 | O2 | Request read-only scopes while writes are off | **No** — avoids a reconnect later; the gate is the control |
