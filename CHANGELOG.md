@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Orders list and the Needs workflow filter treat per-line make progress as a workflow, so an open Produce N job is not flagged **No workflow** and Status shows the current make step when there is no order-level step
+
 ## [0.33.0] - 2026-10-12
 
 Packages 7–11: package materials and suggestion, trays and Unblock, Copy command, workflow timing, and post-ship.

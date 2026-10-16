@@ -108,6 +108,54 @@ class SOM_Orders {
 	}
 
 	/**
+	 * SQL predicate: open, not cancelled, no order-level Pack/Post-ship progress, and no item make progress.
+	 *
+	 * Shared by the Needs workflow filter and the list badge column. Requires the channels alias to be joined.
+	 *
+	 * @param string $orders_alias   Orders table alias.
+	 * @param string $channels_alias Channels table alias.
+	 * @return string
+	 */
+	public static function needs_workflow_sql( $orders_alias = 'o', $channels_alias = 'c' ) {
+		$o              = preg_replace( '/[^a-z_]/', '', $orders_alias );
+		$c              = preg_replace( '/[^a-z_]/', '', $channels_alias );
+		$order_progress = SOM_DB::table( 'order_step_progress' );
+		$item_progress  = SOM_DB::table( 'order_item_step_progress' );
+		$cancelled      = self::cancelled_sql( $o, $c );
+
+		return "(
+			{$o}.is_complete = 0
+			AND {$o}.current_step_id IS NULL
+			AND NOT EXISTS ( SELECT 1 FROM {$order_progress} osp_nw WHERE osp_nw.order_id = {$o}.id )
+			AND NOT EXISTS ( SELECT 1 FROM {$item_progress} isp_nw WHERE isp_nw.order_id = {$o}.id )
+			AND NOT {$cancelled}
+		)";
+	}
+
+	/**
+	 * Scalar subquery: earliest in-progress make step name (lowest step_order).
+	 *
+	 * A line's current step is its first non-done row, so the minimum step_order
+	 * among non-done item rows is the earliest current step across lines.
+	 *
+	 * @param string $orders_alias Orders table alias.
+	 * @return string
+	 */
+	private static function current_make_step_name_sql( $orders_alias = 'o' ) {
+		$o        = preg_replace( '/[^a-z_]/', '', $orders_alias );
+		$progress = SOM_DB::table( 'order_item_step_progress' );
+		$steps    = SOM_DB::table( 'workflow_steps' );
+
+		return "( SELECT s_mk.name
+			FROM {$progress} p_mk
+			INNER JOIN {$steps} s_mk ON s_mk.id = p_mk.workflow_step_id
+			WHERE p_mk.order_id = {$o}.id
+				AND p_mk.status <> 'done'
+			ORDER BY s_mk.step_order ASC, s_mk.id ASC, p_mk.order_item_id ASC
+			LIMIT 1 )";
+	}
+
+	/**
 	 * Format shipping address JSON for display (multiline).
 	 *
 	 * @param string|array|null $address JSON or array.
@@ -162,6 +210,9 @@ class SOM_Orders {
 	/**
 	 * Query orders for the admin list.
 	 *
+	 * List rows include `needs_workflow` (same predicate as the Needs workflow filter),
+	 * `item_progress_count`, and `current_make_step_name` (earliest in-progress make step).
+	 *
 	 * @param array<string, mixed> $args Filters: status, current_step, channel, date_from, date_to, s, paged.
 	 * @return array{orders: array<int, object>, total: int, pages: int, paged: int}
 	 */
@@ -197,11 +248,7 @@ class SOM_Orders {
 		} elseif ( 'needs_mapping' === $status ) {
 			$where[] = "EXISTS ( SELECT 1 FROM {$items_t} oi_um WHERE oi_um.order_id = o.id AND oi_um.product_id IS NULL )";
 		} elseif ( 'needs_workflow' === $status ) {
-			$cancelled = self::cancelled_sql( 'o', 'c' );
-			$progress_t = SOM_DB::table( 'order_step_progress' );
-			$where[]    = "o.is_complete = 0 AND o.current_step_id IS NULL
-				AND NOT EXISTS ( SELECT 1 FROM {$progress_t} osp WHERE osp.order_id = o.id )
-				AND NOT {$cancelled}";
+			$where[] = self::needs_workflow_sql( 'o', 'c' );
 		} elseif ( 'cancelled' === $status ) {
 			$where[] = self::cancelled_sql( 'o', 'c' );
 		}
@@ -262,6 +309,9 @@ class SOM_Orders {
 
 		$unmatched_label = __( 'Unmatched', 'order-machine' );
 		$cancelled_expr  = self::cancelled_sql( 'o', 'c' );
+		$needs_expr      = self::needs_workflow_sql( 'o', 'c' );
+		$make_step_expr  = self::current_make_step_name_sql( 'o' );
+		$item_progress_t = SOM_DB::table( 'order_item_step_progress' );
 
 		$list_sql = "SELECT
 				o.id,
@@ -275,7 +325,10 @@ class SOM_Orders {
 				c.display_name AS channel_name,
 				( SELECT COUNT(*) FROM {$items_t} oi_c WHERE oi_c.order_id = o.id AND oi_c.product_id IS NULL ) AS unmatched_count,
 				( SELECT COUNT(*) FROM " . SOM_DB::table( 'order_step_progress' ) . " osp_c WHERE osp_c.order_id = o.id ) AS progress_count,
+				( SELECT COUNT(*) FROM {$item_progress_t} isp_c WHERE isp_c.order_id = o.id ) AS item_progress_count,
 				( SELECT s.name FROM " . SOM_DB::table( 'workflow_steps' ) . " s WHERE s.id = o.current_step_id LIMIT 1 ) AS current_step_name,
+				{$make_step_expr} AS current_make_step_name,
+				CASE WHEN {$needs_expr} THEN 1 ELSE 0 END AS needs_workflow,
 				( SELECT GROUP_CONCAT( COALESCE( p.name, %s ) ORDER BY oi_p.id SEPARATOR ', ' )
 					FROM {$items_t} oi_p
 					LEFT JOIN {$products_t} p ON p.id = oi_p.product_id

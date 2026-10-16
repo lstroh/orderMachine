@@ -190,6 +190,8 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 - Filters: status, channel, date range, search
 - Badges / flags: open, complete, cancelled, unmatched items, no workflow
+- **No workflow** (flag and Needs workflow filter) only when the order is open, not cancelled, and has neither per-line make progress nor order-level Pack/Post-ship progress. Produce N is not false-flagged (BUG-004 list/filter, UP12-S1). Order detail Make UI is still UP12-S2.
+- Status prefers the order-level current step name; otherwise the current in-progress make step (earliest `step_order` when several lines are in progress); otherwise **Open**
 
 **Detail (open an order):**
 
@@ -228,7 +230,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 - Create / edit name, SKU, active flag
 - Mark as **Internal product** (make-to-stock component) — auto-creates a linked output material; never sold on marketplaces
-- **Produce N** on internal products → Internal-channel production order; inputs reserved now; linked material credited on workflow complete (`production_output`)
+- **Produce N** on internal products → Internal-channel production order; inputs reserved now; linked material credited on workflow complete (`production_output`). The Orders list counts that make progress (not **No workflow**); order detail Make controls are still UP12-S2 (BUG-004)
 - Assign a **workflow template**
 - Edit the **material recipe** (material + quantity per unit; inputs for internal products)
 - Set **target selling price** and review the **Product Costing** panel (recipe material cost, **platform fees £ + %** per channel estimate vs actual, **planned shipping** when set, fee-aware profit / margin, goal alerts, listing prices side by side)
