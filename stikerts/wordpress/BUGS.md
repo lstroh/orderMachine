@@ -19,7 +19,62 @@
 
 ## Open
 
-*(None right now — add new `BUG-NNN` entries here as testing continues.)*
+### BUG-004 — Produce N shows “No workflow”; Make UI missing on order detail
+
+| | |
+|---|---|
+| **Severity** | Major / UX |
+| **Status** | Open |
+| **Found in** | Products → Produce N → Make Board vs Orders list / order detail |
+| **Env** | Operator testing; 2026-10-14 |
+| **Plan** | Package 12 — [`../wordpress v13/`](../wordpress%20v13/) (`03-Update-Produce-N-Workflow-Visibility.md`, UP12-S1 / UP12-S2) |
+
+**Symptoms**
+
+- After **Produce N** on an internal product (workflow + recipe set), channel **Internal**.  
+- **Make Board** shows the line and drag-advance works.  
+- Orders list Flags: **No workflow**; Status often **Open**.  
+- Order detail Make section does not show step progress / Mark done (looks like no workflow).
+
+**Likely cause**
+
+- List badge / `needs_workflow` filter still key off order-level `current_step_id` + `order_step_progress` only; Produce N uses **`order_item_step_progress`** and never binds Pack.  
+- Order detail hides Make controls whenever `product.is_internal`, which is correct for internal lines on **customer** orders but wrong for Internal-channel Produce N jobs that have item progress.
+
+**Expected**
+
+- List must not false-flag Produce N as **No workflow**; Status should surface current make step when appropriate.  
+- Order detail must show the Make step UI for Produce N; keep **Pack-ready (internal)** only for internal lines on non-Internal orders.
+
+**Progress**
+
+- **UP12-S1** (this change): Orders list Flags, Status, and the Needs workflow filter use per-line make progress. An open Produce N job is not flagged **No workflow**; Status shows the current make step when no order-level step is set. Smoke: `tests/sprint-up12-s1-smoke.php` (pending wp-env).  
+- Order detail Make UI is still missing. Status stays **Open** until UP12-S2.
+
+### BUG-005 — Post-ship workflow can be saved without a Package arrived step
+
+| | |
+|---|---|
+| **Severity** | Major / UX |
+| **Status** | Open |
+| **Found in** | Workflows (Post-ship) → order detail Post-ship panel |
+| **Env** | Operator testing; 2026-10-14 |
+| **Plan** | Package 12 — [`../wordpress v13/`](../wordpress%20v13/) (`07-Update-Post-Ship-Arrival-Required.md`, UP12-S5) |
+
+**Symptoms**
+
+- Custom Post-ship workflow; order shows **Awaiting arrival** but no step offers the **Package arrived** checklist.  
+- Order can never complete (complete = shipment recorded **and** arrival confirmed via a `package_arrived` step).
+
+**Likely cause**
+
+- `SOM_Workflows::save_steps` validates individual steps only; no template-level rule that a Post-ship template contains an arrival step.  
+- Save handler writes template fields before step validation, so a failed step save can still leave partial changes / a new template row.
+
+**Expected**
+
+- Saving a Post-ship template (create, edit, or kind change; active or inactive) is blocked unless at least one step uses Confirmation checklist **Package arrived**; nothing is written on failure.  
+- Existing invalid templates are flagged (Workflows list, editor, Settings default picker — warn only); stuck orders show a notice on order detail.
 
 ---
 
