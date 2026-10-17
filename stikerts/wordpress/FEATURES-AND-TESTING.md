@@ -36,7 +36,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Workflow engine (manual + timer + script + batch + confirmation + trays) | Done |
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | **Removed** (UP9-S2) — use Copy command |
-| Copy command step + structured eBay fields | Done (UP9-S1–S2) |
+| Copy command step + structured eBay fields | Done (UP9-S1–S2); placeholder dropdown (UP12-S4) |
 | Step instructions Markdown + styling | Done (UP9-S3); formatting toolbar (UP12-S3) |
 | Optional step task lists (default + product override) | Done (UP9-S4) |
 | Listings push | Done (Sprint 10) |
@@ -290,7 +290,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 - Toggle **requires manual confirm**
 - Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); formatting toolbar inserts bold, italic, lists, headings, links, and inline code; products may override per step with the same toolbar; order detail renders safe HTML; editor keeps the collapsed cheatsheet + Preview (UP9-S3, UP12-S3)
 - Set **Tasks (optional)** per step (repeatable labels); products may override the whole list on make templates (full replace); pack = template only; order detail Tasks panel never blocks Mark done (UP9-S4). Separate from **Confirmation checklist**.
-- Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). Exclusive with timer/batch; implies manual confirm
+- Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). **Insert placeholder…** above the textarea inserts `{{key}}` at the cursor, or replaces the current selection, then returns to the prompt. The same dropdown is on steps added while editing. An insert that would pass 4000 characters is skipped. The description still lists the placeholders. Exclusive with timer/batch; implies manual confirm (UP9-S1, UP12-S4)
 - Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer or batch
 - Set **timer** (seconds via friendly min/hr/day UI)
 - **script_config** (local / api / n8n) **removed** — legacy rows warn in editor and clear on save; ignored at runtime
@@ -891,7 +891,7 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 ### Test 10 — Workflow editor (gates + goals + batch + copy command)
 
 1. Workflows → create a small template with 2–3 steps.
-2. Reorder steps; set one timer (e.g. 1 minute); set one manual; set a **Copy command template** on another; save.
+2. Reorder steps; set one timer (e.g. 1 minute); set one manual; set a **Copy command template** on another. On that field, put the cursor in the template and choose **Insert placeholder…** → **Order number**. `{{order_number}}` is inserted at the cursor and the dropdown returns to **Insert placeholder…**. Add a step and confirm the new card has the same dropdown. Save.
 3. Confirm there is **no** local/api/n8n script UI. If a legacy step still has `script_config`, editor shows a disabled warning; save clears it.
 4. Assign a **batch group** to one step; confirm combo warning if you also tick other gates; save should reject invalid combo.
 5. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
@@ -900,6 +900,7 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 8. Instructions: type three lines, select them, click **Numbered list**. They become `1.` `2.` `3.`. **Preview** still renders. The product step-instruction override uses the same toolbar.
 
 - [ ] Instructions toolbar: select 3 lines → Numbered list → `1.` `2.` `3.` (workflow editor and product override); Preview still works
+- [ ] Copy command: Insert placeholder… inserts `{{order_number}}` at the cursor and resets; a newly added step has the same dropdown
 - [ ] Step CRUD / reorder / timer / copy-command persist
 - [ ] No script/api/n8n configure UI
 - [ ] Batch group assign works; invalid combo blocked
@@ -1199,4 +1200,4 @@ Beyond “does it click,” please watch for:
 
 ---
 
-*End of guide. Update Package 9 step task lists: `tests/sprint-up9-s4-smoke.php`. Markdown instructions: `tests/sprint-up9-s3-smoke.php`. Copy command / script removal: S1–S2 smokes. Package 8 trays: `tests/sprint-up8-s*-smoke.php`.*
+*End of guide. Update Package 9 step task lists: `tests/sprint-up9-s4-smoke.php`. Markdown instructions: `tests/sprint-up9-s3-smoke.php`. Copy command / script removal: S1–S2 smokes. Copy command placeholder dropdown: `tests/sprint-up12-s4-smoke.php`. Package 8 trays: `tests/sprint-up8-s*-smoke.php`.*

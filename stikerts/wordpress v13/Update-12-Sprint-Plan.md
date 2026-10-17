@@ -198,10 +198,10 @@ Planning does not require tagging; cut releases when the operator asks.
 - [x] Docs + smoke
 
 ### UP12-S4
-- [ ] Placeholder labels from `placeholder_keys()`
-- [ ] Insert placeholder dropdown on every Copy command field (incl. new steps)
-- [ ] Insert at cursor / replace selection
-- [ ] Docs + smoke
+- [x] Placeholder labels from `placeholder_keys()`
+- [x] Insert placeholder dropdown on every Copy command field (incl. new steps)
+- [x] Insert at cursor / replace selection
+- [x] Docs + smoke
 
 ### UP12-S5
 - [ ] Post-ship save blocked without Package arrived step (create / edit / kind change; inactive too)
