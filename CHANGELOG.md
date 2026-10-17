@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Step instruction editors (workflow steps and product overrides) have a Markdown toolbar for bold, italic, lists, headings, links, and inline code
+
 ### Fixed
 
 - Orders list and the Needs workflow filter treat per-line make progress as a workflow, so an open Produce N job is not flagged **No workflow** and Status shows the current make step when there is no order-level step

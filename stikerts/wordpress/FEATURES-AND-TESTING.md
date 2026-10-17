@@ -21,7 +21,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Pack Board + Ship gates | Done (UP6-S2) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
-| Step instructions (default + product override) | Done (UP4-S1); Markdown render + editor preview (UP9-S3) |
+| Step instructions (default + product override) | Done (UP4-S1); Markdown render + editor preview (UP9-S3); formatting toolbar (UP12-S3) |
 | Order material overuse (Materials used) | Done (UP4-S2) |
 | Internal products core (Produce N) | Done (UP4-S3) |
 | Internal products UX / guards / analytics | Done (UP4-S4) |
@@ -37,7 +37,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | **Removed** (UP9-S2) — use Copy command |
 | Copy command step + structured eBay fields | Done (UP9-S1–S2) |
-| Step instructions Markdown + styling | Done (UP9-S3) |
+| Step instructions Markdown + styling | Done (UP9-S3); formatting toolbar (UP12-S3) |
 | Optional step task lists (default + product override) | Done (UP9-S4) |
 | Listings push | Done (Sprint 10) |
 | REST API + MCP Abilities | Done (Sprint 11; enriched in U7 + UP3-S3) |
@@ -288,7 +288,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
-- Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); products may override per step; order detail renders safe HTML; editor has cheatsheet + Preview (UP9-S3)
+- Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); formatting toolbar inserts bold, italic, lists, headings, links, and inline code; products may override per step with the same toolbar; order detail renders safe HTML; editor keeps the collapsed cheatsheet + Preview (UP9-S3, UP12-S3)
 - Set **Tasks (optional)** per step (repeatable labels); products may override the whole list on make templates (full replace); pack = template only; order detail Tasks panel never blocks Mark done (UP9-S4). Separate from **Confirmation checklist**.
 - Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). Exclusive with timer/batch; implies manual confirm
 - Set **Confirmation checklist** (print vs client request / shipping address / packing items) — cannot combine with timer or batch
@@ -897,7 +897,9 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 5. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
 6. Assign that template to a test product.
 7. (Optional) On a fresh sync path, confirm a new matched order picks up this template; make line shows Copy panel.
+8. Instructions: type three lines, select them, click **Numbered list**. They become `1.` `2.` `3.`. **Preview** still renders. The product step-instruction override uses the same toolbar.
 
+- [ ] Instructions toolbar: select 3 lines → Numbered list → `1.` `2.` `3.` (workflow editor and product override); Preview still works
 - [ ] Step CRUD / reorder / timer / copy-command persist
 - [ ] No script/api/n8n configure UI
 - [ ] Batch group assign works; invalid combo blocked

@@ -337,7 +337,8 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 							</td>
 							<td>
 								<div data-som-md-editor>
-									<textarea class="large-text som-md-source" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Markdown override…', 'order-machine' ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
+									<?php SOM_Step_Instructions::render_editor_toolbar(); ?>
+									<textarea id="som-md-override-<?php echo esc_attr( (string) $sid ); ?>" class="large-text som-md-source" rows="3" name="som_step_instructions[<?php echo esc_attr( (string) $sid ); ?>]" maxlength="<?php echo esc_attr( (string) SOM_Step_Instructions::MAX_LENGTH ); ?>" placeholder="<?php echo esc_attr__( 'Markdown override…', 'order-machine' ); ?>" aria-label="<?php echo esc_attr__( 'Step instruction override', 'order-machine' ); ?>"><?php echo esc_textarea( $override ); ?></textarea>
 									<?php SOM_Step_Instructions::render_editor_help(); ?>
 								</div>
 							</td>

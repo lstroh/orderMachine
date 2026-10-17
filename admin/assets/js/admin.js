@@ -665,6 +665,7 @@
 	initPoPreviewImpact();
 	initWorkflowEditor();
 	initStepTaskLists();
+	initMarkdownToolbar();
 	initMarkdownPreview();
 	initListingEditor();
 	initBatchesPage();
@@ -672,6 +673,118 @@
 	initLiveElapsed();
 	initAdvanceStepRest();
 	initCopyText();
+
+	function closestActionButton( event ) {
+		var target = event.target;
+		if ( ! target || typeof target.closest !== 'function' ) {
+			return null;
+		}
+		return target.closest( '[data-som-md-action]' );
+	}
+
+	/**
+	 * Write an insertAtCursor / applyMarkdownAction result back to a textarea.
+	 * UP12-S4 can call this after SOMMdInsert.insertAtCursor().
+	 *
+	 * @param {HTMLTextAreaElement} field
+	 * @param {{applied:boolean, value:string, selectionStart:number, selectionEnd:number}} result
+	 * @param {number} fallbackStart
+	 * @param {number} fallbackEnd
+	 * @return {void}
+	 */
+	function commitTextareaEdit( field, result, fallbackStart, fallbackEnd ) {
+		if ( ! result || ! result.applied ) {
+			field.focus();
+			field.setSelectionRange( fallbackStart, fallbackEnd );
+			return;
+		}
+		field.value = result.value;
+		field.focus();
+		field.setSelectionRange( result.selectionStart, result.selectionEnd );
+		field.dataset.somMdStart = String( result.selectionStart );
+		field.dataset.somMdEnd = String( result.selectionEnd );
+		field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+	}
+
+	function initMarkdownToolbar() {
+		if ( typeof SOMMdInsert === 'undefined' || ! SOMMdInsert.applyMarkdownAction ) {
+			return;
+		}
+
+		document.addEventListener( 'focusout', function ( event ) {
+			var field = event.target;
+			if ( ! field || ! field.classList || ! field.classList.contains( 'som-md-source' ) ) {
+				return;
+			}
+			field.dataset.somMdStart = String( field.selectionStart );
+			field.dataset.somMdEnd = String( field.selectionEnd );
+		} );
+
+		document.addEventListener( 'mousedown', function ( event ) {
+			var button = closestActionButton( event );
+			if ( ! button || button.getAttribute( 'data-som-md-action' ) === 'preview' ) {
+				return;
+			}
+			var editor = button.closest( '[data-som-md-editor]' );
+			if ( ! editor ) {
+				return;
+			}
+			var source = editor.querySelector( '.som-md-source' );
+			if ( source ) {
+				button.dataset.somCaptureStart = String( source.selectionStart );
+				button.dataset.somCaptureEnd = String( source.selectionEnd );
+			}
+			event.preventDefault();
+		} );
+
+		document.addEventListener( 'keydown', function ( event ) {
+			if ( event.key !== 'Enter' && event.key !== ' ' ) {
+				return;
+			}
+			var button = closestActionButton( event );
+			if ( ! button ) {
+				return;
+			}
+			delete button.dataset.somCaptureStart;
+			delete button.dataset.somCaptureEnd;
+		} );
+
+		document.addEventListener( 'click', function ( event ) {
+			var button = closestActionButton( event );
+			if ( ! button ) {
+				return;
+			}
+			var action = button.getAttribute( 'data-som-md-action' ) || '';
+			if ( action === 'preview' ) {
+				return;
+			}
+			var editor = button.closest( '[data-som-md-editor]' );
+			if ( ! editor ) {
+				return;
+			}
+			var source = editor.querySelector( '.som-md-source' );
+			if ( ! source ) {
+				return;
+			}
+			event.preventDefault();
+
+			var start = source.selectionStart;
+			var end = source.selectionEnd;
+			if ( button.dataset.somCaptureStart != null ) {
+				start = Number( button.dataset.somCaptureStart );
+				end = Number( button.dataset.somCaptureEnd );
+				delete button.dataset.somCaptureStart;
+				delete button.dataset.somCaptureEnd;
+			} else if ( document.activeElement !== source && source.dataset.somMdStart != null ) {
+				start = Number( source.dataset.somMdStart );
+				end = Number( source.dataset.somMdEnd );
+			}
+
+			var max = source.maxLength > 0 ? source.maxLength : SOMMdInsert.MAX_LENGTH;
+			var result = SOMMdInsert.applyMarkdownAction( source.value, start, end, action, max );
+			commitTextareaEdit( source, result, start, end );
+		} );
+	}
 
 	function initMarkdownPreview() {
 		if ( typeof somAdmin === 'undefined' || ! somAdmin.ajaxUrl || ! somAdmin.markdownPreviewNonce ) {

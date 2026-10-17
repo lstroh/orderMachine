@@ -191,11 +191,11 @@ Planning does not require tagging; cut releases when the operator asks.
 - [x] Docs + smoke
 
 ### UP12-S3
-- [ ] Toolbar on workflow step editor + product overrides
-- [ ] Bold / Italic / Code / Link wrap-or-insert
-- [ ] Bullet / Numbered (multi-line, sequential) / H2 / H3 line prefixes
-- [ ] Preview unchanged; render/allowlist unchanged
-- [ ] Docs + smoke
+- [x] Toolbar on workflow step editor + product overrides
+- [x] Bold / Italic / Code / Link wrap-or-insert
+- [x] Bullet / Numbered (multi-line, sequential) / H2 / H3 line prefixes
+- [x] Preview unchanged; render/allowlist unchanged
+- [x] Docs + smoke
 
 ### UP12-S4
 - [ ] Placeholder labels from `placeholder_keys()`
