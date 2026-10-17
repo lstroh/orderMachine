@@ -19,13 +19,20 @@
 
 ## Open
 
+None.
+
+---
+
+## Closed / fixed
+
 ### BUG-005 — Post-ship workflow can be saved without a Package arrived step
 
 | | |
 |---|---|
 | **Severity** | Major / UX |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Found in** | Workflows (Post-ship) → order detail Post-ship panel |
+| **Fixed** | 2026-10-17 |
 | **Env** | Operator testing; 2026-10-14 |
 | **Plan** | Package 12 — [`../wordpress v13/`](../wordpress%20v13/) (`07-Update-Post-Ship-Arrival-Required.md`, UP12-S5) |
 
@@ -34,19 +41,14 @@
 - Custom Post-ship workflow; order shows **Awaiting arrival** but no step offers the **Package arrived** checklist.  
 - Order can never complete (complete = shipment recorded **and** arrival confirmed via a `package_arrived` step).
 
-**Likely cause**
+**Root cause / fix**
 
-- `SOM_Workflows::save_steps` validates individual steps only; no template-level rule that a Post-ship template contains an arrival step.  
-- Save handler writes template fields before step validation, so a failed step save can still leave partial changes / a new template row.
+- `SOM_Workflows::save_steps` validated individual steps only, and the admin save wrote the template before step validation. **UP12-S5:** `validate_submission()` normalises the posted steps and requires a Package arrived step when the resulting kind is `post_ship` (create, edit, or kind change; active or inactive). `save_submission()` runs that check before `update` / `create`, and `save_steps()` calls the same check. A failed save writes nothing. The editor blocks the same case before submit.  
+- Existing invalid templates are not repaired. The Workflows list shows **No arrival step**, the editor shows a warning, and Settings suffixes **(no arrival step)** and warns without blocking the choice. An open order whose bound post-ship steps have no arrival step shows a notice and keeps those steps.
 
-**Expected**
-
-- Saving a Post-ship template (create, edit, or kind change; active or inactive) is blocked unless at least one step uses Confirmation checklist **Package arrived**; nothing is written on failure.  
-- Existing invalid templates are flagged (Workflows list, editor, Settings default picker — warn only); stuck orders show a notice on order detail.
+**Files:** `includes/class-som-workflows.php`, `admin/class-som-admin-menu.php`, `admin/views/workflow-templates.php`, `admin/views/workflow-step-editor.php`, `admin/views/settings.php`, `admin/views/order-detail.php`, `admin/assets/js/admin.js`, `tests/sprint-up12-s5-smoke.php`
 
 ---
-
-## Closed / fixed
 
 ### BUG-004 — Produce N shows “No workflow”; Make UI missing on order detail
 

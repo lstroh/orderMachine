@@ -15,6 +15,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ### Fixed
 
+- A Post-ship workflow cannot be saved unless a step uses Confirmation checklist **Package arrived**, and a failed save writes nothing. Existing templates without that step stay in place and are flagged; Settings only warns (BUG-005)
 - Orders list and the Needs workflow filter treat per-line make progress as a workflow, so an open Produce N job is not flagged **No workflow** and Status shows the current make step when there is no order-level step
 - Order detail Make shows the step list, Mark done, instructions, tasks, and copy command for Internal Produce N lines that already have make progress. A customer-order internal line stays **Pack-ready (internal)** with no make controls
 

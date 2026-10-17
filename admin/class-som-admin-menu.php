@@ -1506,21 +1506,6 @@ class SOM_Admin_Menu {
 			'uses_trays'  => ! empty( $_POST['som_workflow_uses_trays'] ),
 		);
 
-		if ( $template_id > 0 ) {
-			$result = SOM_Workflows::update( $template_id, $data );
-		} else {
-			$result = SOM_Workflows::create( $data );
-			if ( ! is_wp_error( $result ) ) {
-				$template_id = (int) $result;
-			}
-		}
-
-		if ( is_wp_error( $result ) ) {
-			self::flash_notice( $result->get_error_message(), 'error', 'som_workflow_error' );
-			wp_safe_redirect( $template_id > 0 ? SOM_Workflows::editor_url( $template_id ) : SOM_Workflows::editor_url( 'new' ) );
-			exit;
-		}
-
 		$step_rows = isset( $_POST['som_step'] ) && is_array( $_POST['som_step'] ) ? wp_unslash( $_POST['som_step'] ) : array();
 		$steps     = array();
 		foreach ( $step_rows as $row ) {
@@ -1530,12 +1515,14 @@ class SOM_Admin_Menu {
 			$steps[] = $row;
 		}
 
-		$steps_result = SOM_Workflows::save_steps( $template_id, $steps );
-		if ( is_wp_error( $steps_result ) ) {
-			self::flash_notice( $steps_result->get_error_message(), 'error', 'som_steps_error' );
-			wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
+		// Validate the full submission (kind + normalised steps) before any write.
+		$result = SOM_Workflows::save_submission( $template_id, $data, $steps );
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_workflow_error' );
+			wp_safe_redirect( $template_id > 0 ? SOM_Workflows::editor_url( $template_id ) : SOM_Workflows::editor_url( 'new' ) );
 			exit;
 		}
+		$template_id = (int) $result;
 
 		$goal_materials  = isset( $_POST['som_goal_material'] ) && is_array( $_POST['som_goal_material'] ) ? wp_unslash( $_POST['som_goal_material'] ) : array();
 		$goal_costs      = isset( $_POST['som_goal_cost'] ) && is_array( $_POST['som_goal_cost'] ) ? wp_unslash( $_POST['som_goal_cost'] ) : array();

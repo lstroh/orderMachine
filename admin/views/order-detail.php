@@ -1396,6 +1396,20 @@ if ( ! empty( $order->raw_payload ) ) {
 				<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Order complete', 'order-machine' ); ?></span>
 			<?php endif; ?>
 		</p>
+		<?php
+		$ps_bound_lacks_arrival = $ps_started
+			&& empty( $order->arrival_confirmed_at )
+			&& empty( $order->is_complete )
+			&& empty( $order->is_cancelled )
+			&& ! SOM_Workflows::steps_include_arrival( $post_ship_progress );
+		?>
+		<?php if ( $ps_bound_lacks_arrival ) : ?>
+			<div class="notice notice-warning inline">
+				<p>
+					<?php echo esc_html__( 'This order\'s Post-ship workflow has no Package arrived step, so it can\'t complete. Fix the template for future orders; this order keeps its current steps.', 'order-machine' ); ?>
+				</p>
+			</div>
+		<?php endif; ?>
 		<?php if ( ! empty( $order->arrival_confirmed_at ) ) : ?>
 			<p class="description">
 				<?php

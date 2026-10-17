@@ -416,6 +416,27 @@ flowchart LR
 
 ---
 
+## Troubleshooting — Awaiting arrival forever
+
+**When it happens**
+
+The order’s Post-ship panel shows **Awaiting arrival** (often with **Shipment missing**), but no step offers the **Package arrived** checklist. The order can never complete: complete needs a recorded shipment **and** arrival confirmed from that checklist.
+
+**Why**
+
+The Post-ship steps bound to the order have no Confirmation checklist **Package arrived**. A template saved before this rule, or written outside the editor, can still be in that state. Orders already on it keep those steps.
+
+**What to do**
+
+1. Open **Workflows**. A Post-ship template missing the step shows a **No arrival step** badge. The editor warning says orders using it can’t complete.
+2. Add a step, or set an existing step, to Confirmation checklist **Package arrived**, then save. A Post-ship template (active or inactive) cannot be saved without that step. A rejected save writes nothing — the previous name and steps stay.
+3. That fixes **future** orders. The stuck order is not rebound. Its Post-ship panel says to fix the template for future orders and that this order keeps its current steps.
+4. **Settings → Default Post-ship** can still list the template, labelled **(no arrival step)**. If it is the selected default, a warning shows under the field. You can still save that choice.
+
+Pack templates are unchanged. A Pack template can still be saved with no step whose name starts with “Ship”.
+
+---
+
 ## Related docs
 
 - [`USER-GUIDE.md`](USER-GUIDE.md) — setup paths, glossary, limits  

@@ -107,6 +107,9 @@ $status_options = array(
 							$tk = SOM_Workflows::sanitize_kind( isset( $template->kind ) ? $template->kind : 'make' );
 							$labels = SOM_Workflows::kind_choices();
 							echo esc_html( isset( $labels[ $tk ] ) ? $labels[ $tk ] : $tk );
+							if ( 'post_ship' === $tk && ! SOM_Workflows::template_has_arrival_step( (int) $template->id ) ) {
+								echo ' <span class="som-badge som-badge-no-arrival">' . esc_html__( 'No arrival step', 'order-machine' ) . '</span>';
+							}
 							?>
 						</td>
 						<td class="column-steps">

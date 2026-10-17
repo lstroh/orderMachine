@@ -485,6 +485,28 @@
 
 		if ( form ) {
 			form.addEventListener( 'submit', function ( e ) {
+				var arrivalError = document.getElementById( 'som-post-ship-arrival-error' );
+				var kindField = document.getElementById( 'som_workflow_kind' );
+				var arrivalKind = form.getAttribute( 'data-som-arrival-kind' ) || 'package_arrived';
+				var isPostShip = kindField && kindField.value === 'post_ship';
+				var hasArrival = namedCards().some( function ( card ) {
+					var select = card.querySelector( '.som-confirmation-kind' );
+					return select && select.value === arrivalKind;
+				} );
+				if ( isPostShip && ! hasArrival ) {
+					e.preventDefault();
+					if ( arrivalError ) {
+						arrivalError.hidden = false;
+						if ( arrivalError.scrollIntoView ) {
+							arrivalError.scrollIntoView( { block: 'nearest' } );
+						}
+					}
+					return;
+				}
+				if ( arrivalError ) {
+					arrivalError.hidden = true;
+				}
+
 				var ungated = namedCards().filter( function ( card ) {
 					return ! stepHasGate( card );
 				} );
