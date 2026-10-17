@@ -11,13 +11,13 @@
 | UP12-S1 | Orders list / filter honesty | Done | Code complete; smoke written, pending wp-env |
 | UP12-S2 | Order detail Produce N Make UI | Done | Code complete; smoke written, pending wp-env |
 | UP12-S3 | Instructions Markdown toolbar | Done | Code complete; smoke written, pending wp-env |
-| UP12-S4 | Copy command placeholder dropdown | Not started | Planning only |
+| UP12-S4 | Copy command placeholder dropdown | Done | Code complete; smoke written, pending wp-env |
 | UP12-S5 | Post-ship arrival step required (BUG-005) | Not started | Planning only |
 | UP12-S6 | Clone workflow templates | Not started | Planning only |
 | UP12-S7 | Clone products | Not started | Planning only |
 | UP12-S8+ | Reserved | — | Waiting for further operator reports |
 
-**Package 12:** UP12-S1, UP12-S2, and UP12-S3 code complete. S4+ not started.
+**Package 12:** UP12-S1 through UP12-S4 code complete. S5+ not started.
 
 ---
 
@@ -30,7 +30,7 @@
 - 2026-10-14: added Copy command placeholder dropdown (P1–P6 settled) → UP12-S4; spec [`06-Update-Copy-Command-Placeholder-Picker.md`](06-Update-Copy-Command-Placeholder-Picker.md).  
 - 2026-10-14: filed **BUG-005** (Post-ship saved without Package arrived step; A1–A6 settled) → UP12-S5; spec [`07-Update-Post-Ship-Arrival-Required.md`](07-Update-Post-Ship-Arrival-Required.md).  
 - 2026-10-14 (answered in chat, no sprint): timer works (make steps show static UTC unlock time — operator OK as-is); Pack template is site-wide (no per-product); packaging materials live on Shipping packages; Materials used is increase-only; completion = shipment + arrival.  
-- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. S4+ wait for a sprint kickoff.
+- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. UP12-S4 implemented when requested. S5+ wait for a sprint kickoff.
 
 ---
 
@@ -60,4 +60,14 @@
 - **Behaviour:** Both instruction editors (workflow step cards, including ones added later, and product step-instruction overrides) show one Markdown toolbar above the textarea. Buttons insert Markdown: Bold, Italic, Bullet list, Numbered list, Heading H2, Heading H3, Link, Inline code. Preview stays on the toolbar. A selection is wrapped or line-prefixed; no selection inserts a placeholder (lists and headings use the current line). Numbered lines run `1.` `2.` `3.` and skip blanks. The same list or heading prefix again removes it. An insert that would pass 5000 characters is skipped. `render_html` and the kses allowlist are unchanged. `SOMMdInsert.insertAtCursor` is the shared insert helper for UP12-S4.
 - **Files:** `includes/class-som-step-instructions.php` (`render_editor_toolbar`), `admin/views/workflow-step-editor.php`, `admin/views/product-edit.php`, `admin/assets/js/som-md-insert.js`, `admin/assets/js/admin.js`, `admin/assets/css/admin.css`, `admin/class-som-admin-menu.php`, `tests/sprint-up12-s3-smoke.php`, `tests/som-md-insert.test.js`, `CHANGELOG.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/USER-GUIDE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
 - **Smoke:** `tests/sprint-up12-s3-smoke.php` — toolbar markup and each `data-som-md-action` on both surfaces; toolbar-shaped Markdown still renders strong, em, ul, ol, h2, h3, a, code; allowlist unchanged. Not executed (no wp-env). Node unit test `tests/som-md-insert.test.js` covers wrap, line prefix, numbered lists, toggle-off, and the 5000-character skip.
+- **Schema:** none. No Version bump.
+
+---
+
+## UP12-S4 — Copy command placeholder dropdown
+
+- **Status:** done (code). Tests pending wp-env — smoke not run in this sprint.
+- **Behaviour:** Every Copy command template, including step cards added while editing, has an **Insert placeholder…** dropdown above the textarea. Options come from `SOM_Copy_Command::placeholder_keys()` with labels from `placeholder_labels()` (Order number, House number, Street name, Style / design, Buyer first name, Buyer full name, Product name, Personalisation). The option value is `{{key}}`; the visible label is the friendly name; `title` is the token. Choosing one inserts that token at the caret, or replaces the current selection, using `SOMMdInsert.insertAtCursor` and `commitTextareaEdit`. Focus returns to the textarea with the caret after the token, the dropdown resets to the prompt, and `input` fires when the text changes. An insert that would pass 4000 characters is skipped. The plain-text placeholder list in the description stays. `SOM_Copy_Command::render` is unchanged. No new keys, no example-template button, no Pack Copy UI, no product override, no copy command on boards.
+- **Files:** `includes/class-som-copy-command.php` (`placeholder_labels`, `render_placeholder_picker`), `admin/views/workflow-step-editor.php`, `admin/assets/js/admin.js` (`initCopyCommandPlaceholderPicker`), `admin/assets/css/admin.css`, `tests/sprint-up12-s4-smoke.php`, `CHANGELOG.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
+- **Smoke:** `tests/sprint-up12-s4-smoke.php` — every placeholder key has its friendly label; the picker has one option per key with value `{{key}}`; a template that uses every key still substitutes. Not executed (no wp-env).
 - **Schema:** none. No Version bump.

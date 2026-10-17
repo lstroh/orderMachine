@@ -876,6 +876,27 @@
 	align-items: center;
 }
 
+.som-step-copy-command {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 4px;
+}
+
+.som-copy-command-label {
+	margin: 0;
+}
+
+.som-copy-placeholder-picker {
+	align-self: flex-start;
+	max-width: 100%;
+}
+
+.som-step-copy-command .som-command-template {
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+}
+
 .som-step-timer .description {
 	margin: 0;
 }

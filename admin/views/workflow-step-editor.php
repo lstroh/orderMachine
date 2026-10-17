@@ -114,16 +114,16 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 			<?php endif; ?>
 
 			<div class="som-step-gate som-step-copy-command" data-som-copy-command-gate>
-				<label>
-					<?php echo esc_html__( 'Copy command template', 'order-machine' ); ?>
-					<textarea
-						class="large-text code som-command-template"
-						rows="5"
-						name="<?php echo esc_attr( $prefix ); ?>[command_template]"
-						maxlength="<?php echo esc_attr( (string) SOM_Copy_Command::MAX_TEMPLATE_LENGTH ); ?>"
-						placeholder="<?php echo esc_attr__( '/make-sticker-order Order number: {{order_number}}', 'order-machine' ); ?>"
-					><?php echo esc_textarea( $command_template ); ?></textarea>
-				</label>
+				<label class="som-copy-command-label" for="som-command-template-<?php echo esc_attr( (string) $index ); ?>"><?php echo esc_html__( 'Copy command template', 'order-machine' ); ?></label>
+				<?php SOM_Copy_Command::render_placeholder_picker(); ?>
+				<textarea
+					id="som-command-template-<?php echo esc_attr( (string) $index ); ?>"
+					class="large-text code som-command-template"
+					rows="5"
+					name="<?php echo esc_attr( $prefix ); ?>[command_template]"
+					maxlength="<?php echo esc_attr( (string) SOM_Copy_Command::MAX_TEMPLATE_LENGTH ); ?>"
+					placeholder="<?php echo esc_attr__( '/make-sticker-order Order number: {{order_number}}', 'order-machine' ); ?>"
+				><?php echo esc_textarea( $command_template ); ?></textarea>
 				<p class="description">
 					<?php
 					printf(

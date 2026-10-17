@@ -42,6 +42,51 @@ class SOM_Copy_Command {
 	}
 
 	/**
+	 * Friendly names for {@see placeholder_keys()}, in that order.
+	 *
+	 * Single source for the workflow editor Insert placeholder dropdown.
+	 * A new key needs a label here before it appears in the control.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function placeholder_labels() {
+		$catalog = array(
+			'order_number'    => __( 'Order number', 'order-machine' ),
+			'house_number'    => __( 'House number', 'order-machine' ),
+			'street_name'     => __( 'Street name', 'order-machine' ),
+			'style'           => __( 'Style / design', 'order-machine' ),
+			'buyer_name'      => __( 'Buyer first name', 'order-machine' ),
+			'buyer_full_name' => __( 'Buyer full name', 'order-machine' ),
+			'product_name'    => __( 'Product name', 'order-machine' ),
+			'personalisation' => __( 'Personalisation', 'order-machine' ),
+		);
+		$labels  = array();
+		foreach ( self::placeholder_keys() as $key ) {
+			if ( isset( $catalog[ $key ] ) && '' !== (string) $catalog[ $key ] ) {
+				$labels[ $key ] = $catalog[ $key ];
+			}
+		}
+		return $labels;
+	}
+
+	/**
+	 * Dropdown that inserts `{{key}}` into the sibling Copy command textarea.
+	 *
+	 * @return void
+	 */
+	public static function render_placeholder_picker() {
+		?>
+		<select class="som-copy-placeholder-picker" data-som-copy-placeholder aria-label="<?php echo esc_attr__( 'Insert placeholder', 'order-machine' ); ?>">
+			<option value=""><?php echo esc_html__( 'Insert placeholder…', 'order-machine' ); ?></option>
+			<?php foreach ( self::placeholder_labels() as $key => $label ) : ?>
+				<?php $token = '{{' . $key . '}}'; ?>
+				<option value="<?php echo esc_attr( $token ); ?>" title="<?php echo esc_attr( $token ); ?>"><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	/**
 	 * Whether a step has a non-empty command template.
 	 *
 	 * @param object|null $step Step row.

@@ -10,6 +10,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ### Added
 
+- Copy command templates have an Insert placeholder dropdown that puts `{{key}}` at the cursor
 - Step instruction editors (workflow steps and product overrides) have a Markdown toolbar for bold, italic, lists, headings, links, and inline code
 
 ### Fixed

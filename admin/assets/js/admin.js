@@ -666,6 +666,7 @@
 	initWorkflowEditor();
 	initStepTaskLists();
 	initMarkdownToolbar();
+	initCopyCommandPlaceholderPicker();
 	initMarkdownPreview();
 	initListingEditor();
 	initBatchesPage();
@@ -782,6 +783,90 @@
 
 			var max = source.maxLength > 0 ? source.maxLength : SOMMdInsert.MAX_LENGTH;
 			var result = SOMMdInsert.applyMarkdownAction( source.value, start, end, action, max );
+			commitTextareaEdit( source, result, start, end );
+		} );
+	}
+
+	/**
+	 * Insert {{key}} into a Copy command template from the placeholder dropdown.
+	 * Delegated so step cards added later get the same control.
+	 *
+	 * @return {void}
+	 */
+	function initCopyCommandPlaceholderPicker() {
+		if ( typeof SOMMdInsert === 'undefined' || ! SOMMdInsert.insertAtCursor ) {
+			return;
+		}
+
+		var COPY_MAX = 4000;
+
+		function closestCopySelect( event ) {
+			var target = event.target;
+			if ( ! target || typeof target.closest !== 'function' ) {
+				return null;
+			}
+			return target.closest( '[data-som-copy-placeholder]' );
+		}
+
+		document.addEventListener( 'focusout', function ( event ) {
+			var field = event.target;
+			if ( field && field.classList && field.classList.contains( 'som-command-template' ) ) {
+				field.dataset.somCopyStart = String( field.selectionStart );
+				field.dataset.somCopyEnd = String( field.selectionEnd );
+			}
+			var select = closestCopySelect( event );
+			if ( select ) {
+				delete select.dataset.somCaptureStart;
+				delete select.dataset.somCaptureEnd;
+			}
+		} );
+
+		document.addEventListener( 'mousedown', function ( event ) {
+			var select = closestCopySelect( event );
+			if ( ! select ) {
+				return;
+			}
+			var gate = select.closest( '[data-som-copy-command-gate]' );
+			var source = gate ? gate.querySelector( '.som-command-template' ) : null;
+			if ( source && document.activeElement === source ) {
+				select.dataset.somCaptureStart = String( source.selectionStart );
+				select.dataset.somCaptureEnd = String( source.selectionEnd );
+			}
+		} );
+
+		document.addEventListener( 'change', function ( event ) {
+			var select = closestCopySelect( event );
+			if ( ! select ) {
+				return;
+			}
+			var token = String( select.value || '' );
+			var capturedStart = select.dataset.somCaptureStart;
+			var capturedEnd = select.dataset.somCaptureEnd;
+			select.value = '';
+			delete select.dataset.somCaptureStart;
+			delete select.dataset.somCaptureEnd;
+			if ( token === '' ) {
+				return;
+			}
+			var gate = select.closest( '[data-som-copy-command-gate]' );
+			var source = gate ? gate.querySelector( '.som-command-template' ) : null;
+			if ( ! source ) {
+				return;
+			}
+
+			var start = source.selectionStart;
+			var end = source.selectionEnd;
+			if ( capturedStart != null ) {
+				start = Number( capturedStart );
+				end = Number( capturedEnd );
+			} else if ( document.activeElement !== source && source.dataset.somCopyStart != null ) {
+				start = Number( source.dataset.somCopyStart );
+				end = Number( source.dataset.somCopyEnd );
+			}
+
+			var max = source.maxLength > 0 ? source.maxLength : COPY_MAX;
+			var caret = token.length;
+			var result = SOMMdInsert.insertAtCursor( source.value, start, end, token, caret, caret, max );
 			commitTextareaEdit( source, result, start, end );
 		} );
 	}
