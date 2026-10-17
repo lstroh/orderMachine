@@ -357,6 +357,9 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 								if ( empty( $ps_tpl->is_active ) ) {
 									$ps_label .= ' ' . __( '(inactive)', 'order-machine' );
 								}
+								if ( ! SOM_Workflows::template_has_arrival_step( (int) $ps_tpl->id ) ) {
+									$ps_label .= ' ' . __( '(no arrival step)', 'order-machine' );
+								}
 								echo esc_html( $ps_label );
 								?>
 							</option>
@@ -376,6 +379,13 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 								<?php echo esc_html__( 'Open Workflows to create a Post-ship template', 'order-machine' ); ?>
 							</a>
 						</p>
+					<?php endif; ?>
+					<?php if ( $post_ship_tpl_id > 0 && ! SOM_Workflows::template_has_arrival_step( $post_ship_tpl_id ) ) : ?>
+						<div class="notice notice-warning inline">
+							<p>
+								<?php echo esc_html__( 'This default has no Package arrived step, so orders that use it can\'t complete. You can still keep this choice. Add a Package arrived step on the workflow for future orders.', 'order-machine' ); ?>
+							</p>
+						</div>
 					<?php endif; ?>
 				</td>
 			</tr>

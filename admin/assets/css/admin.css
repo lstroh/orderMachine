@@ -658,6 +658,15 @@
 	color: #135e96;
 }
 
+.som-badge-no-arrival {
+	background: #fcf0e3;
+	color: #9a5b1a;
+}
+
+#som-post-ship-arrival-error[hidden] {
+	display: none;
+}
+
 .som-step-list {
 	display: flex;
 	flex-direction: column;

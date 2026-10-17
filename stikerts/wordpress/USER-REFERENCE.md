@@ -38,7 +38,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **Pack:** choose **Default Pack workflow** (active templates with kind Pack). Bound on new non-Internal orders for the Pack Board and Ship gates. Create Pack templates under Workflows.
 
-**Post-ship:** choose **Default Post-ship workflow** (kind Post-ship) and **Auto-start Post-ship** (default on). Used after Pack Ship for aftercare; products may override. Create Post-ship templates under Workflows.
+**Post-ship:** choose **Default Post-ship workflow** (kind Post-ship) and **Auto-start Post-ship** (default on). Used after Pack Ship for aftercare; products may override. Create Post-ship templates under Workflows. A template with no **Package arrived** step stays selectable. Its option is labelled **(no arrival step)**. When that template is the selected default, a warning sits under the field. Saving Settings is not blocked.
 
 **Trays:** **Max trays** (site pool **1–20**, default **10**). Numbers are **1 … max**. Lowering is blocked while a higher tray is still held.
 
@@ -230,6 +230,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Starts **auto** when Pack Ship completes (Settings toggle, default on) and/or **manual** Start on order detail / board.
 - Template resolve: primary product Post-ship override → site default → unbound (pick on Start).
 - **Order complete** = shipping details recorded **and** package arrived confirmed — **not** at Pack Ship alone. Review reminder may continue after complete.
+- An open order whose post-ship has started, whose arrival is not confirmed, and whose **bound** post-ship steps have no Package arrived step shows: “This order’s Post-ship workflow has no Package arrived step, so it can’t complete. Fix the template for future orders; this order keeps its current steps.” Shown with **Awaiting arrival**. No rebind or repair action.
 - No trays / package materials on post-ship. Internal Produce N never gets post-ship.
 
 **You will not find:** Pack Ship columns; tray badges; marketplace send APIs (use Copy command locally).
@@ -341,6 +342,8 @@ Operator can always override on the Pack panel; changing package reverses prior 
 **What it is for:** Define production templates and step gates.
 
 **Templates:** create / edit / deactivate; name + description; **Uses trays** checkbox (make or Pack).
+
+**Post-ship arrival:** a Post-ship template, active or inactive, cannot be saved unless at least one step has Confirmation checklist **Package arrived**. That covers a new template, an edit (including removing the arrival step), and changing another template’s kind to Post-ship. If the save is rejected, nothing is written. The editor blocks that case before submit; the server check still runs. A template already missing the step keeps working for orders bound to it. The Workflows list shows a **No arrival step** badge, and the editor shows a warning at the top. Saving stays blocked until a Package arrived step is added. Pack templates are unchanged (no Ship-step rule).
 
 **Uses trays:** when **any** make template on a sellable line or the bound Pack template has this on, the order requires ≥1 held tray before Mark done / advance. Seed **Bin Sticker Make** and **Order Pack & Ship** leave this **off** (operator opts in).
 

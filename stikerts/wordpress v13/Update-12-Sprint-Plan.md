@@ -204,12 +204,12 @@ Planning does not require tagging; cut releases when the operator asks.
 - [x] Docs + smoke
 
 ### UP12-S5
-- [ ] Post-ship save blocked without Package arrived step (create / edit / kind change; inactive too)
-- [ ] Atomic — nothing written on failure
-- [ ] Browser pre-submit check
-- [ ] Warnings: list, editor, Settings (warn only), order detail notice
-- [ ] Pack templates unaffected
-- [ ] Docs + smoke
+- [x] Post-ship save blocked without Package arrived step (create / edit / kind change; inactive too)
+- [x] Atomic — nothing written on failure
+- [x] Browser pre-submit check
+- [x] Warnings: list, editor, Settings (warn only), order detail notice
+- [x] Pack templates unaffected
+- [x] Docs + smoke
 
 ### Later
 - [ ] Append new BUG/UX items from testing; re-slice sprints before kickoff if needed

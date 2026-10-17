@@ -397,22 +397,152 @@ class SOM_Workflows {
 	}
 
 	/**
-	 * Replace-all save for ordered steps on a template.
+	 * Error when a Post-ship template has no Package arrived step.
 	 *
-	 * @param int                       $template_id Template PK.
-	 * @param array<int, array<string, mixed>> $steps Step rows from the form.
+	 * @return string
+	 */
+	public static function post_ship_arrival_required_message() {
+		return __( 'A Post-ship workflow needs at least one step with Confirmation checklist = Package arrived. Nothing was saved.', 'order-machine' );
+	}
+
+	/**
+	 * Whether any step row uses Confirmation checklist = Package arrived.
+	 *
+	 * Accepts form rows, template steps, or order progress rows. Uses
+	 * SOM_Post_Ship::is_arrival_step() so every surface shares one test.
+	 *
+	 * @param array<int, array<string, mixed>|object> $steps Step rows.
+	 * @return bool
+	 */
+	public static function steps_include_arrival( array $steps ) {
+		foreach ( $steps as $step ) {
+			if ( ( is_array( $step ) || is_object( $step ) ) && SOM_Post_Ship::is_arrival_step( $step ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether a stored template currently has a Package arrived step.
+	 *
+	 * False when the id is missing. Does not repair the row. Workflows list,
+	 * the editor, and Settings use this to warn. Order detail checks the
+	 * order's bound post-ship progress with steps_include_arrival() instead,
+	 * because editing the template later does not rebind that order.
+	 *
+	 * @param int $template_id Template PK.
+	 * @return bool
+	 */
+	public static function template_has_arrival_step( $template_id ) {
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return false;
+		}
+		return self::steps_include_arrival( self::get_steps( $template_id ) );
+	}
+
+	/**
+	 * Side-effect-free check of a step submission for the resulting kind.
+	 *
+	 * Normalises steps the same way save_steps() does (reads only), then
+	 * requires a Package arrived step when that kind is post_ship. The active
+	 * flag is not consulted. Call this before create/update. UP12-S6 should
+	 * call it before inserting a cloned Post-ship template.
+	 *
+	 * @param mixed                            $kind        Resulting template kind.
+	 * @param array<int, array<string, mixed>> $steps       Form step rows.
+	 * @param int                              $template_id Existing template, or 0 when creating.
 	 * @return true|WP_Error
 	 */
-	public static function save_steps( $template_id, array $steps ) {
-		global $wpdb;
+	public static function validate_submission( $kind, array $steps, $template_id = 0 ) {
+		$kind       = self::sanitize_kind( $kind );
+		$normalized = self::normalize_step_rows( (int) $template_id, $steps, $kind );
+		if ( is_wp_error( $normalized ) ) {
+			return $normalized;
+		}
+		return self::assert_post_ship_has_arrival( $kind, $normalized );
+	}
 
+	/**
+	 * Validate, then create or update the template and replace its steps.
+	 *
+	 * On validation failure nothing is written: no template update, no new
+	 * template row, and no step changes.
+	 *
+	 * @param int                              $template_id 0 to create.
+	 * @param array<string, mixed>             $data        Template fields.
+	 * @param array<int, array<string, mixed>> $steps       Form step rows.
+	 * @return int|WP_Error Template id.
+	 */
+	public static function save_submission( $template_id, array $data, array $steps ) {
 		$template_id = (int) $template_id;
-		$template    = self::get( $template_id );
-		if ( ! $template ) {
-			return new WP_Error( 'som_workflow_missing', __( 'Workflow template not found.', 'order-machine' ) );
+		if ( array_key_exists( 'kind', $data ) ) {
+			$kind = self::sanitize_kind( $data['kind'] );
+		} elseif ( $template_id > 0 ) {
+			$kind = self::get_kind( $template_id );
+		} else {
+			$kind = 'make';
+		}
+		$valid = self::validate_submission( $kind, $steps, $template_id );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
 		}
 
-		$template_kind = self::sanitize_kind( isset( $template->kind ) ? $template->kind : 'make' );
+		if ( $template_id > 0 ) {
+			$updated = self::update( $template_id, $data );
+			if ( is_wp_error( $updated ) ) {
+				return $updated;
+			}
+		} else {
+			$created = self::create( $data );
+			if ( is_wp_error( $created ) ) {
+				return $created;
+			}
+			$template_id = (int) $created;
+		}
+
+		$saved = self::save_steps( $template_id, $steps );
+		if ( is_wp_error( $saved ) ) {
+			return $saved;
+		}
+
+		return $template_id;
+	}
+
+	/**
+	 * Require a Package arrived step when the resulting kind is post_ship.
+	 *
+	 * @param string                           $kind       Sanitized kind.
+	 * @param array<int, array<string, mixed>> $normalized Normalised steps.
+	 * @return true|WP_Error
+	 */
+	private static function assert_post_ship_has_arrival( $kind, array $normalized ) {
+		if ( 'post_ship' !== $kind || self::steps_include_arrival( $normalized ) ) {
+			return true;
+		}
+		return new WP_Error(
+			'som_post_ship_arrival_required',
+			self::post_ship_arrival_required_message()
+		);
+	}
+
+	/**
+	 * Normalise form step rows the same way save_steps() does. No writes.
+	 *
+	 * Blank names are skipped. Gate exclusivity matches save_steps(). Callers
+	 * must not write until this returns an array.
+	 *
+	 * @param int                              $template_id   Template PK (0 when creating).
+	 * @param array<int, array<string, mixed>> $steps         Form step rows.
+	 * @param string                           $template_kind Resulting kind.
+	 * @return array<int, array<string, mixed>>|WP_Error
+	 */
+	private static function normalize_step_rows( $template_id, array $steps, $template_kind ) {
+		global $wpdb;
+
+		$template_id   = (int) $template_id;
+		$template_kind = self::sanitize_kind( $template_kind );
 		$normalized    = array();
 		$order         = 0;
 
@@ -545,6 +675,36 @@ class SOM_Workflows {
 				'instructions'            => '' !== $instructions ? $instructions : null,
 				'task_list_json'          => $task_list_json,
 			);
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * Replace-all save for ordered steps on a template.
+	 *
+	 * @param int                       $template_id Template PK.
+	 * @param array<int, array<string, mixed>> $steps Step rows from the form.
+	 * @return true|WP_Error
+	 */
+	public static function save_steps( $template_id, array $steps ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		$template    = self::get( $template_id );
+		if ( ! $template ) {
+			return new WP_Error( 'som_workflow_missing', __( 'Workflow template not found.', 'order-machine' ) );
+		}
+
+		$template_kind = self::sanitize_kind( isset( $template->kind ) ? $template->kind : 'make' );
+		$normalized    = self::normalize_step_rows( $template_id, $steps, $template_kind );
+		if ( is_wp_error( $normalized ) ) {
+			return $normalized;
+		}
+
+		$arrival = self::assert_post_ship_has_arrival( $template_kind, $normalized );
+		if ( is_wp_error( $arrival ) ) {
+			return $arrival;
 		}
 
 		$existing_ids = array();

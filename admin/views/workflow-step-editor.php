@@ -18,6 +18,13 @@ $is_new   = ! empty( $is_new );
 $template = isset( $template ) ? $template : null;
 $steps    = ( $template && ! empty( $template->steps ) ) ? $template->steps : array();
 $in_use   = $template && ! empty( $template->in_use );
+$current_kind = $template && ! empty( $template->kind )
+	? SOM_Workflows::sanitize_kind( $template->kind )
+	: 'make';
+$show_arrival_warning = ! $is_new
+	&& $template
+	&& 'post_ship' === $current_kind
+	&& ! SOM_Workflows::template_has_arrival_step( (int) $template->id );
 $products = ( $template && ! empty( $template->products ) ) ? $template->products : array();
 $batch_groups = SOM_Batch_Groups::list_all();
 
@@ -214,6 +221,14 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		<a href="<?php echo esc_url( SOM_Workflows::list_url() ); ?>">&larr; <?php echo esc_html__( 'Back to workflows', 'order-machine' ); ?></a>
 	</p>
 
+	<?php if ( $show_arrival_warning ) : ?>
+		<div class="notice notice-warning">
+			<p>
+				<?php echo esc_html__( 'This Post-ship workflow has no Package arrived step, so orders using it can\'t complete. Add a step with Confirmation checklist = Package arrived before you can save.', 'order-machine' ); ?>
+			</p>
+		</div>
+	<?php endif; ?>
+
 	<?php if ( $in_use ) : ?>
 		<div class="notice notice-warning">
 			<p>
@@ -248,7 +263,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		</div>
 	<?php endif; ?>
 
-	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-workflows' ) ); ?>" class="som-workflow-form" id="som-workflow-form">
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-workflows' ) ); ?>" class="som-workflow-form" id="som-workflow-form" data-som-arrival-kind="<?php echo esc_attr( SOM_Step_Confirmations::KIND_PACKAGE_ARRIVED ); ?>">
 		<?php wp_nonce_field( 'som_save_workflow', 'som_workflow_nonce' ); ?>
 		<input type="hidden" name="som_save_workflow" value="1" />
 		<?php if ( ! $is_new && $template ) : ?>
@@ -271,11 +286,6 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 			<tr>
 				<th scope="row"><label for="som_workflow_kind"><?php echo esc_html__( 'Kind', 'order-machine' ); ?></label></th>
 				<td>
-					<?php
-					$current_kind = $template && ! empty( $template->kind )
-						? SOM_Workflows::sanitize_kind( $template->kind )
-						: 'make';
-					?>
 					<select id="som_workflow_kind" name="som_workflow_kind" <?php disabled( $in_use && 'make' === $current_kind ); ?>>
 						<?php foreach ( SOM_Workflows::kind_choices() as $kind_key => $kind_label ) : ?>
 							<option value="<?php echo esc_attr( $kind_key ); ?>" <?php selected( $current_kind, $kind_key ); ?>>
@@ -428,6 +438,10 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		<p>
 			<button type="button" class="button" id="som-goal-add-row"><?php echo esc_html__( 'Add goal row', 'order-machine' ); ?></button>
 		</p>
+
+		<div id="som-post-ship-arrival-error" class="notice notice-error inline" hidden>
+			<p><?php echo esc_html( SOM_Workflows::post_ship_arrival_required_message() ); ?></p>
+		</div>
 
 		<p class="submit">
 			<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save template', 'order-machine' ); ?></button>

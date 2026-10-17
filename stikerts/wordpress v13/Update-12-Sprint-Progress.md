@@ -12,12 +12,12 @@
 | UP12-S2 | Order detail Produce N Make UI | Done | Code complete; smoke written, pending wp-env |
 | UP12-S3 | Instructions Markdown toolbar | Done | Code complete; smoke written, pending wp-env |
 | UP12-S4 | Copy command placeholder dropdown | Done | Code complete; smoke written, pending wp-env |
-| UP12-S5 | Post-ship arrival step required (BUG-005) | Not started | Planning only |
+| UP12-S5 | Post-ship arrival step required (BUG-005) | Done | Code complete; smoke written, pending wp-env |
 | UP12-S6 | Clone workflow templates | Not started | Planning only |
 | UP12-S7 | Clone products | Not started | Planning only |
 | UP12-S8+ | Reserved | — | Waiting for further operator reports |
 
-**Package 12:** UP12-S1 through UP12-S4 code complete. S5+ not started.
+**Package 12:** UP12-S1 through UP12-S5 code complete. S6+ not started.
 
 ---
 
@@ -30,7 +30,7 @@
 - 2026-10-14: added Copy command placeholder dropdown (P1–P6 settled) → UP12-S4; spec [`06-Update-Copy-Command-Placeholder-Picker.md`](06-Update-Copy-Command-Placeholder-Picker.md).  
 - 2026-10-14: filed **BUG-005** (Post-ship saved without Package arrived step; A1–A6 settled) → UP12-S5; spec [`07-Update-Post-Ship-Arrival-Required.md`](07-Update-Post-Ship-Arrival-Required.md).  
 - 2026-10-14 (answered in chat, no sprint): timer works (make steps show static UTC unlock time — operator OK as-is); Pack template is site-wide (no per-product); packaging materials live on Shipping packages; Materials used is increase-only; completion = shipment + arrival.  
-- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. UP12-S4 implemented when requested. S5+ wait for a sprint kickoff.
+- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. UP12-S4 implemented when requested. UP12-S5 implemented when requested. S6+ wait for a sprint kickoff.
 
 ---
 
@@ -71,3 +71,13 @@
 - **Files:** `includes/class-som-copy-command.php` (`placeholder_labels`, `render_placeholder_picker`), `admin/views/workflow-step-editor.php`, `admin/assets/js/admin.js` (`initCopyCommandPlaceholderPicker`), `admin/assets/css/admin.css`, `tests/sprint-up12-s4-smoke.php`, `CHANGELOG.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
 - **Smoke:** `tests/sprint-up12-s4-smoke.php` — every placeholder key has its friendly label; the picker has one option per key with value `{{key}}`; a template that uses every key still substitutes. Not executed (no wp-env).
 - **Schema:** none. No Version bump.
+
+---
+
+## UP12-S5 — Post-ship arrival step required (BUG-005)
+
+- **Status:** done (code). Tests pending wp-env — smoke not run in this sprint.
+- **Behaviour:** A Post-ship template (active or inactive) cannot be saved — create, edit, or kind change — unless at least one step has Confirmation checklist **Package arrived**. `SOM_Workflows::validate_submission()` normalises the posted steps the same way `save_steps()` does and rejects a Post-ship result with no arrival step. `save_submission()` runs that check before `update` / `create`, and `save_steps()` calls the same check. On failure nothing is written. The editor blocks the same case before submit and shows the same message; the server check still runs. Existing invalid templates are not repaired: the Workflows list shows **No arrival step**, the editor shows a warning, and Settings suffixes **(no arrival step)** and warns when that default is selected, without blocking the choice. An open order whose post-ship has started, whose arrival is not confirmed, and whose bound post-ship steps have no `package_arrived` step shows a notice and keeps those steps. Pack Ship detection, the complete rule, and the seed Aftercare template are unchanged. `validate_submission()` is the check UP12-S6 should call before cloning a Post-ship template.
+- **Files:** `includes/class-som-workflows.php` (`validate_submission`, `save_submission`, `template_has_arrival_step`, `steps_include_arrival`), `admin/class-som-admin-menu.php`, `admin/views/workflow-templates.php`, `admin/views/workflow-step-editor.php`, `admin/views/settings.php`, `admin/views/order-detail.php`, `admin/assets/js/admin.js`, `admin/assets/css/admin.css`, `tests/sprint-up12-s5-smoke.php`, `CHANGELOG.md`, `stikerts/wordpress/BUGS.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/USER-WORKFLOWS.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
+- **Smoke:** `tests/sprint-up12-s5-smoke.php` — new Post-ship without an arrival step errors and creates no row (inactive too); removing the arrival step errors and leaves name and steps unchanged; changing kind from make to post_ship without an arrival step errors and leaves kind unchanged; a template with an arrival step saves, including an inactive one; a legacy row inserted directly is flagged by `template_has_arrival_step`; a Pack template without a Ship step still saves. Not executed (no wp-env).
+- **BUG-005:** **Fixed**. No schema. No Version bump.
