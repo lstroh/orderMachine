@@ -209,13 +209,17 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 };
 ?>
 <div class="wrap som-catalog-wrap som-workflow-editor">
-	<h1>
+	<h1 class="wp-heading-inline">
 		<?php
 		echo $is_new
 			? esc_html__( 'Add workflow template', 'order-machine' )
 			: esc_html__( 'Edit workflow template', 'order-machine' );
 		?>
 	</h1>
+	<?php if ( ! $is_new && $template ) : ?>
+		<?php SOM_Workflows::render_clone_button( (int) $template->id, 'editor', 'page-title-action' ); ?>
+	<?php endif; ?>
+	<hr class="wp-header-end" />
 
 	<p>
 		<a href="<?php echo esc_url( SOM_Workflows::list_url() ); ?>">&larr; <?php echo esc_html__( 'Back to workflows', 'order-machine' ); ?></a>

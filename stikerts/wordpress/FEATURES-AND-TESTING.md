@@ -118,7 +118,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | **Purchase Orders** | `som-purchase-orders` | Create/edit POs, Preview Impact, receive, mark-received / cancel |
 | **Batches** | `som-batches` | Open batches list; release / mark done / retry; edit batch groups |
 | Batch deep-link | `som-batches&batch_id=N` | Scrolls/expands that batch |
-| **Workflows** | `som-workflows` | Templates + step editor (gates, batch group, material cost goals; kind Make/Pack) |
+| **Workflows** | `som-workflows` | Templates + step editor (gates, batch group, material cost goals; kind Make/Pack/Post-ship; Clone) |
 | **Listings** | `som-listings` | Cached marketplace listings; refresh + push price/qty/description |
 | **Analytics** | `som-analytics` | Sales / profit / stock / orders-by-channel / AOV + workflow timing (Chart.js) |
 | **Channel Fee Estimates** | `som-channel-fee-estimates` | Per-channel estimated fee components (tiers, optional ads) |
@@ -283,6 +283,8 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 **Where:** Order Machine → Workflows
 
 **Templates:** create / edit / deactivate; name + description; **Uses trays** (make or Pack). Seed templates leave `uses_trays` **off**.
+
+**Clone (UP12-S6):** **Clone** on each Workflows list row and on the editor (POST, nonce, `manage_options`). The copy is an independent template named **X (copy)** (100-character name column), with the same description, kind, Uses trays, and active/inactive state. Steps are copied in the same order, including manual confirm, timer, planned duration, copy command, batch group, confirmation checklist, instructions, and tasks. Legacy `script_config` is not copied. Material cost goals and budget links are copied onto the new template. Products, orders, and Settings Pack / Post-ship defaults stay on the original. After a successful clone the copy’s editor opens with **Cloned from X.** The same Save checks run first: a Post-ship template with no Package arrived step is rejected with the Save message and no new row; a step that fails the existing gate combination checks is rejected the same way. A failed clone leaves no partial template.
 
 **Steps (editor):**
 
@@ -901,7 +903,10 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 8. Instructions: type three lines, select them, click **Numbered list**. They become `1.` `2.` `3.`. **Preview** still renders. The product step-instruction override uses the same toolbar.
 9. Set Kind to **Post-ship** and save with no step on Confirmation checklist **Package arrived**. The browser blocks submit and shows the error near Save. Nothing is stored. Add that checklist on one step and save — it stores, including if the template is inactive.
 10. A Post-ship template that already lacks the step (not repaired) shows **No arrival step** on the Workflows list and a warning in the editor. Settings labels it **(no arrival step)** and warns if it is the selected default; Settings still saves. An open order already on those steps shows the Post-ship notice and is not rebound.
+11. **Clone** a saved template from the list, and again from the editor. The copy opens in the editor, titled **X (copy)**, with the same steps, goals, and active state. The product still uses the original template. Settings → Default Pack and Default Post-ship are unchanged. **Clone** a Post-ship template that has no Package arrived step: the error matches Save, and no new template appears.
 
+- [ ] Clone copies steps, goals, and budget links into “X (copy)” and opens that editor; products and Pack / Post-ship defaults stay on the original
+- [ ] Clone of a Post-ship template with no Package arrived step shows the Save error and creates no template
 - [ ] Instructions toolbar: select 3 lines → Numbered list → `1.` `2.` `3.` (workflow editor and product override); Preview still works
 - [ ] Post-ship save blocked without Package arrived (browser and server); failed save writes nothing; inactive template with the step still saves
 - [ ] Existing invalid Post-ship template: list badge + editor warning; Settings warns only; stuck order notice, no rebind

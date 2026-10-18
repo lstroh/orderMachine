@@ -1,16 +1,19 @@
 ---
 name: make-sticker-order
 description: >-
-  Build a Doorstep Studio small bin-sticker order (140x100mm): write the ORDERS
-  list in make_order.py and run it so sticker sheets and one personal wrap per
-  pack are produced. Use when the user names this skill and asks to make a
-  sticker order, fill ORDERS, or run make_order.py.
+  Build a Doorstep Studio small bin-sticker order (140x100mm) with the backup
+  scripts, which do not embed fonts: write the ORDERS list in make_order.py and
+  run it so sticker sheets and one personal wrap per pack are produced. Use when
+  the user names this skill and asks for the backup sticker order, the old
+  scripts, or make_order.py without embedded fonts.
 disable-model-invocation: true
 ---
 
 # Make a sticker order
 
-Small stickers only (140 x 100mm). Scripts live in `stikerts/Ideas 27 07/Generation/`. Run from that folder. Do not edit `bin_sticker_small.py`, `bin_sticker_core.py`, or `sticker_wrap.py` to place an order.
+Small stickers only (140 x 100mm). This is the backup. These scripts do not embed fonts. For Affinity-safe PDFs, use the make-sticker-order-embedded skill.
+
+Scripts live in `stikerts/Ideas 27 07/Generation-backup/`. Run from that folder. Do not edit `bin_sticker_small.py`, `bin_sticker_core.py`, or `sticker_wrap.py` to place an order.
 
 ## What to collect
 
@@ -81,7 +84,7 @@ Two wraps with the same house number and street inside one order number share on
 
 ## Run
 
-From `stikerts/Ideas 27 07/Generation/`:
+From `stikerts/Ideas 27 07/Generation-backup/`:
 
 ```bash
 python make_order.py

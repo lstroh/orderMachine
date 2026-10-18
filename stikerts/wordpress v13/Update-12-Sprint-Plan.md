@@ -145,9 +145,30 @@
 
 ---
 
-### UP12-S6+ — Reserved
+### UP12-S6 — Clone workflow templates
 
-Placeholder for issues filed after this draft. Do not invent work here.
+Spec: [`08-Update-Clone-Products-Workflows.md`](08-Update-Clone-Products-Workflows.md) §§3–4 (C1, C2, C6, C7). Depends on UP12-S5 `validate_submission()`.
+
+| Work | Detail |
+|---|---|
+| Entry (C1, O11) | **Clone** on each Workflows list row and on the editor. POST + nonce `som_clone_workflow` + `manage_options`. No mutating GET |
+| Copy (C2, C6) | Name **“X (copy)”** trimmed to 100 characters; same description, kind, uses_trays, active/inactive. Steps in the same `step_order` (editor columns). Not legacy `script_config`. Copy `workflow_material_goals` and `budget_workflow_links` |
+| Not moved (C6) | Products, orders, Settings Pack / Post-ship defaults stay on the original |
+| Validation (C7, O10) | `validate_submission()` before any write (Post-ship arrival message matches Save). Per-step combo checks reject a legacy-invalid template |
+| Atomic (O11) | Transaction, then delete the partial template if the write fails |
+| After | Redirect to the copy’s editor with “Cloned from X.” |
+| Tests | `tests/sprint-up12-s6-smoke.php` |
+| Docs | USER-REFERENCE (Workflows), FEATURES-AND-TESTING |
+
+**Done when:** a valid template clones to an independent copy and opens in the editor; an invalid Post-ship clone is blocked and writes nothing; products, orders, and site defaults are untouched.
+
+**Out of this sprint:** product clone (UP12-S7).
+
+---
+
+### UP12-S7+ — Reserved
+
+Placeholder for issues filed after this draft. Do not invent work here. Product clone is UP12-S7 (`08` §5). Do not fold it into the workflow clone.
 
 ---
 
@@ -209,6 +230,12 @@ Planning does not require tagging; cut releases when the operator asks.
 - [x] Browser pre-submit check
 - [x] Warnings: list, editor, Settings (warn only), order detail notice
 - [x] Pack templates unaffected
+- [x] Docs + smoke
+
+### UP12-S6
+- [x] Clone on each Workflows list row and on the editor (C1); POST + nonce + `manage_options` (O11)
+- [x] Copy is “X (copy)” with the same active state (C2); steps, goals, and budget links copied; products, orders, and Pack / Post-ship defaults stay (C6)
+- [x] Post-ship without a Package arrived step blocked with the Save message (C7); per-step combo checks block a legacy-invalid template (O10); failed clone writes nothing (O11)
 - [x] Docs + smoke
 
 ### Later
