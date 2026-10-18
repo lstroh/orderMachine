@@ -383,6 +383,20 @@
 	margin: 0 0 8px;
 }
 
+.som-clone-workflow-form {
+	display: inline;
+	margin: 0;
+}
+
+.som-row-clone {
+	margin-top: 2px;
+}
+
+.som-workflow-editor > .som-clone-workflow-form {
+	margin-left: 4px;
+	vertical-align: middle;
+}
+
 /* Analytics (Update Package 3 Sprint 4) */
 
 .som-analytics-filters label {

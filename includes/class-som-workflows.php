@@ -447,8 +447,10 @@ class SOM_Workflows {
 	 *
 	 * Normalises steps the same way save_steps() does (reads only), then
 	 * requires a Package arrived step when that kind is post_ship. The active
-	 * flag is not consulted. Call this before create/update. UP12-S6 should
-	 * call it before inserting a cloned Post-ship template.
+	 * flag is not consulted. Call this before create/update. clone_template()
+	 * calls it before inserting a copy, so a Post-ship template with no
+	 * Package arrived step — and a template whose steps fail the combo
+	 * checks — is rejected with nothing written.
 	 *
 	 * @param mixed                            $kind        Resulting template kind.
 	 * @param array<int, array<string, mixed>> $steps       Form step rows.
@@ -508,6 +510,409 @@ class SOM_Workflows {
 		}
 
 		return $template_id;
+	}
+
+	/**
+	 * Copy a workflow template into an independent template named "X (copy)".
+	 *
+	 * Copies the template row (name, description, kind, uses_trays, is_active),
+	 * every step in the same step_order (editor columns only — not legacy
+	 * script_config), material goals, and budget links. Products, orders, and
+	 * site Pack / Post-ship defaults are left on the original.
+	 *
+	 * Validation matches Save: validate_submission() (Post-ship arrival rule
+	 * and the per-step combo checks). On any failure the copy is rolled back
+	 * and then deleted, so no half template remains.
+	 *
+	 * @param int $template_id Source template PK.
+	 * @return int|WP_Error New template id.
+	 */
+	public static function clone_template( $template_id ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		$source      = self::get( $template_id );
+		if ( ! $source ) {
+			return new WP_Error( 'som_workflow_missing', __( 'Workflow template not found.', 'order-machine' ) );
+		}
+
+		$kind = self::sanitize_kind( isset( $source->kind ) ? $source->kind : 'make' );
+		$rows = array();
+		foreach ( $source->steps as $step ) {
+			if ( is_object( $step ) ) {
+				$rows[] = self::step_to_submission_row( $step );
+			}
+		}
+
+		$valid = self::validate_submission( $kind, $rows, $template_id );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		$wpdb->query( 'START TRANSACTION' );
+
+		$created = self::create(
+			array(
+				'name'        => self::clone_copy_name( (string) $source->name ),
+				'description' => isset( $source->description ) ? (string) $source->description : '',
+				'kind'        => $kind,
+				'uses_trays'  => ! empty( $source->uses_trays ),
+				'is_active'   => (int) $source->is_active,
+			)
+		);
+		if ( is_wp_error( $created ) ) {
+			self::abort_clone_write( 0 );
+			return $created;
+		}
+
+		$new_id = (int) $created;
+		$steps  = self::insert_cloned_steps( $new_id, $source->steps );
+		if ( is_wp_error( $steps ) ) {
+			self::abort_clone_write( $new_id );
+			return $steps;
+		}
+
+		$goals = self::copy_material_goals( $template_id, $new_id );
+		if ( is_wp_error( $goals ) ) {
+			self::abort_clone_write( $new_id );
+			return $goals;
+		}
+
+		$links = self::copy_budget_workflow_links( $template_id, $new_id );
+		if ( is_wp_error( $links ) ) {
+			self::abort_clone_write( $new_id );
+			return $links;
+		}
+
+		$committed = $wpdb->query( 'COMMIT' );
+		if ( false === $committed ) {
+			self::abort_clone_write( $new_id );
+			return new WP_Error( 'som_workflow_clone', __( 'Could not clone workflow template.', 'order-machine' ) );
+		}
+
+		return $new_id;
+	}
+
+	/**
+	 * Clone control: POST, nonce som_clone_workflow, manage_options is checked by the handler.
+	 *
+	 * @param int    $template_id  Template PK.
+	 * @param string $return       editor|list — where to send the operator if clone fails.
+	 * @param string $button_class Button class.
+	 * @return void
+	 */
+	public static function render_clone_button( $template_id, $return = 'list', $button_class = 'button-link' ) {
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		$return       = 'editor' === $return ? 'editor' : 'list';
+		$button_class = sanitize_html_class( $button_class );
+		if ( '' === $button_class ) {
+			$button_class = 'button-link';
+		}
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-workflows' ) ); ?>" class="som-clone-workflow-form">
+			<?php wp_nonce_field( 'som_clone_workflow', 'som_workflow_clone_nonce' ); ?>
+			<input type="hidden" name="som_clone_workflow" value="1" />
+			<input type="hidden" name="template_id" value="<?php echo esc_attr( (string) $template_id ); ?>" />
+			<input type="hidden" name="som_clone_return" value="<?php echo esc_attr( $return ); ?>" />
+			<button type="submit" class="<?php echo esc_attr( $button_class ); ?>"><?php echo esc_html__( 'Clone', 'order-machine' ); ?></button>
+		</form>
+		<?php
+	}
+
+	/**
+	 * "X (copy)", trimmed so the result fits the 100-character name column.
+	 *
+	 * @param string $name Source template name.
+	 * @return string
+	 */
+	private static function clone_copy_name( $name ) {
+		$name   = sanitize_text_field( (string) $name );
+		$suffix = ' (copy)';
+		$limit  = 100;
+		if ( self::text_length( $name . $suffix ) <= $limit ) {
+			return $name . $suffix;
+		}
+
+		$keep = $limit - self::text_length( $suffix );
+		$name = rtrim( self::text_cut( $name, $keep ) );
+		return $name . $suffix;
+	}
+
+	/**
+	 * Stored step as the form row validate_submission() already understands.
+	 *
+	 * Passing every editor field makes the combo checks see this step's
+	 * stored gates. script_config is omitted so it is not treated as a gate.
+	 *
+	 * @param object $step Step row.
+	 * @return array<string, mixed>
+	 */
+	private static function step_to_submission_row( $step ) {
+		$tasks = array();
+		if ( isset( $step->task_list_json ) && is_string( $step->task_list_json ) && '' !== trim( $step->task_list_json ) ) {
+			$tasks = SOM_Step_Tasks::decode_list( $step->task_list_json );
+		}
+
+		return array(
+			'id'                      => isset( $step->id ) ? (int) $step->id : 0,
+			'name'                    => isset( $step->name ) ? (string) $step->name : '',
+			'requires_manual_confirm' => ! empty( $step->requires_manual_confirm ) ? 1 : 0,
+			'timer_seconds'           => self::nullable_db_int( isset( $step->timer_seconds ) ? $step->timer_seconds : null ),
+			'planned_seconds'         => self::nullable_db_int( isset( $step->planned_seconds ) ? $step->planned_seconds : null ),
+			'command_template'        => isset( $step->command_template ) ? $step->command_template : null,
+			'batch_group_id'          => ! empty( $step->batch_group_id ) ? (int) $step->batch_group_id : 0,
+			'confirmation_kind'       => isset( $step->confirmation_kind ) ? $step->confirmation_kind : '',
+			'instructions'            => isset( $step->instructions ) && null !== $step->instructions ? (string) $step->instructions : '',
+			'tasks'                   => $tasks,
+		);
+	}
+
+	/**
+	 * Insert new step rows for a clone. Legacy script_config is stored as null.
+	 *
+	 * @param int           $template_id New template PK.
+	 * @param array<int, object> $steps  Source steps in step_order.
+	 * @return true|WP_Error
+	 */
+	private static function insert_cloned_steps( $template_id, array $steps ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'workflow_steps' );
+		$now   = current_time( 'mysql', true );
+
+		foreach ( $steps as $step ) {
+			if ( ! is_object( $step ) ) {
+				continue;
+			}
+
+			$name = isset( $step->name ) ? sanitize_text_field( (string) $step->name ) : '';
+			if ( '' === $name ) {
+				continue;
+			}
+
+			$batch = self::nullable_db_int( isset( $step->batch_group_id ) ? $step->batch_group_id : null );
+			if ( null !== $batch && $batch < 1 ) {
+				$batch = null;
+			}
+
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'workflow_template_id'    => (int) $template_id,
+					'step_order'              => isset( $step->step_order ) ? (int) $step->step_order : 1,
+					'name'                    => $name,
+					'requires_manual_confirm' => ! empty( $step->requires_manual_confirm ) ? 1 : 0,
+					'timer_seconds'           => self::nullable_db_int( isset( $step->timer_seconds ) ? $step->timer_seconds : null ),
+					'planned_seconds'         => self::nullable_db_int( isset( $step->planned_seconds ) ? $step->planned_seconds : null ),
+					'script_config'           => null,
+					'command_template'        => self::nullable_db_text( isset( $step->command_template ) ? $step->command_template : null ),
+					'batch_group_id'          => $batch,
+					'confirmation_kind'       => self::nullable_db_text( isset( $step->confirmation_kind ) ? $step->confirmation_kind : null ),
+					'instructions'            => self::nullable_db_text( isset( $step->instructions ) ? $step->instructions : null ),
+					'task_list_json'          => self::nullable_db_text( isset( $step->task_list_json ) ? $step->task_list_json : null ),
+					'created_at'              => $now,
+					'updated_at'              => $now,
+				),
+				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Copy workflow_material_goals onto the new template id.
+	 *
+	 * @param int $source_id Source template PK.
+	 * @param int $new_id    Clone template PK.
+	 * @return true|WP_Error
+	 */
+	private static function copy_material_goals( $source_id, $new_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'workflow_material_goals' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT material_id, goal_unit_cost, warning_threshold_percent FROM {$table} WHERE workflow_template_id = %d ORDER BY id ASC",
+				(int) $source_id
+			)
+		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'som_goal_clone', __( 'Could not copy material goals.', 'order-machine' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		foreach ( $rows as $row ) {
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'workflow_template_id'      => (int) $new_id,
+					'material_id'               => (int) $row->material_id,
+					'goal_unit_cost'            => $row->goal_unit_cost,
+					'warning_threshold_percent' => $row->warning_threshold_percent,
+					'created_at'                => $now,
+					'updated_at'                => $now,
+				),
+				array( '%d', '%d', '%s', '%s', '%s', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_goal_clone', __( 'Could not copy material goals.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Copy budget_workflow_links onto the new template id.
+	 *
+	 * @param int $source_id Source template PK.
+	 * @param int $new_id    Clone template PK.
+	 * @return true|WP_Error
+	 */
+	private static function copy_budget_workflow_links( $source_id, $new_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'budget_workflow_links' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT budget_id FROM {$table} WHERE workflow_template_id = %d ORDER BY id ASC",
+				(int) $source_id
+			)
+		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'som_budget_clone', __( 'Could not copy budget links.', 'order-machine' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		foreach ( $rows as $row ) {
+			$budget_id = (int) $row->budget_id;
+			if ( $budget_id < 1 ) {
+				continue;
+			}
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'budget_id'            => $budget_id,
+					'workflow_template_id' => (int) $new_id,
+					'created_at'           => $now,
+				),
+				array( '%d', '%d', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_budget_clone', __( 'Could not copy budget links.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Undo a clone that failed after the new template row was inserted.
+	 *
+	 * ROLLBACK covers InnoDB. The delete covers engines that ignore the
+	 * transaction, so a failed clone never leaves a half copy.
+	 *
+	 * @param int $template_id New template PK, or 0 when the insert did not happen.
+	 * @return void
+	 */
+	private static function abort_clone_write( $template_id ) {
+		global $wpdb;
+
+		$wpdb->query( 'ROLLBACK' );
+		self::delete_uncommitted_clone( (int) $template_id );
+	}
+
+	/**
+	 * Remove a clone template and the rows that belong only to it.
+	 *
+	 * @param int $template_id Clone template PK.
+	 * @return void
+	 */
+	private static function delete_uncommitted_clone( $template_id ) {
+		global $wpdb;
+
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return;
+		}
+
+		$wpdb->delete(
+			SOM_DB::table( 'workflow_steps' ),
+			array( 'workflow_template_id' => $template_id ),
+			array( '%d' )
+		);
+		$wpdb->delete(
+			SOM_DB::table( 'workflow_material_goals' ),
+			array( 'workflow_template_id' => $template_id ),
+			array( '%d' )
+		);
+		$wpdb->delete(
+			SOM_DB::table( 'budget_workflow_links' ),
+			array( 'workflow_template_id' => $template_id ),
+			array( '%d' )
+		);
+		$wpdb->delete(
+			SOM_DB::table( 'workflow_templates' ),
+			array( 'id' => $template_id ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * @param mixed $value DB value.
+	 * @return int|null
+	 */
+	private static function nullable_db_int( $value ) {
+		if ( null === $value || '' === $value ) {
+			return null;
+		}
+		return (int) $value;
+	}
+
+	/**
+	 * @param mixed $value DB value.
+	 * @return string|null
+	 */
+	private static function nullable_db_text( $value ) {
+		if ( null === $value ) {
+			return null;
+		}
+		$text = (string) $value;
+		return '' === $text ? null : $text;
+	}
+
+	/**
+	 * @param string $text Text.
+	 * @return int
+	 */
+	private static function text_length( $text ) {
+		$text = (string) $text;
+		if ( function_exists( 'mb_strlen' ) ) {
+			return (int) mb_strlen( $text );
+		}
+		return strlen( $text );
+	}
+
+	/**
+	 * @param string $text   Text.
+	 * @param int    $length Max characters.
+	 * @return string
+	 */
+	private static function text_cut( $text, $length ) {
+		$text   = (string) $text;
+		$length = max( 0, (int) $length );
+		if ( function_exists( 'mb_substr' ) ) {
+			return (string) mb_substr( $text, 0, $length );
+		}
+		return (string) substr( $text, 0, $length );
 	}
 
 	/**

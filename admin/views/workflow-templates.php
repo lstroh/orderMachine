@@ -101,6 +101,9 @@ $status_options = array(
 							<?php if ( ! empty( $template->description ) ) : ?>
 								<p class="description som-muted"><?php echo esc_html( wp_trim_words( (string) $template->description, 12 ) ); ?></p>
 							<?php endif; ?>
+							<div class="som-row-clone">
+								<?php SOM_Workflows::render_clone_button( (int) $template->id, 'list', 'button-link' ); ?>
+							</div>
 						</td>
 						<td class="column-kind">
 							<?php

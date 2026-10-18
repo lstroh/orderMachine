@@ -1491,7 +1491,41 @@ class SOM_Admin_Menu {
 		}
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		if ( 'som-workflows' !== $page || ! isset( $_POST['som_save_workflow'] ) ) {
+		if ( 'som-workflows' !== $page ) {
+			return;
+		}
+
+		if ( isset( $_POST['som_clone_workflow'] ) ) {
+			check_admin_referer( 'som_clone_workflow', 'som_workflow_clone_nonce' );
+
+			$template_id = isset( $_POST['template_id'] ) ? (int) $_POST['template_id'] : 0;
+			$return      = isset( $_POST['som_clone_return'] ) ? sanitize_key( wp_unslash( $_POST['som_clone_return'] ) ) : 'list';
+			$source      = $template_id > 0 ? SOM_Workflows::get( $template_id ) : null;
+			$source_name = $source ? (string) $source->name : '';
+			$result      = SOM_Workflows::clone_template( $template_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_workflow_clone_error' );
+				$back = ( 'editor' === $return && $template_id > 0 )
+					? SOM_Workflows::editor_url( $template_id )
+					: SOM_Workflows::list_url();
+				wp_safe_redirect( $back );
+				exit;
+			}
+
+			self::flash_notice(
+				sprintf(
+					/* translators: %s: original workflow template name */
+					__( 'Cloned from %s.', 'order-machine' ),
+					$source_name
+				),
+				'success',
+				'som_workflow_cloned'
+			);
+			wp_safe_redirect( SOM_Workflows::editor_url( (int) $result ) );
+			exit;
+		}
+
+		if ( ! isset( $_POST['som_save_workflow'] ) ) {
 			return;
 		}
 
