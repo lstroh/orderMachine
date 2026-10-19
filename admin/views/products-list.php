@@ -117,6 +117,9 @@ $type_options = array(
 									<?php echo esc_html( SOM_Material_Costing::alert_label( $alert_level ) ); ?>
 								</span>
 							<?php endif; ?>
+							<div class="som-row-clone">
+								<?php SOM_Products::render_clone_button( (int) $product->id, 'list', 'button-link' ); ?>
+							</div>
 						</td>
 						<td class="column-sku">
 							<?php if ( ! empty( $product->sku ) ) : ?>

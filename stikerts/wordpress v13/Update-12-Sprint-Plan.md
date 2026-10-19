@@ -238,5 +238,11 @@ Planning does not require tagging; cut releases when the operator asks.
 - [x] Post-ship without a Package arrived step blocked with the Save message (C7); per-step combo checks block a legacy-invalid template (O10); failed clone writes nothing (O11)
 - [x] Docs + smoke
 
+### UP12-S7
+- [x] Clone on each Products list row and on the edit screen (C1); POST + nonce `som_clone_product` + `manage_options` (O11)
+- [x] Copy is “X (copy)” with a blank SKU and the same active state (C2); recipe, step overrides, and budget links copied; listings, orders, and stock not copied (C3); same workflow ids, no “also clone workflow” option (C5)
+- [x] Internal clone gets a new output material at stock 0; the original keeps its own (C4); failed clone writes nothing (O11)
+- [x] Docs + smoke
+
 ### Later
 - [ ] Append new BUG/UX items from testing; re-slice sprints before kickoff if needed

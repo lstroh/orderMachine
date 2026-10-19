@@ -14,10 +14,10 @@
 | UP12-S4 | Copy command placeholder dropdown | Done | Code complete; smoke written, pending wp-env |
 | UP12-S5 | Post-ship arrival step required (BUG-005) | Done | Code complete; smoke written, pending wp-env |
 | UP12-S6 | Clone workflow templates | Done | Code complete; smoke written, pending wp-env |
-| UP12-S7 | Clone products | Not started | Planning only |
+| UP12-S7 | Clone products | Done | Code complete; smoke written, pending wp-env |
 | UP12-S8+ | Reserved | — | Waiting for further operator reports |
 
-**Package 12:** UP12-S1 through UP12-S6 code complete. S7+ not started.
+**Package 12:** code complete (UP12-S1 through UP12-S7). All seven smokes are still pending wp-env.
 
 ---
 
@@ -30,7 +30,7 @@
 - 2026-10-14: added Copy command placeholder dropdown (P1–P6 settled) → UP12-S4; spec [`06-Update-Copy-Command-Placeholder-Picker.md`](06-Update-Copy-Command-Placeholder-Picker.md).  
 - 2026-10-14: filed **BUG-005** (Post-ship saved without Package arrived step; A1–A6 settled) → UP12-S5; spec [`07-Update-Post-Ship-Arrival-Required.md`](07-Update-Post-Ship-Arrival-Required.md).  
 - 2026-10-14 (answered in chat, no sprint): timer works (make steps show static UTC unlock time — operator OK as-is); Pack template is site-wide (no per-product); packaging materials live on Shipping packages; Materials used is increase-only; completion = shipment + arrival.  
-- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. UP12-S4 implemented when requested. UP12-S5 implemented when requested. UP12-S6 implemented when requested. S7+ wait for a sprint kickoff. Product clone stays UP12-S7.
+- UP12-S1 implemented when requested. UP12-S2 implemented when requested. UP12-S3 implemented when requested. UP12-S4 implemented when requested. UP12-S5 implemented when requested. UP12-S6 implemented when requested. UP12-S7 implemented when requested. S8+ wait for a sprint kickoff.
 
 ---
 
@@ -91,3 +91,13 @@
 - **Files:** `includes/class-som-workflows.php` (`clone_template`, `render_clone_button`), `admin/class-som-admin-menu.php`, `admin/views/workflow-templates.php`, `admin/views/workflow-step-editor.php`, `admin/assets/css/admin.css`, `tests/sprint-up12-s6-smoke.php`, `CHANGELOG.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
 - **Smoke:** `tests/sprint-up12-s6-smoke.php` — step count, order, and copied fields match; goals and budget links are copied; products still point at the original; Pack / Post-ship site defaults are unchanged; order progress is not moved; a Post-ship template with no arrival step errors and creates no new template row; a step with a rejected gate combination errors and creates no new template row. Not executed (no wp-env).
 - **Schema:** none. No Version bump. Product clone is not in this sprint.
+
+---
+
+## UP12-S7 — Clone products
+
+- **Status:** done (code). Tests pending wp-env — smoke not run in this sprint.
+- **Behaviour:** **Clone** on each Products list row and on the edit screen (C1). The action is POST with nonce `som_clone_product` and `manage_options` (O11). The copy is an independent product named **X (copy)**, trimmed to the 100-character name column, with a blank SKU and the same active/inactive state, target price, and shipping settings (C2). `workflow_template_id` and `post_ship_workflow_template_id` stay the same (C5). There is no “also clone the workflow” option. The material recipe, `product_step_instructions`, `product_step_tasks` (same step ids), and `budget_product_links` are copied (C3). Listings, orders, stock logs, and fees are not copied. An internal clone calls `SOM_Products::ensure_linked_material()` after insert so it gets a new output material named from **X (copy)** with stock 0; the original keeps its own material (C4). `SOM_Products::clone_product()` uses the same checks as `create()` before any write. The insert runs in a transaction; on failure the transaction is rolled back and any remaining clone rows are deleted (O11). Success redirects to the copy’s edit screen with **Cloned from X. SKU left blank; listings not copied.**
+- **Files:** `includes/class-som-products.php` (`clone_product`, `render_clone_button`), `admin/class-som-admin-menu.php`, `admin/views/products-list.php`, `admin/views/product-edit.php`, `admin/assets/css/admin.css`, `tests/sprint-up12-s7-smoke.php`, `CHANGELOG.md`, `stikerts/wordpress/USER-REFERENCE.md`, `stikerts/wordpress/FEATURES-AND-TESTING.md`
+- **Smoke:** `tests/sprint-up12-s7-smoke.php` — fields copied, SKU null, same workflow ids; recipe, step instruction overrides, step task overrides, and budget links copied; listings not copied; an internal clone gets a new linked material at stock 0 and the original keeps its own. Not executed (no wp-env).
+- **Schema:** none. No Version bump. Package 12 code is complete. All seven Package 12 smokes are still pending wp-env.

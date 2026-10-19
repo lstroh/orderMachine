@@ -383,7 +383,8 @@
 	margin: 0 0 8px;
 }
 
-.som-clone-workflow-form {
+.som-clone-workflow-form,
+.som-clone-product-form {
 	display: inline;
 	margin: 0;
 }
@@ -392,7 +393,8 @@
 	margin-top: 2px;
 }
 
-.som-workflow-editor > .som-clone-workflow-form {
+.som-workflow-editor > .som-clone-workflow-form,
+.som-product-editor > .som-clone-product-form {
 	margin-left: 4px;
 	vertical-align: middle;
 }

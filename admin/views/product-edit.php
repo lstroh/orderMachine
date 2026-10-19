@@ -32,14 +32,18 @@ $linked_material    = ( $product && ! empty( $product->linked_material_id ) )
 
 $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 ?>
-<div class="wrap som-catalog-wrap">
-	<h1>
+<div class="wrap som-catalog-wrap som-product-editor">
+	<h1 class="wp-heading-inline">
 		<?php
 		echo $is_new
 			? esc_html__( 'Add product', 'order-machine' )
 			: esc_html__( 'Edit product', 'order-machine' );
 		?>
 	</h1>
+	<?php if ( ! $is_new && $product ) : ?>
+		<?php SOM_Products::render_clone_button( (int) $product->id, 'editor', 'page-title-action' ); ?>
+	<?php endif; ?>
+	<hr class="wp-header-end" />
 
 	<p>
 		<a href="<?php echo esc_url( SOM_Products::list_url() ); ?>">&larr; <?php echo esc_html__( 'Back to products', 'order-machine' ); ?></a>
