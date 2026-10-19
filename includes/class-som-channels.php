@@ -8,12 +8,14 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Ensures and updates `wp_som_channels` rows (ebay / etsy).
+ * Ensures and updates `wp_som_channels` rows.
  */
 class SOM_Channels {
 
 	/**
 	 * Known channel definitions.
+	 *
+	 * Amazon is active with no OAuth and no credentials.
 	 *
 	 * @return array<string, string> slug => display_name
 	 */
@@ -21,15 +23,16 @@ class SOM_Channels {
 		return array(
 			'ebay'     => 'eBay',
 			'etsy'     => 'Etsy',
+			'amazon'   => 'Amazon',
 			'external' => 'External',
 			'internal' => 'Internal',
 		);
 	}
 
 	/**
-	 * Ensure ebay / etsy / external / internal rows exist (idempotent).
+	 * Ensure known channel rows exist (idempotent).
 	 *
-	 * External and Internal are active by default (no OAuth).
+	 * External, Internal, and Amazon are active by default (no OAuth).
 	 *
 	 * @return void
 	 */
@@ -47,7 +50,7 @@ class SOM_Channels {
 				)
 			);
 
-			$always_active = in_array( $slug, array( 'external', 'internal' ), true );
+			$always_active = in_array( $slug, array( 'external', 'internal', 'amazon' ), true );
 
 			if ( $existing ) {
 				if ( $always_active ) {

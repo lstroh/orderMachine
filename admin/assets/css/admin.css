@@ -46,6 +46,65 @@
 	width: 70px;
 }
 
+.som-add-order {
+	margin: 12px 0 16px;
+	padding: 8px 12px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	max-width: 100%;
+}
+
+.som-add-order > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.som-add-order-form {
+	margin: 8px 0 4px;
+}
+
+.som-add-order-fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 8px 16px;
+	max-width: 960px;
+	margin: 8px 0 12px;
+}
+
+.som-add-order-fields label {
+	display: block;
+	font-weight: 600;
+}
+
+.som-add-order-fields input,
+.som-add-order-fields select {
+	width: 100%;
+	max-width: 220px;
+	font-weight: 400;
+}
+
+.som-add-order-lines-wrap {
+	overflow-x: auto;
+	max-width: 100%;
+}
+
+.som-add-order-lines {
+	margin: 10px 0 6px;
+	min-width: 980px;
+}
+
+.som-add-order-lines select,
+.som-add-order-lines input[type="text"],
+.som-add-order-lines input[type="number"] {
+	width: 100%;
+	min-width: 88px;
+}
+
+.som-add-order-actions-col {
+	width: 70px;
+}
+
 .som-pack-mixed-flag {
 	color: #996800;
 }

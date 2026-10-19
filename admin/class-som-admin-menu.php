@@ -536,6 +536,152 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_add_order'] ) ) {
+			check_admin_referer( 'som_add_order', 'som_order_nonce' );
+
+			$channel = isset( $_POST['som_add_channel'] ) ? sanitize_key( wp_unslash( $_POST['som_add_channel'] ) ) : '';
+			if ( ! in_array( $channel, array( 'ebay', 'amazon' ), true ) ) {
+				self::flash_notice( __( 'Choose eBay or Amazon.', 'order-machine' ), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+
+			$order_number = isset( $_POST['som_add_order_number'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_order_number'] ) ) : '';
+			$order_number = trim( $order_number );
+			if ( '' === $order_number ) {
+				self::flash_notice( __( 'Order number is required.', 'order-machine' ), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+			if ( strlen( $order_number ) > 100 ) {
+				self::flash_notice( __( 'Order number must be 100 characters or fewer.', 'order-machine' ), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+
+			$order_date = isset( $_POST['som_add_order_date'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_order_date'] ) ) : '';
+			$date_ok    = false;
+			if ( preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $order_date, $date_parts ) ) {
+				$date_ok = checkdate( (int) $date_parts[2], (int) $date_parts[3], (int) $date_parts[1] );
+			}
+			if ( ! $date_ok ) {
+				$order_date = current_time( 'Y-m-d' );
+			}
+
+			$buyer_name = isset( $_POST['som_add_buyer_name'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_buyer_name'] ) ) : '';
+			$ship_name  = isset( $_POST['som_add_ship_name'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_ship_name'] ) ) : '';
+			$address_1  = isset( $_POST['som_add_address_1'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_address_1'] ) ) : '';
+			$address_2  = isset( $_POST['som_add_address_2'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_address_2'] ) ) : '';
+			$city       = isset( $_POST['som_add_city'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_city'] ) ) : '';
+			$county     = isset( $_POST['som_add_county'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_county'] ) ) : '';
+			$postcode   = isset( $_POST['som_add_postcode'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_postcode'] ) ) : '';
+			$country    = isset( $_POST['som_add_country'] ) ? sanitize_text_field( wp_unslash( $_POST['som_add_country'] ) ) : '';
+			$country    = trim( $country );
+			if ( '' === $country ) {
+				$country = 'GB';
+			}
+
+			$raw_lines = isset( $_POST['som_add_lines'] ) && is_array( $_POST['som_add_lines'] )
+				? wp_unslash( $_POST['som_add_lines'] )
+				: array();
+
+			$items = array();
+			foreach ( array_slice( array_values( $raw_lines ), 0, 10 ) as $line ) {
+				if ( ! is_array( $line ) ) {
+					continue;
+				}
+
+				$product_id  = isset( $line['product_id'] ) ? (int) $line['product_id'] : 0;
+				$item_number = isset( $line['item_number'] ) ? sanitize_text_field( (string) $line['item_number'] ) : '';
+				$sku         = isset( $line['sku'] ) ? sanitize_text_field( (string) $line['sku'] ) : '';
+				$item_number = trim( $item_number );
+				$sku         = trim( $sku );
+				if ( strlen( $item_number ) > 100 ) {
+					$item_number = substr( $item_number, 0, 100 );
+				}
+				if ( strlen( $sku ) > 100 ) {
+					$sku = substr( $sku, 0, 100 );
+				}
+				if ( $product_id > 0 && ! SOM_Products::get( $product_id ) ) {
+					$product_id = 0;
+				}
+				if ( $product_id < 1 && '' === $item_number && '' === $sku ) {
+					continue;
+				}
+
+				$quantity = isset( $line['quantity'] ) ? (int) $line['quantity'] : 1;
+				$item     = array(
+					'quantity' => max( 1, $quantity ),
+				);
+				if ( $product_id > 0 ) {
+					$item['product_id'] = $product_id;
+				}
+				if ( '' !== $item_number ) {
+					$item['external_listing_id'] = $item_number;
+				}
+				if ( '' !== $sku ) {
+					$item['sku'] = $sku;
+				}
+
+				$unit_price = isset( $line['unit_price'] ) ? $line['unit_price'] : '';
+				if ( '' !== $unit_price && is_numeric( $unit_price ) ) {
+					$item['unit_price'] = (float) $unit_price;
+				}
+
+				$item['house_number'] = isset( $line['house_number'] ) ? sanitize_text_field( (string) $line['house_number'] ) : '';
+				$item['street_name']  = isset( $line['street_name'] ) ? sanitize_text_field( (string) $line['street_name'] ) : '';
+				$item['style']        = isset( $line['style'] ) ? sanitize_text_field( (string) $line['style'] ) : '';
+				$items[]              = $item;
+			}
+
+			if ( empty( $items ) ) {
+				self::flash_notice( __( 'Add at least one line with a product, item number, or SKU.', 'order-machine' ), 'error', 'som_order_error' );
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+
+			$order_id = SOM_Order_Sync::create_from_external(
+				array(
+					'channel'           => $channel,
+					'external_order_id' => $order_number,
+					'buyer_name'        => $buyer_name,
+					'order_date'        => $order_date . ' 00:00:00',
+					'shipping_address'  => array(
+						'full_name' => $ship_name,
+						'line1'     => $address_1,
+						'line2'     => $address_2,
+						'city'      => $city,
+						'state'     => $county,
+						'postcode'  => $postcode,
+						'country'   => $country,
+					),
+					'items'             => $items,
+				)
+			);
+
+			if ( is_wp_error( $order_id ) ) {
+				if ( 'som_order_exists' === $order_id->get_error_code() ) {
+					self::flash_notice( __( 'An order with this order number already exists for this channel.', 'order-machine' ), 'error', 'som_order_error' );
+				} else {
+					self::flash_notice( $order_id->get_error_message(), 'error', 'som_order_error' );
+				}
+				wp_safe_redirect( SOM_Orders::list_url() );
+				exit;
+			}
+
+			self::flash_notice(
+				sprintf(
+					/* translators: %s: marketplace order number */
+					__( 'Order %s added.', 'order-machine' ),
+					$order_number
+				),
+				'success',
+				'som_order_saved'
+			);
+			wp_safe_redirect( SOM_Orders::detail_url( (int) $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_save_confirmation'] ) ) {
 			check_admin_referer( 'som_save_confirmation', 'som_order_nonce' );
 			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;

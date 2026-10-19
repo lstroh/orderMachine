@@ -48,6 +48,26 @@ $test_products = isset( $products_for_test['products'] ) && is_array( $products_
 	? $products_for_test['products']
 	: array();
 
+$add_order_product_options = '';
+foreach ( $test_products as $product ) {
+	if ( ! empty( $product->is_internal ) ) {
+		continue;
+	}
+	$add_order_product_options .= '<option value="' . esc_attr( (string) $product->id ) . '">' . esc_html(
+		sprintf(
+			/* translators: 1: product name, 2: SKU */
+			__( '%1$s (%2$s)', 'order-machine' ),
+			(string) $product->name,
+			(string) $product->sku
+		)
+	) . '</option>';
+}
+$known_channels     = SOM_Channels::known();
+$add_order_channels = array(
+	'ebay'   => isset( $known_channels['ebay'] ) ? $known_channels['ebay'] : 'eBay',
+	'amazon' => isset( $known_channels['amazon'] ) ? $known_channels['amazon'] : 'Amazon',
+);
+
 $status_options = array(
 	''               => __( 'All statuses', 'order-machine' ),
 	'open'           => __( 'Open', 'order-machine' ),
@@ -152,6 +172,160 @@ $status_options = array(
 				<?php submit_button( __( 'Create test order', 'order-machine' ), 'secondary', 'som_create_test_order', false ); ?>
 			</form>
 		<?php endif; ?>
+	</details>
+
+	<details class="som-add-order">
+		<summary><?php echo esc_html__( 'Add order', 'order-machine' ); ?></summary>
+		<p class="description">
+			<?php echo esc_html__( 'eBay or Amazon order, typed in by hand. Same create path as Sync now: a matched line gets a workflow, stock reservation, and budget funding. An unmatched line still saves. The same channel and order number is rejected.', 'order-machine' ); ?>
+		</p>
+		<form method="post" action="<?php echo esc_url( SOM_Orders::list_url() ); ?>" class="som-add-order-form">
+			<?php wp_nonce_field( 'som_add_order', 'som_order_nonce' ); ?>
+
+			<div class="som-add-order-fields">
+				<p>
+					<label for="som-add-channel"><?php echo esc_html__( 'Channel', 'order-machine' ); ?></label>
+					<select name="som_add_channel" id="som-add-channel" required>
+						<?php foreach ( $add_order_channels as $slug => $name ) : ?>
+							<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $name ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</p>
+				<p>
+					<label for="som-add-order-number"><?php echo esc_html__( 'Order number', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_order_number" id="som-add-order-number" value="" maxlength="100" required />
+				</p>
+				<p>
+					<label for="som-add-order-date"><?php echo esc_html__( 'Order date', 'order-machine' ); ?></label>
+					<input type="date" name="som_add_order_date" id="som-add-order-date" value="<?php echo esc_attr( current_time( 'Y-m-d' ) ); ?>" />
+				</p>
+				<p>
+					<label for="som-add-buyer-name"><?php echo esc_html__( 'Buyer name', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_buyer_name" id="som-add-buyer-name" value="" />
+				</p>
+				<p>
+					<label for="som-add-ship-name"><?php echo esc_html__( 'Ship-to name', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_ship_name" id="som-add-ship-name" value="" />
+				</p>
+				<p>
+					<label for="som-add-address-1"><?php echo esc_html__( 'Address 1', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_address_1" id="som-add-address-1" value="" />
+				</p>
+				<p>
+					<label for="som-add-address-2"><?php echo esc_html__( 'Address 2', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_address_2" id="som-add-address-2" value="" />
+				</p>
+				<p>
+					<label for="som-add-city"><?php echo esc_html__( 'City', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_city" id="som-add-city" value="" />
+				</p>
+				<p>
+					<label for="som-add-county"><?php echo esc_html__( 'County', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_county" id="som-add-county" value="" />
+				</p>
+				<p>
+					<label for="som-add-postcode"><?php echo esc_html__( 'Postcode', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_postcode" id="som-add-postcode" value="" />
+				</p>
+				<p>
+					<label for="som-add-country"><?php echo esc_html__( 'Country', 'order-machine' ); ?></label>
+					<input type="text" name="som_add_country" id="som-add-country" value="GB" maxlength="100" />
+				</p>
+			</div>
+
+			<div class="som-add-order-lines-wrap">
+				<table class="widefat striped som-add-order-lines" id="som-add-order-lines">
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Product', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Item number', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'SKU', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Qty', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Unit price', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'House number', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Street name', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Style', 'order-machine' ); ?></th>
+							<th class="som-add-order-actions-col"><span class="screen-reader-text"><?php echo esc_html__( 'Actions', 'order-machine' ); ?></span></th>
+						</tr>
+					</thead>
+					<tbody id="som-add-order-rows">
+						<tr class="som-add-order-row" data-index="0">
+							<td>
+								<select name="som_add_lines[0][product_id]">
+									<option value=""><?php echo esc_html__( 'Select product…', 'order-machine' ); ?></option>
+									<?php echo $add_order_product_options; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built with esc_attr/esc_html above. ?>
+								</select>
+							</td>
+							<td>
+								<input type="text" name="som_add_lines[0][item_number]" value="" maxlength="100" />
+							</td>
+							<td>
+								<input type="text" name="som_add_lines[0][sku]" value="" maxlength="100" />
+							</td>
+							<td>
+								<input type="number" name="som_add_lines[0][quantity]" value="1" min="1" step="1" />
+							</td>
+							<td>
+								<input type="number" name="som_add_lines[0][unit_price]" value="" min="0" step="0.01" placeholder="0.00" />
+							</td>
+							<td>
+								<input type="text" name="som_add_lines[0][house_number]" value="" maxlength="64" />
+							</td>
+							<td>
+								<input type="text" name="som_add_lines[0][street_name]" value="" maxlength="191" />
+							</td>
+							<td>
+								<input type="text" name="som_add_lines[0][style]" value="" maxlength="191" />
+							</td>
+							<td>
+								<button type="button" class="button-link-delete som-add-order-remove"><?php echo esc_html__( 'Remove', 'order-machine' ); ?></button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<p>
+				<button type="button" class="button" id="som-add-order-add-row"><?php echo esc_html__( 'Add line', 'order-machine' ); ?></button>
+				<span class="description"><?php echo esc_html__( '1 to 10 lines. Each line needs a product, an item number, or a SKU. A chosen product is used directly. Item number and SKU are matched to a listing map.', 'order-machine' ); ?></span>
+			</p>
+
+			<template id="som-add-order-row-template">
+				<tr class="som-add-order-row" data-index="__INDEX__">
+					<td>
+						<select name="som_add_lines[__INDEX__][product_id]">
+							<option value=""><?php echo esc_html__( 'Select product…', 'order-machine' ); ?></option>
+							<?php echo $add_order_product_options; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built with esc_attr/esc_html above. ?>
+						</select>
+					</td>
+					<td>
+						<input type="text" name="som_add_lines[__INDEX__][item_number]" value="" maxlength="100" />
+					</td>
+					<td>
+						<input type="text" name="som_add_lines[__INDEX__][sku]" value="" maxlength="100" />
+					</td>
+					<td>
+						<input type="number" name="som_add_lines[__INDEX__][quantity]" value="1" min="1" step="1" />
+					</td>
+					<td>
+						<input type="number" name="som_add_lines[__INDEX__][unit_price]" value="" min="0" step="0.01" placeholder="0.00" />
+					</td>
+					<td>
+						<input type="text" name="som_add_lines[__INDEX__][house_number]" value="" maxlength="64" />
+					</td>
+					<td>
+						<input type="text" name="som_add_lines[__INDEX__][street_name]" value="" maxlength="191" />
+					</td>
+					<td>
+						<input type="text" name="som_add_lines[__INDEX__][style]" value="" maxlength="191" />
+					</td>
+					<td>
+						<button type="button" class="button-link-delete som-add-order-remove"><?php echo esc_html__( 'Remove', 'order-machine' ); ?></button>
+					</td>
+				</tr>
+			</template>
+
+			<?php submit_button( __( 'Add order', 'order-machine' ), 'secondary', 'som_add_order', false ); ?>
+		</form>
 	</details>
 
 	<form method="get" class="som-orders-filters">
