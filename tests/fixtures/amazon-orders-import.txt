@@ -1,0 +1,2 @@
+order-id	purchase-date	buyer-name	recipient-name	ship-address-1	ship-address-2	ship-address-3	ship-city	ship-state	ship-postal-code	ship-country	sku	quantity-purchased	item-price	product-name
+123-7654321-1300219	2026-10-02T09:15:00Z		Sam Recipient	10 King Street	Unit 4	Dock 3	Bristol	Bristol	BS1 4DJ	GB	AMZ-SKU-1	2	19.98	Oak House Sign
