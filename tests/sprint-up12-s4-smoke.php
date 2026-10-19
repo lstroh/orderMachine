@@ -72,7 +72,7 @@ $insert = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/assets/js/som-md-i
 $css    = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/assets/css/admin.css' );
 
 $picker_at = strpos( $editor, 'render_placeholder_picker' );
-$field_at  = strpos( $editor, 'som-command-template' );
+$field_at  = strpos( $editor, 'class="large-text code som-command-template"' );
 $assert( 1 === substr_count( $editor, 'render_placeholder_picker' ), 'editor_calls_picker_once' );
 $assert( false !== $picker_at && false !== $field_at && $picker_at < $field_at, 'picker_above_textarea' );
 $assert( false !== strpos( $editor, 'id="som-step-card-template"' ), 'new_step_template' );
