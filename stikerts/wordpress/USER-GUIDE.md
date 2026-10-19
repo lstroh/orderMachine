@@ -56,7 +56,7 @@ Top-level: **Order Machine**
 | **Purchase Orders** | Create / receive POs, Preview Impact |
 | **Batches** | Collecting / release / mark done for batch steps |
 | **Workflows** | Templates and step editor (timers, planned duration, batch groups, goals) |
-| **Listings** | Cached marketplace listings; link products; push updates |
+| **Listings** | Cached marketplace listings; link products; push updates; import listing reports |
 | **Analytics** | Sales, profit, stock, channel mix, AOV, workflow timing |
 | **Channel Fee Estimates** | Editable estimated fee components per channel |
 | **Recurring Platform Expenses** | Non-order fees (e.g. listing fees) from fee sync |
@@ -81,6 +81,14 @@ channel,order_number,order_date,buyer_name,address_1,address_2,city,county,postc
 `channel` is `ebay` or `amazon`. `item_number` is the marketplace item number. The same channel and order number on several rows becomes one order with several lines.
 
 The importer reads the header row, not the file extension. Comma and tab both work, and a UTF-8 BOM is ignored. This does not call the Amazon API, download Amazon customisation files, import fees or listings, or write anything back to eBay or Amazon. A new order uses the same create path as **Sync now**: a matched line gets a workflow, stock reservation, and budget funding.
+
+**Import a listing report.** On **Listings**, open **Import listing report**, choose a file, and click **Import**. The result says how many listing maps were created, how many were skipped because that channel and listing id were already mapped, and which rows did not match. A row is saved only when its SKU matches a product and that listing id is not already mapped. Price and quantity are stored on the new listing map. They are not sent to eBay or Amazon. A SKU with no product, or a row Order Machine refuses to save, is listed on the result and no listing row is added. Importing the same file again does not change a map that already exists.
+
+**eBay active listings.** In Seller Hub go to **Reports → Listings → Active listings**. The file is usually a comma-separated `.csv`. Every row is eBay. **Item number** is the listing id. **Custom label** is matched to the product SKU. **Title**, **Available quantity** (or **Quantity**), and **Current price** (or **Start price**, or **Price**) are stored on the new map.
+
+**Amazon inventory report.** In Seller Central download an **Inventory report**. The file is usually a tab-separated `.txt`. Every row is Amazon. `seller-sku` is matched to the product SKU. `asin` is the listing id, or `seller-sku` when the ASIN cell is empty. `item-name`, `price`, and `quantity` are stored on the new map.
+
+The listing importer reads the header row, not the file extension. Comma and tab both work, and a UTF-8 BOM is ignored. This does not call eBay or Amazon, and it does not import orders or fees.
 
 ---
 
