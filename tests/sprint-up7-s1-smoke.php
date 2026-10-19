@@ -41,7 +41,7 @@ $detail_src = file_get_contents( SOM_PLUGIN_DIR . 'admin/views/order-detail.php'
 $assert( is_string( $detail_src ) && false === strpos( $detail_src, 'Pack & Ship controls arrive in UP6-S2' ), 'no_stale_up6_s2_make_copy' );
 $assert( is_string( $detail_src ) && false !== strpos( $detail_src, 'Confirmation checklist — %s' ), 'checklist_heading_includes_step_name' );
 $make_ol_pos      = strpos( $detail_src, 'som-workflow-progress' );
-$make_confirm_pos = strpos( $detail_src, 'name="som_order_item_id"' );
+$make_confirm_pos = strpos( $detail_src, 'som_save_confirmation' );
 $assert( false !== $make_ol_pos && false !== $make_confirm_pos && $make_confirm_pos > $make_ol_pos, 'make_checklist_after_step_list_open' );
 
 $editor_src = file_get_contents( SOM_PLUGIN_DIR . 'admin/views/workflow-step-editor.php' );
