@@ -682,6 +682,14 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_preview_orders'] ) ) {
+			self::handle_order_import_preview();
+		}
+
+		if ( isset( $_POST['som_import_orders'] ) ) {
+			self::handle_order_import_commit();
+		}
+
 		if ( isset( $_POST['som_save_confirmation'] ) ) {
 			check_admin_referer( 'som_save_confirmation', 'som_order_nonce' );
 			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
@@ -2811,6 +2819,70 @@ class SOM_Admin_Menu {
 			'som_import_history'
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Preview an order file. Stores the upload so Import can commit it. Does not insert orders.
+	 *
+	 * @return void
+	 */
+	private static function handle_order_import_preview() {
+		check_admin_referer( 'som_import_orders_preview', 'som_order_nonce' );
+
+		$contents = SOM_Order_Import::read_upload( 'som_import_file' );
+		if ( is_wp_error( $contents ) ) {
+			self::flash_notice( $contents->get_error_message(), 'error', 'som_order_error' );
+			wp_safe_redirect( SOM_Orders::list_url() );
+			exit;
+		}
+
+		$token = SOM_Order_Import::remember( get_current_user_id(), $contents );
+		wp_safe_redirect(
+			SOM_Orders::list_url(
+				array(
+					'som_import_preview' => $token,
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Commit a previously previewed order file.
+	 *
+	 * @return void
+	 */
+	private static function handle_order_import_commit() {
+		check_admin_referer( 'som_import_orders_commit', 'som_order_nonce' );
+
+		$token    = isset( $_POST['som_import_token'] ) ? sanitize_text_field( wp_unslash( $_POST['som_import_token'] ) ) : '';
+		$contents = SOM_Order_Import::recall( get_current_user_id(), $token );
+		if ( '' === $contents ) {
+			self::flash_notice(
+				__( 'That preview expired. Upload the file again.', 'order-machine' ),
+				'error',
+				'som_order_error'
+			);
+			wp_safe_redirect( SOM_Orders::list_url() );
+			exit;
+		}
+
+		$result = SOM_Order_Import::commit( $contents );
+		SOM_Order_Import::forget( get_current_user_id(), $token );
+
+		self::flash_notice(
+			sprintf(
+				/* translators: 1: created count, 2: skipped count, 3: failed count */
+				__( 'Created %1$d, skipped %2$d already imported, failed %3$d.', 'order-machine' ),
+				(int) $result['created'],
+				(int) $result['skipped'],
+				(int) $result['failed']
+			),
+			( (int) $result['failed'] > 0 ) ? 'warning' : 'success',
+			'som_order_saved'
+		);
+		wp_safe_redirect( SOM_Orders::list_url() );
 		exit;
 	}
 

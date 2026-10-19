@@ -1,0 +1,3 @@
+Sales Record Number,Order Number,Buyer Username,Buyer Name,Buyer Address 1,Buyer City,Post To Name,Post To Address 1,Post To Address 2,Post To City,Post To State,Post To Postal Code,Post To Country,Item Number,Item Title,Custom Label,Quantity,Sold For,Sale Date,Variation Details
+1001,14-13002-26019,jane_buyer,Jane Buyer,99 Buyer Street,London,Jane Post,10 High Street,Flat 2,Leeds,West Yorkshire,LS1 1AA,GB,111222333,Ignored Title,SIGN-A,1,12.50,2026-10-01,"House Number: 36; Street Name: Oak Lane; Design: Flourish"
+1002,14-13002-26019,jane_buyer,Someone Else,99 Buyer Street,London,Other Post,99 Other Street,Unit 9,Manchester,Greater Manchester,M1 1AE,GB,444555666,Plain Sign,SIGN-B,2,8.00,2026-11-01,"House No: 10; Street: Mill Road"

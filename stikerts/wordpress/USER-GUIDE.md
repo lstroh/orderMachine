@@ -66,6 +66,22 @@ Top-level: **Order Machine**
 
 **Add an order by hand.** On **Orders**, open **Add order** (separate from **Create test order**). Choose **eBay** or **Amazon**, enter the marketplace order number, and add 1 to 10 lines. Each line needs a product, an item number, or a SKU. Type house number, street name, and style on the line. Choosing a product assigns that product. An item number or SKU is matched to a listing map. A matched line gets a workflow, stock reservation, and budget funding, the same as **Sync now**. A line that matches nothing still saves the order. The same channel and order number cannot be added twice.
 
+**Import orders from a file.** On **Orders**, open **Import orders**, choose a file, and click **Preview**. Preview shows how many orders and lines were recognised, and a table of row errors. Nothing is saved until you click **Import**. After import, Order Machine reports how many orders were created, how many were skipped because that channel and order number were already imported, and how many failed. A failed order does not undo orders that already saved. An order number that already exists for that channel is left as it is.
+
+**eBay orders report.** In Seller Hub go to **Orders → Download report** (or **Reports → Download → Orders**). The file is usually a comma-separated `.csv`. Every row is eBay. Rows that share an Order Number become one order. **Variation Details** (`House Number: 36; Street Name: Oak Lane; Design: Flourish`, or the same pairs on separate lines) sets house number, street, and style. If there is no design, **Item Title** is the style.
+
+**Amazon order report.** In Seller Central go to **Orders → Order Reports** and download unshipped orders or all orders. The file is usually a tab-separated `.txt`. Every row is Amazon. `item-price` is the line total. Order Machine stores the unit price as `item-price` divided by `quantity-purchased`.
+
+**Order Machine template.** A comma-separated file you type yourself, so house number and street can be columns. The header row is exactly:
+
+```
+channel,order_number,order_date,buyer_name,address_1,address_2,city,county,postcode,country,item_number,sku,quantity,unit_price,house_number,street_name,style
+```
+
+`channel` is `ebay` or `amazon`. `item_number` is the marketplace item number. The same channel and order number on several rows becomes one order with several lines.
+
+The importer reads the header row, not the file extension. Comma and tab both work, and a UTF-8 BOM is ignored. This does not call the Amazon API, download Amazon customisation files, import fees or listings, or write anything back to eBay or Amazon. A new order uses the same create path as **Sync now**: a matched line gets a workflow, stock reservation, and budget funding.
+
 ---
 
 ## Two setup paths

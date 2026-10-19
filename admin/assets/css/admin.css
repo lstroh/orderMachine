@@ -105,6 +105,30 @@
 	width: 70px;
 }
 
+.som-import-orders {
+	margin: 12px 0 16px;
+	padding: 8px 12px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	max-width: 960px;
+}
+
+.som-import-orders > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.som-import-orders form {
+	margin: 8px 0 4px;
+}
+
+.som-import-orders-preview,
+.som-import-orders-errors {
+	margin: 12px 0;
+	max-width: 720px;
+}
+
 .som-pack-mixed-flag {
 	color: #996800;
 }

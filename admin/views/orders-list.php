@@ -328,6 +328,128 @@ $status_options = array(
 		</form>
 	</details>
 
+	<?php
+	$import_preview       = null;
+	$import_preview_error = '';
+	if ( isset( $_GET['som_import_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only preview token.
+		$import_token  = sanitize_text_field( wp_unslash( $_GET['som_import_preview'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only preview token.
+		$import_loaded = SOM_Order_Import::preview_for_token( get_current_user_id(), $import_token );
+		if ( is_wp_error( $import_loaded ) ) {
+			$import_preview_error = $import_loaded->get_error_message();
+		} elseif ( is_array( $import_loaded ) ) {
+			$import_preview = $import_loaded;
+		}
+	}
+	$import_open = is_array( $import_preview ) || '' !== $import_preview_error;
+	?>
+	<details class="som-import-orders"<?php echo $import_open ? esc_attr( ' open' ) : ''; ?>>
+		<summary><?php echo esc_html__( 'Import orders', 'order-machine' ); ?></summary>
+		<p class="description">
+			<?php echo esc_html__( 'Upload an eBay orders report, an Amazon order report, or an Order Machine template. The file is recognised from its header row. Preview does not save orders.', 'order-machine' ); ?>
+		</p>
+		<form method="post" action="<?php echo esc_url( SOM_Orders::list_url() ); ?>" enctype="multipart/form-data" class="som-import-orders-form">
+			<?php wp_nonce_field( 'som_import_orders_preview', 'som_order_nonce' ); ?>
+			<p>
+				<label for="som-import-file"><?php echo esc_html__( 'Order file', 'order-machine' ); ?></label>
+				<input type="file" name="som_import_file" id="som-import-file" required />
+			</p>
+			<?php submit_button( __( 'Preview', 'order-machine' ), 'secondary', 'som_preview_orders', false ); ?>
+		</form>
+
+		<?php if ( '' !== $import_preview_error ) : ?>
+			<div class="notice notice-error inline"><p><?php echo esc_html( $import_preview_error ); ?></p></div>
+		<?php endif; ?>
+
+		<?php if ( is_array( $import_preview ) ) : ?>
+			<h3><?php echo esc_html__( 'Preview', 'order-machine' ); ?></h3>
+			<p>
+				<?php
+				printf(
+					/* translators: 1: recognised order count, 2: recognised line count */
+					esc_html__( 'Orders recognised: %1$d. Lines recognised: %2$d. Nothing is saved until you choose Import.', 'order-machine' ),
+					(int) $import_preview['order_count'],
+					(int) $import_preview['line_count']
+				);
+				?>
+			</p>
+
+			<?php if ( ! empty( $import_preview['orders'] ) ) : ?>
+				<table class="widefat striped som-import-orders-preview">
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Channel', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Order number', 'order-machine' ); ?></th>
+							<th><?php echo esc_html__( 'Lines', 'order-machine' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $import_preview['orders'] as $import_order ) : ?>
+							<?php
+							$import_slug  = isset( $import_order['channel'] ) ? (string) $import_order['channel'] : '';
+							$import_label = isset( $known_channels[ $import_slug ] ) ? $known_channels[ $import_slug ] : $import_slug;
+							$import_lines = isset( $import_order['items'] ) && is_array( $import_order['items'] ) ? count( $import_order['items'] ) : 0;
+							?>
+							<tr>
+								<td><?php echo esc_html( $import_label ); ?></td>
+								<td><code><?php echo esc_html( isset( $import_order['external_order_id'] ) ? (string) $import_order['external_order_id'] : '' ); ?></code></td>
+								<td><?php echo esc_html( (string) $import_lines ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $import_preview['failed'] ) ) : ?>
+				<p class="description">
+					<?php echo esc_html__( 'An order with a row error is not imported. Other orders in the file still can be.', 'order-machine' ); ?>
+				</p>
+			<?php endif; ?>
+
+			<h3><?php echo esc_html__( 'Row errors', 'order-machine' ); ?></h3>
+			<table class="widefat striped som-import-orders-errors">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Row', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Order number', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Error', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php if ( empty( $import_preview['errors'] ) ) : ?>
+						<tr>
+							<td colspan="3"><?php echo esc_html__( 'No row errors.', 'order-machine' ); ?></td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $import_preview['errors'] as $import_error ) : ?>
+							<?php
+							$import_error_order = isset( $import_error['order_number'] ) ? (string) $import_error['order_number'] : '';
+							?>
+							<tr>
+								<td><?php echo esc_html( (string) (int) $import_error['row'] ); ?></td>
+								<td>
+									<?php if ( '' !== $import_error_order ) : ?>
+										<code><?php echo esc_html( $import_error_order ); ?></code>
+									<?php else : ?>
+										<?php echo esc_html( '—' ); ?>
+									<?php endif; ?>
+								</td>
+								<td><?php echo esc_html( isset( $import_error['message'] ) ? (string) $import_error['message'] : '' ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+
+			<?php if ( ! empty( $import_preview['order_count'] ) && ! empty( $import_preview['token'] ) ) : ?>
+				<form method="post" action="<?php echo esc_url( SOM_Orders::list_url() ); ?>">
+					<?php wp_nonce_field( 'som_import_orders_commit', 'som_order_nonce' ); ?>
+					<input type="hidden" name="som_import_token" value="<?php echo esc_attr( (string) $import_preview['token'] ); ?>" />
+					<?php submit_button( __( 'Import', 'order-machine' ), 'primary', 'som_import_orders', false ); ?>
+				</form>
+			<?php endif; ?>
+		<?php endif; ?>
+	</details>
+
 	<form method="get" class="som-orders-filters">
 		<input type="hidden" name="page" value="som-orders" />
 

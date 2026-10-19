@@ -1,0 +1,4 @@
+channel,order_number,order_date,buyer_name,address_1,address_2,city,county,postcode,country,item_number,sku,quantity,unit_price,house_number,street_name,style
+ebay,OM-1001,2026-10-03,Pat Buyer,5 River Road,,York,North Yorkshire,YO1 7HH,GB,999888777,OM-SKU,1,6.50,14,River Road,Classic
+ebay,OM-1001,2026-10-04,Other Person,8 Other Road,,Bath,Somerset,BA1 1AA,GB,999888778,OM-SKU-2,2,3.25,15,Bridge Street,Modern
+amazon,AMZ-2002,2026-10-04,Alex Buyer,8 Park Lane,,Bath,Somerset,BA1 1AA,GB,,AMZ-OM-1,1,4.25,22,Park Lane,Bold
