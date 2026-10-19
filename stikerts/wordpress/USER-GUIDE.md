@@ -64,6 +64,8 @@ Top-level: **Order Machine**
 
 **Produce N:** On an internal product, Produce N creates an Internal-channel job. Advance it on **Make Board** or on that order’s **Make** section (step list, Mark done, instructions, tasks, copy command). While the job is in progress the line is not labelled Pack-ready. When make finishes it uses the same Ready treatment as a finished sellable line. There is no Pack or Post-ship panel. An internal product line on a **customer** order stays **Pack-ready (internal)** with no make controls.
 
+**Add an order by hand.** On **Orders**, open **Add order** (separate from **Create test order**). Choose **eBay** or **Amazon**, enter the marketplace order number, and add 1 to 10 lines. Each line needs a product, an item number, or a SKU. Type house number, street name, and style on the line. Choosing a product assigns that product. An item number or SKU is matched to a listing map. A matched line gets a workflow, stock reservation, and budget funding, the same as **Sync now**. A line that matches nothing still saves the order. The same channel and order number cannot be added twice.
+
 ---
 
 ## Two setup paths
