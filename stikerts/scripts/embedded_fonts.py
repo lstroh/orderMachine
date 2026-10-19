@@ -1,5 +1,6 @@
 """
-embedded_fonts.py -- Doorstep Studio (12 Oct 2026, v2: Windows fonts first)
+embedded_fonts.py -- Doorstep Studio (12 Oct 2026, v2: Windows fonts first;
+18 Oct 2026, v3: adds Courier, used by render_design_key_gallery.py)
 
 Makes every PDF the scripts write carry its own fonts, WITH the letter widths
 inside the file. The original PDFs leave both out for Helvetica and Times
@@ -15,13 +16,14 @@ the letters used, widths included) in every PDF. No setFont / stringWidth
 call in any script has to change.
 
 WHICH FONTS (Font-Policy.md: free Windows fonts first)
-1. On Windows: Arial for Helvetica, Times New Roman for Times, straight from
+1. On Windows: Arial for Helvetica, Times New Roman for Times, Courier New
+   for Courier, straight from
    C:\\Windows\\Fonts. Affinity has these installed, so it opens the PDFs
    with no dialog, and they look the same as Windows prints today. They are
    designed with the same letter widths as Helvetica and Times. The check below
    confirms that every time it runs.
 2. Anywhere else (e.g. a Claude cloud session), or if a Windows font is
-   missing: TeX Gyre Heros / Termes from assets/fonts/ (free, same widths,
+   missing: TeX Gyre Heros / Termes / Cursor from assets/fonts/ (free, same widths,
    GUST Font License).
 
 WIDTH CHECK
@@ -60,6 +62,10 @@ FONTS = {
     "Times-Bold":            ("timesbd.ttf", "texgyretermes-ttf-bold.ttf"),
     "Times-Italic":          ("timesi.ttf",  "texgyretermes-ttf-italic.ttf"),
     "Times-BoldItalic":      ("timesbi.ttf", "texgyretermes-ttf-bolditalic.ttf"),
+    "Courier":               ("cour.ttf",    "texgyrecursor-ttf-regular.ttf"),
+    "Courier-Bold":          ("courbd.ttf",  "texgyrecursor-ttf-bold.ttf"),
+    "Courier-Oblique":       ("couri.ttf",   "texgyrecursor-ttf-italic.ttf"),
+    "Courier-BoldOblique":   ("courbi.ttf",  "texgyrecursor-ttf-bolditalic.ttf"),
 }
 
 # characters whose width must match the built-in font exactly

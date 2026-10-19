@@ -11,7 +11,9 @@ disable-model-invocation: true
 
 # Make a sticker order
 
-Small stickers only (140 x 100mm). This is the backup. These scripts do not embed fonts. For Affinity-safe PDFs, use the make-sticker-order-embedded skill.
+Current orders use the make-sticker-order-embedded skill and the scripts in `stikerts/scripts/`. Those embed Arial, Times New Roman, and Courier New. Use this backup skill only when the user asks for the old scripts or for `make_order.py` without embedded fonts.
+
+Small stickers only (140 x 100mm). These scripts do not embed fonts.
 
 Scripts live in `stikerts/Ideas 27 07/Generation-backup/`. Run from that folder. Do not edit `bin_sticker_small.py`, `bin_sticker_core.py`, or `sticker_wrap.py` to place an order.
 
