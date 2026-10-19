@@ -256,6 +256,8 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **List columns:** target price, material cost, fee-aware margin with Est./Actual fees badge, goal alerts, Internal badge; type filter sellable/internal.
 
+**Clone:** each Products list row has **Clone**, and the edit screen has a **Clone** button beside the title. Cloning copies the product (name becomes **X (copy)**, trimmed to 100 characters, SKU left blank, same active or inactive state, same target price and shipping settings), the material recipe, step instruction overrides, step task overrides, and budget links. It keeps the same Make workflow and the same Post-ship workflow. It does not copy listings, orders, or stock. An internal clone gets a new linked output material named from **X (copy)** with stock 0; the original keeps its own material. The copy opens on its edit screen with the notice **Cloned from X. SKU left blank; listings not copied.** There is no option to also clone the workflow.
+
 **Deactivate:** blocked while open Internal production jobs exist for that product.
 
 **Important rules:**

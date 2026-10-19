@@ -10,6 +10,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ### Added
 
+- Products can be cloned from the list or the edit screen. The copy is named “X (copy)”, keeps the same workflow, recipe, step overrides, and budget links, and opens on its edit screen. SKU is left blank. Listings, orders, and stock are not copied. An internal clone gets its own output material
 - Workflow templates can be cloned from the list or the editor. The copy is named “X (copy)”, keeps the same steps, goals, and budget links, and opens in the editor. Products, orders, and Pack / Post-ship defaults stay on the original. A Post-ship template with no Package arrived step cannot be cloned
 - Copy command templates have an Insert placeholder dropdown that puts `{{key}}` at the cursor
 - Step instruction editors (workflow steps and product overrides) have a Markdown toolbar for bold, italic, lists, headings, links, and inline code

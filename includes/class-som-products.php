@@ -216,74 +216,17 @@ class SOM_Products {
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
-		global $wpdb;
-
-		$name = isset( $data['name'] ) ? sanitize_text_field( (string) $data['name'] ) : '';
-		if ( '' === $name ) {
-			return new WP_Error( 'som_product_name', __( 'Product name is required.', 'order-machine' ) );
+		$prepared = self::prepare_create_row( $data );
+		if ( is_wp_error( $prepared ) ) {
+			return $prepared;
 		}
 
-		$sku = isset( $data['sku'] ) ? sanitize_text_field( (string) $data['sku'] ) : '';
-		if ( '' === $sku ) {
-			$sku = null;
+		$product_id = self::insert_prepared_product( $prepared );
+		if ( is_wp_error( $product_id ) ) {
+			return $product_id;
 		}
 
-		$workflow_id = self::sanitize_workflow_id( $data );
-		if ( is_wp_error( $workflow_id ) ) {
-			return $workflow_id;
-		}
-
-		$post_ship_id = self::sanitize_post_ship_workflow_id( $data );
-		if ( is_wp_error( $post_ship_id ) ) {
-			return $post_ship_id;
-		}
-
-		$is_internal = ! empty( $data['is_internal'] ) ? 1 : 0;
-		if ( $is_internal && null === $workflow_id ) {
-			return new WP_Error(
-				'som_product_internal_workflow',
-				__( 'Internal products require a workflow template.', 'order-machine' )
-			);
-		}
-		if ( $is_internal ) {
-			$post_ship_id = null;
-		}
-
-		$shipping = self::sanitize_shipping_fields( $data, (bool) $is_internal );
-		if ( is_wp_error( $shipping ) ) {
-			return $shipping;
-		}
-
-		$now = current_time( 'mysql', true );
-
-		$inserted = $wpdb->insert(
-			SOM_DB::table( 'products' ),
-			array(
-				'name'                           => $name,
-				'sku'                            => $sku,
-				'workflow_template_id'           => $workflow_id,
-				'post_ship_workflow_template_id' => $post_ship_id,
-				'target_selling_price'           => self::nullable_price( $data, 'target_selling_price' ),
-				'weight_grams'                   => $shipping['weight_grams'],
-				'package_id'                     => $shipping['package_id'],
-				'package_id_multi'               => $shipping['package_id_multi'],
-				'planned_shipping_gbp'           => $shipping['planned_shipping_gbp'],
-				'is_internal'                    => $is_internal,
-				'linked_material_id'             => null,
-				'is_active'                      => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
-				'created_at'                     => $now,
-				'updated_at'                     => $now,
-			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
-		);
-
-		if ( ! $inserted ) {
-			return new WP_Error( 'som_product_create', __( 'Could not create product.', 'order-machine' ) );
-		}
-
-		$product_id = (int) $wpdb->insert_id;
-
-		if ( $is_internal ) {
+		if ( ! empty( $prepared['is_internal'] ) ) {
 			$linked = self::ensure_linked_material( $product_id );
 			if ( is_wp_error( $linked ) ) {
 				return $linked;
@@ -291,6 +234,115 @@ class SOM_Products {
 		}
 
 		return $product_id;
+	}
+
+	/**
+	 * Copy a product into an independent product named "X (copy)".
+	 *
+	 * Copies product columns (same workflow template ids, active state, price,
+	 * and shipping), the material recipe, step instruction and task overrides,
+	 * and budget links. SKU is left null. Listings, orders, stock logs, and
+	 * fees are not copied. An internal clone gets a new output material.
+	 *
+	 * Validation matches create(). On any failure the copy is rolled back and
+	 * then deleted, so no half product remains.
+	 *
+	 * @param int $product_id Source product PK.
+	 * @return int|WP_Error New product id.
+	 */
+	public static function clone_product( $product_id ) {
+		global $wpdb;
+
+		$product_id = (int) $product_id;
+		$source     = self::get( $product_id );
+		if ( ! $source ) {
+			return new WP_Error( 'som_product_missing', __( 'Product not found.', 'order-machine' ) );
+		}
+
+		$prepared = self::prepare_create_row( self::clone_source_data( $source ) );
+		if ( is_wp_error( $prepared ) ) {
+			return $prepared;
+		}
+
+		$wpdb->query( 'START TRANSACTION' );
+
+		$created = self::insert_prepared_product( $prepared );
+		if ( is_wp_error( $created ) ) {
+			self::abort_clone_write( 0 );
+			return $created;
+		}
+
+		$new_id = (int) $created;
+
+		$recipe = self::copy_recipe_rows( $product_id, $new_id );
+		if ( is_wp_error( $recipe ) ) {
+			self::abort_clone_write( $new_id );
+			return $recipe;
+		}
+
+		$instructions = self::copy_step_instruction_rows( $product_id, $new_id );
+		if ( is_wp_error( $instructions ) ) {
+			self::abort_clone_write( $new_id );
+			return $instructions;
+		}
+
+		$tasks = self::copy_step_task_rows( $product_id, $new_id );
+		if ( is_wp_error( $tasks ) ) {
+			self::abort_clone_write( $new_id );
+			return $tasks;
+		}
+
+		$links = self::copy_budget_product_links( $product_id, $new_id );
+		if ( is_wp_error( $links ) ) {
+			self::abort_clone_write( $new_id );
+			return $links;
+		}
+
+		if ( ! empty( $prepared['is_internal'] ) ) {
+			$linked = self::ensure_linked_material( $new_id );
+			if ( is_wp_error( $linked ) ) {
+				self::abort_clone_write( $new_id );
+				return $linked;
+			}
+		}
+
+		$committed = $wpdb->query( 'COMMIT' );
+		if ( false === $committed ) {
+			self::abort_clone_write( $new_id );
+			return new WP_Error( 'som_product_clone', __( 'Could not clone product.', 'order-machine' ) );
+		}
+
+		return $new_id;
+	}
+
+	/**
+	 * Clone control: POST, nonce som_clone_product, manage_options is checked by the handler.
+	 *
+	 * @param int    $product_id   Product PK.
+	 * @param string $return       editor|list — where to send the operator if clone fails.
+	 * @param string $button_class Button class.
+	 * @return void
+	 */
+	public static function render_clone_button( $product_id, $return = 'list', $button_class = 'button-link' ) {
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		$return       = 'editor' === $return ? 'editor' : 'list';
+		$button_class = sanitize_html_class( $button_class );
+		if ( '' === $button_class ) {
+			$button_class = 'button-link';
+		}
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=som-products' ) ); ?>" class="som-clone-product-form">
+			<?php wp_nonce_field( 'som_clone_product', 'som_product_clone_nonce' ); ?>
+			<input type="hidden" name="som_clone_product" value="1" />
+			<input type="hidden" name="product_id" value="<?php echo esc_attr( (string) $product_id ); ?>" />
+			<input type="hidden" name="som_clone_return" value="<?php echo esc_attr( $return ); ?>" />
+			<button type="submit" class="<?php echo esc_attr( $button_class ); ?>"><?php echo esc_html__( 'Clone', 'order-machine' ); ?></button>
+		</form>
+		<?php
 	}
 
 	/**
@@ -1124,5 +1176,418 @@ class SOM_Products {
 			);
 		}
 		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Same checks and column values as create(), with no write.
+	 *
+	 * @param array<string, mixed> $data Fields create() accepts.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	private static function prepare_create_row( array $data ) {
+		$name = isset( $data['name'] ) ? sanitize_text_field( (string) $data['name'] ) : '';
+		if ( '' === $name ) {
+			return new WP_Error( 'som_product_name', __( 'Product name is required.', 'order-machine' ) );
+		}
+
+		$sku = isset( $data['sku'] ) ? sanitize_text_field( (string) $data['sku'] ) : '';
+		if ( '' === $sku ) {
+			$sku = null;
+		}
+
+		$workflow_id = self::sanitize_workflow_id( $data );
+		if ( is_wp_error( $workflow_id ) ) {
+			return $workflow_id;
+		}
+
+		$post_ship_id = self::sanitize_post_ship_workflow_id( $data );
+		if ( is_wp_error( $post_ship_id ) ) {
+			return $post_ship_id;
+		}
+
+		$is_internal = ! empty( $data['is_internal'] ) ? 1 : 0;
+		if ( $is_internal && null === $workflow_id ) {
+			return new WP_Error(
+				'som_product_internal_workflow',
+				__( 'Internal products require a workflow template.', 'order-machine' )
+			);
+		}
+		if ( $is_internal ) {
+			$post_ship_id = null;
+		}
+
+		$shipping = self::sanitize_shipping_fields( $data, (bool) $is_internal );
+		if ( is_wp_error( $shipping ) ) {
+			return $shipping;
+		}
+
+		return array(
+			'name'                           => $name,
+			'sku'                            => $sku,
+			'workflow_template_id'           => $workflow_id,
+			'post_ship_workflow_template_id' => $post_ship_id,
+			'target_selling_price'           => self::nullable_price( $data, 'target_selling_price' ),
+			'weight_grams'                   => $shipping['weight_grams'],
+			'package_id'                     => $shipping['package_id'],
+			'package_id_multi'               => $shipping['package_id_multi'],
+			'planned_shipping_gbp'           => $shipping['planned_shipping_gbp'],
+			'is_internal'                    => $is_internal,
+			'is_active'                      => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
+		);
+	}
+
+	/**
+	 * Insert a product row. linked_material_id stays null until ensure_linked_material().
+	 *
+	 * @param array<string, mixed> $row Prepared columns from prepare_create_row().
+	 * @return int|WP_Error New product id.
+	 */
+	private static function insert_prepared_product( array $row ) {
+		global $wpdb;
+
+		$now = current_time( 'mysql', true );
+
+		$inserted = $wpdb->insert(
+			SOM_DB::table( 'products' ),
+			array(
+				'name'                           => $row['name'],
+				'sku'                            => $row['sku'],
+				'workflow_template_id'           => $row['workflow_template_id'],
+				'post_ship_workflow_template_id' => $row['post_ship_workflow_template_id'],
+				'target_selling_price'           => $row['target_selling_price'],
+				'weight_grams'                   => $row['weight_grams'],
+				'package_id'                     => $row['package_id'],
+				'package_id_multi'               => $row['package_id_multi'],
+				'planned_shipping_gbp'           => $row['planned_shipping_gbp'],
+				'is_internal'                    => $row['is_internal'],
+				'linked_material_id'             => null,
+				'is_active'                      => $row['is_active'],
+				'created_at'                     => $now,
+				'updated_at'                     => $now,
+			),
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
+		);
+
+		if ( ! $inserted ) {
+			return new WP_Error( 'som_product_create', __( 'Could not create product.', 'order-machine' ) );
+		}
+
+		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * create() payload for a clone: "X (copy)", blank SKU, same workflows and settings.
+	 *
+	 * linked_material_id is omitted so the insert does not reuse the original material.
+	 *
+	 * @param object $source Source product row.
+	 * @return array<string, mixed>
+	 */
+	private static function clone_source_data( $source ) {
+		$price = isset( $source->target_selling_price ) ? $source->target_selling_price : null;
+		$ship  = isset( $source->planned_shipping_gbp ) ? $source->planned_shipping_gbp : null;
+
+		return array(
+			'name'                           => self::clone_copy_name( isset( $source->name ) ? (string) $source->name : '' ),
+			'sku'                            => '',
+			'workflow_template_id'           => ! empty( $source->workflow_template_id ) ? (int) $source->workflow_template_id : '',
+			'post_ship_workflow_template_id' => ! empty( $source->post_ship_workflow_template_id ) ? (int) $source->post_ship_workflow_template_id : '',
+			'target_selling_price'           => ( null !== $price && '' !== (string) $price ) ? (string) $price : '',
+			'weight_grams'                   => ( isset( $source->weight_grams ) && null !== $source->weight_grams && '' !== (string) $source->weight_grams ) ? (string) $source->weight_grams : '',
+			'package_id'                     => ! empty( $source->package_id ) ? (int) $source->package_id : '',
+			'package_id_multi'               => ! empty( $source->package_id_multi ) ? (int) $source->package_id_multi : '',
+			'planned_shipping_gbp'           => ( null !== $ship && '' !== (string) $ship ) ? (string) $ship : '',
+			'is_internal'                    => ! empty( $source->is_internal ) ? 1 : 0,
+			'is_active'                      => isset( $source->is_active ) ? (int) $source->is_active : 1,
+		);
+	}
+
+	/**
+	 * "X (copy)", trimmed so the result fits the 100-character name column.
+	 *
+	 * @param string $name Source product name.
+	 * @return string
+	 */
+	private static function clone_copy_name( $name ) {
+		$name   = sanitize_text_field( (string) $name );
+		$suffix = ' (copy)';
+		$limit  = 100;
+		if ( self::text_length( $name . $suffix ) <= $limit ) {
+			return $name . $suffix;
+		}
+
+		$keep = $limit - self::text_length( $suffix );
+		$name = rtrim( self::text_cut( $name, $keep ) );
+		return $name . $suffix;
+	}
+
+	/**
+	 * Copy product_materials rows onto the new product.
+	 *
+	 * @param int $source_id Source product PK.
+	 * @param int $new_id    Clone product PK.
+	 * @return true|WP_Error
+	 */
+	private static function copy_recipe_rows( $source_id, $new_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'product_materials' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT material_id, quantity_per_unit FROM {$table} WHERE product_id = %d ORDER BY id ASC",
+				(int) $source_id
+			)
+		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'som_recipe_clone', __( 'Could not copy the material recipe.', 'order-machine' ) );
+		}
+
+		foreach ( $rows as $row ) {
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'product_id'        => (int) $new_id,
+					'material_id'       => (int) $row->material_id,
+					'quantity_per_unit' => (string) $row->quantity_per_unit,
+				),
+				array( '%d', '%d', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_recipe_clone', __( 'Could not copy the material recipe.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Copy product_step_instructions rows. Step ids stay the same (same workflow).
+	 *
+	 * @param int $source_id Source product PK.
+	 * @param int $new_id    Clone product PK.
+	 * @return true|WP_Error
+	 */
+	private static function copy_step_instruction_rows( $source_id, $new_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'product_step_instructions' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT workflow_step_id, instructions FROM {$table} WHERE product_id = %d ORDER BY id ASC",
+				(int) $source_id
+			)
+		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'som_instructions_clone', __( 'Could not copy step instruction overrides.', 'order-machine' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		foreach ( $rows as $row ) {
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'product_id'       => (int) $new_id,
+					'workflow_step_id' => (int) $row->workflow_step_id,
+					'instructions'     => (string) $row->instructions,
+					'created_at'       => $now,
+					'updated_at'       => $now,
+				),
+				array( '%d', '%d', '%s', '%s', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_instructions_clone', __( 'Could not copy step instruction overrides.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Copy product_step_tasks rows. Step ids stay the same (same workflow).
+	 *
+	 * @param int $source_id Source product PK.
+	 * @param int $new_id    Clone product PK.
+	 * @return true|WP_Error
+	 */
+	private static function copy_step_task_rows( $source_id, $new_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'product_step_tasks' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT workflow_step_id, task_list_json FROM {$table} WHERE product_id = %d ORDER BY id ASC",
+				(int) $source_id
+			)
+		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'som_tasks_clone', __( 'Could not copy step task overrides.', 'order-machine' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		foreach ( $rows as $row ) {
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'product_id'       => (int) $new_id,
+					'workflow_step_id' => (int) $row->workflow_step_id,
+					'task_list_json'   => (string) $row->task_list_json,
+					'created_at'       => $now,
+					'updated_at'       => $now,
+				),
+				array( '%d', '%d', '%s', '%s', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_tasks_clone', __( 'Could not copy step task overrides.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Copy budget_product_links onto the new product id.
+	 *
+	 * @param int $source_id Source product PK.
+	 * @param int $new_id    Clone product PK.
+	 * @return true|WP_Error
+	 */
+	private static function copy_budget_product_links( $source_id, $new_id ) {
+		global $wpdb;
+
+		$table = SOM_DB::table( 'budget_product_links' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT budget_id FROM {$table} WHERE product_id = %d ORDER BY id ASC",
+				(int) $source_id
+			)
+		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'som_budget_clone', __( 'Could not copy budget links.', 'order-machine' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		foreach ( $rows as $row ) {
+			$budget_id = (int) $row->budget_id;
+			if ( $budget_id < 1 ) {
+				continue;
+			}
+			$inserted = $wpdb->insert(
+				$table,
+				array(
+					'budget_id'  => $budget_id,
+					'product_id' => (int) $new_id,
+					'created_at' => $now,
+				),
+				array( '%d', '%d', '%s' )
+			);
+			if ( ! $inserted ) {
+				return new WP_Error( 'som_budget_clone', __( 'Could not copy budget links.', 'order-machine' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Undo a clone that failed after the new product row was inserted.
+	 *
+	 * ROLLBACK covers InnoDB. The delete covers engines that ignore the
+	 * transaction, so a failed clone never leaves a half copy.
+	 *
+	 * @param int $product_id New product PK, or 0 when the insert did not happen.
+	 * @return void
+	 */
+	private static function abort_clone_write( $product_id ) {
+		global $wpdb;
+
+		$wpdb->query( 'ROLLBACK' );
+		self::delete_uncommitted_clone( (int) $product_id );
+	}
+
+	/**
+	 * Remove a clone product and the rows that belong only to it.
+	 *
+	 * Deletes the output material created for this product id. Does not touch
+	 * another product's material, listings that were never copied, or orders.
+	 *
+	 * @param int $product_id Clone product PK.
+	 * @return void
+	 */
+	private static function delete_uncommitted_clone( $product_id ) {
+		global $wpdb;
+
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		$materials_t  = SOM_DB::table( 'materials' );
+		$material_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT id FROM {$materials_t} WHERE source_product_id = %d",
+				$product_id
+			)
+		);
+		if ( is_array( $material_ids ) ) {
+			foreach ( $material_ids as $material_id ) {
+				$material_id = (int) $material_id;
+				if ( $material_id < 1 ) {
+					continue;
+				}
+				$wpdb->delete(
+					SOM_DB::table( 'material_stock_log' ),
+					array( 'material_id' => $material_id ),
+					array( '%d' )
+				);
+				$wpdb->delete(
+					$materials_t,
+					array(
+						'id'                => $material_id,
+						'source_product_id' => $product_id,
+					),
+					array( '%d', '%d' )
+				);
+			}
+		}
+
+		foreach ( array( 'product_materials', 'product_step_instructions', 'product_step_tasks', 'budget_product_links', 'listings' ) as $suffix ) {
+			$wpdb->delete(
+				SOM_DB::table( $suffix ),
+				array( 'product_id' => $product_id ),
+				array( '%d' )
+			);
+		}
+
+		$wpdb->delete(
+			SOM_DB::table( 'products' ),
+			array( 'id' => $product_id ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * @param string $text Text.
+	 * @return int
+	 */
+	private static function text_length( $text ) {
+		$text = (string) $text;
+		if ( function_exists( 'mb_strlen' ) ) {
+			return (int) mb_strlen( $text );
+		}
+		return strlen( $text );
+	}
+
+	/**
+	 * @param string $text   Text.
+	 * @param int    $length Max characters.
+	 * @return string
+	 */
+	private static function text_cut( $text, $length ) {
+		$text   = (string) $text;
+		$length = max( 0, (int) $length );
+		if ( function_exists( 'mb_substr' ) ) {
+			return (string) mb_substr( $text, 0, $length );
+		}
+		return (string) substr( $text, 0, $length );
 	}
 }

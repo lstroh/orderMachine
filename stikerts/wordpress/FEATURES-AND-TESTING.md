@@ -239,6 +239,8 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 
 **Products list** also shows costing columns: target price, material cost, **fee-aware margin** with Est. fees / Actual fees badge, goal-alert badges, **Internal** badge, and type filter (sellable / internal).
 
+**Clone (UP12-S7):** **Clone** on each Products list row and on the edit screen (POST, nonce `som_clone_product`, `manage_options`). The copy is an independent product named **X (copy)** (100-character name column) with a blank SKU and the same active/inactive state, target price, and shipping settings. It keeps the same Make workflow and the same Post-ship workflow. The material recipe, step instruction overrides, step task overrides, and budget links are copied; step ids stay the same because the workflow is the same. Listings, orders, stock logs, and fees are not copied. An internal clone gets a new linked output material (name from **X (copy)**, stock 0). The original product and its material are unchanged. After a successful clone the copy’s edit screen opens with **Cloned from X. SKU left blank; listings not copied.** The same create checks run before any write (an internal product still needs a Make workflow). A failed clone leaves no partial product. There is no “also clone the workflow” option.
+
 Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while open Internal production jobs exist.
 
 **Multipacks (pack sizes):** model each pack size as its **own product SKU** with its own recipe and shipping defaults (e.g. seed `BIN-SET-4PK`). There is no pack→base multiplier or inventory explosion. See [`USER-GUIDE.md`](USER-GUIDE.md) (Pack sizes) and [`USER-REFERENCE.md`](USER-REFERENCE.md) §5.

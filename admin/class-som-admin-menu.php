@@ -1674,6 +1674,36 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_POST['som_clone_product'] ) ) {
+			check_admin_referer( 'som_clone_product', 'som_product_clone_nonce' );
+
+			$product_id  = isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0;
+			$return      = isset( $_POST['som_clone_return'] ) ? sanitize_key( wp_unslash( $_POST['som_clone_return'] ) ) : 'list';
+			$source      = $product_id > 0 ? SOM_Products::get( $product_id ) : null;
+			$source_name = $source ? (string) $source->name : '';
+			$result      = SOM_Products::clone_product( $product_id );
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_product_clone_error' );
+				$back = ( 'editor' === $return && $product_id > 0 )
+					? SOM_Products::detail_url( $product_id )
+					: SOM_Products::list_url();
+				wp_safe_redirect( $back );
+				exit;
+			}
+
+			self::flash_notice(
+				sprintf(
+					/* translators: %s: original product name */
+					__( 'Cloned from %s. SKU left blank; listings not copied.', 'order-machine' ),
+					$source_name
+				),
+				'success',
+				'som_product_cloned'
+			);
+			wp_safe_redirect( SOM_Products::detail_url( (int) $result ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_produce_product'] ) ) {
 			check_admin_referer( 'som_produce_product', 'som_produce_nonce' );
 			$product_id = isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0;
