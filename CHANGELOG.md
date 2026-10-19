@@ -8,18 +8,31 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-10-19
+
+Packages 12–13: Produce N on the boards, editor helpers, clones, and eBay/Amazon orders and listings entered without a live sync.
+
 ### Added
 
 - Products can be cloned from the list or the edit screen. The copy is named “X (copy)”, keeps the same workflow, recipe, step overrides, and budget links, and opens on its edit screen. SKU is left blank. Listings, orders, and stock are not copied. An internal clone gets its own output material
 - Workflow templates can be cloned from the list or the editor. The copy is named “X (copy)”, keeps the same steps, goals, and budget links, and opens in the editor. Products, orders, and Pack / Post-ship defaults stay on the original. A Post-ship template with no Package arrived step cannot be cloned
 - Copy command templates have an Insert placeholder dropdown that puts `{{key}}` at the cursor
 - Step instruction editors (workflow steps and product overrides) have a Markdown toolbar for bold, italic, lists, headings, links, and inline code
+- Amazon is a channel with no OAuth. **Add order** on Orders creates an eBay or Amazon order by hand (separate from Create test order). A matched line gets a workflow, stock reservation, and budget funding the same way as Sync now. The same channel and order number cannot be added twice
+- **Import orders** reads an eBay Seller Hub orders report, an Amazon order report, or an Order Machine template. Preview shows recognised orders and row errors; nothing is saved until Import. An order number that already exists for that channel is skipped. A failed order does not undo orders that already saved
+- **Import listing report** on Listings reads an eBay active-listings report or an Amazon inventory report. A row is saved only when its SKU matches a product and that listing id is not already mapped. Price and quantity are stored on the new map and are not sent to eBay or Amazon
 
 ### Fixed
 
 - A Post-ship workflow cannot be saved unless a step uses Confirmation checklist **Package arrived**, and a failed save writes nothing. Existing templates without that step stay in place and are flagged; Settings only warns (BUG-005)
 - Orders list and the Needs workflow filter treat per-line make progress as a workflow, so an open Produce N job is not flagged **No workflow** and Status shows the current make step when there is no order-level step
 - Order detail Make shows the step list, Mark done, instructions, tasks, and copy command for Internal Produce N lines that already have make progress. A customer-order internal line stays **Pack-ready (internal)** with no make controls
+
+### Notes
+
+- Schema stays **1.24.0**
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.34.0.zip`, not the repository source zipball
 
 ## [0.33.0] - 2026-10-12
 
