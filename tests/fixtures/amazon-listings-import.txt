@@ -1,0 +1,3 @@
+seller-sku	asin	item-name	price	quantity
+UP13S3-MATCH-AMZ	B0UP13S3A1	Amazon Oak Sign	9.99	7
+UP13S3-MISS-AMZ	B0UP13S3XX	Unknown Amazon	4.50	2

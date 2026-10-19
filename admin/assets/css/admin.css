@@ -105,7 +105,8 @@
 	width: 70px;
 }
 
-.som-import-orders {
+.som-import-orders,
+.som-import-listings {
 	margin: 12px 0 16px;
 	padding: 8px 12px;
 	background: #fff;
@@ -114,13 +115,19 @@
 	max-width: 960px;
 }
 
-.som-import-orders > summary {
+.som-import-orders > summary,
+.som-import-listings > summary {
 	cursor: pointer;
 	font-weight: 600;
 }
 
-.som-import-orders form {
+.som-import-orders form,
+.som-import-listings form {
 	margin: 8px 0 4px;
+}
+
+.som-import-listings-unmatched {
+	margin: 12px 0;
 }
 
 .som-import-orders-preview,

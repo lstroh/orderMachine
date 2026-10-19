@@ -1411,6 +1411,10 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_POST['som_import_listings'] ) ) {
+			self::handle_listing_import();
+		}
+
 		if ( isset( $_POST['som_refresh_listing'] ) || isset( $_POST['som_push_listing'] ) ) {
 			check_admin_referer( 'som_listing_channel', 'som_listing_nonce' );
 			$listing_id = isset( $_POST['listing_id'] ) ? (int) $_POST['listing_id'] : 0;
@@ -1485,6 +1489,39 @@ class SOM_Admin_Menu {
 		}
 
 		wp_safe_redirect( SOM_Listings::detail_url( $listing_id ) );
+		exit;
+	}
+
+	/**
+	 * Import an eBay active-listings report or an Amazon inventory report.
+	 *
+	 * @return void
+	 */
+	private static function handle_listing_import() {
+		check_admin_referer( 'som_import_listings', 'som_listing_nonce' );
+
+		$contents = SOM_Listing_Import::read_upload( 'som_listing_import_file' );
+		if ( is_wp_error( $contents ) ) {
+			self::flash_notice( $contents->get_error_message(), 'error', 'som_listing_error' );
+			wp_safe_redirect( SOM_Listings::list_url() );
+			exit;
+		}
+
+		$result = SOM_Listing_Import::commit( $contents );
+		if ( is_wp_error( $result ) ) {
+			self::flash_notice( $result->get_error_message(), 'error', 'som_listing_error' );
+			wp_safe_redirect( SOM_Listings::list_url() );
+			exit;
+		}
+
+		$token = SOM_Listing_Import::remember_result( get_current_user_id(), $result );
+		wp_safe_redirect(
+			SOM_Listings::list_url(
+				array(
+					'som_listing_import' => $token,
+				)
+			)
+		);
 		exit;
 	}
 

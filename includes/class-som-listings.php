@@ -63,7 +63,7 @@ class SOM_Listings {
 		$where  = array( '1=1' );
 		$params = array();
 
-		if ( in_array( $channel, array( 'ebay', 'etsy' ), true ) ) {
+		if ( in_array( $channel, array( 'ebay', 'etsy', 'amazon' ), true ) ) {
 			$where[]  = 'c.slug = %s';
 			$params[] = $channel;
 		}
@@ -180,7 +180,7 @@ class SOM_Listings {
 		if ( is_wp_error( $product_ok ) ) {
 			return $product_ok;
 		}
-		if ( ! in_array( $slug, array( 'ebay', 'etsy' ), true ) ) {
+		if ( ! in_array( $slug, array( 'ebay', 'etsy', 'amazon' ), true ) ) {
 			return new WP_Error( 'som_listing_channel', __( 'Channel is required.', 'order-machine' ) );
 		}
 		if ( '' === $external ) {
