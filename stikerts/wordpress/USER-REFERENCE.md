@@ -325,6 +325,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 - Goal-alert badges; per-workflow breakdown on edit
 - Lead time from past POs; purchase history table; recent stock log
 - **Made in-house** badge when linked to an internal product; **Produce N** when that material is low stock (no auto job)
+- **Export CSV**, **Download template**, **Preview**, and **Import** on the materials list. The file columns are name, unit, low-stock threshold, unit cost, preferred supplier (the supplier’s name), and active. Preview does not save. Import creates materials and does not update existing ones. A name already in use, ignoring capitals, is saved as **Name (2)**, then **Name (3)**. Stock starts at 0 and no stock-log row is written. A supplier name that is missing or matches more than one supplier fails that row; other rows still save. Made-in-house materials are omitted from the export
 
 **Auto-decrement on new orders:**
 

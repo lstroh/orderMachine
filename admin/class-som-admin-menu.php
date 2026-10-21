@@ -2016,6 +2016,24 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_GET['som_material_export'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the next line.
+			check_admin_referer( 'som_material_export' );
+			SOM_Material_Import::send_csv( 'materials.csv', SOM_Material_Import::export_csv() );
+		}
+
+		if ( isset( $_GET['som_material_template'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the next line.
+			check_admin_referer( 'som_material_template' );
+			SOM_Material_Import::send_csv( 'materials-template.csv', SOM_Material_Import::template_csv() );
+		}
+
+		if ( isset( $_POST['som_preview_materials'] ) ) {
+			self::handle_material_import_preview();
+		}
+
+		if ( isset( $_POST['som_import_materials'] ) ) {
+			self::handle_material_import_commit();
+		}
+
 		if ( isset( $_POST['som_produce_from_material'] ) ) {
 			check_admin_referer( 'som_produce_from_material', 'som_produce_material_nonce' );
 			$material_id = isset( $_POST['material_id'] ) ? (int) $_POST['material_id'] : 0;
@@ -2856,6 +2874,75 @@ class SOM_Admin_Menu {
 			'som_import_history'
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Preview a materials file. Stores the upload so Import can commit it. Does not insert materials.
+	 *
+	 * @return void
+	 */
+	private static function handle_material_import_preview() {
+		check_admin_referer( 'som_import_materials_preview', 'som_material_nonce' );
+
+		$contents = SOM_Catalog_Import::read_upload( 'som_import_file' );
+		if ( is_wp_error( $contents ) ) {
+			self::flash_notice( $contents->get_error_message(), 'error', 'som_material_error' );
+			wp_safe_redirect( SOM_Materials::list_url() );
+			exit;
+		}
+
+		$token = SOM_Catalog_Import::remember( SOM_Material_Import::KIND, get_current_user_id(), $contents );
+		wp_safe_redirect(
+			SOM_Materials::list_url(
+				array(
+					'som_import_preview' => $token,
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Commit a previously previewed materials file.
+	 *
+	 * @return void
+	 */
+	private static function handle_material_import_commit() {
+		check_admin_referer( 'som_import_materials_commit', 'som_material_nonce' );
+
+		$token    = isset( $_POST['som_import_token'] ) ? sanitize_text_field( wp_unslash( $_POST['som_import_token'] ) ) : '';
+		$contents = SOM_Catalog_Import::recall( SOM_Material_Import::KIND, get_current_user_id(), $token );
+		if ( '' === $contents ) {
+			self::flash_notice(
+				__( 'That preview expired. Upload the file again.', 'order-machine' ),
+				'error',
+				'som_material_error'
+			);
+			wp_safe_redirect( SOM_Materials::list_url() );
+			exit;
+		}
+
+		$result = SOM_Material_Import::commit( $contents );
+		SOM_Catalog_Import::forget( SOM_Material_Import::KIND, get_current_user_id(), $token );
+
+		if ( '' !== $result['file_error'] ) {
+			self::flash_notice( (string) $result['file_error'], 'error', 'som_material_error' );
+			wp_safe_redirect( SOM_Materials::list_url() );
+			exit;
+		}
+
+		self::flash_notice(
+			sprintf(
+				/* translators: 1: created count, 2: failed count */
+				__( 'Created %1$d, failed %2$d.', 'order-machine' ),
+				(int) $result['created'],
+				(int) $result['failed']
+			),
+			( (int) $result['failed'] > 0 ) ? 'warning' : 'success',
+			'som_material_saved'
+		);
+		wp_safe_redirect( SOM_Materials::list_url() );
 		exit;
 	}
 

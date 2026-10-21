@@ -58,6 +58,8 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-order-notes.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-shipments.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-import.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-catalog-import.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-material-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-listings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-listing-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-rest-api.php';
