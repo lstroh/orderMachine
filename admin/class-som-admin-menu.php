@@ -1952,6 +1952,24 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_GET['som_product_export'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the next line.
+			check_admin_referer( 'som_product_export' );
+			SOM_Product_Import::send_csv( 'products.csv', SOM_Product_Import::export_csv() );
+		}
+
+		if ( isset( $_GET['som_product_template'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the next line.
+			check_admin_referer( 'som_product_template' );
+			SOM_Product_Import::send_csv( 'products-template.csv', SOM_Product_Import::template_csv() );
+		}
+
+		if ( isset( $_POST['som_preview_products'] ) ) {
+			self::handle_product_import_preview();
+		}
+
+		if ( isset( $_POST['som_import_products'] ) ) {
+			self::handle_product_import_commit();
+		}
+
 		if ( isset( $_POST['som_clone_product'] ) ) {
 			check_admin_referer( 'som_clone_product', 'som_product_clone_nonce' );
 
@@ -2961,6 +2979,85 @@ class SOM_Admin_Menu {
 			'som_import_history'
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=som-settings' ) );
+		exit;
+	}
+
+	/**
+	 * Preview a products file. Stores the upload so Import can commit it. Does not insert products.
+	 *
+	 * @return void
+	 */
+	private static function handle_product_import_preview() {
+		check_admin_referer( 'som_import_products_preview', 'som_product_nonce' );
+
+		$contents = SOM_Catalog_Import::read_upload( 'som_import_file' );
+		if ( is_wp_error( $contents ) ) {
+			self::flash_notice( $contents->get_error_message(), 'error', 'som_product_error' );
+			wp_safe_redirect( SOM_Products::list_url() );
+			exit;
+		}
+
+		$token = SOM_Catalog_Import::remember( SOM_Product_Import::KIND, get_current_user_id(), $contents );
+		wp_safe_redirect(
+			SOM_Products::list_url(
+				array(
+					'som_import_preview' => $token,
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Commit a previously previewed products file.
+	 *
+	 * @return void
+	 */
+	private static function handle_product_import_commit() {
+		check_admin_referer( 'som_import_products_commit', 'som_product_nonce' );
+
+		$token    = isset( $_POST['som_import_token'] ) ? sanitize_text_field( wp_unslash( $_POST['som_import_token'] ) ) : '';
+		$contents = SOM_Catalog_Import::recall( SOM_Product_Import::KIND, get_current_user_id(), $token );
+		if ( '' === $contents ) {
+			self::flash_notice(
+				__( 'That preview expired. Upload the file again.', 'order-machine' ),
+				'error',
+				'som_product_error'
+			);
+			wp_safe_redirect( SOM_Products::list_url() );
+			exit;
+		}
+
+		$result = SOM_Product_Import::commit( $contents );
+		SOM_Catalog_Import::forget( SOM_Product_Import::KIND, get_current_user_id(), $token );
+
+		if ( '' !== $result['file_error'] ) {
+			self::flash_notice( (string) $result['file_error'], 'error', 'som_product_error' );
+			wp_safe_redirect( SOM_Products::list_url() );
+			exit;
+		}
+
+		$notice = sprintf(
+			/* translators: 1: created count, 2: failed count */
+			__( 'Created %1$d, failed %2$d.', 'order-machine' ),
+			(int) $result['created'],
+			(int) $result['failed']
+		);
+		$warnings = isset( $result['warnings'] ) ? (int) $result['warnings'] : 0;
+		if ( $warnings > 0 ) {
+			$notice .= ' ' . sprintf(
+				/* translators: %d: products whose SKU is already used */
+				_n( 'SKU already used on %d product.', 'SKU already used on %d products.', $warnings, 'order-machine' ),
+				$warnings
+			);
+		}
+
+		self::flash_notice(
+			$notice,
+			( (int) $result['failed'] > 0 || $warnings > 0 ) ? 'warning' : 'success',
+			'som_product_saved'
+		);
+		wp_safe_redirect( SOM_Products::list_url() );
 		exit;
 	}
 

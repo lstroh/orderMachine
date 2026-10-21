@@ -61,6 +61,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-order-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-catalog-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-material-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-workflow-import.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-product-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-listings.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-listing-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-rest-api.php';

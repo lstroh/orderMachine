@@ -12,6 +12,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 - Materials can be exported, and a CSV can be previewed and imported from the Materials list. A name that already exists is created as Name (2). New rows start at stock 0. Made-in-house materials are left out of the export. An unknown or ambiguous supplier fails that row only
 - Workflows can be exported, and a CSV can be previewed and imported from the Workflows list. One row per step. A name that already exists is created as Name (2). A Post-ship file without a Package arrived step writes no template. An unknown batch group key fails that workflow only
+- Products can be exported, and a CSV can be previewed and imported from the Products list. One row per recipe line. A name that already exists is created as Name (2) and keeps the file SKU. An unknown material, workflow, or package fails that product. An internal product gets a new output material. Listings are not created
 
 ## [0.34.0] - 2026-10-19
 

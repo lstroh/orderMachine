@@ -108,6 +108,7 @@
 .som-import-orders,
 .som-import-materials,
 .som-import-workflows,
+.som-import-products,
 .som-import-listings {
 	margin: 12px 0 16px;
 	padding: 8px 12px;
@@ -120,6 +121,7 @@
 .som-import-orders > summary,
 .som-import-materials > summary,
 .som-import-workflows > summary,
+.som-import-products > summary,
 .som-import-listings > summary {
 	cursor: pointer;
 	font-weight: 600;
@@ -128,6 +130,7 @@
 .som-import-orders form,
 .som-import-materials form,
 .som-import-workflows form,
+.som-import-products form,
 .som-import-listings form {
 	margin: 8px 0 4px;
 }
@@ -139,13 +142,15 @@
 .som-import-orders-preview,
 .som-import-orders-errors,
 .som-import-materials-preview,
-.som-import-workflows-preview {
+.som-import-workflows-preview,
+.som-import-products-preview {
 	margin: 12px 0;
 	max-width: 720px;
 }
 
 .som-import-materials-preview,
-.som-import-workflows-preview {
+.som-import-workflows-preview,
+.som-import-products-preview {
 	max-width: 960px;
 }
 
