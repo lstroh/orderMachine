@@ -102,7 +102,6 @@ $header       = implode( ',', SOM_Workflow_Import::COLUMNS );
 
 $out( 'plugin', SOM_VERSION );
 $assert( class_exists( 'SOM_Workflow_Import', false ), 'workflow_import_class' );
-$assert( ! class_exists( 'SOM_Product_Import', false ), 'no_product_importer' );
 $assert( 'workflows' === SOM_Workflow_Import::KIND, 'preview_kind' );
 $assert( ! in_array( 'script_config', SOM_Workflow_Import::COLUMNS, true ), 'no_script_config_column' );
 $assert( ! in_array( 'output_per_run', SOM_Workflow_Import::COLUMNS, true ), 'no_output_per_run_column' );

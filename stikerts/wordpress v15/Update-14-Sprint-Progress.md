@@ -9,8 +9,8 @@
 | Sprint | Name | Status | Notes |
 |---|---|---|---|
 | UP14-S1 | Materials CSV | Implemented | On main. Smoke written. Pending wp-env |
-| UP14-S2 | Workflow CSV | Implemented | Smoke written. Pending wp-env |
-| UP14-S3 | Product CSV | Not started | Reuses the S1 helper |
+| UP14-S2 | Workflow CSV | Implemented | On main. Smoke written. Pending wp-env |
+| UP14-S3 | Product CSV | Implemented | Smoke written. Pending wp-env |
 | UP14-S4 | Budget checkbox on Add material | Not started | Independent of the files |
 | UP14-S5 | Collapsed Shipment panel | Not started | Independent of the files |
 | UP14-S6 | Trays above Make, including Internal | Not started | Extends Package 8. Unblock on the order stays |
@@ -21,7 +21,7 @@
 | UP14-S11 | Finished pack leaves the Pack board | Not started | Stays on the Post-ship board |
 | UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
 
-**Package 14:** planning still open for further operator items. UP14-S1 is on main. UP14-S2 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 and UP14-S2 are on main. UP14-S3 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -46,19 +46,20 @@
 
 - **Status:** implemented. On main.
 - **Behaviour:** Materials list exports, downloads a template, previews, and imports. Create goes through `SOM_Materials::create`. Stock stays 0, no stock log, and `source_product_id` is not set. Export omits materials that have `source_product_id` set. A taken name becomes `Name (2)`. An unknown or ambiguous supplier fails that row only.
-- **Helper:** `SOM_Catalog_Import` holds the name suffix and the preview token. Workflow import is UP14-S2. Product import is not started.
+- **Helper:** `SOM_Catalog_Import` holds the name suffix and the preview token. Workflow import is UP14-S2. Product import is UP14-S3.
 - **Smoke:** `tests/sprint-up14-s1-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S2 — Workflow CSV
 
-- **Status:** implemented. Not merged. UP14-S3 is not started.
+- **Status:** implemented. On main.
 - **Behaviour:** Workflows list exports, downloads a template, previews, and imports. One row per step; rows with the same name are one template, sorted by `step_order`. Save goes through `SOM_Workflows::validate_submission` and `save_steps`. A taken name becomes `Name (2)`. A Post-ship file with no Package arrived step writes no template. An unknown or ambiguous batch group key fails that workflow and does not create a group. Header cells that disagree fail that workflow. A task label containing `|` fails that workflow. `script_config` is not a column and is stored empty. `output_per_run` is not a column. If step insert fails after the template row exists, the partial template is deleted.
 - **Smoke:** `tests/sprint-up14-s2-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S3 — Product CSV
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s3-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** Products list exports, downloads a template, previews, and imports. One row per recipe line; rows with the same name are one product. A product with no recipe is one row with the material and quantity empty. Create goes through `SOM_Products::create`, then `save_recipe`. A taken name becomes `Name (2)` and keeps the file SKU. When another product already has that SKU, the product is still created and the result lists a warning. Listings are not created. An internal product gets a new output material (stock 0). `linked_material_id` is not pointed at an existing material. An unknown or ambiguous material, make workflow, Post-ship workflow, or package fails that product and does not create the missing record. Header cells that disagree fail that product. If recipe save fails after the product exists, the new product and its new output material are deleted. `pack_workflow_name` is not a column.
+- **Smoke:** `tests/sprint-up14-s3-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S4 — Budget checkbox on Add material
 

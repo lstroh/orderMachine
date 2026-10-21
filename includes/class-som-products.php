@@ -1505,10 +1505,25 @@ class SOM_Products {
 	}
 
 	/**
+	 * Remove a product whose recipe did not save.
+	 *
+	 * Product import calls this when save_recipe() fails after create(), and
+	 * when create() inserted a row but did not return its id. Deletes that
+	 * product and the output material created for it. Other products stay.
+	 *
+	 * @param int $product_id Product PK from create().
+	 * @return void
+	 */
+	public static function delete_failed_import( $product_id ) {
+		self::delete_uncommitted_clone( (int) $product_id );
+	}
+
+	/**
 	 * Remove a clone product and the rows that belong only to it.
 	 *
 	 * Deletes the output material created for this product id. Does not touch
-	 * another product's material, listings that were never copied, or orders.
+	 * another product's material. Import uses the same cleanup through
+	 * delete_failed_import(). Orders are not removed.
 	 *
 	 * @param int $product_id Clone product PK.
 	 * @return void
