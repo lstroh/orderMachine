@@ -1686,6 +1686,24 @@ class SOM_Admin_Menu {
 			return;
 		}
 
+		if ( isset( $_GET['som_workflow_export'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the next line.
+			check_admin_referer( 'som_workflow_export' );
+			SOM_Workflow_Import::send_csv( 'workflows.csv', SOM_Workflow_Import::export_csv() );
+		}
+
+		if ( isset( $_GET['som_workflow_template'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the next line.
+			check_admin_referer( 'som_workflow_template' );
+			SOM_Workflow_Import::send_csv( 'workflows-template.csv', SOM_Workflow_Import::template_csv() );
+		}
+
+		if ( isset( $_POST['som_preview_workflows'] ) ) {
+			self::handle_workflow_import_preview();
+		}
+
+		if ( isset( $_POST['som_import_workflows'] ) ) {
+			self::handle_workflow_import_commit();
+		}
+
 		if ( isset( $_POST['som_clone_workflow'] ) ) {
 			check_admin_referer( 'som_clone_workflow', 'som_workflow_clone_nonce' );
 
@@ -1770,6 +1788,75 @@ class SOM_Admin_Menu {
 
 		self::flash_notice( __( 'Workflow template saved.', 'order-machine' ), 'success', 'som_workflow_saved' );
 		wp_safe_redirect( SOM_Workflows::editor_url( $template_id ) );
+		exit;
+	}
+
+	/**
+	 * Preview a workflows file. Stores the upload so Import can commit it. Does not insert templates.
+	 *
+	 * @return void
+	 */
+	private static function handle_workflow_import_preview() {
+		check_admin_referer( 'som_import_workflows_preview', 'som_workflow_nonce' );
+
+		$contents = SOM_Catalog_Import::read_upload( 'som_import_file' );
+		if ( is_wp_error( $contents ) ) {
+			self::flash_notice( $contents->get_error_message(), 'error', 'som_workflow_import_error' );
+			wp_safe_redirect( SOM_Workflows::list_url() );
+			exit;
+		}
+
+		$token = SOM_Catalog_Import::remember( SOM_Workflow_Import::KIND, get_current_user_id(), $contents );
+		wp_safe_redirect(
+			SOM_Workflows::list_url(
+				array(
+					'som_import_preview' => $token,
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Commit a previously previewed workflows file.
+	 *
+	 * @return void
+	 */
+	private static function handle_workflow_import_commit() {
+		check_admin_referer( 'som_import_workflows_commit', 'som_workflow_nonce' );
+
+		$token    = isset( $_POST['som_import_token'] ) ? sanitize_text_field( wp_unslash( $_POST['som_import_token'] ) ) : '';
+		$contents = SOM_Catalog_Import::recall( SOM_Workflow_Import::KIND, get_current_user_id(), $token );
+		if ( '' === $contents ) {
+			self::flash_notice(
+				__( 'That preview expired. Upload the file again.', 'order-machine' ),
+				'error',
+				'som_workflow_import_error'
+			);
+			wp_safe_redirect( SOM_Workflows::list_url() );
+			exit;
+		}
+
+		$result = SOM_Workflow_Import::commit( $contents );
+		SOM_Catalog_Import::forget( SOM_Workflow_Import::KIND, get_current_user_id(), $token );
+
+		if ( '' !== $result['file_error'] ) {
+			self::flash_notice( (string) $result['file_error'], 'error', 'som_workflow_import_error' );
+			wp_safe_redirect( SOM_Workflows::list_url() );
+			exit;
+		}
+
+		self::flash_notice(
+			sprintf(
+				/* translators: 1: created count, 2: failed count */
+				__( 'Created %1$d, failed %2$d.', 'order-machine' ),
+				(int) $result['created'],
+				(int) $result['failed']
+			),
+			( (int) $result['failed'] > 0 ) ? 'warning' : 'success',
+			'som_workflow_imported'
+		);
+		wp_safe_redirect( SOM_Workflows::list_url() );
 		exit;
 	}
 

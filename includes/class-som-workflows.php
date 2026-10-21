@@ -831,6 +831,19 @@ class SOM_Workflows {
 	}
 
 	/**
+	 * Remove a template whose steps did not save.
+	 *
+	 * Workflow import calls this when save_steps() fails after create().
+	 * The same cleanup covers a failed clone. Other templates stay.
+	 *
+	 * @param int $template_id Template PK from create().
+	 * @return void
+	 */
+	public static function delete_failed_create( $template_id ) {
+		self::delete_uncommitted_clone( (int) $template_id );
+	}
+
+	/**
 	 * Remove a clone template and the rows that belong only to it.
 	 *
 	 * @param int $template_id Clone template PK.

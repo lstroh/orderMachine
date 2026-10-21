@@ -350,6 +350,8 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 **Post-ship arrival:** a Post-ship template, active or inactive, cannot be saved unless at least one step has Confirmation checklist **Package arrived**. That covers a new template, an edit (including removing the arrival step), and changing another template’s kind to Post-ship. If the save is rejected, nothing is written. The editor blocks that case before submit; the server check still runs. A template already missing the step keeps working for orders bound to it. The Workflows list shows a **No arrival step** badge, and the editor shows a warning at the top. Saving stays blocked until a Package arrived step is added. Pack templates are unchanged (no Ship-step rule).
 
+**Import and export:** the Workflows list has **Export CSV**, **Download template**, **Preview**, and **Import**. One row per step; rows with the same name are one template, saved in step order. Preview does not save. Import creates a template and does not update an existing one. A name already in use, ignoring capitals, is saved as **Name (2)**, then **Name (3)**. A Post-ship file with no Package arrived step is rejected and writes nothing. An unknown or ambiguous batch group key fails that workflow and does not create a batch group. Task labels are joined with ` | `. Copy command, confirmation, instructions, and tasks travel with the step. `script_config` is not in the file.
+
 **Uses trays:** when **any** make template on a sellable line or the bound Pack template has this on, the order requires ≥1 held tray before Mark done / advance. Seed **Bin Sticker Make** and **Order Pack & Ship** leave this **off** (operator opts in).
 
 **Step editor — main actions:**

@@ -85,7 +85,6 @@ $columns      = array( 'name', 'unit', 'low_stock_threshold', 'unit_cost', 'pref
 $out( 'plugin', SOM_VERSION );
 $assert( class_exists( 'SOM_Catalog_Import', false ), 'helper_class' );
 $assert( class_exists( 'SOM_Material_Import', false ), 'material_import_class' );
-$assert( ! class_exists( 'SOM_Workflow_Import', false ), 'no_workflow_importer' );
 $assert( ! class_exists( 'SOM_Product_Import', false ), 'no_product_importer' );
 $assert( method_exists( 'SOM_Catalog_Import', 'allocate_name' ), 'helper_allocate_name' );
 $assert( method_exists( 'SOM_Catalog_Import', 'remember' ), 'helper_remember' );
