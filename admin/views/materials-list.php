@@ -43,6 +43,97 @@ $status_options = array(
 	</a>
 	<hr class="wp-header-end" />
 
+	<?php
+	$import_preview       = null;
+	$import_preview_error = '';
+	if ( isset( $_GET['som_import_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only preview token.
+		$import_token  = sanitize_text_field( wp_unslash( $_GET['som_import_preview'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only preview token.
+		$import_loaded = SOM_Material_Import::preview_for_token( get_current_user_id(), $import_token );
+		if ( is_wp_error( $import_loaded ) ) {
+			$import_preview_error = $import_loaded->get_error_message();
+		} elseif ( is_array( $import_loaded ) ) {
+			$import_preview = $import_loaded;
+		}
+	}
+	$import_open = is_array( $import_preview ) || '' !== $import_preview_error;
+	?>
+	<details class="som-import-materials"<?php echo $import_open ? esc_attr( ' open' ) : ''; ?>>
+		<summary><?php echo esc_html__( 'Import materials', 'order-machine' ); ?></summary>
+		<p class="description">
+			<?php echo esc_html__( 'Comma or tab-separated. Preview shows the name that will be saved and does not write anything. A name that already exists is created as Name (2). Stock on a new material stays 0. Made-in-house materials are left out of the export.', 'order-machine' ); ?>
+		</p>
+		<p>
+			<a class="button" href="<?php echo esc_url( wp_nonce_url( SOM_Materials::list_url( array( 'som_material_export' => '1' ) ), 'som_material_export' ) ); ?>">
+				<?php echo esc_html__( 'Export CSV', 'order-machine' ); ?>
+			</a>
+			<a class="button" href="<?php echo esc_url( wp_nonce_url( SOM_Materials::list_url( array( 'som_material_template' => '1' ) ), 'som_material_template' ) ); ?>">
+				<?php echo esc_html__( 'Download template', 'order-machine' ); ?>
+			</a>
+		</p>
+		<form method="post" action="<?php echo esc_url( SOM_Materials::list_url() ); ?>" enctype="multipart/form-data" class="som-import-materials-form">
+			<?php wp_nonce_field( 'som_import_materials_preview', 'som_material_nonce' ); ?>
+			<p>
+				<label for="som-material-import-file"><?php echo esc_html__( 'Materials file', 'order-machine' ); ?></label>
+				<input type="file" name="som_import_file" id="som-material-import-file" required />
+			</p>
+			<?php submit_button( __( 'Preview', 'order-machine' ), 'secondary', 'som_preview_materials', false ); ?>
+		</form>
+
+		<?php if ( '' !== $import_preview_error ) : ?>
+			<div class="notice notice-error inline"><p><?php echo esc_html( $import_preview_error ); ?></p></div>
+		<?php endif; ?>
+
+		<?php if ( is_array( $import_preview ) && '' !== (string) $import_preview['file_error'] ) : ?>
+			<div class="notice notice-error inline"><p><?php echo esc_html( (string) $import_preview['file_error'] ); ?></p></div>
+		<?php endif; ?>
+
+		<?php if ( is_array( $import_preview ) && '' === (string) $import_preview['file_error'] ) : ?>
+			<h3><?php echo esc_html__( 'Preview', 'order-machine' ); ?></h3>
+			<p>
+				<?php
+				printf(
+					/* translators: 1: rows that will be created, 2: rows that will fail */
+					esc_html__( 'Ready to create: %1$d. Failed: %2$d. Nothing is saved until you choose Import.', 'order-machine' ),
+					(int) $import_preview['ready'],
+					(int) $import_preview['failed']
+				);
+				?>
+			</p>
+			<table class="widefat striped som-import-materials-preview">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'File name', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Name that will be saved', 'order-machine' ); ?></th>
+						<th><?php echo esc_html__( 'Error', 'order-machine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php if ( empty( $import_preview['rows'] ) ) : ?>
+						<tr>
+							<td colspan="3"><?php echo esc_html__( 'No material rows in that file.', 'order-machine' ); ?></td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $import_preview['rows'] as $import_row ) : ?>
+							<tr>
+								<td><?php echo esc_html( isset( $import_row['file_name'] ) ? (string) $import_row['file_name'] : '' ); ?></td>
+								<td><?php echo esc_html( isset( $import_row['save_name'] ) ? (string) $import_row['save_name'] : '' ); ?></td>
+								<td><?php echo esc_html( isset( $import_row['message'] ) ? (string) $import_row['message'] : '' ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+
+			<?php if ( ! empty( $import_preview['ready'] ) && ! empty( $import_preview['token'] ) ) : ?>
+				<form method="post" action="<?php echo esc_url( SOM_Materials::list_url() ); ?>">
+					<?php wp_nonce_field( 'som_import_materials_commit', 'som_material_nonce' ); ?>
+					<input type="hidden" name="som_import_token" value="<?php echo esc_attr( (string) $import_preview['token'] ); ?>" />
+					<?php submit_button( __( 'Import', 'order-machine' ), 'primary', 'som_import_materials', false ); ?>
+				</form>
+			<?php endif; ?>
+		<?php endif; ?>
+	</details>
+
 	<form method="get" class="som-catalog-filters">
 		<input type="hidden" name="page" value="som-materials" />
 		<label class="screen-reader-text" for="som-material-search"><?php echo esc_html__( 'Search materials', 'order-machine' ); ?></label>

@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Materials can be exported, and a CSV can be previewed and imported from the Materials list. A name that already exists is created as Name (2). New rows start at stock 0. Made-in-house materials are left out of the export. An unknown or ambiguous supplier fails that row only
+
 ## [0.34.0] - 2026-10-19
 
 Packages 12–13: Produce N on the boards, editor helpers, clones, and eBay/Amazon orders and listings entered without a live sync.

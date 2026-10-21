@@ -266,6 +266,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 - Dedicated **purchase history** table on edit (date, supplier, qty, landed unit cost, link to PO)
 - Recent stock-log entries on the edit screen
 - Low-stock highlighting on the list
+- **Materials CSV (UP14-S1):** on the list, open **Import materials**. **Export CSV** downloads every material except made-in-house output materials (those have a source product). **Download template** is the header row only: `name`, `unit`, `low_stock_threshold`, `unit_cost`, `preferred_supplier`, `is_active`. Choose a comma or tab file and click **Preview**. The table shows the name from the file, the name that will be saved, and any row error. Nothing is written yet. **Import** creates the ready rows and reports **Created N, failed N**. A second import of the same names creates new materials called **Name (2)**, then **Name (3)**; it does not update the first rows. Stock on each new row stays 0, and no stock log is written. A preferred supplier that is unknown, or that matches more than one supplier, fails that row only
 
 **Auto-decrement (Sprint 8 + U3 value path):**
 

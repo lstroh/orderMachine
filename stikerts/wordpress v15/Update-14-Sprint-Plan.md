@@ -332,10 +332,10 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 ## 5. Checklist
 
 ### UP14-S1
-- [ ] Suffix helper + preview token
-- [ ] Materials export, template, preview, import
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Suffix helper + preview token
+- [x] Materials export, template, preview, import
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S2
 - [ ] Workflow file uses the S1 helper
