@@ -21,7 +21,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Pack Board + Ship gates | Done (UP6-S2) |
 | Products, materials, recipes | Done |
 | Workflow templates + step editor | Done |
-| Step instructions (default + product override) | Done (UP4-S1); Markdown render + editor preview (UP9-S3); formatting toolbar (UP12-S3) |
+| Step instructions (default + product override) | Done (UP4-S1); Markdown render + editor preview (UP9-S3); formatting toolbar (UP12-S3); list markers and preview under the box (UP14-S7) |
 | Order material overuse (Materials used) | Done (UP4-S2) |
 | Internal products core (Produce N) | Done (UP4-S3) |
 | Internal products UX / guards / analytics | Done (UP4-S4) |
@@ -37,7 +37,7 @@ Order Machine is a WordPress plugin that pulls orders from eBay/Etsy (or fixture
 | Material auto-decrement on new orders | Done (cancel reversal deferred) |
 | Script / n8n / local actions execution | **Removed** (UP9-S2) — use Copy command |
 | Copy command step + structured eBay fields | Done (UP9-S1–S2); placeholder dropdown (UP12-S4) |
-| Step instructions Markdown + styling | Done (UP9-S3); formatting toolbar (UP12-S3) |
+| Step instructions Markdown + styling | Done (UP9-S3); formatting toolbar (UP12-S3); visible bullets and numbers (UP14-S7). BUG-006 stays open until the wp-env pass |
 | Optional step task lists (default + product override) | Done (UP9-S4) |
 | Listings push | Done (Sprint 10) |
 | REST API + MCP Abilities | Done (Sprint 11; enriched in U7 + UP3-S3) |
@@ -206,6 +206,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete; blocked when trays required and none held)
 - **Unblock step** on the current make/pack step when Mark done is gated (order detail only)
 - **Trays** panel sits immediately above Make — assign free / release held (order-level; shared by make + pack). An Internal job with **Uses trays** needs a tray before Mark done
+- **Step instructions** on Make, Pack, and Post-ship show bullets and numbers (UP14-S7)
 - **Materials used** — planned vs actual from product **Recipe** and selected shipping **Package** (separate Source rows); raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
 - Stock log for the order available under a details disclosure
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
@@ -299,7 +300,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 
 - Add / remove / reorder
 - Toggle **requires manual confirm**
-- Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); formatting toolbar inserts bold, italic, lists, headings, links, and inline code; products may override per step with the same toolbar; order detail renders safe HTML; editor keeps the collapsed cheatsheet + Preview (UP9-S3, UP12-S3)
+- Set **Instructions (default)** Markdown per step (optional; max 5000; no images / no HTML editor); formatting toolbar inserts bold, italic, lists, headings, links, and inline code; products may override per step with the same toolbar; order detail renders safe HTML with visible bullets and numbers; **Preview** stays a button, starts closed, and opens directly under the textarea, above the help line and the cheatsheet (UP9-S3, UP12-S3, UP14-S7). BUG-006 stays open until the wp-env pass
 - Set **Tasks (optional)** per step (repeatable labels); products may override the whole list on make templates (full replace); pack = template only; order detail Tasks panel never blocks Mark done (UP9-S4). Separate from **Confirmation checklist**.
 - Set **Copy command template** (`{{placeholders}}`; display + Copy on make line; not executed). **Insert placeholder…** above the textarea inserts `{{key}}` at the cursor, or replaces the current selection, then returns to the prompt. The same dropdown is on steps added while editing. An insert that would pass 4000 characters is skipped. The description still lists the placeholders. Exclusive with timer/batch; implies manual confirm (UP9-S1, UP12-S4)
 - Set **Confirmation checklist** (print vs client request / shipping address / packing items / package arrived) — cannot combine with timer or batch
@@ -909,14 +910,14 @@ npx @wordpress/env run cli wp eval 'do_action("som_engine_tick");'
 5. Add **material cost goals** in the template-level section; save; reopen and confirm they persist.
 6. Assign that template to a test product.
 7. (Optional) On a fresh sync path, confirm a new matched order picks up this template; make line shows Copy panel.
-8. Instructions: type three lines, select them, click **Numbered list**. They become `1.` `2.` `3.`. **Preview** still renders. The product step-instruction override uses the same toolbar.
+8. Instructions: type three lines, select them, click **Numbered list**. They become `1.` `2.` `3.`. **Preview** starts closed. Click it and the rendered numbers open under the instruction box, above the help line. **Hide preview** closes that box. A `- ` list shows bullets there and on the order (Make, Pack, and Post-ship). The product step-instruction override uses the same toolbar and the same preview placement. BUG-006 stays open until the wp-env pass.
 9. Set Kind to **Post-ship** and save with no step on Confirmation checklist **Package arrived**. The browser blocks submit and shows the error near Save. Nothing is stored. Add that checklist on one step and save — it stores, including if the template is inactive.
 10. A Post-ship template that already lacks the step (not repaired) shows **No arrival step** on the Workflows list and a warning in the editor. Settings labels it **(no arrival step)** and warns if it is the selected default; Settings still saves. An open order already on those steps shows the Post-ship notice and is not rebound.
 11. **Clone** a saved template from the list, and again from the editor. The copy opens in the editor, titled **X (copy)**, with the same steps, goals, and active state. The product still uses the original template. Settings → Default Pack and Default Post-ship are unchanged. **Clone** a Post-ship template that has no Package arrived step: the error matches Save, and no new template appears.
 
 - [ ] Clone copies steps, goals, and budget links into “X (copy)” and opens that editor; products and Pack / Post-ship defaults stay on the original
 - [ ] Clone of a Post-ship template with no Package arrived step shows the Save error and creates no template
-- [ ] Instructions toolbar: select 3 lines → Numbered list → `1.` `2.` `3.` (workflow editor and product override); Preview still works
+- [ ] Instructions toolbar: select 3 lines → Numbered list → `1.` `2.` `3.` (workflow editor and product override); Preview opens under the box and shows the numbers; a `- ` list shows bullets on the order. BUG-006 stays open until wp-env
 - [ ] Post-ship save blocked without Package arrived (browser and server); failed save writes nothing; inactive template with the step still saves
 - [ ] Existing invalid Post-ship template: list badge + editor warning; Settings warns only; stuck order notice, no rebind
 - [ ] Pack template without a Ship step still saves

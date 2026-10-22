@@ -115,7 +115,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, **waiting_batch** badge + Batches link
 - **Step timing** — Planned · Actual (wall clock) on completed steps; live Elapsed on the current step; Make total / Pack total footers (planned sum · span actual)
-- **Step instructions** — Markdown rendered as HTML on make/pack progress (product override → step default); plain text still works
+- **Step instructions** — Markdown rendered as HTML on Make, Pack, and Post-ship (product override → step default). A line that starts with `- ` shows a bullet, and a numbered list shows numbers. Plain text still works
 - **Tasks** — optional tick list on make/pack steps that have an effective list (product override → template default for make; template only for pack). Shown on current + completed steps; Save tasks persists ticks. **Does not block Mark done.** Separate from Confirmation checklist.
 - **Copy command** on make lines when the step has a `command_template` — monospace rendered command + **Copy** (not executed by WordPress); then Mark done
 - Editable line fields: house number, street name, style (and personalisation summary) for placeholders / bad eBay payloads
@@ -249,7 +249,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
 - Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order you advance on Make Board or the order’s Make section)
 - Assign workflow template
-- **Step instruction overrides** (Markdown; formatting toolbar; leave blank for workflow default; Preview in editor)
+- **Step instruction overrides** (Markdown; formatting toolbar; leave blank for workflow default). **Preview** opens under the instruction box and starts closed
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, planned shipping when set, fee-aware profit/margin, goal alerts, listing prices)
 - For sellable products: goods weight (g), **default package** (qty 1), optional **multi-pack package** (qty 2+), flat **planned shipping** £ (hidden on internal products)
@@ -361,7 +361,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 **Step editor — main actions:**
 
 - Add / remove / reorder steps
-- **Instructions (default)** — Markdown (bold, lists, links, inline code, `##` / `###`). Formatting toolbar above the textarea: Bold, Italic, Bullet list, Numbered list, Heading H2, Heading H3, Link, Inline code, Preview. Collapsed cheatsheet stays under the field. Max 5000 characters. No images; no TinyMCE / HTML editor. Products may override per step (same toolbar).
+- **Instructions (default)** — Markdown (bold, lists, links, inline code, `##` / `###`). Formatting toolbar above the textarea: Bold, Italic, Bullet list, Numbered list, Heading H2, Heading H3, Link, Inline code, Preview. **Preview** opens the rendered instructions directly under the textarea and starts closed on each visit. **Hide preview** closes it. The help line and the collapsed cheatsheet stay under that box. Bullets and numbers show in the preview and on the order. Max 5000 characters. No images; no TinyMCE / HTML editor. Products may override per step (same toolbar and preview).
 - **Tasks (optional)** — repeatable task rows (stable ids + labels). Empty = no Tasks panel. Help: does not block Mark done. Make products may override the whole list (full replace, not merge). Pack uses template tasks only.
 - Requires manual confirm
 - **Copy command template** — `{{placeholders}}` filled per make line; Copy + Mark done (not run by WordPress). **Insert placeholder…** above the field inserts `{{key}}` at the cursor (or replaces the selection). The option label is the friendly name; the token shows on hover. The field description still lists every placeholder. An insert that would pass 4000 characters is skipped. Exclusive with timer and batch; implies manual confirm. May combine with confirmation checklist. Stays separate from instructions (not embedded in the Markdown body).
@@ -381,7 +381,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 On **order detail**, each step shows Planned · Actual (or live Elapsed while in progress). Make-line and Pack footers show planned sum · span actual.
 
-**Instructions Markdown (v1):** paragraphs/line breaks, **bold** / *italic*, bullet + numbered lists, links, inline `code`, simple headings. Unsafe HTML is stripped. Legacy plain text still renders readably.
+**Instructions Markdown (v1):** paragraphs/line breaks, **bold** / *italic*, bullet + numbered lists (markers show on the order and in Preview), links, inline `code`, simple headings. Unsafe HTML is stripped. Legacy plain text still renders readably.
 
 **Removed:** local / API / n8n `script_config` UI and runtime dispatch. Legacy rows show a disabled warning in the editor and clear on save; at runtime they are ignored (treated as manual Mark done).
 
