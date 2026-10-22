@@ -63,7 +63,12 @@ class SOM_Trays {
 	}
 
 	/**
-	 * Whether the order requires tray assignment (any sellable make template or bound pack template uses_trays).
+	 * Whether the order requires tray assignment.
+	 *
+	 * True when the bound Pack template has Uses trays, when a sellable line's
+	 * make template has Uses trays, or when the order channel is Internal and
+	 * that product's make template has Uses trays. A customer order skips an
+	 * internal component line.
 	 *
 	 * @param object|int $order Order row from SOM_Orders::get() or order PK.
 	 * @return bool
@@ -87,13 +92,20 @@ class SOM_Trays {
 			return false;
 		}
 
+		$channel           = isset( $order->channel_slug ) ? (string) $order->channel_slug : '';
+		$is_internal_order = ( SOM_Production::CHANNEL_SLUG === $channel );
+
 		foreach ( $order->items as $item ) {
 			$product_id = isset( $item->product_id ) ? (int) $item->product_id : 0;
 			if ( $product_id < 1 ) {
 				continue;
 			}
 			$product = SOM_Products::get( $product_id );
-			if ( ! $product || ! empty( $product->is_internal ) ) {
+			if ( ! $product ) {
+				continue;
+			}
+			// Not made on a customer order, so the line does not require a tray by itself.
+			if ( ! empty( $product->is_internal ) && ! $is_internal_order ) {
 				continue;
 			}
 			$wf_id = ! empty( $product->workflow_template_id ) ? (int) $product->workflow_template_id : 0;

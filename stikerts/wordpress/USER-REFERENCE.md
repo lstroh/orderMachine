@@ -123,7 +123,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Unblock step** on the current make/pack step when Mark done is gated (confirm: allows Mark done without meeting gates; does not complete the step)
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete; also blocked when trays are required and none held)
-- **Trays** — order-level panel: list held trays; multi-select free trays to assign; release selected held trays
+- **Trays** — immediately above Make. Order-level panel: list held trays; multi-select free trays to assign; release selected held trays. An Internal job whose make template has **Uses trays** needs a held tray before Mark done
 - **Materials used** — planned from product **Recipe** and selected shipping **Package**; raise Actual above planned when you used more (stock, profit, budget); increase-only; same material can appear once per source
 - **Platform fees** panel when synced fee lines exist
 - **Notes** — admin-only append-only log (cannot edit/delete); not synced to marketplaces
@@ -145,7 +145,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 |---|---|
 | Holder | **Order** only (shared by all make lines + pack; not per line) |
 | Double-book | Rejected — a held tray cannot be assigned to another order |
-| Required | If any sellable make template or bound Pack template has **Uses trays** → block Mark done / advance until ≥1 tray held |
+| Required | A sellable line’s make template, the bound Pack template, or an Internal order’s make template with **Uses trays** → block Mark done / advance until ≥1 tray held. A customer-order internal component line does not, by itself, require a tray |
 | Keep ≥1 | While required and order open, cannot release the last held tray |
 | Auto-release | On order complete → all held trays freed (`order_complete`) |
 | Manual release | Anytime (subject to keep ≥1 when required) |
@@ -356,7 +356,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 
 **Import and export:** the Workflows list has **Export CSV**, **Download template**, **Preview**, and **Import**. One row per step; rows with the same name are one template, saved in step order. Preview does not save. Import creates a template and does not update an existing one. A name already in use, ignoring capitals, is saved as **Name (2)**, then **Name (3)**. A Post-ship file with no Package arrived step is rejected and writes nothing. An unknown or ambiguous batch group key fails that workflow and does not create a batch group. Task labels are joined with ` | `. Copy command, confirmation, instructions, and tasks travel with the step. `script_config` is not in the file.
 
-**Uses trays:** when **any** make template on a sellable line or the bound Pack template has this on, the order requires ≥1 held tray before Mark done / advance. Seed **Bin Sticker Make** and **Order Pack & Ship** leave this **off** (operator opts in).
+**Uses trays:** a sellable line’s make template, the bound Pack template, or an Internal job’s make template with this on requires ≥1 held tray before Mark done / advance. A customer order still skips an internal component line. The Trays panel sits immediately above Make. Seed **Bin Sticker Make** and **Order Pack & Ship** leave this **off** (operator opts in).
 
 **Step editor — main actions:**
 
