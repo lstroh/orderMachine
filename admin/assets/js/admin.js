@@ -542,7 +542,34 @@
 			} );
 		}
 
+		function syncWorkflowKindFields() {
+			var kindSelect = document.getElementById( 'som_workflow_kind' );
+			var traysRow = document.getElementById( 'som-workflow-trays-row' );
+			var outputWrap = document.getElementById( 'som-workflow-output-per-run' );
+			var outputHelp = document.getElementById( 'som-workflow-output-per-run-help' );
+			if ( ! kindSelect ) {
+				return;
+			}
+			var kind = kindSelect.value;
+			if ( traysRow ) {
+				traysRow.hidden = kind === 'post_ship';
+			}
+			var showOutput = kind === 'make';
+			if ( outputWrap ) {
+				outputWrap.hidden = ! showOutput;
+			}
+			if ( outputHelp ) {
+				outputHelp.hidden = ! showOutput;
+			}
+		}
+
 		syncPlannedTotal();
+		syncWorkflowKindFields();
+
+		var kindField = document.getElementById( 'som_workflow_kind' );
+		if ( kindField ) {
+			kindField.addEventListener( 'change', syncWorkflowKindFields );
+		}
 
 		if ( form ) {
 			form.addEventListener( 'submit', function ( e ) {

@@ -320,20 +320,35 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 					<?php endif; ?>
 				</td>
 			</tr>
-			<?php if ( 'post_ship' !== $current_kind ) : ?>
-			<tr>
+			<tr id="som-workflow-trays-row" <?php echo 'post_ship' === $current_kind ? 'hidden' : ''; ?>>
 				<th scope="row"><?php echo esc_html__( 'Trays', 'order-machine' ); ?></th>
 				<td>
 					<label>
 						<input type="checkbox" name="som_workflow_uses_trays" value="1" <?php checked( $template && ! empty( $template->uses_trays ) ); ?> />
 						<?php echo esc_html__( 'Uses trays', 'order-machine' ); ?>
 					</label>
+					<label class="som-output-per-run" id="som-workflow-output-per-run" for="som_workflow_output_per_run" <?php echo 'make' === $current_kind ? '' : 'hidden'; ?>>
+						<?php echo esc_html__( 'Output per run', 'order-machine' ); ?>
+						<input
+							type="number"
+							class="small-text"
+							id="som_workflow_output_per_run"
+							name="som_workflow_output_per_run"
+							min="1"
+							max="<?php echo esc_attr( (string) SOM_Workflows::OUTPUT_PER_RUN_MAX ); ?>"
+							step="1"
+							inputmode="numeric"
+							value="<?php echo esc_attr( (string) ( $template && isset( $template->output_per_run ) ? (int) $template->output_per_run : 1 ) ); ?>"
+						/>
+					</label>
 					<p class="description">
 						<?php echo esc_html__( 'When any make or Pack template on an order uses trays, operators must assign numbered trays to that order before Mark done / advance (shared by all make lines and pack).', 'order-machine' ); ?>
 					</p>
+					<p class="description" id="som-workflow-output-per-run-help" <?php echo 'make' === $current_kind ? '' : 'hidden'; ?>>
+						<?php echo esc_html__( 'Output per run is how many units of the linked material one finished Internal run adds, before multiplying by the Produce N quantity. Whole number from 1 to 10000. Blank saves as 1.', 'order-machine' ); ?>
+					</p>
 				</td>
 			</tr>
-			<?php endif; ?>
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>

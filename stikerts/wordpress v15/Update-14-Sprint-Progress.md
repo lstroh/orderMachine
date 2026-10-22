@@ -15,13 +15,13 @@
 | UP14-S5 | Collapsed Shipment panel | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S6 | Trays above Make, including Internal | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S7 | Instruction bullets and editor preview | Implemented | Smoke written. Pending wp-env. BUG-006 stays Open |
-| UP14-S8 | Output per run | Not started | Schema 1.25.0. After S2 for the CSV column |
+| UP14-S8 | Output per run | Implemented | Smoke written. Pending wp-env. Schema 1.25.0 |
 | UP14-S9 | Pack workflow override | Not started | Schema 1.26.0. Overturns Package 6 site-wide Pack |
 | UP14-S10 | Mark done stays in place | Not started | Make and Post-ship. Pack already does this |
 | UP14-S11 | Finished pack leaves the Pack board | Not started | Stays on the Post-ship board |
 | UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
 
-**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S6 are on main. UP14-S7 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S7 are on main. UP14-S8 is implemented on its branch and is not merged. Schema is **1.25.0** in UP14-S8. UP14-S9 moves it to **1.26.0**. Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -52,7 +52,7 @@
 ## UP14-S2 — Workflow CSV
 
 - **Status:** implemented. On main.
-- **Behaviour:** Workflows list exports, downloads a template, previews, and imports. One row per step; rows with the same name are one template, sorted by `step_order`. Save goes through `SOM_Workflows::validate_submission` and `save_steps`. A taken name becomes `Name (2)`. A Post-ship file with no Package arrived step writes no template. An unknown or ambiguous batch group key fails that workflow and does not create a group. Header cells that disagree fail that workflow. A task label containing `|` fails that workflow. `script_config` is not a column and is stored empty. `output_per_run` is not a column. If step insert fails after the template row exists, the partial template is deleted.
+- **Behaviour:** Workflows list exports, downloads a template, previews, and imports. One row per step; rows with the same name are one template, sorted by `step_order`. Save goes through `SOM_Workflows::validate_submission` and `save_steps`. A taken name becomes `Name (2)`. A Post-ship file with no Package arrived step writes no template. An unknown or ambiguous batch group key fails that workflow and does not create a group. Header cells that disagree fail that workflow. A task label containing `|` fails that workflow. `script_config` is not a column and is stored empty. `output_per_run` is an optional column from UP14-S8 (blank means 1; Pack and Post-ship store 1). If step insert fails after the template row exists, the partial template is deleted.
 - **Smoke:** `tests/sprint-up14-s2-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S3 — Product CSV
@@ -88,8 +88,9 @@
 
 ## UP14-S8 — Output per run
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s8-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** `workflow_templates.output_per_run` is an int unsigned, not null, default 1. Schema **1.25.0**. Existing rows become 1. A Make workflow shows **Output per run** beside Uses trays (whole number 1–10000; blank saves as 1). Pack and Post-ship do not show the field, and saving those kinds stores 1. `SOM_Production::credit_output_for_order()` stays Internal-only, one `production_output` row, and idempotent. Units are the line quantity times the make template’s yield, read when the job finishes. A missing or invalid yield counts as 1. Unit cost is input COGS divided by those units. Produce 3 with output per run 12 credits 36. A yield of 1 still credits the Produce N quantity. Recipe reservation on create stays the Produce N quantity. A customer order does not credit stock. Clone copies the number. The workflow CSV has an optional `output_per_run` column: blank means 1, a Pack or Post-ship row stores 1 even when the cell is filled, and export writes the stored number.
+- **Smoke:** `tests/sprint-up14-s8-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 - **Schema:** 1.25.0 in this sprint only.
 
 ## UP14-S9 — Pack workflow override
