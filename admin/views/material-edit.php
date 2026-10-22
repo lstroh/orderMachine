@@ -207,6 +207,18 @@ $show_produce     = $source_product && ! empty( $material->is_low_stock );
 					<p class="description"><?php echo esc_html__( 'Inactive materials are kept for history but hidden from new recipes.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
+			<?php if ( $is_new ) : ?>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Budget', 'order-machine' ); ?></th>
+				<td>
+					<label for="som_create_material_budget">
+						<input type="checkbox" id="som_create_material_budget" name="som_create_material_budget" value="1" />
+						<?php echo esc_html__( 'Create a material budget', 'order-machine' ); ?>
+					</label>
+					<p class="description"><?php echo esc_html__( 'Starts the restock budget for this material at £0, funded from material cost, for every workflow.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<?php endif; ?>
 		</table>
 
 		<p class="submit">

@@ -2206,6 +2206,7 @@ class SOM_Admin_Menu {
 		check_admin_referer( 'som_save_material', 'som_material_nonce' );
 
 		$material_id = isset( $_POST['material_id'] ) ? (int) $_POST['material_id'] : 0;
+		$creating    = $material_id < 1;
 		$data        = array(
 			'name'                  => isset( $_POST['som_material_name'] ) ? wp_unslash( $_POST['som_material_name'] ) : '',
 			'unit'                  => isset( $_POST['som_material_unit'] ) ? wp_unslash( $_POST['som_material_unit'] ) : '',
@@ -2228,6 +2229,26 @@ class SOM_Admin_Menu {
 			self::flash_notice( $result->get_error_message(), 'error', 'som_material_error' );
 			wp_safe_redirect( $material_id > 0 ? SOM_Materials::detail_url( $material_id ) : SOM_Materials::detail_url( 'new' ) );
 			exit;
+		}
+
+		if ( $creating ) {
+			$budget_result = SOM_Budgets::create_on_material_add(
+				$material_id,
+				! empty( $_POST['som_create_material_budget'] )
+			);
+			if ( is_wp_error( $budget_result ) ) {
+				self::flash_notice(
+					sprintf(
+						/* translators: %s: budget error message */
+						__( 'Material saved. The budget was not created: %s', 'order-machine' ),
+						$budget_result->get_error_message()
+					),
+					'error',
+					'som_material_budget_error'
+				);
+				wp_safe_redirect( SOM_Materials::detail_url( $material_id ) );
+				exit;
+			}
 		}
 
 		self::flash_notice( __( 'Material saved.', 'order-machine' ), 'success', 'som_material_saved' );

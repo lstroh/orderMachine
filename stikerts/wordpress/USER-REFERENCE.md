@@ -319,6 +319,7 @@ Operator can always override on the Pack panel; changing package reverses prior 
 **Main actions:**
 
 - CRUD materials (name, unit, stock, low-stock threshold, active)
+- On **Add material**, **Create a material budget** is unchecked; tick it to start that material’s restock budget
 - Preferred supplier
 - Read WA and total value on hand
 - **Unit cost override** — revalues value on hand; logs the change

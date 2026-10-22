@@ -225,6 +225,42 @@ class SOM_Budgets {
 	}
 
 	/**
+	 * Start the restock budget for a material just added, when requested.
+	 *
+	 * Add material calls this after the material row exists. A clear checkbox
+	 * leaves budgets unchanged. A checked box creates one active material
+	 * budget through {@see self::create()}: the saved material name, funding
+	 * material cost, empty funding value, empty target reserve, balance 0,
+	 * empty notes, and no workflow links (every workflow). Failure does not
+	 * delete the material.
+	 *
+	 * @param int  $material_id Material PK.
+	 * @param bool $requested   True when Add material checked the box.
+	 * @return int|true|WP_Error Budget ID, true when not requested, or error.
+	 */
+	public static function create_on_material_add( $material_id, $requested ) {
+		if ( ! $requested ) {
+			return true;
+		}
+
+		$material = SOM_Materials::get( (int) $material_id );
+		if ( ! $material ) {
+			return new WP_Error( 'som_budget_material', __( 'A valid material is required for material budgets.', 'order-machine' ) );
+		}
+
+		return self::create(
+			array(
+				'name'                  => (string) $material->name,
+				'type'                  => 'material',
+				'material_id'           => (int) $material->id,
+				'notes'                 => '',
+				'target_reserve_amount' => '',
+				'is_active'             => 1,
+			)
+		);
+	}
+
+	/**
 	 * Update budget metadata (not balance). Type and material_id are immutable.
 	 *
 	 * @param int                  $budget_id Budget PK.
