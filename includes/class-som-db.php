@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.24.0';
+	const DB_VERSION = '1.25.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -82,6 +82,7 @@ class SOM_DB {
 			description text NULL,
 			kind enum('make','pack','post_ship') NOT NULL DEFAULT 'make',
 			uses_trays tinyint(1) NOT NULL DEFAULT 0,
+			output_per_run int unsigned NOT NULL DEFAULT 1,
 			is_active tinyint(1) NOT NULL DEFAULT 1,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -581,6 +582,7 @@ class SOM_DB {
 		self::upgrade_batch_groups_key_column();
 		self::upgrade_workflow_template_kind();
 		self::upgrade_workflow_template_uses_trays();
+		self::upgrade_workflow_template_output_per_run();
 		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();
@@ -949,6 +951,36 @@ class SOM_DB {
 	}
 
 	/**
+	 * Ensure workflow_templates.output_per_run exists (UP14-S8).
+	 *
+	 * Existing rows take the column default of 1.
+	 *
+	 * @return void
+	 */
+	private static function upgrade_workflow_template_output_per_run() {
+		global $wpdb;
+
+		$table = self::table( 'workflow_templates' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $exists !== $table ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'output_per_run'" );
+		if ( $col ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$table}
+			ADD COLUMN output_per_run int unsigned NOT NULL DEFAULT 1 AFTER uses_trays"
+		);
+	}
+
+	/**
 	 * Ensure manual_unblock_* audit columns on make + pack progress (UP8-S2).
 	 *
 	 * @return void
@@ -1037,6 +1069,7 @@ class SOM_DB {
 		self::upgrade_progress_status_enum();
 		self::upgrade_workflow_template_kind();
 		self::upgrade_workflow_template_uses_trays();
+		self::upgrade_workflow_template_output_per_run();
 		self::upgrade_manual_unblock_columns();
 		self::upgrade_pack_columns();
 		self::upgrade_product_package_id_multi();

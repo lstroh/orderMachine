@@ -1745,8 +1745,9 @@ class SOM_Admin_Menu {
 			'name'        => isset( $_POST['som_workflow_name'] ) ? wp_unslash( $_POST['som_workflow_name'] ) : '',
 			'description' => isset( $_POST['som_workflow_description'] ) ? wp_unslash( $_POST['som_workflow_description'] ) : '',
 			'is_active'   => ! empty( $_POST['som_workflow_is_active'] ),
-			'kind'        => isset( $_POST['som_workflow_kind'] ) ? wp_unslash( $_POST['som_workflow_kind'] ) : 'make',
-			'uses_trays'  => ! empty( $_POST['som_workflow_uses_trays'] ),
+			'kind'           => isset( $_POST['som_workflow_kind'] ) ? wp_unslash( $_POST['som_workflow_kind'] ) : 'make',
+			'uses_trays'     => ! empty( $_POST['som_workflow_uses_trays'] ),
+			'output_per_run' => isset( $_POST['som_workflow_output_per_run'] ) ? wp_unslash( $_POST['som_workflow_output_per_run'] ) : '',
 		);
 
 		$step_rows = isset( $_POST['som_step'] ) && is_array( $_POST['som_step'] ) ? wp_unslash( $_POST['som_step'] ) : array();

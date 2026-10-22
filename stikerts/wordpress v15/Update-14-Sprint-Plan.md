@@ -376,12 +376,12 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S8
-- [ ] Column `output_per_run`, schema 1.25.0
-- [ ] Make editor field; Pack and Post-ship stay at 1
-- [ ] Credit is Produce N × yield; recipe unchanged
-- [ ] Workflow CSV column
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Column `output_per_run`, schema 1.25.0
+- [x] Make editor field; Pack and Post-ship stay at 1
+- [x] Credit is Produce N × yield; recipe unchanged
+- [x] Workflow CSV column
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S9
 - [ ] Column `pack_workflow_template_id`, schema 1.26.0

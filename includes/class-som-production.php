@@ -152,6 +152,10 @@ class SOM_Production {
 	/**
 	 * Credit linked material for a completed internal production order (idempotent).
 	 *
+	 * Units are the line quantity times the make template's output per run, read
+	 * now. The number is not stored on the order. A missing or invalid yield
+	 * counts as 1. Customer orders return without a stock change.
+	 *
 	 * @param int $order_id Order PK.
 	 * @return true|WP_Error
 	 */
@@ -221,13 +225,21 @@ class SOM_Production {
 			return new WP_Error( 'som_produce_qty', __( 'Production order has no quantity to credit.', 'order-machine' ) );
 		}
 
+		$template_id = isset( $product->workflow_template_id ) ? (int) $product->workflow_template_id : 0;
+		$template    = $template_id > 0 ? SOM_Workflows::get( $template_id ) : null;
+		$yield       = SOM_Workflows::output_per_run_for_credit( $template );
+		$units       = $qty * $yield;
+		if ( $units < 1 ) {
+			return new WP_Error( 'som_produce_qty', __( 'Production order has no quantity to credit.', 'order-machine' ) );
+		}
+
 		$input_cogs = SOM_Analytics::order_material_cogs( $order_id );
-		$unit_cost  = SOM_Material_Costing::round4( $input_cogs / $qty );
-		$value      = SOM_Material_Costing::round4( $unit_cost * $qty );
+		$unit_cost  = SOM_Material_Costing::round4( $input_cogs / $units );
+		$value      = SOM_Material_Costing::round4( $unit_cost * $units );
 
 		$result = SOM_Materials::adjust_stock(
 			(int) $product->linked_material_id,
-			(float) $qty,
+			(float) $units,
 			array(
 				'order_id'          => $order_id,
 				'reason'            => 'production_output',

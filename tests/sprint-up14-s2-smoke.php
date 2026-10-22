@@ -104,7 +104,7 @@ $out( 'plugin', SOM_VERSION );
 $assert( class_exists( 'SOM_Workflow_Import', false ), 'workflow_import_class' );
 $assert( 'workflows' === SOM_Workflow_Import::KIND, 'preview_kind' );
 $assert( ! in_array( 'script_config', SOM_Workflow_Import::COLUMNS, true ), 'no_script_config_column' );
-$assert( ! in_array( 'output_per_run', SOM_Workflow_Import::COLUMNS, true ), 'no_output_per_run_column' );
+$assert( in_array( 'output_per_run', SOM_Workflow_Import::COLUMNS, true ), 'output_per_run_column' );
 
 $import_src = (string) file_get_contents( SOM_PLUGIN_DIR . 'includes/class-som-workflow-import.php' );
 $list_src   = (string) file_get_contents( SOM_PLUGIN_DIR . 'admin/views/workflow-templates.php' );
@@ -115,7 +115,7 @@ $assert( false !== strpos( $import_src, 'SOM_Workflows::create' ), 'creates_temp
 $assert( false !== strpos( $import_src, 'SOM_Workflows::save_steps' ), 'writes_steps' );
 $assert( false !== strpos( $import_src, 'SOM_Workflows::delete_failed_create' ), 'deletes_partial_template' );
 $assert( false === strpos( $import_src, 'SOM_Workflows::update' ), 'import_does_not_update' );
-$assert( false === strpos( $import_src, 'output_per_run' ), 'import_ignores_output_per_run' );
+$assert( false !== strpos( $import_src, 'output_per_run' ), 'import_reads_output_per_run' );
 $assert( false !== strpos( $import_src, 'SOM_Catalog_Import::allocate_name' ), 'uses_suffix_helper' );
 $assert( false !== strpos( $import_src, 'SOM_Catalog_Import::remember' ) || false !== strpos( $menu_src, 'SOM_Catalog_Import::remember' ), 'uses_preview_token' );
 

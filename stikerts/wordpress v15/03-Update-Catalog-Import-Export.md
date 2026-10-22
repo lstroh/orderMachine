@@ -71,6 +71,7 @@ One row per step. Rows with the same `name` are one template. At least one step.
 | `description` | No | |
 | `kind` | Yes | `make`, `pack`, or `post_ship` |
 | `uses_trays` | No | |
+| `output_per_run` | No | Whole number 1–10000. Blank means 1. A Pack or Post-ship row stores 1 even when the cell is filled. Export writes the stored number. Added in UP14-S8 |
 | `is_active` | No | |
 | `step_order` | Yes | Integer |
 | `step_name` | Yes | |
@@ -83,7 +84,7 @@ One row per step. Rows with the same `name` are one template. At least one step.
 | `command_template` | No | |
 | `batch_group_key` | No | Existing `group_key`. Blank means none |
 
-`output_per_run` is not an S2 column. UP14-S8 adds it to this file after the schema column exists.
+`output_per_run` is optional. A file that omits the column imports as 1.
 
 Save through the same validation as the editor (`SOM_Workflows::validate_submission` and the step writer). A Post-ship template with no `package_arrived` step fails and writes no template row. Per-step combination rules (timer, copy command, batch, manual confirm) fail the whole workflow the same way Save does.
 

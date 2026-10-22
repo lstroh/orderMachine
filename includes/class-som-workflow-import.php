@@ -5,6 +5,7 @@
  * One row per step. Rows with the same name are one template. Creates through
  * SOM_Workflows::validate_submission, create, and save_steps. Does not update.
  * script_config is not a column; the step writer stores it empty.
+ * output_per_run is optional. Blank means 1. Pack and Post-ship store 1.
  *
  * @package OrderMachine
  */
@@ -36,6 +37,7 @@ class SOM_Workflow_Import {
 		'description',
 		'kind',
 		'uses_trays',
+		'output_per_run',
 		'is_active',
 		'step_order',
 		'step_name',
@@ -69,6 +71,7 @@ class SOM_Workflow_Import {
 		'description',
 		'kind',
 		'uses_trays',
+		'output_per_run',
 		'is_active',
 	);
 
@@ -248,7 +251,7 @@ class SOM_Workflow_Import {
 		$templates = SOM_DB::table( 'workflow_templates' );
 		$steps     = SOM_DB::table( 'workflow_steps' );
 		$groups    = SOM_DB::table( 'batch_groups' );
-		$sql       = "SELECT t.name, t.description, t.kind, t.uses_trays, t.is_active,
+		$sql       = "SELECT t.name, t.description, t.kind, t.uses_trays, t.output_per_run, t.is_active,
 				s.step_order, s.name AS step_name, s.requires_manual_confirm,
 				s.timer_seconds, s.planned_seconds, s.confirmation_kind,
 				s.instructions, s.task_list_json, s.command_template,
@@ -270,6 +273,7 @@ class SOM_Workflow_Import {
 				self::export_text( isset( $row->description ) ? $row->description : null ),
 				isset( $row->kind ) ? (string) $row->kind : '',
 				(string) (int) ( isset( $row->uses_trays ) ? $row->uses_trays : 0 ),
+				(string) (int) ( isset( $row->output_per_run ) ? $row->output_per_run : 1 ),
 				(string) (int) ( isset( $row->is_active ) ? $row->is_active : 0 ),
 				isset( $row->step_order ) ? (string) (int) $row->step_order : '',
 				isset( $row->step_name ) ? (string) $row->step_name : '',
@@ -492,6 +496,24 @@ class SOM_Workflow_Import {
 			);
 		}
 
+		$output_per_run = 1;
+		if ( 'make' === $kind ) {
+			$parsed_yield = self::whole_number(
+				SOM_Catalog_Import::cell( $first, $index, 'output_per_run' ),
+				1,
+				SOM_Workflows::OUTPUT_PER_RUN_MAX
+			);
+			if ( null === $parsed_yield ) {
+				return self::failed_workflow(
+					$line,
+					$file_name,
+					'bad_output_per_run',
+					__( 'Output per run must be a whole number from 1 to 10000.', 'order-machine' )
+				);
+			}
+			$output_per_run = '' === $parsed_yield ? 1 : (int) $parsed_yield;
+		}
+
 		$active = SOM_Catalog_Import::parse_bool( SOM_Catalog_Import::cell( $first, $index, 'is_active' ) );
 		if ( is_wp_error( $active ) ) {
 			return self::failed_workflow(
@@ -554,12 +576,13 @@ class SOM_Workflow_Import {
 			'code'      => '',
 			'ok'        => true,
 			'data'      => array(
-				'name'        => $file_name,
-				'description' => trim( sanitize_textarea_field( SOM_Catalog_Import::cell( $first, $index, 'description' ) ) ),
-				'kind'        => $kind,
-				'uses_trays'  => null === $uses_trays ? 0 : (int) $uses_trays,
-				'is_active'   => null === $active ? 1 : (int) $active,
-				'steps'       => $form,
+				'name'           => $file_name,
+				'description'    => trim( sanitize_textarea_field( SOM_Catalog_Import::cell( $first, $index, 'description' ) ) ),
+				'kind'           => $kind,
+				'uses_trays'     => null === $uses_trays ? 0 : (int) $uses_trays,
+				'output_per_run' => $output_per_run,
+				'is_active'      => null === $active ? 1 : (int) $active,
+				'steps'          => $form,
 			),
 		);
 	}
@@ -659,8 +682,9 @@ class SOM_Workflow_Import {
 			'name'        => __( 'Name', 'order-machine' ),
 			'description' => __( 'Description', 'order-machine' ),
 			'kind'        => __( 'Kind', 'order-machine' ),
-			'uses_trays'  => __( 'Uses trays', 'order-machine' ),
-			'is_active'   => __( 'Active', 'order-machine' ),
+			'uses_trays'     => __( 'Uses trays', 'order-machine' ),
+			'output_per_run' => __( 'Output per run', 'order-machine' ),
+			'is_active'      => __( 'Active', 'order-machine' ),
 		);
 		return isset( $labels[ $column ] ) ? $labels[ $column ] : (string) $column;
 	}

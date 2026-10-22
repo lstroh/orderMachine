@@ -30,6 +30,11 @@ class SOM_Workflows {
 	}
 
 	/**
+	 * Highest Output per run a make template may store.
+	 */
+	const OUTPUT_PER_RUN_MAX = 10000;
+
+	/**
 	 * Allowed template kinds.
 	 *
 	 * @return array<string, string> kind => label
@@ -273,9 +278,78 @@ class SOM_Workflows {
 	}
 
 	/**
+	 * Make-template yield. Blank is 1. Pack and Post-ship always store 1.
+	 *
+	 * @param mixed  $raw  Posted, imported, or stored value.
+	 * @param string $kind Template kind.
+	 * @return int|WP_Error Whole number 1–10000, or an error when a make value is invalid.
+	 */
+	public static function sanitize_output_per_run( $raw, $kind ) {
+		if ( 'make' !== self::sanitize_kind( $kind ) ) {
+			return 1;
+		}
+		if ( null === $raw || is_bool( $raw ) ) {
+			return 1;
+		}
+		if ( is_int( $raw ) ) {
+			if ( $raw >= 1 && $raw <= self::OUTPUT_PER_RUN_MAX ) {
+				return $raw;
+			}
+			return new WP_Error(
+				'som_workflow_output_per_run',
+				__( 'Output per run must be a whole number from 1 to 10000.', 'order-machine' )
+			);
+		}
+
+		$text = trim( (string) $raw );
+		if ( '' === $text ) {
+			return 1;
+		}
+		if ( ! preg_match( '/^\d+$/', $text ) ) {
+			return new WP_Error(
+				'som_workflow_output_per_run',
+				__( 'Output per run must be a whole number from 1 to 10000.', 'order-machine' )
+			);
+		}
+
+		$n = (int) $text;
+		if ( $n < 1 || $n > self::OUTPUT_PER_RUN_MAX ) {
+			return new WP_Error(
+				'som_workflow_output_per_run',
+				__( 'Output per run must be a whole number from 1 to 10000.', 'order-machine' )
+			);
+		}
+		return $n;
+	}
+
+	/**
+	 * Yield read at Internal completion. Missing or invalid values count as 1.
+	 *
+	 * @param object|null $template Make template, or null.
+	 * @return int
+	 */
+	public static function output_per_run_for_credit( $template ) {
+		if ( ! is_object( $template ) ) {
+			return 1;
+		}
+		$kind = isset( $template->kind ) ? self::sanitize_kind( $template->kind ) : 'make';
+		if ( 'make' !== $kind ) {
+			return 1;
+		}
+		$parsed = self::sanitize_output_per_run(
+			isset( $template->output_per_run ) ? $template->output_per_run : '',
+			'make'
+		);
+		if ( is_wp_error( $parsed ) ) {
+			return 1;
+		}
+		return (int) $parsed;
+	}
+
+	/**
 	 * Create a template (optionally with initial steps).
 	 *
-	 * @param array<string, mixed> $data Fields: name, description, is_active, kind, uses_trays.
+	 * @param array<string, mixed> $data Fields: name, description, is_active, kind, uses_trays, output_per_run.
 	 * @return int|WP_Error
 	 */
 	public static function create( array $data ) {
@@ -289,21 +363,29 @@ class SOM_Workflows {
 		$description = isset( $data['description'] ) ? sanitize_textarea_field( (string) $data['description'] ) : '';
 		$kind        = self::sanitize_kind( isset( $data['kind'] ) ? $data['kind'] : 'make' );
 		// Post-ship never uses trays (Package 11).
-		$uses_trays  = ( 'post_ship' !== $kind && ! empty( $data['uses_trays'] ) ) ? 1 : 0;
-		$now         = current_time( 'mysql', true );
+		$uses_trays = ( 'post_ship' !== $kind && ! empty( $data['uses_trays'] ) ) ? 1 : 0;
+		$yield      = self::sanitize_output_per_run(
+			array_key_exists( 'output_per_run', $data ) ? $data['output_per_run'] : '',
+			$kind
+		);
+		if ( is_wp_error( $yield ) ) {
+			return $yield;
+		}
+		$now = current_time( 'mysql', true );
 
 		$inserted = $wpdb->insert(
 			SOM_DB::table( 'workflow_templates' ),
 			array(
-				'name'        => $name,
-				'description' => '' !== $description ? $description : null,
-				'kind'        => $kind,
-				'uses_trays'  => $uses_trays,
-				'is_active'   => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
-				'created_at'  => $now,
-				'updated_at'  => $now,
+				'name'           => $name,
+				'description'    => '' !== $description ? $description : null,
+				'kind'           => $kind,
+				'uses_trays'     => $uses_trays,
+				'output_per_run' => $yield,
+				'is_active'      => isset( $data['is_active'] ) ? (int) (bool) $data['is_active'] : 1,
+				'created_at'     => $now,
+				'updated_at'     => $now,
 			),
-			array( '%s', '%s', '%s', '%d', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -379,6 +461,28 @@ class SOM_Workflows {
 			$want_trays = array_key_exists( 'uses_trays', $data ) ? ! empty( $data['uses_trays'] ) : ! empty( $existing->uses_trays );
 			$fields['uses_trays'] = ( 'post_ship' !== $kind_for_trays && $want_trays ) ? 1 : 0;
 			$format[]             = '%d';
+		}
+
+		if ( array_key_exists( 'kind', $data ) || array_key_exists( 'output_per_run', $data ) ) {
+			$kind_for_yield = array_key_exists( 'kind', $fields )
+				? $fields['kind']
+				: self::sanitize_kind( isset( $existing->kind ) ? $existing->kind : 'make' );
+			$existing_kind  = self::sanitize_kind( isset( $existing->kind ) ? $existing->kind : 'make' );
+
+			if ( 'make' !== $kind_for_yield ) {
+				$fields['output_per_run'] = 1;
+				$format[]                 = '%d';
+			} elseif ( array_key_exists( 'output_per_run', $data ) ) {
+				$yield = self::sanitize_output_per_run( $data['output_per_run'], 'make' );
+				if ( is_wp_error( $yield ) ) {
+					return $yield;
+				}
+				$fields['output_per_run'] = $yield;
+				$format[]                 = '%d';
+			} elseif ( 'make' !== $existing_kind ) {
+				$fields['output_per_run'] = 1;
+				$format[]                 = '%d';
+			}
 		}
 
 		$updated = $wpdb->update(
@@ -515,7 +619,7 @@ class SOM_Workflows {
 	/**
 	 * Copy a workflow template into an independent template named "X (copy)".
 	 *
-	 * Copies the template row (name, description, kind, uses_trays, is_active),
+	 * Copies the template row (name, description, kind, uses_trays, output_per_run, is_active),
 	 * every step in the same step_order (editor columns only — not legacy
 	 * script_config), material goals, and budget links. Products, orders, and
 	 * site Pack / Post-ship defaults are left on the original.
@@ -553,11 +657,12 @@ class SOM_Workflows {
 
 		$created = self::create(
 			array(
-				'name'        => self::clone_copy_name( (string) $source->name ),
-				'description' => isset( $source->description ) ? (string) $source->description : '',
-				'kind'        => $kind,
-				'uses_trays'  => ! empty( $source->uses_trays ),
-				'is_active'   => (int) $source->is_active,
+				'name'           => self::clone_copy_name( (string) $source->name ),
+				'description'    => isset( $source->description ) ? (string) $source->description : '',
+				'kind'           => $kind,
+				'uses_trays'     => ! empty( $source->uses_trays ),
+				'output_per_run' => isset( $source->output_per_run ) ? $source->output_per_run : '',
+				'is_active'      => (int) $source->is_active,
 			)
 		);
 		if ( is_wp_error( $created ) ) {

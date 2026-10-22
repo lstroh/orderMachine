@@ -535,6 +535,16 @@
 	vertical-align: middle;
 }
 
+.som-output-per-run {
+	display: inline-block;
+	margin-left: 16px;
+}
+
+.som-output-per-run input[type="number"] {
+	width: 6em;
+	margin-left: 6px;
+}
+
 /* Analytics (Update Package 3 Sprint 4) */
 
 .som-analytics-filters label {
