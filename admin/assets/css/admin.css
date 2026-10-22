@@ -299,6 +299,34 @@
 	margin-bottom: 20px;
 }
 
+.som-shipment-disclosure > summary {
+	cursor: pointer;
+	margin: 0;
+	font-weight: 400;
+}
+
+.som-shipment-disclosure[open] > summary {
+	margin-bottom: 12px;
+}
+
+.som-shipment-summary-title {
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: #1d2327;
+}
+
+.som-shipment-summary-status,
+.som-shipment-summary-tracking {
+	margin-left: 0.6em;
+	font-size: 13px;
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
+	color: #1d2327;
+}
+
 .som-panel-notes {
 	margin-bottom: 20px;
 }
