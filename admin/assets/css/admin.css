@@ -976,8 +976,16 @@
 
 .som-step-instructions-body ul,
 .som-step-instructions-body ol {
-	margin: 0 0 0.65em 1.4em;
-	padding: 0;
+	margin: 0 0 0.65em;
+	padding: 0 0 0 1.5em;
+}
+
+.som-step-instructions-body ul {
+	list-style: disc;
+}
+
+.som-step-instructions-body ol {
+	list-style: decimal;
 }
 
 .som-step-instructions-body li {

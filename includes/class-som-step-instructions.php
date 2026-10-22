@@ -141,14 +141,19 @@ class SOM_Step_Instructions {
 	}
 
 	/**
-	 * Editor help + Markdown cheatsheet markup (after a `.som-md-source` textarea).
+	 * Preview panel, help line, and Markdown cheatsheet (after a `.som-md-source` textarea).
 	 *
-	 * Preview toggle lives in {@see render_editor_toolbar()}.
+	 * The preview box is the first block so it opens directly under the textarea.
+	 * It starts closed (`hidden`). The toggle stays in {@see render_editor_toolbar()}.
 	 *
 	 * @return void
 	 */
 	public static function render_editor_help() {
 		?>
+		<div class="som-step-instructions som-md-preview" data-som-md-preview hidden>
+			<strong class="som-step-instructions-label"><?php echo esc_html__( 'Preview', 'order-machine' ); ?></strong>
+			<div class="som-step-instructions-body" data-som-md-preview-body></div>
+		</div>
 		<p class="description som-md-help">
 			<?php echo esc_html__( 'Markdown supported. No images; no HTML editor. Max 5000 characters.', 'order-machine' ); ?>
 		</p>
@@ -163,10 +168,6 @@ class SOM_Step_Instructions {
 				<li><?php echo esc_html__( 'Blank line between paragraphs', 'order-machine' ); ?></li>
 			</ul>
 		</details>
-		<div class="som-step-instructions som-md-preview" data-som-md-preview hidden>
-			<strong class="som-step-instructions-label"><?php echo esc_html__( 'Preview', 'order-machine' ); ?></strong>
-			<div class="som-step-instructions-body" data-som-md-preview-body></div>
-		</div>
 		<?php
 	}
 

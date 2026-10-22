@@ -369,11 +369,11 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S7
-- [ ] Disc and decimal list styles on instruction HTML
-- [ ] Preview box directly under the textarea
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] BUG-006 stays Open until wp-env
-- [ ] Progress file: smoke pending wp-env
+- [x] Disc and decimal list styles on instruction HTML
+- [x] Preview box directly under the textarea
+- [x] Smoke + docs + Unreleased changelog
+- [x] BUG-006 stays Open until wp-env
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S8
 - [ ] Column `output_per_run`, schema 1.25.0
