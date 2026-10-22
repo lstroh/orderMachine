@@ -362,11 +362,11 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S6
-- [ ] Trays panel above Make
-- [ ] Internal + Uses trays blocks Mark done until a tray is held
-- [ ] Customer-order internal component line does not, by itself, require a tray
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Trays panel above Make
+- [x] Internal + Uses trays blocks Mark done until a tray is held
+- [x] Customer-order internal component line does not, by itself, require a tray
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S7
 - [ ] Disc and decimal list styles on instruction HTML

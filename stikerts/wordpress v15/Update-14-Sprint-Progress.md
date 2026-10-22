@@ -12,8 +12,8 @@
 | UP14-S2 | Workflow CSV | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S3 | Product CSV | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S4 | Budget checkbox on Add material | Implemented | On main. Smoke written. Pending wp-env |
-| UP14-S5 | Collapsed Shipment panel | Implemented | Smoke written. Pending wp-env |
-| UP14-S6 | Trays above Make, including Internal | Not started | Extends Package 8. Unblock on the order stays |
+| UP14-S5 | Collapsed Shipment panel | Implemented | On main. Smoke written. Pending wp-env |
+| UP14-S6 | Trays above Make, including Internal | Implemented | Smoke written. Pending wp-env |
 | UP14-S7 | Instruction bullets and editor preview | Not started | BUG-006. No allowlist change |
 | UP14-S8 | Output per run | Not started | Schema 1.25.0. After S2 for the CSV column |
 | UP14-S9 | Pack workflow override | Not started | Schema 1.26.0. Overturns Package 6 site-wide Pack |
@@ -21,7 +21,7 @@
 | UP14-S11 | Finished pack leaves the Pack board | Not started | Stays on the Post-ship board |
 | UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
 
-**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S4 are on main. UP14-S5 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S5 are on main. UP14-S6 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -69,14 +69,15 @@
 
 ## UP14-S5 — Collapsed Shipment panel
 
-- **Status:** implemented. Not merged.
+- **Status:** implemented. On main.
 - **Behaviour:** On every order detail, including Internal, Shipment is a disclosure that starts closed. Nothing stores open or closed. With no shipment row the heading is **Shipment**. When a shipment is saved, the heading also shows the status label and the tracking number when one is stored. The form inside is unchanged: carrier, service, ship date, postage, pack weight, tracking, Click & Drop reference, proof, save, and push tracking. Saving and pushing stay allowed on an Internal order. Planned shipping and Shipping address stay as they are. Pack & Ship stays hidden when the channel is Internal. Make, Pack & Ship, and Post-ship stay expanded.
 - **Smoke:** `tests/sprint-up14-s5-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S6 — Trays above Make, including Internal
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s6-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** The existing Trays panel (`#som-trays`) sits immediately above Make. Held trays, free-tray checkboxes, assign, and release are the same controls. The short warning inside Make stays, with the link to `#som-trays`, when a tray is still required and none is held. `SOM_Trays::order_requires_trays()` is also true when the order channel is Internal and that product’s make template has **Uses trays**. A customer order still skips an internal component line; that line does not, by itself, require a tray. A sellable line whose make template has **Uses trays** still requires a tray. A bound Pack template with **Uses trays** still requires a tray. `trays_gate_ok()` is still the only Mark done and board-advance gate. The last-tray release rule uses the same predicate, so an open Internal order that requires a tray cannot release its last held tray. Unblock on the order detail still lets that one Mark done through without a tray. There is no Unblock on the boards and no trays overview page. Post-ship **Uses trays** stays forced off. Auto-release when the order completes is unchanged. **Release anyway** is UP14-S12 and is not in this sprint.
+- **Smoke:** `tests/sprint-up14-s6-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S7 — Instruction bullets and editor preview
 

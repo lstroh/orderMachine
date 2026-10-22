@@ -205,7 +205,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Open on eBay/Etsy** marketplace order link
 - **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete; blocked when trays required and none held)
 - **Unblock step** on the current make/pack step when Mark done is gated (order detail only)
-- **Trays** panel — assign free / release held (order-level; shared by make + pack)
+- **Trays** panel sits immediately above Make — assign free / release held (order-level; shared by make + pack). An Internal job with **Uses trays** needs a tray before Mark done
 - **Materials used** — planned vs actual from product **Recipe** and selected shipping **Package** (separate Source rows); raise Actual to record overuse (stock ↓, COGS ↑, material budget **Extra material usage** funding). Increase-only; empty when nothing was reserved
 - Stock log for the order available under a details disclosure
 - **Platform fees** panel — itemized actual synced fee lines when present (after fee sync)
@@ -217,7 +217,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Make (UP6-S1, UP12-S2):** per **sellable order line** from that line’s product make template (truncated before pack/ship steps until UP6-S3 seed rewrite). An internal product line on a **customer** order is pack-ready (no make rows, badge **Pack-ready (internal)**, no Make controls). **Produce N** (Internal channel) keeps its item make progress and the order detail Make section shows the same step list, Mark done, instructions, tasks, and copy command as a sellable line — advance it there or on Make Board. Mid-job is the current step, not Pack-ready; when every make step is done the badge is **Ready to pack** (there is no pack). Legacy open orders may still show order-level progress.
 - **Pack (UP6-S2/S3):** non-Internal new orders bind the Settings **Default Pack workflow** into `order_step_progress` (soft-flag if unset — Ship blocked until configured). Pack Board tracks order cards; Ship blocked until all sellable lines make-complete, no hold, shipping package set, packing checklist + thank-you, address confirm, and shipment row. Packed-by stamps once; optional pack weight on shipment. Pack finish does **not** set `is_complete` for customer orders (Package 11). Fresh seed / Restore: **Bin Sticker Make** + **Order Pack & Ship** + **Post-ship — Order Aftercare**. Settings → **Repair pack binding** for open unbound orders.
 - **Post-ship (UP11, UP12-S5):** third kind; bind/start auto after Pack Ship and/or manual; site default + product override; Post-ship Board (`som-post-ship-board`); **complete** when shipment exists + arrival confirmed; Review reminder on post-ship (may run after complete). Saving a Post-ship template requires a **Package arrived** step; a failed save writes nothing (BUG-005). An open order whose bound post-ship steps have no arrival step, and whose arrival is not confirmed, shows a notice and is not rebound.
-- **Trays (UP8):** required when any sellable make template or bound Pack template has `uses_trays`; block until ≥1 held; keep ≥1 while required + open; auto-release on order complete; board badges
+- **Trays (UP8, UP14-S6):** required when a sellable make template, the bound Pack template, or an Internal order’s make template has `uses_trays`. A customer-order internal component line does not, by itself, require a tray. Block until ≥1 held; keep ≥1 while required + open; auto-release on order complete; board badges. The panel sits immediately above Make
 - If nothing matches → no progress rows; UI shows no-workflow / unmatched flags
 - Confirmation ticks persist; Board drag / Mark done stay locked until the checklist is saved complete
 
@@ -364,7 +364,7 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 - Timer: Mark done disabled until the countdown finishes (or tick unlocks it)
 - Script (`local` / `api` / `n8n`): **removed** (UP9-S2) — legacy ignored; REST `workflow-callback` unused
 - Batch: entering a step with `batch_group_id` sets progress to `waiting_batch` and enqueues into a collecting batch (other gates ignored on that step in v1)
-- Trays required: when any involved template has `uses_trays` and none held → Mark done / drag blocked until ≥1 tray (or Unblock)
+- Trays required: when a sellable make template, the bound Pack template, or an Internal order’s make template has `uses_trays` and none is held → Mark done / drag blocked until ≥1 tray (or Unblock). A customer-order internal component line does not, by itself, require a tray
 
 **Unblock step (UP8-S2):** order detail only. Bypasses timer, checklist, batch (removes member), ship/package/hold (hold flag left set), trays-required, and leftover waiting_script/error. Enables Mark done only — does not auto-complete. Audit columns + order note.
 
@@ -565,7 +565,7 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 **Feature bullets:**
 
 - Site pool **1 … Max trays** (default 10, allowed 1–20); cannot lower max while a higher tray is held
-- Template **Uses trays** → order requires trays if any sellable make or bound Pack template has it
+- Template **Uses trays** → a sellable make template, a bound Pack template, or an Internal order’s make template requires trays. A customer-order internal component line does not, by itself, require a tray. The Trays panel sits immediately above Make
 - Order-level assign many free trays; reject double-book; manual release; keep ≥1 while required + open
 - Auto-release all held trays on order complete (incl. Internal Produce N)
 - **Unblock step** bypasses all Mark-done gates; does not auto Mark done; audit + order note; order detail only

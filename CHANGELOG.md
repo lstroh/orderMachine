@@ -15,6 +15,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - Products can be exported, and a CSV can be previewed and imported from the Products list. One row per recipe line. A name that already exists is created as Name (2) and keeps the file SKU. An unknown material, workflow, or package fails that product. An internal product gets a new output material. Listings are not created
 - Add material can start that material's restock budget from an unchecked checkbox. If the budget cannot be created, the material stays and the error is shown on the material screen. The materials CSV does not create a budget
 - Order detail Shipment starts closed on every visit, including an Internal order. The closed heading shows the status and the tracking number when a shipment is saved. The form inside is unchanged
+- The Trays panel sits immediately above Make. An Internal order whose make template has Uses trays needs a held tray before Mark done and board advance. A customer-order internal component line still does not, by itself, require a tray. Unblock on the order still allows one Mark done without a tray
 
 ## [0.34.0] - 2026-10-19
 
