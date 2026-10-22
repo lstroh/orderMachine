@@ -3,7 +3,7 @@
  * Materials CSV export, template, preview, and import.
  *
  * Creates rows through SOM_Materials::create. Does not update, and does not
- * set stock, a stock log, or source_product_id.
+ * set stock, a stock log, source_product_id, or a material budget.
  *
  * @package OrderMachine
  */

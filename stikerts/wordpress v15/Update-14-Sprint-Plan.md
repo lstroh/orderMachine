@@ -350,10 +350,10 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S4
-- [ ] Add material checkbox
-- [ ] Material kept when budget create fails
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Add material checkbox
+- [x] Material kept when budget create fails
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S5
 - [ ] Shipment disclosure, closed by default

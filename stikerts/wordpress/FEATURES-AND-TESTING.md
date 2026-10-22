@@ -258,6 +258,7 @@ Deactivate rather than hard-delete (soft inactive). Deactivate is blocked while 
 **What you can do:**
 
 - CRUD materials (name, unit, stock, low-stock threshold, active)
+- On **Add material**, **Create a material budget** is unchecked; tick it to start that material’s restock budget. If the budget cannot be created, the material stays and the error is shown on the material screen
 - Set **preferred supplier**
 - See **weighted average (WA)** and **total value on hand** (read-only)
 - Edit **unit cost** as an explicit override — revalues `total_value_on_hand = current_stock × unit_cost` and writes a stock-log row
