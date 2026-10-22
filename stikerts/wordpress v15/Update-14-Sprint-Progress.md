@@ -11,8 +11,8 @@
 | UP14-S1 | Materials CSV | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S2 | Workflow CSV | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S3 | Product CSV | Implemented | On main. Smoke written. Pending wp-env |
-| UP14-S4 | Budget checkbox on Add material | Implemented | Smoke written. Pending wp-env |
-| UP14-S5 | Collapsed Shipment panel | Not started | Independent of the files |
+| UP14-S4 | Budget checkbox on Add material | Implemented | On main. Smoke written. Pending wp-env |
+| UP14-S5 | Collapsed Shipment panel | Implemented | Smoke written. Pending wp-env |
 | UP14-S6 | Trays above Make, including Internal | Not started | Extends Package 8. Unblock on the order stays |
 | UP14-S7 | Instruction bullets and editor preview | Not started | BUG-006. No allowlist change |
 | UP14-S8 | Output per run | Not started | Schema 1.25.0. After S2 for the CSV column |
@@ -21,7 +21,7 @@
 | UP14-S11 | Finished pack leaves the Pack board | Not started | Stays on the Post-ship board |
 | UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
 
-**Package 14:** planning still open for further operator items. UP14-S1, UP14-S2, and UP14-S3 are on main. UP14-S4 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S4 are on main. UP14-S5 is implemented on its branch and is not merged. Schema stays **1.24.0** until UP14-S8 (**1.25.0**) and UP14-S9 (**1.26.0**). Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -63,14 +63,15 @@
 
 ## UP14-S4 — Budget checkbox on Add material
 
-- **Status:** implemented. Not merged.
+- **Status:** implemented. On main.
 - **Behaviour:** Add material has an unchecked checkbox **Create a material budget**. Edit material does not. When the box is clear, the material save is unchanged. When it is checked, after the material row exists, `SOM_Budgets::create` adds one active material budget named like the material, funding `material_cost`, funding value empty, target reserve empty, balance £0, notes empty, and no workflow links (every workflow). One budget per material stays in force. If the budget insert fails, the material stays and the material screen shows the error. The materials CSV does not create budgets.
 - **Smoke:** `tests/sprint-up14-s4-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S5 — Collapsed Shipment panel
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s5-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** On every order detail, including Internal, Shipment is a disclosure that starts closed. Nothing stores open or closed. With no shipment row the heading is **Shipment**. When a shipment is saved, the heading also shows the status label and the tracking number when one is stored. The form inside is unchanged: carrier, service, ship date, postage, pack weight, tracking, Click & Drop reference, proof, save, and push tracking. Saving and pushing stay allowed on an Internal order. Planned shipping and Shipping address stay as they are. Pack & Ship stays hidden when the channel is Internal. Make, Pack & Ship, and Post-ship stay expanded.
+- **Smoke:** `tests/sprint-up14-s5-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S6 — Trays above Make, including Internal
 

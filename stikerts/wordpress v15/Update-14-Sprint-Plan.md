@@ -356,10 +356,10 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S5
-- [ ] Shipment disclosure, closed by default
-- [ ] Summary shows status and tracking number
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Shipment disclosure, closed by default
+- [x] Summary shows status and tracking number
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S6
 - [ ] Trays panel above Make

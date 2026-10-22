@@ -198,6 +198,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - Buyer and totals
 - Personalisation (front-and-centre when present)
 - Shipping address
+- **Shipment** starts closed on every visit, including Internal. The page does not remember open or closed. No shipment row: heading **Shipment**. A saved shipment adds the status, and the tracking number when one is stored. The form inside is unchanged (carrier, service, ship date, postage, pack weight, tracking, Click & Drop reference, proof, save, push tracking), including on an Internal order. Planned shipping and Shipping address stay open. Pack & Ship stays hidden when the channel is Internal. Make, Pack & Ship, and Post-ship stay expanded
 - Line items (matched product or unmatched warning)
 - Workflow progress: current step, timers, scripts, **waiting_batch** badge + link to Batches
 - **Confirmation checklist** when the current step has a confirmation kind (print / address / packing)

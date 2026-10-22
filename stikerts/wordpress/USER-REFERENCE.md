@@ -128,6 +128,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Platform fees** panel when synced fee lines exist
 - **Notes** — admin-only append-only log (cannot edit/delete); not synced to marketplaces
 - **Planned shipping** — expected postage (seeded from product defaults on create; editable; re-sync does not overwrite). Variance vs shipment **postage paid** when recorded. Internal orders leave planned null
+- **Shipment** — collapsed on every visit, including Internal. Nothing remembers open or closed. With no shipment row the heading is **Shipment**. After a shipment is saved it also shows the status, and the tracking number when one is stored. Open it for carrier, service, ship date, postage, pack weight, tracking, Click & Drop reference, proof, save, and push tracking. Saving and pushing stay available on an Internal order. Shipping address and Planned shipping stay open. Pack & Ship stays hidden on Internal
 - Raw channel payload in a collapsed block
 
 **Important rules:**

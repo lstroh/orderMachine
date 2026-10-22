@@ -166,7 +166,8 @@ if ( ! empty( $order->raw_payload ) ) {
 		'tracking_number'    => $shipment && $shipment->tracking_number ? (string) $shipment->tracking_number : '',
 		'click_and_drop_ref' => $shipment && $shipment->click_and_drop_ref ? (string) $shipment->click_and_drop_ref : '',
 	);
-	$ship_status = SOM_Shipments::status_key( (int) $order->id );
+	$ship_status           = SOM_Shipments::status_key( (int) $order->id );
+	$ship_heading_tracking = $shipment ? trim( (string) ( $shipment->tracking_number ?? '' ) ) : '';
 
 	$planned_raw = isset( $order->planned_shipping_gbp ) && null !== $order->planned_shipping_gbp && '' !== $order->planned_shipping_gbp
 		? (string) $order->planned_shipping_gbp
@@ -228,7 +229,16 @@ if ( ! empty( $order->raw_payload ) ) {
 	</section>
 
 	<section class="som-panel som-panel-shipment">
-		<h2><?php echo esc_html__( 'Shipment', 'order-machine' ); ?></h2>
+		<details class="som-shipment-disclosure">
+			<summary class="som-shipment-summary">
+				<span class="som-shipment-summary-title"><?php echo esc_html__( 'Shipment', 'order-machine' ); ?></span>
+				<?php if ( $shipment ) : ?>
+					<span class="som-shipment-summary-status"><?php echo esc_html( SOM_Shipments::status_label( $ship_status ) ); ?></span>
+					<?php if ( '' !== $ship_heading_tracking ) : ?>
+						<span class="som-shipment-summary-tracking"><?php echo esc_html( $ship_heading_tracking ); ?></span>
+					<?php endif; ?>
+				<?php endif; ?>
+			</summary>
 		<?php if ( ! $shipment ) : ?>
 			<p class="som-muted"><?php echo esc_html__( 'No shipment recorded yet. After Click & Drop, save what you posted.', 'order-machine' ); ?></p>
 		<?php else : ?>
@@ -335,6 +345,7 @@ if ( ! empty( $order->raw_payload ) ) {
 				?>
 			</form>
 		<?php endif; ?>
+		</details>
 	</section>
 
 	<?php
