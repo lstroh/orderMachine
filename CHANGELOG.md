@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-10-23
+
+Package 14: catalog CSV for materials, workflows, and products, tray and pack workflow rules, and output per run.
+
 ### Added
 
 - Materials can be exported, and a CSV can be previewed and imported from the Materials list. A name that already exists is created as Name (2). New rows start at stock 0. Made-in-house materials are left out of the export. An unknown or ambiguous supplier fails that row only
@@ -22,6 +26,12 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - Mark done on Make and Post-ship stays at the same place on the page, the same way Pack already does. Make sends that line. A failed advance shows an alert and the button stays usable
 - The Pack board drops an order when every pack step is done. An order that still has a pack step, and an order with no pack progress, stay. The order stays on the Post-ship board, and the order page still shows the finished Pack section
 - Release anyway on the order Trays panel frees the trays you checked, including the last one, while the order still requires a tray. Release selected still keeps one. An order note records who released it and that the tray requirement was bypassed. Mark done stays blocked until a tray is assigned or Unblock step is used. Unblock step does not release a tray
+
+### Notes
+
+- Schema is **1.26.0**
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.35.0.zip`, not the repository source zipball
 
 ## [0.34.0] - 2026-10-19
 
