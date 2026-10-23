@@ -29,7 +29,8 @@ class SOM_Product_Import {
 	/**
 	 * Columns shared by export, template, and import.
 	 *
-	 * pack_workflow_name is not a column. UP14-S9 adds it after the schema column exists.
+	 * Optional pack_workflow_name is a Pack template name. Blank means no override.
+	 * An internal product ignores that cell.
 	 *
 	 * @var string[]
 	 */
@@ -39,6 +40,7 @@ class SOM_Product_Import {
 		'is_internal',
 		'workflow_name',
 		'post_ship_workflow_name',
+		'pack_workflow_name',
 		'target_selling_price',
 		'weight_grams',
 		'package_name',
@@ -67,6 +69,7 @@ class SOM_Product_Import {
 		'is_internal',
 		'workflow_name',
 		'post_ship_workflow_name',
+		'pack_workflow_name',
 		'target_selling_price',
 		'weight_grams',
 		'package_name',
@@ -266,6 +269,7 @@ class SOM_Product_Import {
 				p.planned_shipping_gbp,
 				wt.name AS workflow_name,
 				ps.name AS post_ship_workflow_name,
+				pw.name AS pack_workflow_name,
 				pkg.name AS package_name,
 				pkgm.name AS package_name_multi,
 				m.name AS material_name,
@@ -273,6 +277,7 @@ class SOM_Product_Import {
 			FROM {$products} p
 			LEFT JOIN {$templates} wt ON wt.id = p.workflow_template_id
 			LEFT JOIN {$templates} ps ON ps.id = p.post_ship_workflow_template_id
+			LEFT JOIN {$templates} pw ON pw.id = p.pack_workflow_template_id
 			LEFT JOIN {$packages} pkg ON pkg.id = p.package_id
 			LEFT JOIN {$packages} pkgm ON pkgm.id = p.package_id_multi
 			LEFT JOIN {$recipe} pm ON pm.product_id = p.id
@@ -292,6 +297,7 @@ class SOM_Product_Import {
 				(string) (int) ( isset( $row->is_internal ) ? $row->is_internal : 0 ),
 				self::export_text( isset( $row->workflow_name ) ? $row->workflow_name : null ),
 				self::export_text( isset( $row->post_ship_workflow_name ) ? $row->post_ship_workflow_name : null ),
+				self::export_text( isset( $row->pack_workflow_name ) ? $row->pack_workflow_name : null ),
 				self::export_text( isset( $row->target_selling_price ) ? $row->target_selling_price : null ),
 				self::export_text( isset( $row->weight_grams ) ? $row->weight_grams : null ),
 				self::export_text( isset( $row->package_name ) ? $row->package_name : null ),
@@ -565,6 +571,21 @@ class SOM_Product_Import {
 			return self::failed_product( $line, $file_name, $post_ship_id->get_error_code(), $post_ship_id->get_error_message() );
 		}
 
+		$pack_id = 0;
+		if ( true !== $internal ) {
+			$pack_id = self::optional_ref(
+				SOM_Catalog_Import::cell( $first, $index, 'pack_workflow_name' ),
+				isset( $refs['pack'] ) ? $refs['pack'] : array(),
+				'unknown_pack',
+				__( 'Unknown Pack workflow.', 'order-machine' ),
+				'ambiguous_pack',
+				__( 'Pack workflow name matches more than one template.', 'order-machine' )
+			);
+			if ( is_wp_error( $pack_id ) ) {
+				return self::failed_product( $line, $file_name, $pack_id->get_error_code(), $pack_id->get_error_message() );
+			}
+		}
+
 		$package_id = self::optional_ref(
 			SOM_Catalog_Import::cell( $first, $index, 'package_name' ),
 			isset( $refs['packages'] ) ? $refs['packages'] : array(),
@@ -623,6 +644,7 @@ class SOM_Product_Import {
 				'is_internal'                    => true === $internal ? 1 : 0,
 				'workflow_template_id'           => $workflow_id > 0 ? (int) $workflow_id : '',
 				'post_ship_workflow_template_id' => $post_ship_id > 0 ? (int) $post_ship_id : '',
+				'pack_workflow_template_id'      => $pack_id > 0 ? (int) $pack_id : '',
 				'target_selling_price'           => $price,
 				'weight_grams'                   => $weight,
 				'package_id'                     => $package_id > 0 ? (int) $package_id : '',
@@ -777,6 +799,7 @@ class SOM_Product_Import {
 			'materials' => self::ids_by_name( 'materials' ),
 			'make'      => self::ids_by_name( 'workflow_templates', 'make' ),
 			'post_ship' => self::ids_by_name( 'workflow_templates', 'post_ship' ),
+			'pack'      => self::ids_by_name( 'workflow_templates', 'pack' ),
 			'packages'  => self::ids_by_name( 'shipping_packages' ),
 		);
 	}
@@ -892,7 +915,7 @@ class SOM_Product_Import {
 		if ( in_array( $column, array( 'is_internal', 'is_active' ), true ) ) {
 			return strtolower( $raw );
 		}
-		if ( in_array( $column, array( 'name', 'sku', 'workflow_name', 'post_ship_workflow_name', 'package_name', 'package_name_multi' ), true ) ) {
+		if ( in_array( $column, array( 'name', 'sku', 'workflow_name', 'post_ship_workflow_name', 'pack_workflow_name', 'package_name', 'package_name_multi' ), true ) ) {
 			return trim( sanitize_text_field( $raw ) );
 		}
 		return $raw;
@@ -909,6 +932,7 @@ class SOM_Product_Import {
 			'is_internal'              => __( 'Internal', 'order-machine' ),
 			'workflow_name'            => __( 'Workflow', 'order-machine' ),
 			'post_ship_workflow_name'  => __( 'Post-ship workflow', 'order-machine' ),
+			'pack_workflow_name'       => __( 'Pack workflow', 'order-machine' ),
 			'target_selling_price'     => __( 'Target selling price', 'order-machine' ),
 			'weight_grams'             => __( 'Goods weight', 'order-machine' ),
 			'package_name'             => __( 'Package', 'order-machine' ),

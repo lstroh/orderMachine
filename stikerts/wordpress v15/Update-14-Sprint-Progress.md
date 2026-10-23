@@ -15,13 +15,13 @@
 | UP14-S5 | Collapsed Shipment panel | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S6 | Trays above Make, including Internal | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S7 | Instruction bullets and editor preview | Implemented | Smoke written. Pending wp-env. BUG-006 stays Open |
-| UP14-S8 | Output per run | Implemented | Smoke written. Pending wp-env. Schema 1.25.0 |
-| UP14-S9 | Pack workflow override | Not started | Schema 1.26.0. Overturns Package 6 site-wide Pack |
+| UP14-S8 | Output per run | Implemented | On main. Smoke written. Pending wp-env. Schema 1.25.0 |
+| UP14-S9 | Pack workflow override | Implemented | Smoke written. Pending wp-env. Schema 1.26.0 |
 | UP14-S10 | Mark done stays in place | Not started | Make and Post-ship. Pack already does this |
 | UP14-S11 | Finished pack leaves the Pack board | Not started | Stays on the Post-ship board |
 | UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
 
-**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S7 are on main. UP14-S8 is implemented on its branch and is not merged. Schema is **1.25.0** in UP14-S8. UP14-S9 moves it to **1.26.0**. Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S8 are on main. UP14-S9 is implemented on its branch and is not merged. Schema is **1.26.0** in UP14-S9. Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -58,7 +58,7 @@
 ## UP14-S3 — Product CSV
 
 - **Status:** implemented. On main.
-- **Behaviour:** Products list exports, downloads a template, previews, and imports. One row per recipe line; rows with the same name are one product. A product with no recipe is one row with the material and quantity empty. Create goes through `SOM_Products::create`, then `save_recipe`. A taken name becomes `Name (2)` and keeps the file SKU. When another product already has that SKU, the product is still created and the result lists a warning. Listings are not created. An internal product gets a new output material (stock 0). `linked_material_id` is not pointed at an existing material. An unknown or ambiguous material, make workflow, Post-ship workflow, or package fails that product and does not create the missing record. Header cells that disagree fail that product. If recipe save fails after the product exists, the new product and its new output material are deleted. `pack_workflow_name` is not a column.
+- **Behaviour:** Products list exports, downloads a template, previews, and imports. One row per recipe line; rows with the same name are one product. A product with no recipe is one row with the material and quantity empty. Create goes through `SOM_Products::create`, then `save_recipe`. A taken name becomes `Name (2)` and keeps the file SKU. When another product already has that SKU, the product is still created and the result lists a warning. Listings are not created. An internal product gets a new output material (stock 0). `linked_material_id` is not pointed at an existing material. An unknown or ambiguous material, make workflow, Post-ship workflow, or package fails that product and does not create the missing record. Header cells that disagree fail that product. If recipe save fails after the product exists, the new product and its new output material are deleted. `pack_workflow_name` is an optional column from UP14-S9 (blank means no override; a filled name must match exactly one Pack template; an internal product ignores the cell).
 - **Smoke:** `tests/sprint-up14-s3-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S4 — Budget checkbox on Add material
@@ -88,15 +88,16 @@
 
 ## UP14-S8 — Output per run
 
-- **Status:** implemented. Not merged.
+- **Status:** implemented. On main.
 - **Behaviour:** `workflow_templates.output_per_run` is an int unsigned, not null, default 1. Schema **1.25.0**. Existing rows become 1. A Make workflow shows **Output per run** beside Uses trays (whole number 1–10000; blank saves as 1). Pack and Post-ship do not show the field, and saving those kinds stores 1. `SOM_Production::credit_output_for_order()` stays Internal-only, one `production_output` row, and idempotent. Units are the line quantity times the make template’s yield, read when the job finishes. A missing or invalid yield counts as 1. Unit cost is input COGS divided by those units. Produce 3 with output per run 12 credits 36. A yield of 1 still credits the Produce N quantity. Recipe reservation on create stays the Produce N quantity. A customer order does not credit stock. Clone copies the number. The workflow CSV has an optional `output_per_run` column: blank means 1, a Pack or Post-ship row stores 1 even when the cell is filled, and export writes the stored number.
 - **Smoke:** `tests/sprint-up14-s8-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 - **Schema:** 1.25.0 in this sprint only.
 
 ## UP14-S9 — Pack workflow override
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s9-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** `products.pack_workflow_template_id` is a nullable indexed bigint. Schema **1.26.0**. Existing products stay NULL. A sellable product shows **Pack workflow override**. Blank uses Settings → Default Pack workflow. The list is active Pack templates, plus the saved one if it is now inactive. Internal products do not show the field and leave it NULL. Clone copies the override. When pack is bound (new customer order, or Repair pack binding), the override on the primary product is used when that template is an active Pack template with steps. The primary product is the first order line that has a product. Otherwise the site default is used. An inactive override, the wrong kind, or a template with no steps falls through to the site default. Other lines do not change the choice. An order that already has a pack template keeps it. An Internal order stays unbound. The product CSV has an optional `pack_workflow_name` column: blank means no override, a filled name must match exactly one Pack template, and an internal product ignores the cell.
+- **Smoke:** `tests/sprint-up14-s9-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 - **Schema:** 1.26.0 in this sprint only.
 
 ## UP14-S10 — Mark done stays in place

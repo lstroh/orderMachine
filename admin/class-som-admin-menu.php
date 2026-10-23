@@ -2036,6 +2036,7 @@ class SOM_Admin_Menu {
 			'sku'                            => isset( $_POST['som_product_sku'] ) ? wp_unslash( $_POST['som_product_sku'] ) : '',
 			'workflow_template_id'           => isset( $_POST['som_workflow_template_id'] ) ? wp_unslash( $_POST['som_workflow_template_id'] ) : '',
 			'post_ship_workflow_template_id' => isset( $_POST['som_post_ship_workflow_template_id'] ) ? wp_unslash( $_POST['som_post_ship_workflow_template_id'] ) : '',
+			'pack_workflow_template_id'      => isset( $_POST['som_pack_workflow_template_id'] ) ? wp_unslash( $_POST['som_pack_workflow_template_id'] ) : '',
 			'target_selling_price'           => isset( $_POST['som_target_selling_price'] ) ? wp_unslash( $_POST['som_target_selling_price'] ) : '',
 			'weight_grams'                   => isset( $_POST['som_product_weight_g'] ) ? wp_unslash( $_POST['som_product_weight_g'] ) : '',
 			'package_id'                     => isset( $_POST['som_product_package_id'] ) ? wp_unslash( $_POST['som_product_package_id'] ) : '',

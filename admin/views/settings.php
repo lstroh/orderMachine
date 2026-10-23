@@ -331,7 +331,7 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 					<p class="description">
 						<?php
 						echo esc_html__(
-							'Bound on new non-Internal orders (Pack board / Ship gates). Create a workflow with kind Pack under Workflows. Seed rewrite (UP6-S3) will ship a default Pack template.',
+							'Used when a new customer order’s primary product has no Pack override. The primary product is the first line that has a product. An inactive override, the wrong kind, or a template with no steps uses this default. An order that already has a pack template stays on it. Create a workflow with kind Pack under Workflows.',
 							'order-machine'
 						);
 						?>
@@ -660,13 +660,13 @@ $ebay_needs_fees  = SOM_Channel_Ebay::needs_finances_reconnect();
 	<p class="description">
 		<?php
 		echo esc_html__(
-			'After upgrading to Package 6, open non-Internal orders created before Pack binding may lack a Pack workflow. This assigns the Default Pack workflow and creates pack progress without changing per-line make rows. Orders that still use a legacy monolithic order-level workflow are skipped — finish those manually. Thank-you Batches for new orders are no longer on the Pack path; clear any collecting thank-you batches under Batches if needed.',
+			'Open orders that are not Internal and have no Pack workflow can be bound here. The primary product’s Pack override is used when that template is an active Pack workflow with steps. Otherwise the Default Pack workflow above is used. The primary product is the first line that has a product. Orders that already have a pack template are left as they are. Orders that still use a legacy monolithic order-level workflow are skipped — finish those manually. Thank-you Batches for new orders are no longer on the Pack path; clear any collecting thank-you batches under Batches if needed.',
 			'order-machine'
 		);
 		?>
 	</p>
 	<p>
-		<form method="post" action="" style="display:inline;" onsubmit="return confirm('<?php echo esc_js( __( 'Bind the Default Pack workflow on open orders that are missing pack progress?', 'order-machine' ) ); ?>');">
+		<form method="post" action="" style="display:inline;" onsubmit="return confirm('<?php echo esc_js( __( 'Bind pack on open orders that are missing it? Uses the primary product’s Pack override when that template is active and has steps, otherwise Default Pack. Orders that already have a pack template stay as they are.', 'order-machine' ) ); ?>');">
 			<?php wp_nonce_field( 'som_repair_pack_binding', 'som_seed_nonce' ); ?>
 			<button type="submit" name="som_repair_pack_binding" value="1" class="button" <?php disabled( SOM_Pack::default_template_id() < 1 ); ?>>
 				<?php echo esc_html__( 'Repair pack binding', 'order-machine' ); ?>

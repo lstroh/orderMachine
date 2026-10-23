@@ -211,7 +211,8 @@ class SOM_Products {
 	/**
 	 * Create a product.
 	 *
-	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, is_active, is_internal,
+	 * @param array<string, mixed> $data Fields: name, sku, workflow_template_id, post_ship_workflow_template_id,
+	 *                                   pack_workflow_template_id, is_active, is_internal,
 	 *                                   weight_grams, package_id, package_id_multi, planned_shipping_gbp.
 	 * @return int|WP_Error
 	 */
@@ -239,9 +240,9 @@ class SOM_Products {
 	/**
 	 * Copy a product into an independent product named "X (copy)".
 	 *
-	 * Copies product columns (same workflow template ids, active state, price,
-	 * and shipping), the material recipe, step instruction and task overrides,
-	 * and budget links. SKU is left null. Listings, orders, stock logs, and
+	 * Copies product columns (same workflow template ids, including the Pack
+	 * override, active state, price, and shipping), the material recipe, step
+	 * instruction and task overrides, and budget links. SKU is left null. Listings, orders, stock logs, and
 	 * fees are not copied. An internal clone gets a new output material.
 	 *
 	 * Validation matches create(). On any failure the copy is rolled back and
@@ -403,6 +404,15 @@ class SOM_Products {
 			$formats[]                                = null === $post_ship_id ? '%s' : '%d';
 		}
 
+		if ( array_key_exists( 'pack_workflow_template_id', $data ) ) {
+			$pack_id = self::sanitize_pack_workflow_id( $data );
+			if ( is_wp_error( $pack_id ) ) {
+				return $pack_id;
+			}
+			$fields['pack_workflow_template_id'] = $pack_id;
+			$formats[]                           = null === $pack_id ? '%s' : '%d';
+		}
+
 		if ( array_key_exists( 'is_active', $data ) ) {
 			$want_active = (int) (bool) $data['is_active'];
 			if ( 0 === $want_active && (int) $existing->is_active === 1 ) {
@@ -468,6 +478,10 @@ class SOM_Products {
 			}
 			$fields['post_ship_workflow_template_id'] = null;
 			$formats[]                                = '%s';
+			if ( ! array_key_exists( 'pack_workflow_template_id', $fields ) ) {
+				$formats[] = '%s';
+			}
+			$fields['pack_workflow_template_id'] = null;
 		} elseif ( ! $will_be_internal && $has_shipping ) {
 			$shipping = self::sanitize_shipping_fields( $data, false );
 			if ( is_wp_error( $shipping ) ) {
@@ -1149,6 +1163,54 @@ class SOM_Products {
 	}
 
 	/**
+	 * Optional per-product Pack template override.
+	 *
+	 * Blank means Settings → Default Pack workflow. An inactive Pack template
+	 * may be kept; bind falls through to the site default until it is active
+	 * and has steps.
+	 *
+	 * @param array<string, mixed> $data Form data.
+	 * @return int|null|WP_Error
+	 */
+	private static function sanitize_pack_workflow_id( array $data ) {
+		if ( ! array_key_exists( 'pack_workflow_template_id', $data ) ) {
+			return null;
+		}
+
+		$raw = trim( (string) $data['pack_workflow_template_id'] );
+		if ( '' === $raw || '0' === $raw ) {
+			return null;
+		}
+
+		$id = (int) $raw;
+		if ( $id < 1 ) {
+			return null;
+		}
+
+		global $wpdb;
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT id, kind, is_active FROM ' . SOM_DB::table( 'workflow_templates' ) . ' WHERE id = %d LIMIT 1',
+				$id
+			)
+		);
+
+		if ( ! $row ) {
+			return new WP_Error( 'som_pack_missing', __( 'Selected Pack workflow template was not found.', 'order-machine' ) );
+		}
+
+		$kind = SOM_Workflows::sanitize_kind( isset( $row->kind ) ? $row->kind : '' );
+		if ( 'pack' !== $kind ) {
+			return new WP_Error(
+				'som_pack_kind',
+				__( 'Product Pack override must be a Pack workflow template.', 'order-machine' )
+			);
+		}
+
+		return $id;
+	}
+
+	/**
 	 * Active post_ship templates for product override dropdowns.
 	 *
 	 * @param int $include_id Keep selected inactive template visible.
@@ -1172,6 +1234,36 @@ class SOM_Products {
 			$rows = $wpdb->get_results(
 				"SELECT id, name, is_active, kind FROM {$table}
 				WHERE is_active = 1 AND kind = 'post_ship'
+				ORDER BY name ASC, id ASC"
+			);
+		}
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Active Pack templates for product override dropdowns.
+	 *
+	 * @param int $include_id Keep selected inactive template visible.
+	 * @return array<int, object>
+	 */
+	public static function list_pack_templates( $include_id = 0 ) {
+		global $wpdb;
+
+		$include_id = (int) $include_id;
+		$table      = SOM_DB::table( 'workflow_templates' );
+		if ( $include_id > 0 ) {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT id, name, is_active, kind FROM {$table}
+					WHERE ( ( is_active = 1 AND kind = 'pack' ) OR id = %d )
+					ORDER BY name ASC, id ASC",
+					$include_id
+				)
+			);
+		} else {
+			$rows = $wpdb->get_results(
+				"SELECT id, name, is_active, kind FROM {$table}
+				WHERE is_active = 1 AND kind = 'pack'
 				ORDER BY name ASC, id ASC"
 			);
 		}
@@ -1205,6 +1297,11 @@ class SOM_Products {
 			return $post_ship_id;
 		}
 
+		$pack_id = self::sanitize_pack_workflow_id( $data );
+		if ( is_wp_error( $pack_id ) ) {
+			return $pack_id;
+		}
+
 		$is_internal = ! empty( $data['is_internal'] ) ? 1 : 0;
 		if ( $is_internal && null === $workflow_id ) {
 			return new WP_Error(
@@ -1214,6 +1311,7 @@ class SOM_Products {
 		}
 		if ( $is_internal ) {
 			$post_ship_id = null;
+			$pack_id      = null;
 		}
 
 		$shipping = self::sanitize_shipping_fields( $data, (bool) $is_internal );
@@ -1226,6 +1324,7 @@ class SOM_Products {
 			'sku'                            => $sku,
 			'workflow_template_id'           => $workflow_id,
 			'post_ship_workflow_template_id' => $post_ship_id,
+			'pack_workflow_template_id'      => $pack_id,
 			'target_selling_price'           => self::nullable_price( $data, 'target_selling_price' ),
 			'weight_grams'                   => $shipping['weight_grams'],
 			'package_id'                     => $shipping['package_id'],
@@ -1254,6 +1353,7 @@ class SOM_Products {
 				'sku'                            => $row['sku'],
 				'workflow_template_id'           => $row['workflow_template_id'],
 				'post_ship_workflow_template_id' => $row['post_ship_workflow_template_id'],
+				'pack_workflow_template_id'      => $row['pack_workflow_template_id'],
 				'target_selling_price'           => $row['target_selling_price'],
 				'weight_grams'                   => $row['weight_grams'],
 				'package_id'                     => $row['package_id'],
@@ -1265,7 +1365,7 @@ class SOM_Products {
 				'created_at'                     => $now,
 				'updated_at'                     => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( ! $inserted ) {
@@ -1292,6 +1392,7 @@ class SOM_Products {
 			'sku'                            => '',
 			'workflow_template_id'           => ! empty( $source->workflow_template_id ) ? (int) $source->workflow_template_id : '',
 			'post_ship_workflow_template_id' => ! empty( $source->post_ship_workflow_template_id ) ? (int) $source->post_ship_workflow_template_id : '',
+			'pack_workflow_template_id'      => ! empty( $source->pack_workflow_template_id ) ? (int) $source->pack_workflow_template_id : '',
 			'target_selling_price'           => ( null !== $price && '' !== (string) $price ) ? (string) $price : '',
 			'weight_grams'                   => ( isset( $source->weight_grams ) && null !== $source->weight_grams && '' !== (string) $source->weight_grams ) ? (string) $source->weight_grams : '',
 			'package_id'                     => ! empty( $source->package_id ) ? (int) $source->package_id : '',
