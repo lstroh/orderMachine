@@ -20,6 +20,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - A Make workflow has Output per run beside Uses trays. A finished Internal job adds Produce N times that number to the linked material (3 with output per run 12 adds 36). The recipe still reserves the Produce N quantity. Pack, Post-ship, and customer orders do not use it. The workflow CSV has an optional output_per_run column
 - A sellable product can set a Pack workflow override. Blank uses Settings → Default Pack workflow. The first order line that has a product decides when a customer order is bound. An inactive override, the wrong kind, or a template with no steps uses the site default. An order that already has a pack template stays on it. Internal orders stay unbound. The product CSV has an optional pack_workflow_name column
 - Mark done on Make and Post-ship stays at the same place on the page, the same way Pack already does. Make sends that line. A failed advance shows an alert and the button stays usable
+- The Pack board drops an order when every pack step is done. An order that still has a pack step, and an order with no pack progress, stay. The order stays on the Post-ship board, and the order page still shows the finished Pack section
 
 ## [0.34.0] - 2026-10-19
 

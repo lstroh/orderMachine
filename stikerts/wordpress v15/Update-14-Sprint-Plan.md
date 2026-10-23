@@ -401,11 +401,11 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S11
-- [ ] Pack board omits orders whose pack steps are all done
-- [ ] Orders with an open pack step, and orders with no pack progress, stay
-- [ ] Post-ship board still lists the finished-pack order
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Pack board omits orders whose pack steps are all done
+- [x] Orders with an open pack step, and orders with no pack progress, stay
+- [x] Post-ship board still lists the finished-pack order
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S12
 - [ ] **Release anyway** frees the last required tray
