@@ -19,14 +19,21 @@
 
 ## Open
 
+None.
+
+---
+
+## Closed / fixed
+
 ### BUG-006 — Step instruction bullets do not show, and the editor preview is easy to miss
 
 | | |
 |---|---|
 | **Severity** | UX |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Found in** | Order detail Make step instructions; Workflows step editor |
-| **Env** | Local QA `ordermachine1910.local`, order 2, workflow template 2, Quality check. 2026-10-19 |
+| **Fixed** | 2026-10-23 |
+| **Env** | Local QA `ordermachine1910.local`, order 2, workflow template 2, Quality check. 2026-10-19. wp-env PASS 2026-10-23 |
 | **Plan** | Package 14 — [`../wordpress v15/`](../wordpress%20v15/) (`07-Update-Instruction-List-Preview.md`, UP14-S7) |
 
 **Symptoms**
@@ -34,14 +41,14 @@
 - Workflow instructions use Markdown `- ` lines. On the order they read as plain lines. **Good sheet** is bold. There are no bullets.
 - On the workflow editor the same text stays in the source box. The operator does not see a rendered preview next to it.
 
-**Root cause**
+**Root cause / fix**
 
-- `SOM_Step_Instructions::render_html()` already emits `<ul><li>` (Parsedown, allowlist includes `ul` / `li`). WordPress admin CSS sets `ul { list-style: none }`. `.som-step-instructions-body ul` never sets a list style, so the markers disappear. The same class is used for the editor preview.
-- Preview is a toolbar button. The rendered box is after the help line and the cheatsheet, and it starts hidden.
+- `SOM_Step_Instructions::render_html()` already emits `<ul><li>` (Parsedown, allowlist includes `ul` / `li`). WordPress admin CSS sets `ul { list-style: none }`. **UP14-S7:** `.som-step-instructions-body ul` uses disc markers and `.som-step-instructions-body ol` uses decimal numbers, with left inset, on order detail (Make, Pack, Post-ship) and the editor preview.
+- Preview stays a toolbar button and starts closed. The rendered box is the first block under the textarea, above the help line and the cheatsheet. Hide preview closes it.
+
+**Files:** `admin/assets/css/admin.css`, `includes/class-som-step-instructions.php`, `tests/sprint-up14-s7-smoke.php`
 
 ---
-
-## Closed / fixed
 
 ### BUG-005 — Post-ship workflow can be saved without a Package arrived step
 

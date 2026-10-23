@@ -93,6 +93,7 @@ $columns  = array(
 	'is_internal',
 	'workflow_name',
 	'post_ship_workflow_name',
+	'pack_workflow_name',
 	'target_selling_price',
 	'weight_grams',
 	'package_name',
@@ -127,7 +128,7 @@ $out( 'plugin', SOM_VERSION );
 $assert( class_exists( 'SOM_Product_Import', false ), 'product_import_class' );
 $assert( 'products' === SOM_Product_Import::KIND, 'preview_kind' );
 $assert( $columns === SOM_Product_Import::COLUMNS, 'column_list' );
-$assert( ! in_array( 'pack_workflow_name', SOM_Product_Import::COLUMNS, true ), 'no_pack_workflow_column' );
+$assert( in_array( 'pack_workflow_name', SOM_Product_Import::COLUMNS, true ), 'optional_pack_workflow_column' );
 $assert( method_exists( 'SOM_Products', 'delete_failed_import' ), 'rollback_method' );
 
 $import_src = (string) file_get_contents( SOM_PLUGIN_DIR . 'includes/class-som-product-import.php' );

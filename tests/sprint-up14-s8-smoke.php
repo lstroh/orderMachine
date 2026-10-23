@@ -79,7 +79,8 @@ $assert( ! empty( $col ), 'column_output_per_run' );
 $assert( $col && isset( $col->Null ) && 'NO' === (string) $col->Null, 'column_not_null' );
 $assert( $col && isset( $col->Type ) && false !== stripos( (string) $col->Type, 'int' ), 'column_int' );
 $assert( $col && isset( $col->Default ) && '1' === (string) $col->Default, 'column_default_1' );
-$assert( '1.25.0' === SOM_DB::DB_VERSION, 'schema_1_25_0' );
+// UP14-S9 raised the schema to 1.26.0. This sprint added output_per_run at 1.25.0.
+$assert( '1.26.0' === SOM_DB::DB_VERSION, 'schema_1_26_0' );
 $order_col = $wpdb->get_row( 'SHOW COLUMNS FROM ' . SOM_DB::table( 'orders' ) . " LIKE 'output_per_run'" );
 $assert( empty( $order_col ), 'yield_not_stored_on_orders' );
 
