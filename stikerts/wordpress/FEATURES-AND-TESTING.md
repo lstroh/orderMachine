@@ -204,6 +204,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 - **Confirmation checklist** when the current step has a confirmation kind (print / address / packing)
 - **Open on eBay/Etsy** marketplace order link
 - **Mark done** when allowed (hidden/disabled while status is `waiting_batch`; locked until confirmation checklist is complete; blocked when trays required and none held)
+- **Mark done** on Make, Pack, and Post-ship leaves you at the same place on the page
 - **Unblock step** on the current make/pack step when Mark done is gated (order detail only)
 - **Trays** panel sits immediately above Make — assign free / release held (order-level; shared by make + pack). An Internal job with **Uses trays** needs a tray before Mark done
 - **Step instructions** on Make, Pack, and Post-ship show bullets and numbers (UP14-S7)

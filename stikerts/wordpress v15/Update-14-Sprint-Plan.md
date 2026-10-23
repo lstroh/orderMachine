@@ -393,12 +393,12 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S10
-- [ ] Make Mark done sends `order_item_id` and reloads in place
-- [ ] Post-ship Mark done reloads in place
-- [ ] Pack Mark done unchanged
-- [ ] Failed advance alerts and stays
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Make Mark done sends `order_item_id` and reloads in place
+- [x] Post-ship Mark done reloads in place
+- [x] Pack Mark done unchanged
+- [x] Failed advance alerts and stays
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S11
 - [ ] Pack board omits orders whose pack steps are all done

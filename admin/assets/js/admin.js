@@ -1416,6 +1416,15 @@
 					btn.disabled = true;
 				}
 
+				var body = {};
+				var itemInput = form.querySelector( 'input[name="som_order_item_id"]' );
+				if ( itemInput ) {
+					var itemId = parseInt( itemInput.value, 10 );
+					if ( itemId > 0 ) {
+						body.order_item_id = itemId;
+					}
+				}
+
 				fetch( somAdmin.restUrl + 'orders/' + encodeURIComponent( orderId ) + '/advance-step', {
 					method: 'POST',
 					credentials: 'same-origin',
@@ -1423,7 +1432,7 @@
 						'Content-Type': 'application/json',
 						'X-WP-Nonce': somAdmin.restNonce || ''
 					},
-					body: '{}'
+					body: JSON.stringify( body )
 				} )
 					.then( function ( res ) {
 						return res.json().then( function ( data ) {

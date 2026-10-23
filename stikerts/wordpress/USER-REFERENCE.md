@@ -123,6 +123,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Unblock step** on the current make/pack step when Mark done is gated (confirm: allows Mark done without meeting gates; does not complete the step)
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete; also blocked when trays are required and none held)
+- **Mark done** on Make, Pack, and Post-ship leaves you at the same place on the page
 - **Trays** — immediately above Make. Order-level panel: list held trays; multi-select free trays to assign; release selected held trays. An Internal job whose make template has **Uses trays** needs a held tray before Mark done
 - **Materials used** — planned from product **Recipe** and selected shipping **Package**; raise Actual above planned when you used more (stock, profit, budget); increase-only; same material can appear once per source
 - **Platform fees** panel when synced fee lines exist

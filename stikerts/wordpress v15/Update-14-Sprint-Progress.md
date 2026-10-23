@@ -16,12 +16,12 @@
 | UP14-S6 | Trays above Make, including Internal | Implemented | On main. Smoke written. Pending wp-env |
 | UP14-S7 | Instruction bullets and editor preview | Implemented | Smoke written. Pending wp-env. BUG-006 stays Open |
 | UP14-S8 | Output per run | Implemented | On main. Smoke written. Pending wp-env. Schema 1.25.0 |
-| UP14-S9 | Pack workflow override | Implemented | Smoke written. Pending wp-env. Schema 1.26.0 |
-| UP14-S10 | Mark done stays in place | Not started | Make and Post-ship. Pack already does this |
+| UP14-S9 | Pack workflow override | Implemented | On main. Smoke written. Pending wp-env. Schema 1.26.0 |
+| UP14-S10 | Mark done stays in place | Implemented | Smoke written. Pending wp-env |
 | UP14-S11 | Finished pack leaves the Pack board | Not started | Stays on the Post-ship board |
 | UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
 
-**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S8 are on main. UP14-S9 is implemented on its branch and is not merged. Schema is **1.26.0** in UP14-S9. Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S9 are on main. UP14-S10 is implemented on its branch and is not merged. Schema is **1.26.0**. Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -95,15 +95,16 @@
 
 ## UP14-S9 — Pack workflow override
 
-- **Status:** implemented. Not merged.
+- **Status:** implemented. On main.
 - **Behaviour:** `products.pack_workflow_template_id` is a nullable indexed bigint. Schema **1.26.0**. Existing products stay NULL. A sellable product shows **Pack workflow override**. Blank uses Settings → Default Pack workflow. The list is active Pack templates, plus the saved one if it is now inactive. Internal products do not show the field and leave it NULL. Clone copies the override. When pack is bound (new customer order, or Repair pack binding), the override on the primary product is used when that template is an active Pack template with steps. The primary product is the first order line that has a product. Otherwise the site default is used. An inactive override, the wrong kind, or a template with no steps falls through to the site default. Other lines do not change the choice. An order that already has a pack template keeps it. An Internal order stays unbound. The product CSV has an optional `pack_workflow_name` column: blank means no override, a filled name must match exactly one Pack template, and an internal product ignores the cell.
 - **Smoke:** `tests/sprint-up14-s9-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 - **Schema:** 1.26.0 in this sprint only.
 
 ## UP14-S10 — Mark done stays in place
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s10-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** Make Mark done and Post-ship Mark done use the same in-place reload as Pack. The make form carries `data-som-advance-step` and that line’s `order_item_id`. The request includes `order_item_id` when the form has one, then the page reloads. Post-ship carries `data-som-advance-step` and no item id. Pack Mark done, including the Ship step, is unchanged. A failed advance shows the same alert and leaves the button usable. If the REST settings are missing, the form can still post. Unblock, checklists, trays, shipment, and notes stay full posts. No new route and no schema.
+- **Smoke:** `tests/sprint-up14-s10-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` and `node --check` only in the implementation chat.
 
 ## UP14-S11 — Finished pack leaves the Pack board
 
