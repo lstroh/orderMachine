@@ -679,7 +679,12 @@ class SOM_Pack {
 	}
 
 	/**
-	 * Pack board query — open non-internal orders with pack binding (or soft-flag missing).
+	 * Pack board query — open non-internal orders still in pack.
+	 *
+	 * Includes a pack binding, or make progress with no pack progress (the
+	 * missing-template case). Omits an order that has pack progress and no
+	 * pack step still open (UP14-S11). An open pack step stays, including
+	 * Waiting for make and Held. Post-ship membership is unchanged.
 	 *
 	 * @param array<string, mixed> $args Filters.
 	 * @return array{orders: array<int, object>, total: int, capped: bool, warn: bool}
@@ -693,11 +698,12 @@ class SOM_Pack {
 		);
 		$args     = wp_parse_args( $args, $defaults );
 
-		$orders_t   = SOM_DB::table( 'orders' );
-		$channels_t = SOM_DB::table( 'channels' );
-		$items_t    = SOM_DB::table( 'order_items' );
-		$steps_t    = SOM_DB::table( 'workflow_steps' );
-		$progress_t = SOM_DB::table( 'order_step_progress' );
+		$orders_t    = SOM_DB::table( 'orders' );
+		$channels_t  = SOM_DB::table( 'channels' );
+		$items_t     = SOM_DB::table( 'order_items' );
+		$steps_t     = SOM_DB::table( 'workflow_steps' );
+		$progress_t  = SOM_DB::table( 'order_step_progress' );
+		$templates_t = SOM_DB::table( 'workflow_templates' );
 
 		$cancelled = SOM_Orders::cancelled_sql( 'o', 'c' );
 		$where     = array(
@@ -711,6 +717,21 @@ class SOM_Pack {
 		$where[] = '( o.pack_workflow_template_id IS NOT NULL OR EXISTS (
 			SELECT 1 FROM ' . SOM_DB::table( 'order_item_step_progress' ) . ' ip WHERE ip.order_id = o.id
 		) )';
+
+		// Finished pack leaves the board. No pack progress still stays.
+		$pack_progress = "EXISTS (
+			SELECT 1 FROM {$progress_t} p_pk_any
+			INNER JOIN {$steps_t} s_pk_any ON s_pk_any.id = p_pk_any.workflow_step_id
+			INNER JOIN {$templates_t} t_pk_any ON t_pk_any.id = s_pk_any.workflow_template_id
+			WHERE p_pk_any.order_id = o.id AND t_pk_any.kind = 'pack'
+		)";
+		$pack_open     = "EXISTS (
+			SELECT 1 FROM {$progress_t} p_pk_open
+			INNER JOIN {$steps_t} s_pk_open ON s_pk_open.id = p_pk_open.workflow_step_id
+			INNER JOIN {$templates_t} t_pk_open ON t_pk_open.id = s_pk_open.workflow_template_id
+			WHERE p_pk_open.order_id = o.id AND t_pk_open.kind = 'pack' AND p_pk_open.status <> 'done'
+		)";
+		$where[] = "NOT ( {$pack_progress} AND NOT {$pack_open} )";
 
 		$channel = sanitize_key( (string) $args['channel'] );
 		if ( $channel && isset( SOM_Channels::known()[ $channel ] ) && SOM_Production::CHANNEL_SLUG !== $channel ) {

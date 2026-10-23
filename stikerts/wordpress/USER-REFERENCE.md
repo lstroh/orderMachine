@@ -205,12 +205,13 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 **Important rules:**
 
 - New non-Internal orders bind a Pack workflow (kind Pack). The primary product’s Pack override is used when that template is an active Pack workflow with steps. Otherwise the order uses Settings → **Default Pack workflow**. The primary product is the first line that has a product. If neither template can be bound, orders soft-flag and **Ship stays blocked** until a Pack template is configured — then Settings → **Repair pack binding**. An order that already has a pack template is not moved.
+- The Pack board drops an order when its pack steps are all done. An order with a pack step still open stays, including Waiting for make and Held. An order with no pack progress stays, so a missing template is still visible. The order page still shows the finished Pack section. The Post-ship board is unchanged. If Auto-start Post-ship is off, the order still leaves the Pack board and shows under Post-ship → Not started once a shipment is recorded.
 - **Ship** stays blocked until: all sellable lines make-complete, no pack hold, shipping package selected, packing checklist + thank-you tick, address confirm, and shipment row recorded.
 - Packed-by / packed-at stamps once when the packing checklist first completes; optional pack weight (g) on the shipment.
 - Browser print on order detail renders a pack list (buyer, address, lines, notes).
 - Held tray numbers show as **Tray N** badges on cards.
 
-**You will not find:** Internal / Produce N orders; make-line cards (use Make Board); **Unblock step** (use order detail); Review reminder (moved to Post-ship).
+**You will not find:** Internal / Produce N orders; make-line cards (use Make Board); an order whose pack steps are all done (it stays on Post-ship while aftercare remains); **Unblock step** (use order detail); Review reminder (moved to Post-ship).
 
 ---
 

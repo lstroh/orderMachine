@@ -109,7 +109,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | **Orders** | `som-orders` | List, filters, badges; open a row for detail |
 | Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
 | **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop |
-| **Pack Board** | `som-pack-board` | Kanban of open **orders** in pack/ship; Waiting for make + Held; Internal excluded |
+| **Pack Board** | `som-pack-board` | Kanban of open **orders** in pack/ship; Waiting for make + Held; drops an order when its pack steps are all done; Internal excluded |
 | **Post-ship Board** | `som-post-ship-board` | Kanban of aftercare orders by post-ship step; Unstarted / Active / Complete; filter by template |
 | **Products** | `som-products` | Catalogue; edit SKU, workflow, recipe, Product Costing |
 | **Materials** | `som-materials` | Stock, WA / value on hand, preferred supplier, goal badges, PO history, R&D write-off |
@@ -555,7 +555,7 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 
 **Make Board** (`som-orders-board`, UP6-S1): Kanban of open **order lines** by make step. Filter by make workflow; columns = that template’s steps. Advancing a card advances that line only. Internal Produce N lines appear here and can also be advanced from the order detail Make section.
 
-**Pack Board** (`som-pack-board`, UP6-S2): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings). Pack finish does not complete the customer order (post-ship does).
+**Pack Board** (`som-pack-board`, UP6-S2, UP14-S11): Kanban of open **orders** in pack/ship (Internal excluded). Dedicated **Waiting for make** and **Held** columns. The Pack board drops an order when its pack steps are all done. An order with a pack step still open stays, including Waiting for make and Held, and an order with no pack progress stays. The order page still shows the finished Pack section. The Post-ship board is unchanged. Ship stays blocked until make-ready, package, checklist+thank-you, address, and shipment. Soft-flag when no default Pack template (Settings). Pack finish does not complete the customer order (post-ship does).
 
 **Post-ship Board** (`som-post-ship-board`, UP11-S2): Kanban of aftercare **orders** by post-ship step. Scope **Active** / **Unstarted** / **Complete**; filter by Post-ship template (O5). Start from Unstarted cards or order detail. No trays. May show complete orders still on Review reminder (O1).
 
@@ -1036,7 +1036,7 @@ If you use the Local `ordermachine` site:
 
 ### Test 17 — Make Board & Pack Board
 
-1. **Make Board** (under Orders). Confirm open incomplete **lines** as cards in make-step columns. **Pack Board**: order cards; Waiting for make / Held when applicable.
+1. **Make Board** (under Orders). Confirm open incomplete **lines** as cards in make-step columns. **Pack Board**: order cards; Waiting for make / Held when applicable. An order whose pack steps are all done is gone from the Pack board and still on the Post-ship board.
 2. Reorder columns with ←/→; refresh → order persists. Pin a card; toggle **Pinned only**; unpin.
 3. Filter by channel, product, workflow, and personalisation search.
 4. Confirm progress badges / batch link when waiting; only order ID / product / View are links.
