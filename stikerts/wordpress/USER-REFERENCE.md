@@ -124,7 +124,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Open on eBay/Etsy** link when channel supports it
 - **Mark done** when gates allow (hidden while waiting on a batch; locked until confirmation checklist is complete; also blocked when trays are required and none held)
 - **Mark done** on Make, Pack, and Post-ship leaves you at the same place on the page
-- **Trays** — immediately above Make. Order-level panel: list held trays; multi-select free trays to assign; release selected held trays. An Internal job whose make template has **Uses trays** needs a held tray before Mark done
+- **Trays** — immediately above Make. Order-level panel: list held trays; multi-select free trays to assign; release selected held trays. An Internal job whose make template has **Uses trays** needs a held tray before Mark done. **Release selected** still keeps one while the order requires trays and is open. **Release anyway** is the bypass: it frees the trays you checked, including the last one, and does not mark a step done
 - **Materials used** — planned from product **Recipe** and selected shipping **Package**; raise Actual above planned when you used more (stock, profit, budget); increase-only; same material can appear once per source
 - **Platform fees** panel when synced fee lines exist
 - **Notes** — admin-only append-only log (cannot edit/delete); not synced to marketplaces
@@ -147,9 +147,10 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 | Holder | **Order** only (shared by all make lines + pack; not per line) |
 | Double-book | Rejected — a held tray cannot be assigned to another order |
 | Required | A sellable line’s make template, the bound Pack template, or an Internal order’s make template with **Uses trays** → block Mark done / advance until ≥1 tray held. A customer-order internal component line does not, by itself, require a tray |
-| Keep ≥1 | While required and order open, cannot release the last held tray |
+| Keep ≥1 | While required and the order is open, **Release selected** cannot free the last held tray |
+| Release anyway | Frees the checked trays, including the last one, and writes an order note that the tray requirement was bypassed. Does not mark a step done. Mark done stays blocked until a tray is assigned or **Unblock step** is used |
 | Auto-release | On order complete → all held trays freed (`order_complete`) |
-| Manual release | Anytime (subject to keep ≥1 when required) |
+| Manual release | **Release selected** (subject to keep ≥1). **Release anyway** is the bypass |
 | Transfer | No make→pack transfer (same order-level set) |
 
 **Unblock step — concise rules:**
@@ -161,7 +162,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 | Gates | Bypasses timer, checklist, script/error, batch, ship/package/hold, trays-required |
 | Pack hold | Leave hold flag set; only bypass Ship check for this Mark done |
 | Batch | Removes the line/order from the collecting/ready batch |
-| Trays | Allows Mark done without assigning trays (does not assign any) |
+| Trays | Allows Mark done without assigning trays. Does not release a held tray |
 | Audit | Progress who/when/gates + order note; audit remains after Mark done |
 
 ---

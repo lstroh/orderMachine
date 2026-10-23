@@ -408,12 +408,12 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S12
-- [ ] **Release anyway** frees the last required tray
-- [ ] **Release selected** still keeps one
-- [ ] Order note stored; Mark done stays blocked with no tray
-- [ ] **Unblock step** does not release trays
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] **Release anyway** frees the last required tray
+- [x] **Release selected** still keeps one
+- [x] Order note stored; Mark done stays blocked with no tray
+- [x] **Unblock step** does not release trays
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ---
 

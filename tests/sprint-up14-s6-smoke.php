@@ -58,7 +58,7 @@ $assert( false !== $trays_at && false !== $make_at && $trays_at < $make_at, 'sou
 $assert( false !== $pack_at && $make_at < $pack_at, 'source_make_before_pack' );
 $assert( false !== strpos( $detail_src, 'href="#som-trays"' ), 'source_make_warning_links_trays' );
 $assert( false !== strpos( $detail_src, 'som-trays-release-form' ) && false !== strpos( $detail_src, 'som-trays-assign-form' ), 'source_assign_and_release_stay' );
-$assert( false === strpos( $detail_src, 'Release anyway' ), 'source_no_release_anyway' );
+$assert( false !== strpos( $detail_src, 'Release anyway' ), 'source_release_anyway_present' );
 
 $render_detail = static function ( $order_id ) {
 	$_GET['order_id'] = (int) $order_id;

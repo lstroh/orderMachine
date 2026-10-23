@@ -21,6 +21,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 - A sellable product can set a Pack workflow override. Blank uses Settings → Default Pack workflow. The first order line that has a product decides when a customer order is bound. An inactive override, the wrong kind, or a template with no steps uses the site default. An order that already has a pack template stays on it. Internal orders stay unbound. The product CSV has an optional pack_workflow_name column
 - Mark done on Make and Post-ship stays at the same place on the page, the same way Pack already does. Make sends that line. A failed advance shows an alert and the button stays usable
 - The Pack board drops an order when every pack step is done. An order that still has a pack step, and an order with no pack progress, stay. The order stays on the Post-ship board, and the order page still shows the finished Pack section
+- Release anyway on the order Trays panel frees the trays you checked, including the last one, while the order still requires a tray. Release selected still keeps one. An order note records who released it and that the tray requirement was bypassed. Mark done stays blocked until a tray is assigned or Unblock step is used. Unblock step does not release a tray
 
 ## [0.34.0] - 2026-10-19
 

@@ -415,7 +415,25 @@ if ( ! empty( $order->raw_payload ) ) {
 						</li>
 					<?php endforeach; ?>
 				</ul>
-				<?php submit_button( __( 'Release selected', 'order-machine' ), 'secondary', 'submit', false ); ?>
+				<p class="som-tray-release-actions">
+					<?php submit_button( __( 'Release selected', 'order-machine' ), 'secondary', 'submit', false ); ?>
+					<?php if ( $trays_required && empty( $order->is_complete ) ) : ?>
+						<?php
+						submit_button(
+							__( 'Release anyway', 'order-machine' ),
+							'secondary',
+							'som_release_trays_anyway',
+							false,
+							'style="margin-left:8px"'
+						);
+						?>
+					<?php endif; ?>
+				</p>
+				<?php if ( $trays_required && empty( $order->is_complete ) ) : ?>
+					<p class="description">
+						<?php echo esc_html__( 'Release anyway frees the trays you checked, including the last one. It does not mark a step done.', 'order-machine' ); ?>
+					</p>
+				<?php endif; ?>
 			</form>
 		<?php else : ?>
 			<p class="description"><?php echo esc_html__( 'No trays held on this order.', 'order-machine' ); ?></p>
