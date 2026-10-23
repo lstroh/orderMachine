@@ -22,6 +22,11 @@ $post_ship_templates = SOM_Products::list_post_ship_templates(
 		? (int) $product->post_ship_workflow_template_id
 		: 0
 );
+$pack_templates = SOM_Products::list_pack_templates(
+	$product && ! empty( $product->pack_workflow_template_id )
+		? (int) $product->pack_workflow_template_id
+		: 0
+);
 $material_options   = SOM_Materials::list_active();
 $recipe_rows        = ( $product && ! empty( $product->recipe ) ) ? $product->recipe : array();
 $listings           = ( $product && ! empty( $product->listings ) ) ? $product->listings : array();
@@ -186,6 +191,25 @@ $blank_rows = max( 2, 3 - count( $recipe_rows ) );
 						<?php endforeach; ?>
 					</select>
 					<p class="description"><?php echo esc_html__( 'Optional. When set, customer orders whose primary product is this SKU use this Post-ship template instead of the site default.', 'order-machine' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="som_pack_workflow_template_id"><?php echo esc_html__( 'Pack workflow override', 'order-machine' ); ?></label></th>
+				<td>
+					<select id="som_pack_workflow_template_id" name="som_pack_workflow_template_id">
+						<option value=""><?php echo esc_html__( '— Site default —', 'order-machine' ); ?></option>
+						<?php foreach ( $pack_templates as $pack_tpl ) : ?>
+							<option value="<?php echo esc_attr( (string) (int) $pack_tpl->id ); ?>" <?php selected( $product ? (int) ( $product->pack_workflow_template_id ?? 0 ) : 0, (int) $pack_tpl->id ); ?>>
+								<?php
+								echo esc_html( (string) $pack_tpl->name );
+								if ( empty( $pack_tpl->is_active ) ) {
+									echo ' (' . esc_html__( 'inactive', 'order-machine' ) . ')';
+								}
+								?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php echo esc_html__( 'Optional. Blank uses Settings → Default Pack workflow. A customer order uses this template when this product is the first line that has a product.', 'order-machine' ); ?></p>
 				</td>
 			</tr>
 			<?php endif; ?>

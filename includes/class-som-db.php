@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.25.0';
+	const DB_VERSION = '1.26.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -124,6 +124,7 @@ class SOM_DB {
 			sku varchar(50) NULL,
 			workflow_template_id bigint(20) unsigned NULL,
 			post_ship_workflow_template_id bigint(20) unsigned NULL,
+			pack_workflow_template_id bigint(20) unsigned NULL,
 			target_selling_price decimal(10,2) NULL,
 			weight_grams decimal(10,2) NULL,
 			package_id bigint(20) unsigned NULL,
@@ -137,6 +138,7 @@ class SOM_DB {
 			PRIMARY KEY  (id),
 			KEY workflow_template_id (workflow_template_id),
 			KEY post_ship_workflow_template_id (post_ship_workflow_template_id),
+			KEY pack_workflow_template_id (pack_workflow_template_id),
 			KEY sku (sku),
 			KEY package_id (package_id),
 			KEY package_id_multi (package_id_multi),
@@ -591,6 +593,7 @@ class SOM_DB {
 		self::upgrade_workflow_timing_columns();
 		self::upgrade_workflow_template_kind_post_ship();
 		self::upgrade_post_ship_columns();
+		self::upgrade_product_pack_workflow_column();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -923,6 +926,46 @@ class SOM_DB {
 	}
 
 	/**
+	 * Add products.pack_workflow_template_id (UP14-S9).
+	 *
+	 * Existing products stay NULL, which means Settings → Default Pack workflow.
+	 *
+	 * @return void
+	 */
+	private static function upgrade_product_pack_workflow_column() {
+		global $wpdb;
+
+		$products = self::table( 'products' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $products ) ) !== $products ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$has = $wpdb->get_row( "SHOW COLUMNS FROM {$products} LIKE 'pack_workflow_template_id'" );
+		if ( ! $has ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query(
+				"ALTER TABLE {$products}
+				ADD COLUMN pack_workflow_template_id bigint(20) unsigned NULL AFTER post_ship_workflow_template_id"
+			);
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$indexes = $wpdb->get_results( "SHOW INDEX FROM {$products}" );
+		$have    = array();
+		if ( is_array( $indexes ) ) {
+			foreach ( $indexes as $idx ) {
+				$have[ $idx->Key_name ] = true;
+			}
+		}
+		if ( empty( $have['pack_workflow_template_id'] ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$products} ADD KEY pack_workflow_template_id (pack_workflow_template_id)" );
+		}
+	}
+
+	/**
 	 * Ensure workflow_templates.uses_trays exists (UP8-S1).
 	 *
 	 * @return void
@@ -1078,6 +1121,7 @@ class SOM_DB {
 		self::upgrade_workflow_timing_columns();
 		self::upgrade_workflow_template_kind_post_ship();
 		self::upgrade_post_ship_columns();
+		self::upgrade_product_pack_workflow_column();
 	}
 
 	/**

@@ -36,7 +36,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **Where:** Order Machine → Settings
 
-**Pack:** choose **Default Pack workflow** (active templates with kind Pack). Bound on new non-Internal orders for the Pack Board and Ship gates. Create Pack templates under Workflows.
+**Pack:** choose **Default Pack workflow** (active templates with kind Pack). A new customer order uses this unless the primary product has a Pack workflow override that is an active Pack template with steps. The primary product is the first order line that has a product. Later lines do not change the choice. An inactive override, the wrong kind, or a template with no steps uses this default. An order that already has a pack template keeps it. Create Pack templates under Workflows.
 
 **Post-ship:** choose **Default Post-ship workflow** (kind Post-ship) and **Auto-start Post-ship** (default on). Used after Pack Ship for aftercare; products may override. Create Post-ship templates under Workflows. A template with no **Package arrived** step stays selectable. Its option is labelled **(no arrival step)**. When that template is the selected default, a warning sits under the field. Saving Settings is not blocked.
 
@@ -57,7 +57,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Import history** — 30 or 90 days backfill
 - **Platform fee sync** — status, **Sync fees now**, eBay Finances reconnect notice when needed
 - **Remove seed data** / **Restore seed data** (restore requires dummy mode)
-- **Repair pack binding** — bind Default Pack on open unbound non-Internal orders (skips legacy monolithic progress); clear leftover thank-you batches under Batches manually if needed
+- **Repair pack binding** — on open unbound non-Internal orders, bind the primary product’s Pack override when that template is an active Pack workflow with steps, otherwise Default Pack. Orders that already have a pack template stay as they are. Legacy monolithic progress is skipped. Clear leftover thank-you batches under Batches manually if needed
 
 **Important rules:**
 
@@ -203,7 +203,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **Important rules:**
 
-- New non-Internal orders bind the Settings **Default Pack workflow** (kind Pack). If unset, orders soft-flag and **Ship stays blocked** until a Pack template is configured — then Settings → **Repair pack binding**.
+- New non-Internal orders bind a Pack workflow (kind Pack). The primary product’s Pack override is used when that template is an active Pack workflow with steps. Otherwise the order uses Settings → **Default Pack workflow**. The primary product is the first line that has a product. If neither template can be bound, orders soft-flag and **Ship stays blocked** until a Pack template is configured — then Settings → **Repair pack binding**. An order that already has a pack template is not moved.
 - **Ship** stays blocked until: all sellable lines make-complete, no pack hold, shipping package selected, packing checklist + thank-you tick, address confirm, and shipment row recorded.
 - Packed-by / packed-at stamps once when the packing checklist first completes; optional pack weight (g) on the shipment.
 - Browser print on order detail renders a pack list (buyer, address, lines, notes).
@@ -249,6 +249,7 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - Create / edit name, SKU, active flag (deactivate rather than hard-delete)
 - Toggle **Internal product** for make-to-stock components (linked output material; **Produce N** creates an Internal order you advance on Make Board or the order’s Make section)
 - Assign workflow template
+- On a sellable product, **Pack workflow override**. Blank uses Settings → Default Pack workflow. The list is active Pack templates, plus the saved one if it is now inactive. Internal products do not show the field
 - **Step instruction overrides** (Markdown; formatting toolbar; leave blank for workflow default). **Preview** opens under the instruction box and starts closed
 - Edit material recipe (material + qty per unit; cycles and nesting deeper than 5 levels are rejected)
 - Set target selling price; review **Product Costing** (recipe cost, platform fees £/% estimate vs actual, planned shipping when set, fee-aware profit/margin, goal alerts, listing prices)
@@ -257,15 +258,15 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 
 **List columns:** target price, material cost, fee-aware margin with Est./Actual fees badge, goal alerts, Internal badge; type filter sellable/internal.
 
-**Clone:** each Products list row has **Clone**, and the edit screen has a **Clone** button beside the title. Cloning copies the product (name becomes **X (copy)**, trimmed to 100 characters, SKU left blank, same active or inactive state, same target price and shipping settings), the material recipe, step instruction overrides, step task overrides, and budget links. It keeps the same Make workflow and the same Post-ship workflow. It does not copy listings, orders, or stock. An internal clone gets a new linked output material named from **X (copy)** with stock 0; the original keeps its own material. The copy opens on its edit screen with the notice **Cloned from X. SKU left blank; listings not copied.** There is no option to also clone the workflow.
+**Clone:** each Products list row has **Clone**, and the edit screen has a **Clone** button beside the title. Cloning copies the product (name becomes **X (copy)**, trimmed to 100 characters, SKU left blank, same active or inactive state, same target price and shipping settings), the material recipe, step instruction overrides, step task overrides, and budget links. It keeps the same Make workflow, the same Post-ship workflow, and the same Pack workflow override. It does not copy listings, orders, or stock. An internal clone gets a new linked output material named from **X (copy)** with stock 0; the original keeps its own material. The copy opens on its edit screen with the notice **Cloned from X. SKU left blank; listings not copied.** There is no option to also clone the workflow.
 
-**Import and export:** the Products list has **Export CSV**, **Download template**, **Preview**, and **Import**. One row per recipe line; rows with the same name are one product. A product with no recipe is one row with the material and quantity empty. Preview does not save. Import creates a product and does not update an existing one. A name already in use, ignoring capitals, is saved as **Name (2)**, then **Name (3)**. The SKU from the file is kept, and the preview lists a warning when another product already uses it. Listings are not created. An internal product gets a new output material at stock 0 and does not reuse an existing material. A workflow, Post-ship workflow, package, or material name that is missing or matches more than one record fails that product. Those related records are not created. `pack_workflow_name` is not in this file.
+**Import and export:** the Products list has **Export CSV**, **Download template**, **Preview**, and **Import**. One row per recipe line; rows with the same name are one product. A product with no recipe is one row with the material and quantity empty. Preview does not save. Import creates a product and does not update an existing one. A name already in use, ignoring capitals, is saved as **Name (2)**, then **Name (3)**. The SKU from the file is kept, and the preview lists a warning when another product already uses it. Listings are not created. An internal product gets a new output material at stock 0 and does not reuse an existing material. A workflow, Post-ship workflow, package, or material name that is missing or matches more than one record fails that product. Those related records are not created. Optional `pack_workflow_name` is blank for no override. A filled name must match exactly one Pack template. An internal product ignores that cell.
 
 **Deactivate:** blocked while open Internal production jobs exist for that product.
 
 **Important rules:**
 
-- Primary product on an order is the first matched line — that product’s workflow applies to the whole order.
+- Primary product on an order is the first matched line — that product’s make workflow applies to the whole order, and that same line chooses the Pack workflow when the order is bound. Later lines do not change the Pack choice.
 - Representative price for fee %: target for estimates; listing price when a channel listing is linked.
 
 ### Multipacks (pack sizes)

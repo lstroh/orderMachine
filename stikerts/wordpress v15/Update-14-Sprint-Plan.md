@@ -384,13 +384,13 @@ No dependency on S1–S11. No schema. S6’s Internal tray rule does not have to
 - [x] Progress file: smoke pending wp-env
 
 ### UP14-S9
-- [ ] Column `pack_workflow_template_id`, schema 1.26.0
-- [ ] Sellable product override; internal products have no field
-- [ ] New orders and repair: primary product override, else site default
-- [ ] Already-bound orders stay
-- [ ] Product CSV column
-- [ ] Smoke + docs + Unreleased changelog
-- [ ] Progress file: smoke pending wp-env
+- [x] Column `pack_workflow_template_id`, schema 1.26.0
+- [x] Sellable product override; internal products have no field
+- [x] New orders and repair: primary product override, else site default
+- [x] Already-bound orders stay
+- [x] Product CSV column
+- [x] Smoke + docs + Unreleased changelog
+- [x] Progress file: smoke pending wp-env
 
 ### UP14-S10
 - [ ] Make Mark done sends `order_item_id` and reloads in place

@@ -105,6 +105,7 @@ One row per recipe line. Rows with the same `name` are one product. A product wi
 | `is_internal` | No | Blank means sellable |
 | `workflow_name` | When the product is internal, or when the cell is filled | Make template **name**. Must match exactly one template |
 | `post_ship_workflow_name` | No | Post-ship template name. Exactly one match when filled |
+| `pack_workflow_name` | No | Pack template name. Blank means no override. Exactly one Pack template when filled. An internal product ignores the cell |
 | `target_selling_price` | No | |
 | `weight_grams` | No | |
 | `package_name` | No | Shipping package **name** |
@@ -118,7 +119,7 @@ Create through `SOM_Products::create`, then `SOM_Materials` recipe via `SOM_Prod
 
 Not in this file: listings, per-product step instructions, per-product task overrides, budget links, orders.
 
-`pack_workflow_name` is not an S3 column. UP14-S9 adds it after `products.pack_workflow_template_id` exists.
+`pack_workflow_name` is optional (UP14-S9). Blank means no override. A filled name must match exactly one Pack template. An internal product ignores the cell. A file from before this column still imports.
 
 If recipe save fails after the product exists, delete the new product (and its new output material when the product is internal). Do not leave a half product.
 

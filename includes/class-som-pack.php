@@ -27,6 +27,63 @@ class SOM_Pack {
 	}
 
 	/**
+	 * Pack template to bind for this order.
+	 *
+	 * The primary product is the first order line that has a product. Its
+	 * override is used when that template is an active Pack template with steps.
+	 * An inactive override, the wrong kind, or a template with no steps falls
+	 * through to Settings → Default Pack workflow. Other lines are ignored.
+	 * Returns the site default id even when that default is unset (0) or not
+	 * usable; bind_on_create still refuses a default that is missing, the wrong
+	 * kind, or has no steps.
+	 *
+	 * @param object $order Order from SOM_Orders::get().
+	 * @return int
+	 */
+	public static function resolve_template_id( $order ) {
+		$product_id = SOM_Workflow_Engine::primary_product_id( $order );
+		if ( $product_id > 0 ) {
+			global $wpdb;
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					'SELECT pack_workflow_template_id FROM ' . SOM_DB::table( 'products' ) . ' WHERE id = %d LIMIT 1',
+					$product_id
+				)
+			);
+			$override = $row && ! empty( $row->pack_workflow_template_id )
+				? (int) $row->pack_workflow_template_id
+				: 0;
+			if ( $override > 0 && self::template_is_usable( $override ) ) {
+				return $override;
+			}
+		}
+
+		return self::default_template_id();
+	}
+
+	/**
+	 * Active Pack template that has at least one step.
+	 *
+	 * @param int $template_id Template PK.
+	 * @return bool
+	 */
+	public static function template_is_usable( $template_id ) {
+		$template_id = (int) $template_id;
+		if ( $template_id < 1 ) {
+			return false;
+		}
+		$template = SOM_Workflows::get( $template_id );
+		if ( ! $template || empty( $template->is_active ) ) {
+			return false;
+		}
+		$kind = SOM_Workflows::sanitize_kind( isset( $template->kind ) ? $template->kind : '' );
+		if ( 'pack' !== $kind ) {
+			return false;
+		}
+		return ! empty( $template->steps );
+	}
+
+	/**
 	 * Persist site default Pack template (must be kind=pack when set).
 	 *
 	 * @param int $template_id Template PK or 0 to clear.
@@ -99,7 +156,7 @@ class SOM_Pack {
 			if ( $order && ! empty( $order->pack_workflow_template_id ) ) {
 				++$repaired;
 			} else {
-				++$skipped; // Soft-flag: no default Pack template configured.
+				++$skipped; // Soft-flag: no usable Pack template.
 			}
 		}
 
@@ -113,7 +170,10 @@ class SOM_Pack {
 	/**
 	 * Bind pack workflow on create for non-internal orders.
 	 *
-	 * Soft-flags when no default Pack template (O14). Idempotent.
+	 * Uses the primary product's Pack override when that template is an active
+	 * Pack template with steps. Otherwise Settings → Default Pack workflow.
+	 * An order that already has a pack template is left as it is. Soft-flags
+	 * when neither template can be bound (O14). Idempotent.
 	 *
 	 * @param int                  $order_id Order PK.
 	 * @param array<string, mixed> $args     Optional: sync_package_materials (bool, default true).
@@ -145,7 +205,7 @@ class SOM_Pack {
 			return true;
 		}
 
-		$template_id = self::default_template_id();
+		$template_id = self::resolve_template_id( $order );
 		if ( $template_id < 1 ) {
 			return true; // Soft flag in UI (O14).
 		}
