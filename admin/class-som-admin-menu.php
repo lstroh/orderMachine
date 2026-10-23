@@ -851,19 +851,23 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
-		if ( isset( $_POST['som_release_trays'] ) ) {
+		if ( isset( $_POST['som_release_trays'] ) || isset( $_POST['som_release_trays_anyway'] ) ) {
 			check_admin_referer( 'som_release_trays', 'som_order_nonce' );
 			$order_id = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
 			$raw      = isset( $_POST['som_release_tray_numbers'] ) && is_array( $_POST['som_release_tray_numbers'] )
 				? wp_unslash( $_POST['som_release_tray_numbers'] )
 				: array();
 			$numbers  = array_values( array_filter( array_map( 'intval', $raw ) ) );
+			$override = isset( $_POST['som_release_trays_anyway'] );
 			if ( empty( $numbers ) ) {
 				self::flash_notice( __( 'Select at least one tray to release.', 'order-machine' ), 'error', 'som_order_error' );
 			} else {
-				$result = SOM_Trays::release( $order_id, $numbers, SOM_Trays::REASON_MANUAL );
+				$reason = $override ? SOM_Trays::REASON_MANUAL_OVERRIDE : SOM_Trays::REASON_MANUAL;
+				$result = SOM_Trays::release( $order_id, $numbers, $reason );
 				if ( is_wp_error( $result ) ) {
 					self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+				} elseif ( $override ) {
+					self::flash_notice( __( 'Trays released. The tray requirement was bypassed.', 'order-machine' ), 'success', 'som_order_saved' );
 				} else {
 					self::flash_notice( __( 'Trays released.', 'order-machine' ), 'success', 'som_order_saved' );
 				}

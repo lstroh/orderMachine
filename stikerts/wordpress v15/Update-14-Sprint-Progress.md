@@ -18,10 +18,10 @@
 | UP14-S8 | Output per run | Implemented | On main. Smoke written. Pending wp-env. Schema 1.25.0 |
 | UP14-S9 | Pack workflow override | Implemented | On main. Smoke written. Pending wp-env. Schema 1.26.0 |
 | UP14-S10 | Mark done stays in place | Implemented | On main. Smoke written. Pending wp-env |
-| UP14-S11 | Finished pack leaves the Pack board | Implemented | Smoke written. Pending wp-env |
-| UP14-S12 | Release the last tray on purpose | Not started | **Release anyway**. **Release selected** still keeps one |
+| UP14-S11 | Finished pack leaves the Pack board | Implemented | On main. Smoke written. Pending wp-env |
+| UP14-S12 | Release the last tray on purpose | Implemented | Smoke written. Pending wp-env |
 
-**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S10 are on main. UP14-S11 is implemented on its branch and is not merged. Schema is **1.26.0**. Suggested releases **0.35.0**–**0.46.0** are not tagged.
+**Package 14:** planning still open for further operator items. UP14-S1 through UP14-S11 are on main. UP14-S12 is implemented on its branch and is not merged. Schema is **1.26.0**. Suggested releases **0.35.0**–**0.46.0** are not tagged.
 
 ---
 
@@ -108,11 +108,12 @@
 
 ## UP14-S11 — Finished pack leaves the Pack board
 
-- **Status:** implemented. Not merged.
+- **Status:** implemented. On main.
 - **Behaviour:** `SOM_Pack::query_board` omits an order that has pack progress and no pack step still open. An order with a pack step still open stays, including Waiting for make and Held. An order with no pack progress stays, so a missing Pack template is still visible. The Post-ship board is unchanged. The order page still shows the finished Pack section. If Auto-start Post-ship is off, the order still leaves the Pack board and shows under Post-ship → Not started once a shipment is recorded. No schema. Make board membership is unchanged.
 - **Smoke:** `tests/sprint-up14-s11-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.
 
 ## UP14-S12 — Release the last tray on purpose
 
-- **Status:** not started.
-- **Smoke:** `tests/sprint-up14-s12-smoke.php` — not written. Pending wp-env after implementation.
+- **Status:** implemented. Not merged.
+- **Behaviour:** On the order Trays panel, beside **Release selected**, **Release anyway** shows when the order requires trays and is not complete. You still check at least one tray. **Release selected** still returns `som_tray_keep_one` for the last held tray while the order requires trays and is open. **Release anyway** frees the trays you checked, including the last one. The tray row stays, with `release_reason` `manual_override`. An order note records who released it and that the tray requirement was bypassed. The note does not complete a step. After the last tray is freed, Mark done stays blocked until a tray is assigned or **Unblock step** is used. **Unblock step** does not release a tray. A tray freed this way can be assigned to another order, and this order can be given a tray again. No schema. No Version bump.
+- **Smoke:** `tests/sprint-up14-s12-smoke.php` — written. Pending wp-env. Do not run it until the package wp-env prompt. `php -l` only in the implementation chat.

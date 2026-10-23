@@ -572,6 +572,7 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 - Site pool **1 … Max trays** (default 10, allowed 1–20); cannot lower max while a higher tray is held
 - Template **Uses trays** → a sellable make template, a bound Pack template, or an Internal order’s make template requires trays. A customer-order internal component line does not, by itself, require a tray. The Trays panel sits immediately above Make
 - Order-level assign many free trays; reject double-book; manual release; keep ≥1 while required + open
+- **Release anyway** on the order Trays panel frees the trays you checked, including the last one. **Release selected** still keeps one. The note does not mark a step done. **Unblock step** does not release a tray
 - Auto-release all held trays on order complete (incl. Internal Produce N)
 - **Unblock step** bypasses all Mark-done gates; does not auto Mark done; audit + order note; order detail only
 - Pack hold: leave hold flag; batch unblock removes member from collecting/ready batch
@@ -583,6 +584,7 @@ Cross-type link rows are **allowed in the DB**; the admin UI only offers the int
 | Assign free trays on order detail | Held list updates; tray no longer free |
 | Assign tray held by another order | Rejected (conflict) |
 | Release selected trays | Freed to pool; cannot release last while required + open |
+| Release anyway | Frees the checked trays, including the last one. Mark done stays blocked until a tray is assigned or Unblock step is used. Unblock step does not free a held tray |
 | Turn on Uses trays + no trays held | Mark done / Board drag blocked; panel/notice prompt |
 | Complete order with held trays | All trays auto-released |
 | Unblock timer / checklist / script | Mark done enabled; still need Mark done click |
@@ -597,6 +599,7 @@ Regression smokes (full S1/S2 matrix — S3 does not re-test):
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s1-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s2-smoke.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up8-s3-smoke.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up14-s12-smoke.php
 ```
 
 ---

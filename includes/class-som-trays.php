@@ -23,8 +23,9 @@ class SOM_Trays {
 	const STATUS_HELD     = 'held';
 	const STATUS_RELEASED = 'released';
 
-	const REASON_MANUAL         = 'manual';
-	const REASON_ORDER_COMPLETE = 'order_complete';
+	const REASON_MANUAL          = 'manual';
+	const REASON_MANUAL_OVERRIDE = 'manual_override';
+	const REASON_ORDER_COMPLETE  = 'order_complete';
 
 	/**
 	 * Register completion listener (auto-release held trays).
@@ -513,7 +514,7 @@ class SOM_Trays {
 	 *
 	 * @param int             $order_id     Order PK.
 	 * @param array<int, int> $tray_numbers Tray numbers to release (empty = all held).
-	 * @param string          $reason       release_reason (manual / order_complete).
+	 * @param string          $reason       release_reason (manual / manual_override / order_complete).
 	 * @param int|null        $user_id      WP user id.
 	 * @return true|WP_Error
 	 */
@@ -526,7 +527,7 @@ class SOM_Trays {
 		}
 
 		$reason = sanitize_key( (string) $reason );
-		if ( self::REASON_ORDER_COMPLETE !== $reason ) {
+		if ( self::REASON_ORDER_COMPLETE !== $reason && self::REASON_MANUAL_OVERRIDE !== $reason ) {
 			$reason = self::REASON_MANUAL;
 		}
 
@@ -619,7 +620,52 @@ class SOM_Trays {
 			}
 		}
 
+		if ( self::REASON_MANUAL_OVERRIDE === $reason ) {
+			self::add_override_note( $order_id, $targets, $user_id );
+		}
+
 		return true;
+	}
+
+	/**
+	 * Order note for a Release anyway bypass. Does not complete a step.
+	 *
+	 * @param int             $order_id     Order PK.
+	 * @param array<int, int> $tray_numbers Released tray numbers.
+	 * @param int|null        $user_id      WP user id, when known.
+	 * @return void
+	 */
+	private static function add_override_note( $order_id, array $tray_numbers, $user_id ) {
+		global $wpdb;
+
+		$actor_id = (int) $user_id;
+		$who      = $actor_id > 0 ? SOM_Order_Notes::author_label( $actor_id ) : __( 'System', 'order-machine' );
+		if ( 1 === count( $tray_numbers ) ) {
+			$note = sprintf(
+				/* translators: 1: tray number, 2: user display name */
+				__( 'Tray %1$d released by %2$s. The tray requirement was bypassed. This does not complete a step.', 'order-machine' ),
+				(int) $tray_numbers[0],
+				$who
+			);
+		} else {
+			$note = sprintf(
+				/* translators: 1: comma-separated tray numbers, 2: user display name */
+				__( 'Trays %1$s released by %2$s. The tray requirement was bypassed. This does not complete a step.', 'order-machine' ),
+				implode( ', ', array_map( 'strval', $tray_numbers ) ),
+				$who
+			);
+		}
+
+		$note_user = $actor_id;
+		if ( $note_user < 1 ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is $wpdb->users.
+			$note_user = (int) $wpdb->get_var( "SELECT ID FROM {$wpdb->users} ORDER BY ID ASC LIMIT 1" );
+		}
+		if ( $note_user < 1 ) {
+			return;
+		}
+
+		SOM_Order_Notes::add( $order_id, $note, $note_user );
 	}
 
 	/**
