@@ -1,6 +1,6 @@
 """
 Name sticker generator — small icon+name labels (decal board D06/D13 family:
-kids' name + sport/kawaii icon, e.g. bag/lunchbox/water-bottle tags).
+kids' name + themed icon, e.g. bag/lunchbox/water-bottle tags).
 
 Separate script from bin_sticker.py by design (not a modification of it) --
 see chat history. Shares its architecture and a few small utilities
@@ -10,10 +10,11 @@ grow into the same file.
 
 CUTTING METHOD -- read this before changing CARD_W/CARD_H or CORNER_RADIUS:
 This is a "cut only" job on the Explore 5, same principle as bin stickers --
-NOT Cricut Print Then Cut. The label's outer shape (a fixed rounded
-rectangle) is known in advance and never changes, regardless of what name
-or icon is printed inside it, so Design Space doesn't need to trace/detect
-it from registration marks. Workflow:
+NOT Cricut Print Then Cut. (Oct 2026: a switch to Print Then Cut is under
+review, not decided -- see claude/Icon-Theme-Backlog.md.) The label's outer
+shape (a fixed rounded rectangle) is known in advance and never changes,
+regardless of what name or icon is printed inside it, so Design Space doesn't
+need to trace/detect it from registration marks. Workflow:
     1. Print sheet.pdf on the Epson (this script's output).
     2. Align the printed sheet on the Explore 5's mat using the corner tick
        marks this script draws (by eye, not a Cricut feature).
@@ -28,6 +29,28 @@ board for contour-shaped designs) -- a fixed rounded rect never needs that
 detection step. If CARD_W/CARD_H/CORNER_RADIUS ever change, re-run
 generate_name_sticker_cut_lines.py so the cut file and the printed sheet
 stay in sync -- a mismatch here means the machine cuts in the wrong place.
+
+PRINT THEN CUT (Oct 2026, under test): instead of the sheet PDF, the script
+can export every label as its own transparent PNG (white rounded rectangle,
+50 x 25mm at 300dpi), sorted into one folder per theme. Upload those to
+Design Space as Print Then Cut images; the machine cuts around each label's
+outline, so no cut_lines.svg or tick marks are needed. Steps:
+claude/Name-Labels-Print-Then-Cut.md.
+
+Usage:
+    python3 name_sticker.py                 -> sample sheet PDF (4 labels)
+    python3 name_sticker.py --all-icons     -> test sheet PDF with every icon
+    python3 name_sticker.py --png-all       -> one PNG per icon, per theme folder
+    python3 name_sticker.py --png-pack "Lucas" "Sports" ["#000000"]
+                                            -> one name, the category's 12-icon pack
+    python3 name_sticker.py --png-pack "Lucas" "Sports" --all
+                                            -> one name, every icon incl. backups
+    python3 name_sticker.py --packs-proof   -> PDF of every standard pack
+    python3 name_sticker.py --colour-proof  -> PDF of every colour-line icon
+    python3 name_sticker.py --png-sheet "Adam" "Sports" + "Tom" "Ocean"
+                                            -> ONE PNG with both packs in a grid,
+                                               for a single Print Then Cut upload
+    python3 name_sticker.py --png-pack "Lucas" "Sports" --colour  -> colour line PNGs
 """
 
 from reportlab.lib.pagesizes import A4
@@ -37,8 +60,11 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import math
 import os
+import re
+import sys
 
 # ---------------------------------------------------------------------------
 # Card geometry -- keep in sync with generate_name_sticker_cut_lines.py
@@ -51,7 +77,7 @@ MARGIN = 10 * mm                   # sheet edge margin
 
 GUIDE = "#CCCCCC"
 BG = "#FFFFFF"
-INK = "#222222"
+INK = "#000000"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,11 +87,9 @@ def _asset_path(rel_path):
 
 
 # ---------------------------------------------------------------------------
-# Font -- looks for a real TTF first (drop one at assets/fonts/, e.g. a
-# Baloo 2 or Quicksand Bold export from Google Fonts, matching the font
-# families already identified for this style in the decal board), falls
-# back to core Helvetica-Bold with a one-time warning so the script is
-# runnable and testable before the real font file is sourced.
+# Font -- looks for a real TTF first (assets/fonts/NameFont-Bold.ttf, Baloo 2
+# Bold, Google Fonts OFL -- keep OFL.txt next to it), falls back to core
+# Helvetica-Bold with a one-time warning so the script still runs without it.
 # ---------------------------------------------------------------------------
 NAME_FONT_TTF = "assets/fonts/NameFont-Bold.ttf"
 _FONT_NAME = "Helvetica-Bold"
@@ -90,25 +114,246 @@ def _ensure_font():
 
 
 # ---------------------------------------------------------------------------
-# Icon assets -- same cached-recolour pattern as bin_sticker.py's
-# recolour_silhouette / _p02_icon_path, reused here rather than duplicated.
-# Each entry is a single-colour transparent silhouette PNG, recoloured to
-# the requested accent on first use and cached to disk. No real icon
-# assets are sourced yet (see D06/D13 in the decal board -- Midjourney
-# generation or a licensed pack, still an open item) so every key below
-# falls back to the built-in vector star until a PNG actually exists at
-# its path -- same "upgrades automatically once real art lands" pattern
-# bin_sticker.py uses for house_banner.
+# Icon assets (23 Oct 2026) -- 157 icons from free libraries, picked on the
+# "Label Icon Shortlist" page and revised after an outside review on the
+# "Label Icon Fixes" page (scary/unreadable icons swapped or removed).
+# Each file is a black, transparent-background silhouette PNG, recoloured to
+# the label's accent on first use and cached to disk.
+#
+# Sources and licences per icon: assets/icons/ICON_CREDITS.md. Game Icons
+# (CC BY 3.0) need an author credit on the listing or instructions card;
+# Fluent Emoji (MIT), Material Design Icons (Apache 2.0), Phosphor (MIT),
+# Tabler (MIT) and MingCute (Apache 2.0) need none.
+#
+# `order["icon"]` takes any key below. Unknown keys, or a missing file, fall
+# back to the vector star.
 # ---------------------------------------------------------------------------
-ICON_ASSETS = {
-    "star": "assets/icons/star_icon.png",
-    "soccer_ball": "assets/icons/soccer_ball_icon.png",
-    "skateboard": "assets/icons/skateboard_icon.png",
-    "basketball": "assets/icons/basketball_icon.png",
-    "sailboat": "assets/icons/sailboat_icon.png",
-    # Extend this dict as real icon assets are sourced -- key name is
-    # what `order["icon"]` should reference.
+ICON_THEMES = {
+    "Sports": [
+        "soccer_ball", "basketball", "tennis", "rugby_ball", "skateboard",
+        "volleyball", "cricket", "trophy", "football_shirt", "medal",
+        "basketball_hoop", "bowling", "bicycle", "golf", "ice_skate",
+        "podium_winner",
+    ],
+    "Cute animals": [
+        "cat", "dog", "bunny", "bear", "fox",
+        "panda", "owl", "penguin", "frog", "koala",
+        "hedgehog", "unicorn", "lion", "elephant",
+    ],
+    "Dinosaurs": [
+        "raptor", "triceratops", "long_neck", "t_rex", "dino_eggs",
+    ],
+    "Vehicles": [
+        "car", "race_car", "bus", "truck", "tractor",
+        "police_car", "fire_engine", "ambulance", "digger", "plane",
+        "helicopter", "rocket", "train", "hot_air_balloon", "ice_cream_van",
+        "motorbike", "kick_scooter", "submarine",
+    ],
+    "Pirates": [
+        "pirate_flag", "pirate_ship", "treasure_chest", "treasure_map", "parrot",
+        "pirate", "telescope", "island", "compass", "barrel",
+        "waving_flag", "ship_wheel",
+    ],
+    "Ocean": [
+        "whale", "dolphin", "octopus", "turtle", "crab",
+        "seahorse", "fish", "shark", "shell", "anchor",
+        "sailboat", "starfish", "two_fish", "seal", "sea_creature",
+        "lighthouse", "bucket_spade", "sand_castle", "surfer",
+    ],
+    "Knights & castles": [
+        "knight_on_horse", "knight", "castle", "shield", "sword",
+        "crown", "horse", "banner", "king", "tower_flag",
+        "throne", "round_shield", "visor_helmet", "knight_flag",
+    ],
+    "Dragons": [
+        "dragon", "dragon_head", "sea_dragon", "twin_dragons", "dragon_eggs",
+    ],
+    "Wizards": [
+        "wizard", "wand", "staff", "wizard_hat", "spell_book",
+        "potion", "crystal_ball", "cauldron", "broom", "sparkles",
+        "magic_lamp", "magic_book", "heart_potion", "shooting_star",
+    ],
+    "Space": [
+        "space_rocket", "astronaut", "ufo", "planet", "moon",
+        "star", "alien", "earth", "sun",
+    ],
+    "Music": [
+        "guitar", "violin", "drum", "piano", "trumpet",
+        "saxophone", "recorder", "accordion", "microphone", "music_notes",
+        "xylophone", "headphones", "acoustic_guitar",
+    ],
+    "Garden & bugs": [
+        "snail", "flower_pot", "watering_can", "fruit_tree", "pine_tree",
+        "tree_swing", "tree_house", "mushroom_house", "ladybird", "bee",
+        "caterpillar", "flower", "sunflower", "leaf",
+    ],
+    "Farm & wild": [
+        "deer", "flamingo", "pig", "swan",
+    ],
 }
+
+ICON_ASSETS = {"star": "assets/icons/star_icon.png"}
+for _keys in ICON_THEMES.values():
+    for _k in _keys:
+        ICON_ASSETS[_k] = f"assets/icons/{_k}_icon.png"
+
+
+# ---------------------------------------------------------------------------
+# Colour line (picked 23 Oct 2026) -- a separate, full-colour set of icons that
+# runs alongside the black ones. Keys start with "c_". Files live in
+# assets/icons_colour/ and are printed as they are: never recoloured, so the
+# order's accent colour is ignored for these. Sources: Noto Emoji (Google,
+# Apache 2.0) and Fluent Emoji Flat (Microsoft, MIT) -- no credit line needed.
+# "_flat" / "_noto" on a key = the same subject drawn by the other library,
+# used in a different category. Credits: assets/icons/ICON_CREDITS.md.
+# ---------------------------------------------------------------------------
+ICON_THEMES_COLOUR = {
+    "Sports": [
+        "c_soccer_ball", "c_basketball", "c_tennis", "c_rugby_ball", "c_skateboard", "c_volleyball",
+        "c_cricket", "c_trophy", "c_football_shirt", "c_medal", "c_bowling", "c_bicycle",
+        "c_golf", "c_ice_skate", "c_goal_net", "c_roller_skate", "c_skis", "c_kite",
+        "c_ping_pong", "c_badminton", "c_ice_hockey", "c_baseball", "c_sled", "c_diving_mask",
+        "c_person_swimming", "c_person_biking",
+    ],
+    "Cute animals": [
+        "c_cat", "c_dog", "c_bunny", "c_bear", "c_fox", "c_panda",
+        "c_owl", "c_penguin", "c_frog", "c_koala", "c_hedgehog", "c_unicorn",
+        "c_lion", "c_elephant", "c_cow_face", "c_pig_face", "c_tiger_face", "c_monkey_face",
+        "c_hatching_chick", "c_sloth", "c_raccoon", "c_beaver", "c_giraffe", "c_zebra",
+        "c_polar_bear", "c_turtle", "c_butterfly", "c_rabbit", "c_bear_face",
+    ],
+    "Dinosaurs": [
+        "c_long_neck", "c_t_rex", "c_dino_eggs", "c_volcano", "c_footprints", "c_lizard",
+        "c_crocodile",
+    ],
+    "Vehicles": [
+        "c_car", "c_race_car", "c_bus", "c_truck", "c_tractor", "c_police_car",
+        "c_fire_engine", "c_ambulance", "c_plane", "c_helicopter", "c_rocket", "c_train",
+        "c_motorbike", "c_kick_scooter", "c_taxi", "c_motor_scooter", "c_bicycle", "c_locomotive",
+        "c_tram", "c_sailboat", "c_mountain_cableway",
+    ],
+    "Pirates": [
+        "c_pirate_flag", "c_pirate_ship", "c_treasure_chest", "c_treasure_map", "c_parrot", "c_telescope",
+        "c_island", "c_compass", "c_anchor",
+    ],
+    "Ocean": [
+        "c_whale", "c_dolphin", "c_octopus", "c_turtle", "c_crab", "c_fish",
+        "c_shark", "c_anchor_flat", "c_sailboat_flat", "c_seal", "c_lighthouse", "c_bucket_spade",
+        "c_tropical_fish", "c_blowfish", "c_squid", "c_lobster", "c_water_wave", "c_diving_mask_flat",
+    ],
+    "Knights & castles": [
+        "c_castle", "c_shield", "c_sword", "c_crown", "c_horse", "c_king",
+        "c_princess", "c_person_with_crown", "c_fleur_de_lis",
+    ],
+    "Dragons": [
+        "c_dragon", "c_dragon_head", "c_dragon_eggs", "c_volcano",
+    ],
+    "Wizards": [
+        "c_wizard", "c_wand", "c_crystal_ball", "c_broom", "c_sparkles", "c_fairy",
+        "c_genie", "c_glowing_star", "c_scroll", "c_alembic",
+    ],
+    "Space": [
+        "c_space_rocket", "c_astronaut", "c_ufo", "c_planet", "c_moon", "c_star",
+        "c_alien", "c_earth", "c_sun", "c_milky_way", "c_satellite", "c_telescope",
+    ],
+    "Music": [
+        "c_guitar", "c_violin", "c_drum", "c_trumpet", "c_saxophone", "c_recorder",
+        "c_accordion", "c_microphone", "c_music_notes", "c_headphones", "c_maracas", "c_studio_microphone",
+        "c_musical_score",
+    ],
+    "Garden & bugs": [
+        "c_snail", "c_flower_pot", "c_fruit_tree", "c_pine_tree", "c_ladybird", "c_bee",
+        "c_caterpillar", "c_flower", "c_sunflower", "c_leaf", "c_butterfly_flat", "c_ant",
+        "c_beetle", "c_worm", "c_hibiscus", "c_rose", "c_blossom", "c_seedling",
+        "c_four_leaf_clover", "c_maple_leaf", "c_fallen_leaf", "c_palm_tree",
+    ],
+    "Farm & wild": [
+        "c_deer", "c_flamingo", "c_pig", "c_swan", "c_cow_face_flat", "c_cow",
+        "c_pig_face_flat", "c_ewe", "c_ram", "c_goat", "c_duck", "c_horse_flat",
+        "c_rabbit_flat", "c_hedgehog_flat", "c_badger",
+    ],
+}
+COLOUR_ICONS = {k for _keys in ICON_THEMES_COLOUR.values() for k in _keys}
+for _k in COLOUR_ICONS:
+    ICON_ASSETS[_k] = f"assets/icons_colour/{_k}.png"
+
+
+# ---------------------------------------------------------------------------
+# Standard packs (decided 23 Oct 2026): 12 labels per pack, one child's name.
+# Each pack lists the 12 icons chosen for that category. Icons in
+# ICON_THEMES but not in a pack are BACKUPS: kept for custom orders and
+# future swaps, never deleted. Categories in PACKS_NOT_READY have fewer than
+# 12 icons and need more before they're sold as a pack.
+# ---------------------------------------------------------------------------
+PACK_SIZE = 12
+PACKS = {
+    "Sports": [
+        "soccer_ball", "basketball", "tennis", "rugby_ball", "skateboard", "cricket",
+        "trophy", "football_shirt", "medal", "bowling", "golf", "ice_skate",
+    ],
+    "Cute animals": [
+        "cat", "dog", "bunny", "bear", "fox", "panda",
+        "owl", "penguin", "frog", "koala", "unicorn", "lion",
+    ],
+    "Vehicles": [
+        "car", "bus", "truck", "tractor", "police_car", "fire_engine",
+        "ambulance", "digger", "plane", "helicopter", "train", "hot_air_balloon",
+    ],
+    "Pirates": [
+        "pirate_flag", "pirate_ship", "treasure_chest", "treasure_map", "parrot", "pirate",
+        "telescope", "island", "compass", "barrel", "waving_flag", "ship_wheel",
+    ],
+    "Ocean": [
+        "whale", "dolphin", "octopus", "turtle", "crab", "fish",
+        "shark", "anchor", "starfish", "seal", "lighthouse", "bucket_spade",
+    ],
+    "Knights & castles": [
+        "knight_on_horse", "knight", "castle", "shield", "sword", "crown",
+        "banner", "king", "tower_flag", "throne", "round_shield", "visor_helmet",
+    ],
+    "Wizards": [
+        "wizard", "wand", "staff", "wizard_hat", "spell_book", "potion",
+        "crystal_ball", "cauldron", "broom", "magic_lamp", "heart_potion", "shooting_star",
+    ],
+    "Music": [
+        "violin", "drum", "piano", "trumpet", "saxophone", "recorder",
+        "accordion", "microphone", "music_notes", "xylophone", "headphones", "acoustic_guitar",
+    ],
+    "Garden & bugs": [
+        "snail", "flower_pot", "watering_can", "fruit_tree", "pine_tree", "tree_swing",
+        "tree_house", "bee", "caterpillar", "flower", "sunflower", "leaf",
+    ],
+}
+PACKS_NOT_READY = {
+    "Dinosaurs": "add more icons first",
+    "Dragons": "add more icons first",
+    "Space": "add more icons first",
+    "Farm & wild": "add more icons first",
+}
+
+
+def pack_backups(theme):
+    """Icons in a category that aren't in its standard pack (kept as backups)."""
+    pack = PACKS.get(theme, [])
+    return [k for k in ICON_THEMES.get(theme, []) if k not in pack]
+
+
+def _check_packs():
+    """Every pack has exactly PACK_SIZE icons, all from its own category."""
+    problems = []
+    for theme, keys in PACKS.items():
+        if len(keys) != PACK_SIZE:
+            problems.append(f"{theme}: {len(keys)} icons, expected {PACK_SIZE}")
+        wrong = [k for k in keys if k not in ICON_THEMES.get(theme, [])]
+        if wrong:
+            problems.append(f"{theme}: not in this category: {', '.join(wrong)}")
+        if len(set(keys)) != len(keys):
+            problems.append(f"{theme}: duplicate icons")
+    if problems:
+        raise ValueError("Pack setup problem:\n  " + "\n  ".join(problems))
+
+
+_check_packs()
 
 
 def recolour_silhouette(in_path, out_path, hex_color):
@@ -128,8 +373,8 @@ def recolour_silhouette(in_path, out_path, hex_color):
 
 
 def draw_star_icon(c, cx, cy, size, color):
-    """Vector fallback -- plain 5-point star, used until a real icon PNG
-    exists for a given key. Not meant as final art for any real order."""
+    """Vector fallback -- plain 5-point star, used when no icon PNG exists
+    for a given key. Not meant as final art for any real order."""
     import math
     c.saveState()
     c.setFillColor(HexColor(color))
@@ -148,24 +393,70 @@ def draw_star_icon(c, cx, cy, size, color):
     c.restoreState()
 
 
-def _draw_icon(c, cx, cy, size, color, icon_key):
-    """Same single-switchover pattern as bin_sticker.py's _draw_icon: use
-    the real PNG in ICON_ASSETS if it exists on disk, otherwise draw the
-    vector star placeholder. Every icon_key falls back to the same star
-    for now since no real icon set exists yet -- once assets land, every
-    sticker using that key upgrades automatically, no other code change."""
+def _recoloured_icon_path(icon_key, color):
+    """Path to the icon recoloured to `color`, or None if the key has no
+    PNG on disk. The recoloured copy is cached, and rebuilt whenever the
+    master PNG is newer than the cache (so replacing an icon file never
+    leaves a stale colour version behind)."""
     asset_path = ICON_ASSETS.get(icon_key)
-    if asset_path and os.path.exists(_asset_path(asset_path)):
-        cache_path = _asset_path(
-            f"assets/icons/_cache_{icon_key}_{color.lstrip('#')}.png"
-        )
-        if not os.path.exists(cache_path):
-            recolour_silhouette(_asset_path(asset_path), cache_path, color)
+    if not (asset_path and os.path.exists(_asset_path(asset_path))):
+        if icon_key not in ICON_ASSETS:
+            print(f"[name_sticker] Unknown icon '{icon_key}' -- using the star.")
+        return None
+    src = _asset_path(asset_path)
+    if icon_key in COLOUR_ICONS:
+        return src  # full-colour icon: print as it is
+    cache_path = _asset_path(
+        f"assets/icons/_cache_{icon_key}_{color.lstrip('#')}.png"
+    )
+    if (not os.path.exists(cache_path)
+            or os.path.getmtime(cache_path) < os.path.getmtime(src)):
+        recolour_silhouette(src, cache_path, color)
+    return cache_path
+
+
+# Wide icons (cars, buses, trucks...) would print short if squeezed into a
+# square box, so they may use up to MAX_ICON_ASPECT x the box height in width;
+# the name moves right and still shrinks to fit. Square and tall icons keep
+# the original square box, so their layout is unchanged.
+ICON_HEIGHT_FRACTION = 0.65   # icon box height as a share of label height
+MAX_ICON_ASPECT = 1.5         # widest icon box, as a multiple of its height
+_aspect_cache = {}
+
+
+def _icon_aspect(icon_key):
+    """Width / height of the icon's master PNG (1.0 for the star fallback)."""
+    if icon_key not in _aspect_cache:
+        asset_path = ICON_ASSETS.get(icon_key)
+        if asset_path and os.path.exists(_asset_path(asset_path)):
+            with Image.open(_asset_path(asset_path)) as im:
+                _aspect_cache[icon_key] = im.width / im.height
+        else:
+            _aspect_cache[icon_key] = 1.0
+    return _aspect_cache[icon_key]
+
+
+def _icon_layout(icon_key, label_h):
+    """Icon box and name position, measured from the label's left edge, in
+    the same units as label_h. Returns (box_left, box_w, box_h, text_x)."""
+    box_h = label_h * ICON_HEIGHT_FRACTION
+    box_left = box_h * 0.15
+    box_w = box_h * min(max(_icon_aspect(icon_key), 1.0), MAX_ICON_ASPECT)
+    text_x = box_left + box_w + box_h * 0.10
+    return box_left, box_w, box_h, text_x
+
+
+def _draw_icon(c, x, y, box_w, box_h, color, icon_key):
+    """Draw the icon fitted into the box with bottom-left corner (x, y).
+    Uses the real PNG in ICON_ASSETS if it exists on disk, otherwise the
+    vector star placeholder."""
+    cache_path = _recoloured_icon_path(icon_key, color)
+    if cache_path:
         img = ImageReader(cache_path)
-        c.drawImage(img, cx - size / 2, cy - size / 2, size, size,
-                    mask='auto', preserveAspectRatio=True)
+        c.drawImage(img, x, y, box_w, box_h,
+                    mask='auto', preserveAspectRatio=True, anchor='c')
     else:
-        draw_star_icon(c, cx, cy, size, color)
+        draw_star_icon(c, x + box_w / 2, y + box_h / 2, min(box_w, box_h), color)
 
 
 # ---------------------------------------------------------------------------
@@ -199,21 +490,20 @@ def draw_label(c, ox, oy, order, w=CARD_W, h=CARD_H):
     """order = dict:
         name       str  (required)
         icon       key in ICON_ASSETS       (default "star")
-        accent     hex colour str            (default "#2F6FA8")
+        accent     hex colour str            (default "#000000")
     """
     _ensure_font()
     _draw_base(c, ox, oy, w, h)
 
-    accent = order.get("accent", "#2F6FA8")
+    accent = order.get("accent", "#000000")
     icon_key = order.get("icon", "star")
     name = order.get("name", "")
 
-    icon_size = h * 0.65
-    icon_cx = ox + icon_size * 0.65
-    icon_cy = oy + h / 2
-    _draw_icon(c, icon_cx, icon_cy, icon_size, accent, icon_key)
+    box_left, box_w, box_h, text_dx = _icon_layout(icon_key, h)
+    _draw_icon(c, ox + box_left, oy + (h - box_h) / 2, box_w, box_h,
+               accent, icon_key)
 
-    text_x = ox + icon_size * 1.25
+    text_x = ox + text_dx
     text_max_w = (ox + w - 2 * mm) - text_x
     font_size = 14
     c.setFont(_FONT_NAME, font_size)
@@ -266,11 +556,349 @@ def render_sheet(orders, out_path):
           f"{-(-len(orders) // per_page)} page(s))")
 
 
+# ---------------------------------------------------------------------------
+# Print Then Cut export -- one transparent PNG per label, one folder per theme.
+# Same layout as draw_label() (icon box, text position, shrink-to-fit), but
+# drawn with Pillow so the area outside the rounded rectangle is transparent.
+# Design Space cuts around the non-transparent shape, i.e. the label outline.
+# ---------------------------------------------------------------------------
+PNG_DPI = 300
+PNG_OUT_DIR = "labels_png"
+
+
+def _pt_to_px(v, dpi=PNG_DPI):
+    """reportlab units are points (1/72 inch)."""
+    return v / 72.0 * dpi
+
+
+def theme_of(icon_key):
+    for theme, keys in ICON_THEMES.items():
+        if icon_key in keys:
+            return theme
+    for theme, keys in ICON_THEMES_COLOUR.items():
+        if icon_key in keys:
+            return f"{theme} (colour)"
+    return "Other"
+
+
+def _slug(s):
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-") or "label"
+
+
+def _pil_font(size_px):
+    ttf_path = _asset_path(NAME_FONT_TTF)
+    if os.path.exists(ttf_path):
+        return ImageFont.truetype(ttf_path, int(round(size_px)))
+    _ensure_font()  # prints the one-time missing-font warning
+    return ImageFont.load_default(size=int(round(size_px)))
+
+
+def render_label_png(order, out_path, dpi=PNG_DPI, supersample=4):
+    """Draw one label as a PNG: white rounded rectangle on transparency,
+    icon on the left, name on the right. Returns the PNG size in pixels."""
+    W = int(round(_pt_to_px(CARD_W, dpi)))
+    H = int(round(_pt_to_px(CARD_H, dpi)))
+    radius = _pt_to_px(CORNER_RADIUS, dpi)
+
+    # smooth corners: draw the shape larger, then shrink it
+    ss = supersample
+    big = Image.new("L", (W * ss, H * ss), 0)
+    ImageDraw.Draw(big).rounded_rectangle(
+        [0, 0, W * ss - 1, H * ss - 1], radius=radius * ss, fill=255)
+    shape = big.resize((W, H), Image.LANCZOS)
+    img = Image.new("RGBA", (W, H), (255, 255, 255, 0))
+    img.paste(Image.new("RGBA", (W, H), (255, 255, 255, 255)), (0, 0), shape)
+
+    accent = order.get("accent", "#000000")
+    icon_key = order.get("icon", "star")
+    name = order.get("name", "")
+
+    box_left, box_w, box_h, text_x = _icon_layout(icon_key, H)
+    icon_cx = box_left + box_w / 2
+    icon_cy = H / 2
+    path = _recoloured_icon_path(icon_key, accent)
+    if path:
+        ic = Image.open(path).convert("RGBA")
+        scale = min(box_w / ic.width, box_h / ic.height)
+        ic = ic.resize((max(1, round(ic.width * scale)),
+                        max(1, round(ic.height * scale))), Image.LANCZOS)
+        img.alpha_composite(ic, (round(icon_cx - ic.width / 2),
+                                 round(icon_cy - ic.height / 2)))
+    else:
+        icon_size = min(box_w, box_h)
+        r_out, r_in = icon_size * 0.5, icon_size * 0.2
+        pts = []
+        for i in range(10):
+            r = r_out if i % 2 == 0 else r_in
+            ang = math.radians(-90 + i * 36)
+            pts.append((icon_cx + r * math.cos(ang), icon_cy + r * math.sin(ang)))
+        ImageDraw.Draw(img).polygon(pts, fill=accent)
+
+    text_max_w = W - _pt_to_px(2 * mm, dpi) - text_x
+    size_pt = 14
+    font = _pil_font(_pt_to_px(size_pt, dpi))
+    while font.getlength(name) > text_max_w and size_pt > 6:
+        size_pt -= 0.5
+        font = _pil_font(_pt_to_px(size_pt, dpi))
+    size_px = _pt_to_px(size_pt, dpi)
+    ImageDraw.Draw(img).text((text_x, H / 2 + size_px * 0.35), name,
+                             font=font, fill=INK, anchor="ls")
+
+    img.save(out_path, dpi=(dpi, dpi))
+    return W, H
+
+
+def export_label_pngs(orders, out_dir=None):
+    """One PNG per order, sorted into a folder per theme (taken from the
+    icon). Files are numbered in order within each folder. Returns
+    {theme: [paths]}."""
+    out_dir = out_dir or _asset_path(PNG_OUT_DIR)
+    groups, counters = {}, {}
+    for order in orders:
+        theme = order.get("theme") or theme_of(order.get("icon", "star"))
+        # one folder per child's name, then per category, so two orders run
+        # one after another never mix their files
+        folder = os.path.join(out_dir, _slug(order.get('name', '')), _slug(theme))
+        os.makedirs(folder, exist_ok=True)
+        counters[folder] = counters.get(folder, 0) + 1
+        fname = (f"{counters[folder]:02d}_{_slug(order.get('name', ''))}_"
+                 f"{order.get('icon', 'star')}.png")
+        path = os.path.join(folder, fname)
+        render_label_png(order, path)
+        groups.setdefault(theme, []).append(path)
+    w_mm, h_mm = CARD_W / mm, CARD_H / mm
+    for theme, paths in groups.items():
+        print(f"{theme}: {len(paths)} PNG(s) -> {os.path.dirname(paths[0])}")
+    print(f"In Design Space set each upload to {w_mm:.0f} x {h_mm:.0f}mm "
+          f"(files are {PNG_DPI}dpi).")
+    return groups
+
+
+# ---------------------------------------------------------------------------
+# Whole-sheet PNG for Print Then Cut -- every label of an order already laid
+# out in a grid, separated by GAP of transparency. Uploaded to Design Space as
+# ONE "Print Then Cut image": it cuts around each separate shape, so every
+# label is cut on its own. One upload + one resize instead of one per label.
+# The grid must fit Design Space's Print Then Cut area on A4 (about
+# 18.3 x 27cm): up to 27 labels lying flat (3 x 9) or 30 standing up (6 x 5).
+# ---------------------------------------------------------------------------
+PTC_MAX_W = 183 * mm
+PTC_MAX_H = 269.8 * mm
+
+
+def _sheet_grid(n, gap=GAP):
+    """(cols, rows, upright) for n labels: flat if they fit, else upright.
+    Raises if n is more than one sheet holds."""
+    for upright in (False, True):
+        cw, ch = (CARD_H, CARD_W) if upright else (CARD_W, CARD_H)
+        max_cols = int((PTC_MAX_W + gap) // (cw + gap))
+        max_rows = int((PTC_MAX_H + gap) // (ch + gap))
+        if n <= max_cols * max_rows:
+            cols = min(n, max_cols)
+            return cols, -(-n // cols), upright
+    raise ValueError(f"{n} labels won't fit one Print Then Cut sheet "
+                     f"(30 max) -- split the order.")
+
+
+def render_sheet_png(orders, out_path, dpi=PNG_DPI, gap=GAP):
+    """All `orders` on one transparent PNG, in a grid. Returns the size to
+    set in Design Space as (width_mm, height_mm)."""
+    cols, rows, upright = _sheet_grid(len(orders), gap)
+    cw, ch = (CARD_H, CARD_W) if upright else (CARD_W, CARD_H)
+    px = lambda v: int(round(_pt_to_px(v, dpi)))
+    step_x, step_y = px(cw + gap), px(ch + gap)
+    sheet_w, sheet_h = px(cols * cw + (cols - 1) * gap), px(rows * ch + (rows - 1) * gap)
+    sheet = Image.new("RGBA", (sheet_w, sheet_h), (255, 255, 255, 0))
+    tmp = out_path + ".tmp.png"
+    for i, order in enumerate(orders):
+        render_label_png(order, tmp, dpi=dpi)
+        lab = Image.open(tmp).convert("RGBA")
+        if upright:
+            lab = lab.rotate(90, expand=True)  # name reads bottom to top
+        sheet.alpha_composite(lab, ((i % cols) * step_x, (i // cols) * step_y))
+    os.remove(tmp)
+    sheet.save(out_path, dpi=(dpi, dpi))
+    w_mm = (cols * cw + (cols - 1) * gap) / mm
+    h_mm = (rows * ch + (rows - 1) * gap) / mm
+    print(f"{len(orders)} labels ({cols} x {rows}"
+          f"{', standing up' if upright else ''}) -> {out_path}\n"
+          f"In Design Space set this upload to W {w_mm:.0f}mm x H {h_mm:.0f}mm "
+          f"(lock on), then check one label measures {CARD_W / mm:.0f} x "
+          f"{CARD_H / mm:.0f}mm.")
+    return w_mm, h_mm
+
+
+def theme_pack(name, theme, accent="#000000", all_icons=False, colour=False):
+    """Orders for one child's name -- e.g. a 'Lucas, Dinosaurs' pack.
+    By default this is the category's standard 12-icon pack (PACKS).
+    all_icons=True uses every icon in the category, backups included.
+    `accent` may be one colour or a list to cycle.
+    colour=True uses the colour line (ICON_THEMES_COLOUR, every icon in the
+    category -- no colour packs decided yet); accent is ignored for those."""
+    if colour:
+        if theme not in ICON_THEMES_COLOUR:
+            raise ValueError(f"Unknown colour theme '{theme}'. Choose from: "
+                             + ", ".join(ICON_THEMES_COLOUR))
+        return [{"name": name, "icon": k, "theme": f"{theme} (colour)"}
+                for k in ICON_THEMES_COLOUR[theme]]
+    if theme not in ICON_THEMES:
+        raise ValueError(f"Unknown theme '{theme}'. Choose from: "
+                         + ", ".join(ICON_THEMES))
+    if all_icons:
+        keys = ICON_THEMES[theme]
+    elif theme in PACKS:
+        keys = PACKS[theme]
+    else:
+        reason = PACKS_NOT_READY.get(theme, "no standard pack set")
+        print(f"[name_sticker] '{theme}' has no {PACK_SIZE}-icon pack yet "
+              f"({reason}). Using all {len(ICON_THEMES[theme])} icons.")
+        keys = ICON_THEMES[theme]
+    accents = accent if isinstance(accent, (list, tuple)) else [accent]
+    return [{"name": name, "icon": k, "accent": accents[i % len(accents)],
+             "theme": theme}
+            for i, k in enumerate(keys)]
+
+
+def packs_proof_orders(names=("Adam", "Tom")):
+    """One proof label per icon in every standard pack, in pack order, then
+    the categories that aren't packs yet (all their icons)."""
+    orders, i = [], 0
+    for theme, keys in PACKS.items():
+        for k in keys:
+            orders.append({"name": names[i % len(names)], "icon": k,
+                           "accent": "#000000", "theme": f"{theme} pack"})
+            i += 1
+    for theme in PACKS_NOT_READY:
+        keys = ICON_THEMES.get(theme, [])
+        for k in keys:
+            orders.append({"name": names[i % len(names)], "icon": k, "accent": "#000000",
+                           "theme": f"{theme}: not a pack yet, needs {PACK_SIZE - len(keys)} more"})
+            i += 1
+    return orders
+
+
+def colour_proof_orders(names=("Adam", "Tom")):
+    """One proof label per colour-line icon, category by category."""
+    orders, i = [], 0
+    for theme, keys in ICON_THEMES_COLOUR.items():
+        for k in keys:
+            orders.append({"name": names[i % len(names)], "icon": k,
+                           "theme": f"{theme} (colour)"})
+            i += 1
+    return orders
+
+
+def render_sheet_by_theme(orders, out_path, heading_h=9 * mm):
+    """Proof sheet: labels grouped under a heading per theme, each theme
+    starting on a new row (and a new page if it won't fit). For checking
+    designs only -- the layout differs from _grid_positions(), so it does
+    NOT line up with cut_lines.svg. Don't cut from it."""
+    _ensure_font()
+    page_w, page_h = A4
+    positions, cols, _ = _grid_positions()
+    start_x = positions[0][0]
+    top = page_h - MARGIN
+    groups = {}
+    for o in orders:
+        groups.setdefault(o.get("theme") or theme_of(o.get("icon", "star")), []).append(o)
+    c = canvas.Canvas(out_path, pagesize=A4)
+    y = top
+    for theme, items in groups.items():
+        rows = -(-len(items) // cols)
+        need = heading_h + rows * CARD_H + (rows - 1) * GAP
+        fits_on_page = need <= top - MARGIN
+        if (y - need < MARGIN and fits_on_page) or y - heading_h - CARD_H < MARGIN:
+            c.showPage(); y = top
+        c.setFont(_FONT_NAME, 13)
+        c.setFillColor(HexColor(INK))
+        c.drawString(start_x, y - heading_h + 2.5 * mm, f"{theme} ({len(items)})")
+        y -= heading_h
+        for i, o in enumerate(items):
+            col = i % cols
+            if col == 0:
+                if i:
+                    y -= CARD_H + GAP
+                if y - CARD_H < MARGIN:
+                    c.showPage(); y = top
+                    c.setFont(_FONT_NAME, 10)
+                    c.setFillColor(HexColor(INK))
+                    c.drawString(start_x, y - 5 * mm, f"{theme} (continued)")
+                    y -= 7 * mm
+            draw_label(c, start_x + col * (CARD_W + GAP), y - CARD_H, o)
+        y -= CARD_H + GAP + 2 * mm
+    c.showPage()
+    c.save()
+    print(f"{len(orders)} label(s) in {len(groups)} theme(s) -> {out_path}")
+
+
+def all_icon_orders():
+    """One label per icon, theme by theme, cycling sample names and accent
+    colours -- for checking every icon at real size before selling."""
+    names = ["Lucas", "Anna", "Maria", "Sara", "Daniel", "Isabella", "Leo", "Mia"]
+    accents = ["#2F6FA8", "#B0532E", "#B4841F", "#2F5233"]
+    orders, i = [], 0
+    for keys in ICON_THEMES.values():
+        for k in keys:
+            orders.append({"name": names[i % len(names)], "icon": k,
+                           "accent": accents[i % len(accents)]})
+            i += 1
+    return orders
+
+
 if __name__ == "__main__":
-    sample_orders = [
-        {"name": "Lucas", "icon": "soccer_ball", "accent": "#2F6FA8"},
-        {"name": "Anna", "icon": "skateboard", "accent": "#B0532E"},
-        {"name": "Maria", "icon": "basketball", "accent": "#B4841F"},
-        {"name": "Sara", "icon": "sailboat", "accent": "#2F5233"},
-    ]
-    render_sheet(sample_orders, "/mnt/user-data/outputs/name_sticker_sheet.pdf")
+    if "--png-all" in sys.argv:
+        export_label_pngs(all_icon_orders())
+    elif "--png-pack" in sys.argv:
+        use_all = "--all" in sys.argv
+        args = [a for a in sys.argv[sys.argv.index("--png-pack") + 1:] if a != "--all"]
+        if len(args) < 2:
+            sys.exit('Usage: --png-pack "Name" "Theme" ["#accent"] [--all] [--colour]')
+        use_colour = "--colour" in sys.argv
+        args = [a for a in args if a != "--colour"]
+        export_label_pngs(theme_pack(args[0], args[1],
+                                     args[2] if len(args) > 2 else "#000000",
+                                     all_icons=use_all, colour=use_colour))
+    elif "--png-sheet" in sys.argv:
+        # --png-sheet "Adam" "Sports" ["#accent"] [+ "Tom" "Ocean" ...] [--colour] [--all]
+        flags = {"--colour", "--all"}
+        rest = [a for a in sys.argv[sys.argv.index("--png-sheet") + 1:] if a not in flags]
+        packs, cur = [], []
+        for a in rest + ["+"]:
+            if a == "+":
+                if cur:
+                    packs.append(cur)
+                cur = []
+            else:
+                cur.append(a)
+        if not packs or any(len(p) < 2 for p in packs):
+            sys.exit('Usage: --png-sheet "Name" "Theme" ["#accent"] [+ "Name" "Theme" ...] [--colour] [--all]')
+        orders = []
+        for p in packs:
+            orders += theme_pack(p[0], p[1], p[2] if len(p) > 2 else "#000000",
+                                 all_icons="--all" in sys.argv, colour="--colour" in sys.argv)
+        out_dir = _asset_path(PNG_OUT_DIR)
+        os.makedirs(out_dir, exist_ok=True)
+        fname = "sheet_" + "_".join(f"{_slug(p[0])}-{_slug(p[1])}" for p in packs)
+        fname += "_colour" if "--colour" in sys.argv else ""
+        try:
+            render_sheet_png(orders, os.path.join(out_dir, fname + ".png"))
+        except ValueError as e:
+            sys.exit(str(e))
+    elif "--colour-proof" in sys.argv:
+        render_sheet_by_theme(colour_proof_orders(),
+                              os.path.join(_SCRIPT_DIR, "name_labels_colour_proof.pdf"))
+    elif "--packs-proof" in sys.argv:
+        render_sheet_by_theme(packs_proof_orders(),
+                              os.path.join(_SCRIPT_DIR, "name_labels_packs_proof.pdf"))
+    elif "--all-icons" in sys.argv:
+        render_sheet(all_icon_orders(),
+                     os.path.join(_SCRIPT_DIR, "name_sticker_all_icons.pdf"))
+    else:
+        sample_orders = [
+            {"name": "Lucas", "icon": "soccer_ball", "accent": "#2F6FA8"},
+            {"name": "Anna", "icon": "unicorn", "accent": "#B0532E"},
+            {"name": "Maria", "icon": "t_rex", "accent": "#B4841F"},
+            {"name": "Sara", "icon": "pirate_ship", "accent": "#2F5233"},
+        ]
+        render_sheet(sample_orders,
+                     os.path.join(_SCRIPT_DIR, "name_sticker_sheet.pdf"))
