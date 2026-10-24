@@ -261,14 +261,12 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Sports | `c_tennis` | Noto Emoji | `noto:tennis` | Apache 2.0 |
 | Sports | `c_rugby_ball` | Noto Emoji | `noto:rugby-football` | Apache 2.0 |
 | Sports | `c_skateboard` | Noto Emoji | `noto:skateboard` | Apache 2.0 |
-| Sports | `c_volleyball` | Noto Emoji | `noto:volleyball` | Apache 2.0 |
 | Sports | `c_cricket` | Noto Emoji | `noto:cricket-game` | Apache 2.0 |
 | Sports | `c_trophy` | Noto Emoji | `noto:trophy` | Apache 2.0 |
 | Sports | `c_football_shirt` | Noto Emoji | `noto:running-shirt` | Apache 2.0 |
 | Sports | `c_medal` | Noto Emoji | `noto:1st-place-medal` | Apache 2.0 |
 | Sports | `c_bowling` | Noto Emoji | `noto:bowling` | Apache 2.0 |
-| Sports | `c_bicycle` | Noto Emoji | `noto:bicycle` | Apache 2.0 |
-| Sports | `c_golf` | Fluent Emoji Flat | `fluent-emoji-flat:flag-in-hole` | MIT |
+| Sports | `c_golf` | Noto Emoji | `noto:flag-in-hole` | Apache 2.0 |
 | Sports | `c_ice_skate` | Noto Emoji | `noto:ice-skate` | Apache 2.0 |
 | Sports | `c_goal_net` | Noto Emoji | `noto:goal-net` | Apache 2.0 |
 | Sports | `c_roller_skate` | Noto Emoji | `noto:roller-skate` | Apache 2.0 |
@@ -277,11 +275,9 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Sports | `c_ping_pong` | Noto Emoji | `noto:ping-pong` | Apache 2.0 |
 | Sports | `c_badminton` | Noto Emoji | `noto:badminton` | Apache 2.0 |
 | Sports | `c_ice_hockey` | Noto Emoji | `noto:ice-hockey` | Apache 2.0 |
-| Sports | `c_baseball` | Noto Emoji | `noto:baseball` | Apache 2.0 |
 | Sports | `c_sled` | Noto Emoji | `noto:sled` | Apache 2.0 |
 | Sports | `c_diving_mask` | Noto Emoji | `noto:diving-mask` | Apache 2.0 |
 | Sports | `c_person_swimming` | Noto Emoji | `noto:person-swimming` | Apache 2.0 |
-| Sports | `c_person_biking` | Noto Emoji | `noto:person-biking` | Apache 2.0 |
 | Cute animals | `c_cat` | Noto Emoji | `noto:cat-face` | Apache 2.0 |
 | Cute animals | `c_dog` | Noto Emoji | `noto:dog-face` | Apache 2.0 |
 | Cute animals | `c_bunny` | Noto Emoji | `noto:rabbit-face` | Apache 2.0 |
@@ -298,8 +294,8 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Cute animals | `c_elephant` | Noto Emoji | `noto:elephant` | Apache 2.0 |
 | Cute animals | `c_cow_face` | Noto Emoji | `noto:cow-face` | Apache 2.0 |
 | Cute animals | `c_pig_face` | Noto Emoji | `noto:pig-face` | Apache 2.0 |
-| Cute animals | `c_tiger_face` | Fluent Emoji Flat | `fluent-emoji-flat:tiger-face` | MIT |
-| Cute animals | `c_monkey_face` | Fluent Emoji Flat | `fluent-emoji-flat:monkey-face` | MIT |
+| Cute animals | `c_tiger_face` | Noto Emoji | `noto:tiger-face` | Apache 2.0 |
+| Cute animals | `c_monkey_face` | Noto Emoji | `noto:monkey-face` | Apache 2.0 |
 | Cute animals | `c_hatching_chick` | Noto Emoji | `noto:hatching-chick` | Apache 2.0 |
 | Cute animals | `c_sloth` | Noto Emoji | `noto:sloth` | Apache 2.0 |
 | Cute animals | `c_raccoon` | Noto Emoji | `noto:raccoon` | Apache 2.0 |
@@ -307,15 +303,12 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Cute animals | `c_giraffe` | Noto Emoji | `noto:giraffe` | Apache 2.0 |
 | Cute animals | `c_zebra` | Noto Emoji | `noto:zebra` | Apache 2.0 |
 | Cute animals | `c_polar_bear` | Noto Emoji | `noto:polar-bear` | Apache 2.0 |
-| Cute animals | `c_turtle` | Noto Emoji | `noto:turtle` | Apache 2.0 |
-| Cute animals | `c_butterfly` | Noto Emoji | `noto:butterfly` | Apache 2.0 |
-| Cute animals | `c_rabbit` | Noto Emoji | `noto:rabbit` | Apache 2.0 |
 | Cute animals | `c_bear_face` | Noto Emoji | `noto:bear` | Apache 2.0 |
 | Dinosaurs | `c_long_neck` | Fluent Emoji Flat | `fluent-emoji-flat:sauropod` | MIT |
 | Dinosaurs | `c_t_rex` | Fluent Emoji Flat | `fluent-emoji-flat:t-rex` | MIT |
 | Dinosaurs | `c_dino_eggs` | Fluent Emoji Flat | `fluent-emoji-flat:egg` | MIT |
 | Dinosaurs | `c_volcano` | Fluent Emoji Flat | `fluent-emoji-flat:volcano` | MIT |
-| Dinosaurs | `c_footprints` | Fluent Emoji Flat | `fluent-emoji-flat:footprints` | MIT |
+| Dinosaurs | `c_bone` | Fluent Emoji Flat | `fluent-emoji-flat:bone` | MIT |
 | Dinosaurs | `c_lizard` | Fluent Emoji Flat | `fluent-emoji-flat:lizard` | MIT |
 | Dinosaurs | `c_crocodile` | Fluent Emoji Flat | `fluent-emoji-flat:crocodile` | MIT |
 | Vehicles | `c_car` | Noto Emoji | `noto:automobile` | Apache 2.0 |
@@ -338,13 +331,12 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Vehicles | `c_locomotive` | Noto Emoji | `noto:locomotive` | Apache 2.0 |
 | Vehicles | `c_tram` | Noto Emoji | `noto:tram` | Apache 2.0 |
 | Vehicles | `c_sailboat` | Noto Emoji | `noto:sailboat` | Apache 2.0 |
-| Vehicles | `c_mountain_cableway` | Noto Emoji | `noto:mountain-cableway` | Apache 2.0 |
 | Pirates | `c_pirate_flag` | Noto Emoji | `noto:pirate-flag` | Apache 2.0 |
-| Pirates | `c_pirate_ship` | Noto Emoji | `noto:ship` | Apache 2.0 |
+| Pirates | `c_sailboat` | Noto Emoji | `noto:sailboat` | Apache 2.0 |
 | Pirates | `c_treasure_chest` | Noto Emoji | `noto:treasure-chest` | Apache 2.0 |
 | Pirates | `c_treasure_map` | Noto Emoji | `noto:world-map` | Apache 2.0 |
 | Pirates | `c_parrot` | Noto Emoji | `noto:parrot` | Apache 2.0 |
-| Pirates | `c_telescope` | Noto Emoji | `noto:telescope` | Apache 2.0 |
+| Pirates | `c_spyglass` | Original (drawn for this shop) | `assets/icons_colour_src/c_spyglass.svg` | Own artwork |
 | Pirates | `c_island` | Noto Emoji | `noto:desert-island` | Apache 2.0 |
 | Pirates | `c_compass` | Noto Emoji | `noto:compass` | Apache 2.0 |
 | Pirates | `c_anchor` | Noto Emoji | `noto:anchor` | Apache 2.0 |
@@ -377,15 +369,12 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Knights & castles | `c_fleur_de_lis` | Noto Emoji | `noto:fleur-de-lis` | Apache 2.0 |
 | Dragons | `c_dragon` | Fluent Emoji Flat | `fluent-emoji-flat:dragon` | MIT |
 | Dragons | `c_dragon_head` | Fluent Emoji Flat | `fluent-emoji-flat:dragon-face` | MIT |
-| Dragons | `c_dragon_eggs` | Fluent Emoji Flat | `fluent-emoji-flat:egg` | MIT |
-| Dragons | `c_volcano` | Fluent Emoji Flat | `fluent-emoji-flat:volcano` | MIT |
 | Wizards | `c_wizard` | Noto Emoji | `noto:mage` | Apache 2.0 |
 | Wizards | `c_wand` | Noto Emoji | `noto:magic-wand` | Apache 2.0 |
 | Wizards | `c_crystal_ball` | Noto Emoji | `noto:crystal-ball` | Apache 2.0 |
 | Wizards | `c_broom` | Noto Emoji | `noto:broom` | Apache 2.0 |
 | Wizards | `c_sparkles` | Noto Emoji | `noto:sparkles` | Apache 2.0 |
 | Wizards | `c_fairy` | Noto Emoji | `noto:fairy` | Apache 2.0 |
-| Wizards | `c_genie` | Noto Emoji | `noto:genie` | Apache 2.0 |
 | Wizards | `c_glowing_star` | Noto Emoji | `noto:glowing-star` | Apache 2.0 |
 | Wizards | `c_scroll` | Noto Emoji | `noto:scroll` | Apache 2.0 |
 | Wizards | `c_alembic` | Noto Emoji | `noto:alembic` | Apache 2.0 |
@@ -398,7 +387,7 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Space | `c_alien` | Noto Emoji | `noto:alien` | Apache 2.0 |
 | Space | `c_earth` | Noto Emoji | `noto:globe-showing-europe-africa` | Apache 2.0 |
 | Space | `c_sun` | Noto Emoji | `noto:sun` | Apache 2.0 |
-| Space | `c_milky_way` | Noto Emoji | `noto:milky-way` | Apache 2.0 |
+| Space | `c_shooting_star` | Noto Emoji | `noto:shooting-star` | Apache 2.0 |
 | Space | `c_satellite` | Noto Emoji | `noto:satellite` | Apache 2.0 |
 | Space | `c_telescope` | Noto Emoji | `noto:telescope` | Apache 2.0 |
 | Music | `c_guitar` | Noto Emoji | `noto:guitar` | Apache 2.0 |
@@ -412,8 +401,6 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Music | `c_music_notes` | Noto Emoji | `noto:musical-notes` | Apache 2.0 |
 | Music | `c_headphones` | Noto Emoji | `noto:headphone` | Apache 2.0 |
 | Music | `c_maracas` | Noto Emoji | `noto:maracas` | Apache 2.0 |
-| Music | `c_studio_microphone` | Noto Emoji | `noto:studio-microphone` | Apache 2.0 |
-| Music | `c_musical_score` | Noto Emoji | `noto:musical-score` | Apache 2.0 |
 | Garden & bugs | `c_snail` | Fluent Emoji Flat | `fluent-emoji-flat:snail` | MIT |
 | Garden & bugs | `c_flower_pot` | Fluent Emoji Flat | `fluent-emoji-flat:potted-plant` | MIT |
 | Garden & bugs | `c_fruit_tree` | Fluent Emoji Flat | `fluent-emoji-flat:deciduous-tree` | MIT |
@@ -444,17 +431,34 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Farm & wild | `c_cow` | Fluent Emoji Flat | `fluent-emoji-flat:cow` | MIT |
 | Farm & wild | `c_pig_face_flat` | Fluent Emoji Flat | `fluent-emoji-flat:pig-face` | MIT |
 | Farm & wild | `c_ewe` | Fluent Emoji Flat | `fluent-emoji-flat:ewe` | MIT |
-| Farm & wild | `c_ram` | Fluent Emoji Flat | `fluent-emoji-flat:ram` | MIT |
 | Farm & wild | `c_goat` | Fluent Emoji Flat | `fluent-emoji-flat:goat` | MIT |
 | Farm & wild | `c_duck` | Fluent Emoji Flat | `fluent-emoji-flat:duck` | MIT |
 | Farm & wild | `c_horse_flat` | Fluent Emoji Flat | `fluent-emoji-flat:horse` | MIT |
-| Farm & wild | `c_rabbit_flat` | Fluent Emoji Flat | `fluent-emoji-flat:rabbit` | MIT |
+| Farm & wild | `c_chicken` | Fluent Emoji Flat | `fluent-emoji-flat:chicken` | MIT |
 | Farm & wild | `c_hedgehog_flat` | Fluent Emoji Flat | `fluent-emoji-flat:hedgehog` | MIT |
 | Farm & wild | `c_badger` | Fluent Emoji Flat | `fluent-emoji-flat:badger` | MIT |
+| Pirates | `c_spiral_shell` | Noto Emoji | `noto:spiral-shell` | Apache 2.0 |
+| Pirates | `c_octopus` | Noto Emoji | `noto:octopus` | Apache 2.0 |
+| Pirates | `c_water_wave_noto` | Noto Emoji | `noto:water-wave` | Apache 2.0 |
+| Pirates | `c_crab_noto` | Noto Emoji | `noto:crab` | Apache 2.0 |
+| Knights & castles | `c_dragon_noto` | Noto Emoji | `noto:dragon` | Apache 2.0 |
+| Knights & castles | `c_unicorn` | Noto Emoji | `noto:unicorn` | Apache 2.0 |
+| Knights & castles | `c_old_key` | Noto Emoji | `noto:old-key` | Apache 2.0 |
+| Knights & castles | `c_horse_face` | Noto Emoji | `noto:horse-face` | Apache 2.0 |
+| Wizards | `c_owl` | Noto Emoji | `noto:owl` | Apache 2.0 |
+| Wizards | `c_black_cat` | Noto Emoji | `noto:black-cat` | Apache 2.0 |
+| Wizards | `c_mushroom` | Noto Emoji | `noto:mushroom` | Apache 2.0 |
+| Music | `c_musical_keyboard` | Noto Emoji | `noto:musical-keyboard` | Apache 2.0 |
+| Farm & wild | `c_rooster` | Fluent Emoji Flat | `fluent-emoji-flat:rooster` | MIT |
+| Dinosaurs | `c_nest_with_eggs` | Fluent Emoji Flat | `fluent-emoji-flat:nest-with-eggs` | MIT |
+| Dinosaurs | `c_palm_tree` | Fluent Emoji Flat | `fluent-emoji-flat:palm-tree` | MIT |
+| Dinosaurs | `c_herb` | Fluent Emoji Flat | `fluent-emoji-flat:herb` | MIT |
 
 Not carried over to the colour line, because two black icons in one category shared one colour picture: `knight` (same crossed swords as `sword`), `two_fish` (same as `fish`) and `sea_dragon` (same as `dragon`).
 
 ## Changes log
+
+- 24 Oct 2026, colour line after outside review: 15 colour icons removed (genie, musical score, studio microphone, person biking, Sports bicycle, baseball, volleyball, Cute animals rabbit/turtle/butterfly, dragon eggs, Dragons volcano, mountain cableway, ram); milky way -> shooting star, Farm rabbit -> chicken, pirate ship -> sailboat, footprints -> bone; golf and monkey face switched to Noto; 16 added for the colour packs. Colour packs of 12 set, including a combined "Dinos & dragons" pack. Tiger face switched to Noto; the Pirates telescope replaced by `c_spyglass`, an original brass spyglass drawn for the shop (SVG source in `assets/icons_colour_src/`).
 
 - 23 Oct 2026, after outside review: `hook`, `sloth`, `dragon_spiral` and `cannon` (replaced by `telescope`) removed and their files deleted; `sailboat` moved from Sports to Ocean; 11 icons replaced.
 - 23 Oct 2026: 83 more Game Icons added from the "More Label Icons" page, including three new categories (Space, Music, Garden & bugs). `egg-clutch` is used twice (`dino_eggs`, `dragon_eggs`) and `flying-flag` twice (`waving_flag`, `knight_flag`) so each category has its own key.

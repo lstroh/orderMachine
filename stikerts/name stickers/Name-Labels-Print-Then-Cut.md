@@ -66,11 +66,12 @@ Each child gets their own folder, so orders don't mix. Still clear out `labels_p
 
 ## Colour line
 
-A separate set of 195 full-colour icons (Noto Emoji and Fluent Emoji Flat), picked 23 Oct 2026, sits alongside the black icons. Keys start with `c_`, files are in `assets/icons_colour/`, and the list is `ICON_THEMES_COLOUR` in `name_sticker.py`. Colour icons print as they are; the accent colour only affects black icons. The name stays black.
+A separate set of full-colour icons (197 after the 24 Oct review) (Noto Emoji and Fluent Emoji Flat), picked 23 Oct 2026, sits alongside the black icons. Keys start with `c_`, files are in `assets/icons_colour/`, and the list is `ICON_THEMES_COLOUR` in `name_sticker.py`. Colour icons print as they are; the accent colour only affects black icons. The name stays black.
 
 - Proof of every colour icon (Adam/Tom): `python3 name_sticker.py --colour-proof` -> `name_labels_colour_proof.pdf`
 - PNGs for one child, every colour icon in a category: `python3 name_sticker.py --png-pack "Lucas" "Ocean" --colour` -> `labels_png/lucas/ocean-colour/`
-- Colour packs of 12 aren't set yet, so `--colour` uses every colour icon in the category.
+- Colour packs of 12 (set 24 Oct 2026, `PACKS_COLOUR`): Sports, Cute animals, Vehicles, Ocean, Space, Music, Garden & bugs, Farm & wild, Pirates, Knights & castles, Wizards, and **Dinos & dragons** (one pack drawing on both the Dinosaurs and Dragons colour icons). `--colour` uses the pack; add `--all` for every colour icon in the category.
+- Two colour packs fit one sheet, same as black: `python3 name_sticker.py --png-sheet "Adam" "Dinos & dragons" + "Tom" "Pirates" --colour`
 - Colour printing uses much more ink than black, so check the ink cost per sheet in the costs spreadsheet before pricing.
 
 ## Notes

@@ -41,7 +41,7 @@ Usage:
     python3 name_sticker.py                 -> sample sheet PDF (4 labels)
     python3 name_sticker.py --all-icons     -> test sheet PDF with every icon
     python3 name_sticker.py --png-all       -> one PNG per icon, per theme folder
-    python3 name_sticker.py --png-pack "Lucas" "Sports" ["#000000"]
+    python3 name_sticker.py --png-pack "Lucas" "Sports" ["#2F6FA8"]
                                             -> one name, the category's 12-icon pack
     python3 name_sticker.py --png-pack "Lucas" "Sports" --all
                                             -> one name, every icon incl. backups
@@ -77,7 +77,7 @@ MARGIN = 10 * mm                   # sheet edge margin
 
 GUIDE = "#CCCCCC"
 BG = "#FFFFFF"
-INK = "#000000"
+INK = "#222222"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -203,38 +203,39 @@ for _keys in ICON_THEMES.values():
 # runs alongside the black ones. Keys start with "c_". Files live in
 # assets/icons_colour/ and are printed as they are: never recoloured, so the
 # order's accent colour is ignored for these. Sources: Noto Emoji (Google,
-# Apache 2.0) and Fluent Emoji Flat (Microsoft, MIT) -- no credit line needed.
+# Apache 2.0) and Fluent Emoji Flat (Microsoft, MIT) -- no credit line needed --
+# plus c_spyglass, our own drawing (source: assets/icons_colour_src/).
 # "_flat" / "_noto" on a key = the same subject drawn by the other library,
 # used in a different category. Credits: assets/icons/ICON_CREDITS.md.
 # ---------------------------------------------------------------------------
 ICON_THEMES_COLOUR = {
     "Sports": [
-        "c_soccer_ball", "c_basketball", "c_tennis", "c_rugby_ball", "c_skateboard", "c_volleyball",
-        "c_cricket", "c_trophy", "c_football_shirt", "c_medal", "c_bowling", "c_bicycle",
-        "c_golf", "c_ice_skate", "c_goal_net", "c_roller_skate", "c_skis", "c_kite",
-        "c_ping_pong", "c_badminton", "c_ice_hockey", "c_baseball", "c_sled", "c_diving_mask",
-        "c_person_swimming", "c_person_biking",
+        "c_soccer_ball", "c_basketball", "c_tennis", "c_rugby_ball", "c_skateboard", "c_cricket",
+        "c_trophy", "c_football_shirt", "c_medal", "c_bowling", "c_golf", "c_ice_skate",
+        "c_goal_net", "c_roller_skate", "c_skis", "c_kite", "c_ping_pong", "c_badminton",
+        "c_ice_hockey", "c_sled", "c_diving_mask", "c_person_swimming",
     ],
     "Cute animals": [
         "c_cat", "c_dog", "c_bunny", "c_bear", "c_fox", "c_panda",
         "c_owl", "c_penguin", "c_frog", "c_koala", "c_hedgehog", "c_unicorn",
         "c_lion", "c_elephant", "c_cow_face", "c_pig_face", "c_tiger_face", "c_monkey_face",
         "c_hatching_chick", "c_sloth", "c_raccoon", "c_beaver", "c_giraffe", "c_zebra",
-        "c_polar_bear", "c_turtle", "c_butterfly", "c_rabbit", "c_bear_face",
+        "c_polar_bear", "c_bear_face",
     ],
     "Dinosaurs": [
-        "c_long_neck", "c_t_rex", "c_dino_eggs", "c_volcano", "c_footprints", "c_lizard",
-        "c_crocodile",
+        "c_long_neck", "c_t_rex", "c_dino_eggs", "c_volcano", "c_bone", "c_lizard",
+        "c_crocodile", "c_nest_with_eggs", "c_palm_tree", "c_herb",
     ],
     "Vehicles": [
         "c_car", "c_race_car", "c_bus", "c_truck", "c_tractor", "c_police_car",
         "c_fire_engine", "c_ambulance", "c_plane", "c_helicopter", "c_rocket", "c_train",
         "c_motorbike", "c_kick_scooter", "c_taxi", "c_motor_scooter", "c_bicycle", "c_locomotive",
-        "c_tram", "c_sailboat", "c_mountain_cableway",
+        "c_tram", "c_sailboat",
     ],
     "Pirates": [
-        "c_pirate_flag", "c_pirate_ship", "c_treasure_chest", "c_treasure_map", "c_parrot", "c_telescope",
-        "c_island", "c_compass", "c_anchor",
+        "c_pirate_flag", "c_sailboat", "c_treasure_chest", "c_treasure_map", "c_parrot", "c_spyglass",
+        "c_island", "c_compass", "c_anchor", "c_spiral_shell", "c_octopus", "c_water_wave_noto",
+        "c_crab_noto",
     ],
     "Ocean": [
         "c_whale", "c_dolphin", "c_octopus", "c_turtle", "c_crab", "c_fish",
@@ -243,23 +244,23 @@ ICON_THEMES_COLOUR = {
     ],
     "Knights & castles": [
         "c_castle", "c_shield", "c_sword", "c_crown", "c_horse", "c_king",
-        "c_princess", "c_person_with_crown", "c_fleur_de_lis",
+        "c_princess", "c_person_with_crown", "c_fleur_de_lis", "c_dragon_noto", "c_unicorn", "c_old_key",
+        "c_horse_face",
     ],
     "Dragons": [
-        "c_dragon", "c_dragon_head", "c_dragon_eggs", "c_volcano",
+        "c_dragon", "c_dragon_head",
     ],
     "Wizards": [
         "c_wizard", "c_wand", "c_crystal_ball", "c_broom", "c_sparkles", "c_fairy",
-        "c_genie", "c_glowing_star", "c_scroll", "c_alembic",
+        "c_glowing_star", "c_scroll", "c_alembic", "c_owl", "c_black_cat", "c_mushroom",
     ],
     "Space": [
         "c_space_rocket", "c_astronaut", "c_ufo", "c_planet", "c_moon", "c_star",
-        "c_alien", "c_earth", "c_sun", "c_milky_way", "c_satellite", "c_telescope",
+        "c_alien", "c_earth", "c_sun", "c_shooting_star", "c_satellite", "c_telescope",
     ],
     "Music": [
         "c_guitar", "c_violin", "c_drum", "c_trumpet", "c_saxophone", "c_recorder",
-        "c_accordion", "c_microphone", "c_music_notes", "c_headphones", "c_maracas", "c_studio_microphone",
-        "c_musical_score",
+        "c_accordion", "c_microphone", "c_music_notes", "c_headphones", "c_maracas", "c_musical_keyboard",
     ],
     "Garden & bugs": [
         "c_snail", "c_flower_pot", "c_fruit_tree", "c_pine_tree", "c_ladybird", "c_bee",
@@ -269,13 +270,87 @@ ICON_THEMES_COLOUR = {
     ],
     "Farm & wild": [
         "c_deer", "c_flamingo", "c_pig", "c_swan", "c_cow_face_flat", "c_cow",
-        "c_pig_face_flat", "c_ewe", "c_ram", "c_goat", "c_duck", "c_horse_flat",
-        "c_rabbit_flat", "c_hedgehog_flat", "c_badger",
+        "c_pig_face_flat", "c_ewe", "c_goat", "c_duck", "c_horse_flat", "c_chicken",
+        "c_hedgehog_flat", "c_badger", "c_rooster",
     ],
 }
 COLOUR_ICONS = {k for _keys in ICON_THEMES_COLOUR.values() for k in _keys}
 for _k in COLOUR_ICONS:
     ICON_ASSETS[_k] = f"assets/icons_colour/{_k}.png"
+
+
+# Colour packs (decided 24 Oct 2026, after Grok's review): 12 per pack.
+# "Dinos & dragons" draws from both the Dinosaurs and Dragons colour
+# categories (each is too small on its own). Colour icons not in a pack are
+# backups, same as the black line.
+COLOUR_PACK_SOURCES = {"Dinos & dragons": ["Dinosaurs", "Dragons"]}
+PACKS_COLOUR = {
+    "Sports": [
+        "c_soccer_ball", "c_basketball", "c_tennis", "c_rugby_ball", "c_cricket", "c_trophy",
+        "c_medal", "c_football_shirt", "c_skateboard", "c_kite", "c_roller_skate", "c_goal_net",
+    ],
+    "Cute animals": [
+        "c_cat", "c_dog", "c_bunny", "c_fox", "c_panda", "c_koala",
+        "c_frog", "c_lion", "c_tiger_face", "c_pig_face", "c_cow_face", "c_bear_face",
+    ],
+    "Vehicles": [
+        "c_car", "c_bus", "c_truck", "c_tractor", "c_police_car", "c_fire_engine",
+        "c_ambulance", "c_plane", "c_helicopter", "c_rocket", "c_train", "c_locomotive",
+    ],
+    "Ocean": [
+        "c_whale", "c_dolphin", "c_octopus", "c_crab", "c_fish", "c_shark",
+        "c_tropical_fish", "c_blowfish", "c_squid", "c_turtle", "c_seal", "c_sailboat_flat",
+    ],
+    "Space": [
+        "c_space_rocket", "c_astronaut", "c_ufo", "c_planet", "c_moon", "c_star",
+        "c_alien", "c_earth", "c_sun", "c_telescope", "c_shooting_star", "c_satellite",
+    ],
+    "Music": [
+        "c_guitar", "c_violin", "c_drum", "c_trumpet", "c_saxophone", "c_recorder",
+        "c_accordion", "c_microphone", "c_music_notes", "c_headphones", "c_maracas", "c_musical_keyboard",
+    ],
+    "Garden & bugs": [
+        "c_snail", "c_ladybird", "c_bee", "c_caterpillar", "c_butterfly_flat", "c_ant",
+        "c_beetle", "c_flower", "c_sunflower", "c_flower_pot", "c_fruit_tree", "c_four_leaf_clover",
+    ],
+    "Farm & wild": [
+        "c_cow", "c_pig", "c_ewe", "c_goat", "c_duck", "c_horse_flat",
+        "c_hedgehog_flat", "c_badger", "c_deer", "c_flamingo", "c_rooster", "c_chicken",
+    ],
+    "Pirates": [
+        "c_pirate_flag", "c_treasure_chest", "c_treasure_map", "c_parrot", "c_island", "c_compass",
+        "c_anchor", "c_sailboat", "c_spiral_shell", "c_octopus", "c_water_wave_noto", "c_crab_noto",
+    ],
+    "Knights & castles": [
+        "c_sword", "c_castle", "c_shield", "c_crown", "c_horse", "c_king",
+        "c_princess", "c_fleur_de_lis", "c_dragon_noto", "c_unicorn", "c_old_key", "c_horse_face",
+    ],
+    "Wizards": [
+        "c_wizard", "c_wand", "c_crystal_ball", "c_broom", "c_sparkles", "c_fairy",
+        "c_glowing_star", "c_owl", "c_black_cat", "c_alembic", "c_scroll", "c_mushroom",
+    ],
+    "Dinos & dragons": [
+        "c_long_neck", "c_t_rex", "c_lizard", "c_crocodile", "c_volcano", "c_dragon",
+        "c_dragon_head", "c_nest_with_eggs", "c_bone", "c_palm_tree", "c_herb", "c_dino_eggs",
+    ],
+}
+
+
+def _check_colour_packs():
+    problems = []
+    for theme, keys in PACKS_COLOUR.items():
+        pool = [k for src in COLOUR_PACK_SOURCES.get(theme, [theme])
+                for k in ICON_THEMES_COLOUR.get(src, [])]
+        if len(keys) != PACK_SIZE:
+            problems.append(f"{theme} (colour): {len(keys)} icons, expected {PACK_SIZE}")
+        wrong = [k for k in keys if k not in pool]
+        if wrong:
+            problems.append(f"{theme} (colour): not in this category: {', '.join(wrong)}")
+        if len(set(keys)) != len(keys):
+            problems.append(f"{theme} (colour): duplicate icons")
+    if problems:
+        raise ValueError("Colour pack setup problem:\n  " + "\n  ".join(problems))
+
 
 
 # ---------------------------------------------------------------------------
@@ -354,6 +429,7 @@ def _check_packs():
 
 
 _check_packs()
+_check_colour_packs()
 
 
 def recolour_silhouette(in_path, out_path, hex_color):
@@ -490,12 +566,12 @@ def draw_label(c, ox, oy, order, w=CARD_W, h=CARD_H):
     """order = dict:
         name       str  (required)
         icon       key in ICON_ASSETS       (default "star")
-        accent     hex colour str            (default "#000000")
+        accent     hex colour str            (default "#2F6FA8")
     """
     _ensure_font()
     _draw_base(c, ox, oy, w, h)
 
-    accent = order.get("accent", "#000000")
+    accent = order.get("accent", "#2F6FA8")
     icon_key = order.get("icon", "star")
     name = order.get("name", "")
 
@@ -609,7 +685,7 @@ def render_label_png(order, out_path, dpi=PNG_DPI, supersample=4):
     img = Image.new("RGBA", (W, H), (255, 255, 255, 0))
     img.paste(Image.new("RGBA", (W, H), (255, 255, 255, 255)), (0, 0), shape)
 
-    accent = order.get("accent", "#000000")
+    accent = order.get("accent", "#2F6FA8")
     icon_key = order.get("icon", "star")
     name = order.get("name", "")
 
@@ -728,19 +804,26 @@ def render_sheet_png(orders, out_path, dpi=PNG_DPI, gap=GAP):
     return w_mm, h_mm
 
 
-def theme_pack(name, theme, accent="#000000", all_icons=False, colour=False):
+def theme_pack(name, theme, accent="#2F6FA8", all_icons=False, colour=False):
     """Orders for one child's name -- e.g. a 'Lucas, Dinosaurs' pack.
     By default this is the category's standard 12-icon pack (PACKS).
     all_icons=True uses every icon in the category, backups included.
     `accent` may be one colour or a list to cycle.
-    colour=True uses the colour line (ICON_THEMES_COLOUR, every icon in the
-    category -- no colour packs decided yet); accent is ignored for those."""
+    colour=True uses the colour line: the 12-icon PACKS_COLOUR pack (or every
+    colour icon with all_icons=True); accent is ignored for those."""
     if colour:
-        if theme not in ICON_THEMES_COLOUR:
-            raise ValueError(f"Unknown colour theme '{theme}'. Choose from: "
-                             + ", ".join(ICON_THEMES_COLOUR))
-        return [{"name": name, "icon": k, "theme": f"{theme} (colour)"}
-                for k in ICON_THEMES_COLOUR[theme]]
+        if all_icons or theme not in PACKS_COLOUR:
+            sources = COLOUR_PACK_SOURCES.get(theme, [theme])
+            if not all(src in ICON_THEMES_COLOUR for src in sources):
+                raise ValueError(f"Unknown colour theme '{theme}'. Choose from: "
+                                 + ", ".join(list(PACKS_COLOUR) + list(ICON_THEMES_COLOUR)))
+            keys = [k for src in sources for k in ICON_THEMES_COLOUR[src]]
+            if not all_icons:
+                print(f"[name_sticker] '{theme}' has no {PACK_SIZE}-icon colour pack. "
+                      f"Using all {len(keys)} icons.")
+        else:
+            keys = PACKS_COLOUR[theme]
+        return [{"name": name, "icon": k, "theme": f"{theme} (colour)"} for k in keys]
     if theme not in ICON_THEMES:
         raise ValueError(f"Unknown theme '{theme}'. Choose from: "
                          + ", ".join(ICON_THEMES))
@@ -778,12 +861,19 @@ def packs_proof_orders(names=("Adam", "Tom")):
 
 
 def colour_proof_orders(names=("Adam", "Tom")):
-    """One proof label per colour-line icon, category by category."""
-    orders, i = [], 0
-    for theme, keys in ICON_THEMES_COLOUR.items():
+    """One proof label per icon in every colour pack, then the colour icons
+    that aren't in any pack (backups), category by category."""
+    orders, i, in_pack = [], 0, set()
+    for theme, keys in PACKS_COLOUR.items():
         for k in keys:
             orders.append({"name": names[i % len(names)], "icon": k,
-                           "theme": f"{theme} (colour)"})
+                           "theme": f"{theme} colour pack"})
+            in_pack.add(k); i += 1
+    for theme, keys in ICON_THEMES_COLOUR.items():
+        spare = [k for k in keys if k not in in_pack]
+        for k in spare:
+            orders.append({"name": names[i % len(names)], "icon": k,
+                           "theme": f"{theme} (colour backups)"})
             i += 1
     return orders
 
@@ -856,7 +946,7 @@ if __name__ == "__main__":
         use_colour = "--colour" in sys.argv
         args = [a for a in args if a != "--colour"]
         export_label_pngs(theme_pack(args[0], args[1],
-                                     args[2] if len(args) > 2 else "#000000",
+                                     args[2] if len(args) > 2 else "#2F6FA8",
                                      all_icons=use_all, colour=use_colour))
     elif "--png-sheet" in sys.argv:
         # --png-sheet "Adam" "Sports" ["#accent"] [+ "Tom" "Ocean" ...] [--colour] [--all]
@@ -874,7 +964,7 @@ if __name__ == "__main__":
             sys.exit('Usage: --png-sheet "Name" "Theme" ["#accent"] [+ "Name" "Theme" ...] [--colour] [--all]')
         orders = []
         for p in packs:
-            orders += theme_pack(p[0], p[1], p[2] if len(p) > 2 else "#000000",
+            orders += theme_pack(p[0], p[1], p[2] if len(p) > 2 else "#2F6FA8",
                                  all_icons="--all" in sys.argv, colour="--colour" in sys.argv)
         out_dir = _asset_path(PNG_OUT_DIR)
         os.makedirs(out_dir, exist_ok=True)
