@@ -32,7 +32,7 @@ Scripts in this copy:
 
 - `bin_sticker.py`, `bin_sticker_core.py`, `bin_sticker_small.py`, `bin_sticker_medium.py`
 - `sticker_wrap.py`, `sticker_wrap_medium.py`, `sticker_cover_large.py`
-- `instructions_card.py`, `thankyou_card.py`, `name_sticker.py`
+- `instructions_card.py`, `thankyou_card.py`
 - `make_order.py`
 
 **Built from the project copies.** If you've changed a script in Cursor since, use your version and add `import embedded_fonts` above its first `import`.
