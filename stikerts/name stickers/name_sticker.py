@@ -235,7 +235,7 @@ ICON_THEMES_COLOUR = {
     "Pirates": [
         "c_pirate_flag", "c_sailboat", "c_treasure_chest", "c_treasure_map", "c_parrot", "c_spyglass",
         "c_island", "c_compass", "c_anchor", "c_spiral_shell", "c_octopus", "c_water_wave_noto",
-        "c_crab_noto",
+        "c_crab_noto", "c_gem_stone", "c_coin",
     ],
     "Ocean": [
         "c_whale", "c_dolphin", "c_octopus", "c_turtle", "c_crab", "c_fish",
@@ -319,7 +319,7 @@ PACKS_COLOUR = {
     ],
     "Pirates": [
         "c_pirate_flag", "c_treasure_chest", "c_treasure_map", "c_parrot", "c_island", "c_compass",
-        "c_anchor", "c_sailboat", "c_spiral_shell", "c_octopus", "c_water_wave_noto", "c_crab_noto",
+        "c_anchor", "c_sailboat", "c_spiral_shell", "c_spyglass", "c_gem_stone", "c_coin",
     ],
     "Knights & castles": [
         "c_sword", "c_castle", "c_shield", "c_crown", "c_horse", "c_king",

@@ -337,6 +337,8 @@ Full-colour icons that run alongside the black ones. Keys start with `c_`, files
 | Pirates | `c_treasure_map` | Noto Emoji | `noto:world-map` | Apache 2.0 |
 | Pirates | `c_parrot` | Noto Emoji | `noto:parrot` | Apache 2.0 |
 | Pirates | `c_spyglass` | Original (drawn for this shop) | `assets/icons_colour_src/c_spyglass.svg` | Own artwork |
+| Pirates | `c_gem_stone` | Noto Emoji | `noto:gem-stone` | Apache 2.0 |
+| Pirates | `c_coin` | Noto Emoji | `noto:coin` | Apache 2.0 |
 | Pirates | `c_island` | Noto Emoji | `noto:desert-island` | Apache 2.0 |
 | Pirates | `c_compass` | Noto Emoji | `noto:compass` | Apache 2.0 |
 | Pirates | `c_anchor` | Noto Emoji | `noto:anchor` | Apache 2.0 |
@@ -458,7 +460,7 @@ Not carried over to the colour line, because two black icons in one category sha
 
 ## Changes log
 
-- 24 Oct 2026, colour line after outside review: 15 colour icons removed (genie, musical score, studio microphone, person biking, Sports bicycle, baseball, volleyball, Cute animals rabbit/turtle/butterfly, dragon eggs, Dragons volcano, mountain cableway, ram); milky way -> shooting star, Farm rabbit -> chicken, pirate ship -> sailboat, footprints -> bone; golf and monkey face switched to Noto; 16 added for the colour packs. Colour packs of 12 set, including a combined "Dinos & dragons" pack. Tiger face switched to Noto; the Pirates telescope replaced by `c_spyglass`, an original brass spyglass drawn for the shop (SVG source in `assets/icons_colour_src/`).
+- 24 Oct 2026, colour line after outside review: 15 colour icons removed (genie, musical score, studio microphone, person biking, Sports bicycle, baseball, volleyball, Cute animals rabbit/turtle/butterfly, dragon eggs, Dragons volcano, mountain cableway, ram); milky way -> shooting star, Farm rabbit -> chicken, pirate ship -> sailboat, footprints -> bone; golf and monkey face switched to Noto; 16 added for the colour packs. Colour packs of 12 set, including a combined "Dinos & dragons" pack. Tiger face switched to Noto; the Pirates telescope replaced by `c_spyglass`, an original brass spyglass drawn for the shop (SVG source in `assets/icons_colour_src/`). Pirates colour pack reset: spyglass, gem stone and coin in; octopus, crab and water wave kept as backups.
 
 - 23 Oct 2026, after outside review: `hook`, `sloth`, `dragon_spiral` and `cannon` (replaced by `telescope`) removed and their files deleted; `sailboat` moved from Sports to Ocean; 11 icons replaced.
 - 23 Oct 2026: 83 more Game Icons added from the "More Label Icons" page, including three new categories (Space, Music, Garden & bugs). `egg-clutch` is used twice (`dino_eggs`, `dragon_eggs`) and `flying-flag` twice (`waving_flag`, `knight_flag`) so each category has its own key.
