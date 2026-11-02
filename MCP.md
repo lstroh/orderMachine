@@ -10,8 +10,31 @@ Abilities (WP naming):
 - `order-machine/get-materials`
 - `order-machine/get-listings`
 - `order-machine/get-media`
+- `order-machine/get-suppliers`
+- `order-machine/get-purchase-orders`
+- `order-machine/get-purchase-order`
+- `order-machine/get-workflow-material-goals`
+- `order-machine/get-batches`
+- `order-machine/get-batch`
+- `order-machine/get-batch-groups`
+- `order-machine/get-workflow-templates`
+- `order-machine/get-workflow-template`
+- `order-machine/get-budgets`
+- `order-machine/get-budget`
+- `order-machine/get-shipping-packages`
+- `order-machine/get-shipping-package`
+- `order-machine/get-make-board`
+- `order-machine/get-pack-board`
+- `order-machine/get-post-ship-board`
+- `order-machine/get-trays`
+- `order-machine/get-channels`
+- `order-machine/get-channel-fee-estimates`
+- `order-machine/get-recurring-platform-expenses`
+- `order-machine/get-analytics`
+- `order-machine/get-analytics-timing`
+- `order-machine/get-material-stock-log`
 
-Credentials (`channels.credentials`) are never exposed.
+All of these are read-only. Credentials (`channels.credentials`), step `script_config`, and step `command_template` are never exposed.
 
 When the MCP toggle is **off**, Abilities are **not registered** at all.
 
