@@ -8,8 +8,24 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
-- Read-only MCP abilities for workflows, budgets, shipping packages, boards, trays, channels, fees, analytics, and the material stock log. Order, product, and listing reads include the extra fields those screens already store, and `get-orders` honours `per_page`. Credentials and step scripts stay off every payload.
-- Order detail keeps a sticky header under the admin bar. Each field has its own Copy button, including every held tray number. House number, street name, and design are corrected in that header. The Make line-fields form is removed.
+## [0.36.0] - 2026-11-02
+
+Package 15: read-only MCP abilities and a sticky order header.
+
+### Added
+
+- Read-only MCP abilities for workflows, budgets, shipping packages, boards, trays, channels, fees, analytics, and the material stock log. Order, product, and listing reads include the extra fields those screens already store, and `get-orders` honours `per_page`. Credentials and step scripts stay off every payload
+- Name-label Print Then Cut sheets and 12-icon colour packs, with an order skill that saves a finished pack into the orders folder. The older name-sticker script is removed
+
+### Changed
+
+- Order detail keeps a sticky header under the admin bar. Each field has its own Copy button, including every held tray number. House number, street name, and design are corrected in that header. The Make line-fields form is removed
+
+### Notes
+
+- Schema stays **1.26.0**
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.36.0.zip`, not the repository source zipball
 
 ## [0.35.0] - 2026-10-23
 

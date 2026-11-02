@@ -8,6 +8,7 @@ Repo: `https://github.com/lstroh/orderMachine`
 
 | Version | Date | Release | Zip | Actions run |
 |---------|------|---------|-----|-------------|
+| [0.36.0](CHANGELOG.md#0360---2026-11-02) | 2026-11-02 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.36.0) | [orderMachine-0.36.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.36.0/orderMachine-0.36.0.zip) | TBD |
 | [0.35.0](CHANGELOG.md#0350---2026-10-23) | 2026-10-23 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.35.0) | [orderMachine-0.35.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.35.0/orderMachine-0.35.0.zip) | [Run](https://github.com/lstroh/orderMachine/actions/runs/39928843289) |
 | [0.34.0](CHANGELOG.md#0340---2026-10-19) | 2026-10-19 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.34.0) | [orderMachine-0.34.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.34.0/orderMachine-0.34.0.zip) | [Run](https://github.com/lstroh/orderMachine/actions/runs/39235928921) |
 | [0.33.0](CHANGELOG.md#0330---2026-10-12) | 2026-10-12 | [Release](https://github.com/lstroh/orderMachine/releases/tag/v0.33.0) | [orderMachine-0.33.0.zip](https://github.com/lstroh/orderMachine/releases/download/v0.33.0/orderMachine-0.33.0.zip) | [Run](https://github.com/lstroh/orderMachine/actions/runs/38221877977) |
