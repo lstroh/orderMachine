@@ -107,7 +107,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 | Screen | URL slug | Purpose |
 |---|---|---|
 | **Orders** | `som-orders` | List, filters, badges; open a row for detail |
-| Order detail | `som-orders&order_id=N` | Buyer, personalisation, address, items, workflow, stock, batch link |
+| Order detail | `som-orders&order_id=N` | Sticky header with per-field Copy; house number, street name, and design are corrected there. Buyer, personalisation, address, items, workflow, stock, batch link |
 | **Make Board** | `som-orders-board` | Kanban of open **order lines** by make step; filter by make workflow; pins, gated drag-and-drop |
 | **Pack Board** | `som-pack-board` | Kanban of open **orders** in pack/ship; Waiting for make + Held; drops an order when its pack steps are all done; Internal excluded |
 | **Post-ship Board** | `som-post-ship-board` | Kanban of aftercare orders by post-ship step; Unstarted / Active / Complete; filter by template |
@@ -196,6 +196,7 @@ Top-level menu: **Order Machine** (capability: `manage_options`).
 **Detail (open an order):**
 
 - Buyer and totals
+- **Sticky header** under the admin bar. Each field has Copy, including every held tray number. House number, street name, and design are corrected in the header and saved with the existing line-field update. The ship-to address is not edited. **No tray** links to the Trays panel when a tray is required. Assign and release stay on the Trays panel. The Make line-fields form is removed; the personalisation snippet stays
 - Personalisation (front-and-centre when present)
 - Shipping address
 - **Shipment** starts closed on every visit, including Internal. The page does not remember open or closed. No shipment row: heading **Shipment**. A saved shipment adds the status, and the tracking number when one is stored. The form inside is unchanged (carrier, service, ship date, postage, pack weight, tracking, Click & Drop reference, proof, save, push tracking), including on an Internal order. Planned shipping and Shipping address stay open. Pack & Ship stays hidden when the channel is Internal. Make, Pack & Ship, and Post-ship stay expanded
@@ -822,6 +823,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sp
 7. Open a **cancelled** fixture → cancelled state clear; no fresh stock reservation expected.
 
 - [ ] Matched order: address + items + workflow readable
+- [ ] Sticky header stays under the admin bar. Each field has Copy, including held tray numbers. House number, street name, and design save from the header
 - [ ] Unmatched flagged; not blocking the rest of the UI
 - [ ] Cancelled identifiable
 

@@ -9,6 +9,7 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 ## [Unreleased]
 
 - Read-only MCP abilities for workflows, budgets, shipping packages, boards, trays, channels, fees, analytics, and the material stock log. Order, product, and listing reads include the extra fields those screens already store, and `get-orders` honours `per_page`. Credentials and step scripts stay off every payload.
+- Order detail keeps a sticky header under the admin bar. Each field has its own Copy button, including every held tray number. House number, street name, and design are corrected in that header. The Make line-fields form is removed.
 
 ## [0.35.0] - 2026-10-23
 

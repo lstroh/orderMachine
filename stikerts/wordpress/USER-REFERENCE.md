@@ -118,7 +118,9 @@ Tone: what each screen is for, main actions, important rules, and what you will 
 - **Step instructions** — Markdown rendered as HTML on Make, Pack, and Post-ship (product override → step default). A line that starts with `- ` shows a bullet, and a numbered list shows numbers. Plain text still works
 - **Tasks** — optional tick list on make/pack steps that have an effective list (product override → template default for make; template only for pack). Shown on current + completed steps; Save tasks persists ticks. **Does not block Mark done.** Separate from Confirmation checklist.
 - **Copy command** on make lines when the step has a `command_template` — monospace rendered command + **Copy** (not executed by WordPress); then Mark done
-- Editable line fields: house number, street name, style (and personalisation summary) for placeholders / bad eBay payloads
+- **Sticky header** under the admin bar while the rest of the page scrolls. Copy buttons on the marketplace order id, the Order Machine id, the buyer, each ship-to line (name, address lines, town, county, postcode, country), Copy address, and on each line the product, quantity, house number, street name, design, and Copy line. Every held tray number has Copy (the number only). None held shows **No tray**, and that text links to the Trays panel when a tray is required
+- House number, street name, and design are corrected in that header (**Save line**). Blank clears the field. The ship-to address is not edited here. Extra imported aspects that are not house, street, or design are copy-only chips
+- The Make section no longer has a line-fields form. It still shows the personalisation snippet
 - **Confirmation checklist** nested under the **current** make/pack step when that step has a confirmation kind (print / address / packing) — Save checklist, then Mark done (checklist Save does not mark the step done). Hard gate — not optional Tasks.
 - **Unblock step** on the current make/pack step when Mark done is gated (confirm: allows Mark done without meeting gates; does not complete the step)
 - **Open on eBay/Etsy** link when channel supports it

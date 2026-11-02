@@ -15,6 +15,47 @@ if ( ! current_user_can( 'manage_options' ) || empty( $order ) ) {
 
 $address_text = SOM_Orders::format_address( $order->shipping_address );
 $back_url     = SOM_Orders::list_url();
+$ship_parts   = $order->shipping_address;
+if ( is_string( $ship_parts ) ) {
+	$decoded_ship = json_decode( $ship_parts, true );
+	$ship_parts   = is_array( $decoded_ship ) ? $decoded_ship : array();
+} elseif ( ! is_array( $ship_parts ) ) {
+	$ship_parts = array();
+}
+$trays_required     = SOM_Trays::order_requires_trays( $order );
+$trays_held_numbers = SOM_Trays::held_numbers_for_order( (int) $order->id );
+$trays_need_assign  = $trays_required && empty( $trays_held_numbers )
+	&& empty( $order->is_complete ) && empty( $order->is_cancelled );
+
+// Same aspect names SOM_Channel_Ebay::extract_structured_fields() maps onto house, street, and design.
+$som_aspect_aliases = array(
+	'house number',
+	'house no',
+	'house #',
+	'number',
+	'street name',
+	'street',
+	'road name',
+	'design',
+	'style',
+	'design name',
+	'ebay design',
+);
+$som_copy_button = static function ( $copy_key, $aria, $args = array() ) {
+	$label = isset( $args['label'] ) ? (string) $args['label'] : __( 'Copy', 'order-machine' );
+	echo '<button type="button" class="button button-small"';
+	echo ' data-som-sticky-copy="' . esc_attr( (string) $copy_key ) . '"';
+	if ( ! empty( $args['from'] ) ) {
+		echo ' data-som-copy-from="' . esc_attr( (string) $args['from'] ) . '"';
+	} elseif ( ! empty( $args['inputs'] ) ) {
+		echo ' data-som-copy-inputs="' . esc_attr( (string) $args['inputs'] ) . '"';
+	} else {
+		echo ' data-som-copy-text="' . esc_attr( isset( $args['text'] ) ? (string) $args['text'] : '' ) . '"';
+	}
+	echo ' aria-label="' . esc_attr( (string) $aria ) . '">';
+	echo esc_html( $label );
+	echo '</button>';
+};
 
 $raw_pretty = '';
 if ( ! empty( $order->raw_payload ) ) {
@@ -31,60 +72,381 @@ if ( ! empty( $order->raw_payload ) ) {
 		<a href="<?php echo esc_url( $back_url ); ?>">&larr; <?php echo esc_html__( 'Back to orders', 'order-machine' ); ?></a>
 	</p>
 
-	<h1>
-		<?php
-		printf(
-			/* translators: 1: channel name, 2: external order id */
-			esc_html__( '%1$s order %2$s', 'order-machine' ),
-			esc_html( (string) $order->channel_name ),
-			esc_html( (string) $order->external_order_id )
-		);
-		?>
-	</h1>
-
 	<?php
 	$marketplace_order_url = SOM_Step_Confirmations::marketplace_order_url(
 		(string) $order->channel_slug,
 		(string) $order->external_order_id
 	);
+	$ship_rows             = array(
+		'full_name' => array(
+			'label' => __( 'Name', 'order-machine' ),
+			'copy'  => 'name',
+		),
+		'line1'     => array(
+			'label' => __( 'Address line 1', 'order-machine' ),
+			'copy'  => 'line1',
+		),
+		'line2'     => array(
+			'label' => __( 'Address line 2', 'order-machine' ),
+			'copy'  => 'line2',
+		),
+		'city'      => array(
+			'label' => __( 'Town', 'order-machine' ),
+			'copy'  => 'town',
+		),
+		'state'     => array(
+			'label' => __( 'County', 'order-machine' ),
+			'copy'  => 'county',
+		),
+		'postcode'  => array(
+			'label' => __( 'Postcode', 'order-machine' ),
+			'copy'  => 'postcode',
+		),
+		'country'   => array(
+			'label' => __( 'Country', 'order-machine' ),
+			'copy'  => 'country',
+		),
+	);
 	?>
-	<?php if ( $marketplace_order_url ) : ?>
-		<p class="som-marketplace-links">
-			<a class="button button-secondary" href="<?php echo esc_url( $marketplace_order_url ); ?>" target="_blank" rel="noopener noreferrer">
+	<header class="som-order-sticky" data-som-sticky-header aria-label="<?php echo esc_attr__( 'Order summary', 'order-machine' ); ?>">
+		<div class="som-order-sticky-identity">
+			<h1>
 				<?php
 				printf(
-					/* translators: %s: channel display name */
-					esc_html__( 'Open on %s', 'order-machine' ),
-					esc_html( (string) $order->channel_name )
+					/* translators: 1: channel name, 2: external order id */
+					esc_html__( '%1$s order %2$s', 'order-machine' ),
+					esc_html( (string) $order->channel_name ),
+					esc_html( (string) $order->external_order_id )
 				);
 				?>
-			</a>
-		</p>
-	<?php endif; ?>
+			</h1>
 
-	<div class="som-order-meta">
-		<span class="som-badge som-badge-channel"><?php echo esc_html( (string) $order->channel_name ); ?></span>
-		<?php if ( ! empty( $order->is_complete ) ) : ?>
-			<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Complete', 'order-machine' ); ?></span>
-		<?php else : ?>
-			<span class="som-badge som-badge-open"><?php echo esc_html__( 'Open', 'order-machine' ); ?></span>
-		<?php endif; ?>
-		<?php if ( ! empty( $order->is_cancelled ) ) : ?>
-			<span class="som-badge som-badge-cancelled"><?php echo esc_html__( 'Cancelled', 'order-machine' ); ?></span>
-		<?php endif; ?>
-		<?php if ( ! empty( $order->has_unmatched ) ) : ?>
-			<span class="som-badge som-badge-unmatched"><?php echo esc_html__( 'Unmatched', 'order-machine' ); ?></span>
-		<?php endif; ?>
-		<span class="som-order-date">
+			<?php if ( $marketplace_order_url ) : ?>
+				<p class="som-marketplace-links">
+					<a class="button button-secondary" href="<?php echo esc_url( $marketplace_order_url ); ?>" target="_blank" rel="noopener noreferrer">
+						<?php
+						printf(
+							/* translators: %s: channel display name */
+							esc_html__( 'Open on %s', 'order-machine' ),
+							esc_html( (string) $order->channel_name )
+						);
+						?>
+					</a>
+				</p>
+			<?php endif; ?>
+
+			<div class="som-order-meta">
+				<span class="som-badge som-badge-channel"><?php echo esc_html( (string) $order->channel_name ); ?></span>
+				<?php if ( ! empty( $order->is_complete ) ) : ?>
+					<span class="som-badge som-badge-complete"><?php echo esc_html__( 'Complete', 'order-machine' ); ?></span>
+				<?php else : ?>
+					<span class="som-badge som-badge-open"><?php echo esc_html__( 'Open', 'order-machine' ); ?></span>
+				<?php endif; ?>
+				<?php if ( ! empty( $order->is_cancelled ) ) : ?>
+					<span class="som-badge som-badge-cancelled"><?php echo esc_html__( 'Cancelled', 'order-machine' ); ?></span>
+				<?php endif; ?>
+				<?php if ( ! empty( $order->has_unmatched ) ) : ?>
+					<span class="som-badge som-badge-unmatched"><?php echo esc_html__( 'Unmatched', 'order-machine' ); ?></span>
+				<?php endif; ?>
+				<span class="som-order-date">
+					<?php
+					printf(
+						/* translators: %s: formatted datetime */
+						esc_html__( 'Ordered %s', 'order-machine' ),
+						esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $order->order_date ) )
+					);
+					?>
+				</span>
+			</div>
+
+			<?php if ( $trays_held_numbers ) : ?>
+				<ul class="som-sticky-trays">
+					<?php foreach ( $trays_held_numbers as $tray_number ) : ?>
+						<li class="som-sticky-tray">
+							<span class="som-sticky-label">
+								<?php
+								printf(
+									/* translators: %d: tray number */
+									esc_html__( 'Tray %d', 'order-machine' ),
+									(int) $tray_number
+								);
+								?>
+							</span>
+							<?php
+							$som_copy_button(
+								'tray',
+								sprintf(
+									/* translators: %d: tray number */
+									__( 'Copy tray %d', 'order-machine' ),
+									(int) $tray_number
+								),
+								array(
+									'text' => (string) (int) $tray_number,
+								)
+							);
+							?>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			<?php else : ?>
+				<p class="som-sticky-trays">
+					<?php if ( $trays_required ) : ?>
+						<a class="som-sticky-no-tray" href="#som-trays"><?php echo esc_html__( 'No tray', 'order-machine' ); ?></a>
+					<?php else : ?>
+						<span class="som-sticky-no-tray som-muted"><?php echo esc_html__( 'No tray', 'order-machine' ); ?></span>
+					<?php endif; ?>
+				</p>
+			<?php endif; ?>
+		</div>
+
+		<div class="som-order-sticky-fields">
+			<span class="som-sticky-field">
+				<span class="som-sticky-label"><?php echo esc_html__( 'Order id', 'order-machine' ); ?></span>
+				<span class="som-sticky-value"><?php echo esc_html( (string) $order->external_order_id ); ?></span>
+				<?php
+				$som_copy_button(
+					'external_order_id',
+					__( 'Copy order id', 'order-machine' ),
+					array(
+						'text' => (string) $order->external_order_id,
+					)
+				);
+				?>
+			</span>
+			<span class="som-sticky-field som-sticky-field-minor">
+				<span class="som-sticky-label"><?php echo esc_html__( 'Order Machine id', 'order-machine' ); ?></span>
+				<span class="som-sticky-value"><?php echo esc_html( (string) (int) $order->id ); ?></span>
+				<?php
+				$som_copy_button(
+					'order_machine_id',
+					__( 'Copy Order Machine id', 'order-machine' ),
+					array(
+						'text' => (string) (int) $order->id,
+					)
+				);
+				?>
+			</span>
 			<?php
-			printf(
-				/* translators: %s: formatted datetime */
-				esc_html__( 'Ordered %s', 'order-machine' ),
-				esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $order->order_date ) )
-			);
-			?>
-		</span>
-	</div>
+			$buyer_name = trim( (string) $order->buyer_name );
+			if ( '' !== $buyer_name ) :
+				?>
+				<span class="som-sticky-field">
+					<span class="som-sticky-label"><?php echo esc_html__( 'Buyer', 'order-machine' ); ?></span>
+					<span class="som-sticky-value"><?php echo esc_html( $buyer_name ); ?></span>
+					<?php
+					$som_copy_button(
+						'buyer',
+						__( 'Copy buyer', 'order-machine' ),
+						array(
+							'text' => $buyer_name,
+						)
+					);
+					?>
+				</span>
+			<?php endif; ?>
+
+			<?php if ( '' === $address_text ) : ?>
+				<p class="som-muted som-sticky-no-address"><?php echo esc_html__( 'No shipping address stored.', 'order-machine' ); ?></p>
+			<?php else : ?>
+				<?php foreach ( $ship_rows as $ship_key => $ship_row ) : ?>
+					<?php
+					$ship_value = isset( $ship_parts[ $ship_key ] ) ? trim( (string) $ship_parts[ $ship_key ] ) : '';
+					if ( '' === $ship_value ) {
+						continue;
+					}
+					?>
+					<span class="som-sticky-field">
+						<span class="som-sticky-label"><?php echo esc_html( $ship_row['label'] ); ?></span>
+						<span class="som-sticky-value"><?php echo esc_html( $ship_value ); ?></span>
+						<?php
+						$som_copy_button(
+							$ship_row['copy'],
+							sprintf(
+								/* translators: %s: address field label */
+								__( 'Copy %s', 'order-machine' ),
+								$ship_row['label']
+							),
+							array(
+								'text' => $ship_value,
+							)
+						);
+						?>
+					</span>
+				<?php endforeach; ?>
+				<?php
+				$som_copy_button(
+					'address',
+					__( 'Copy address', 'order-machine' ),
+					array(
+						'label' => __( 'Copy address', 'order-machine' ),
+						'text'  => $address_text,
+					)
+				);
+				?>
+			<?php endif; ?>
+		</div>
+
+		<div class="som-order-sticky-lines">
+			<?php if ( empty( $order->items ) ) : ?>
+				<p class="som-muted"><?php echo esc_html__( 'No line items on this order.', 'order-machine' ); ?></p>
+			<?php else : ?>
+				<?php foreach ( $order->items as $sticky_item ) : ?>
+					<?php
+					$sticky_line_id = (int) $sticky_item->id;
+					$sticky_product = isset( $sticky_item->product_name ) ? trim( (string) $sticky_item->product_name ) : '';
+					$sticky_qty     = (int) $sticky_item->quantity;
+					$sticky_house   = isset( $sticky_item->house_number ) && null !== $sticky_item->house_number ? (string) $sticky_item->house_number : '';
+					$sticky_street  = isset( $sticky_item->street_name ) && null !== $sticky_item->street_name ? (string) $sticky_item->street_name : '';
+					$sticky_style   = isset( $sticky_item->style ) && null !== $sticky_item->style ? (string) $sticky_item->style : '';
+					$house_input_id  = 'som-sticky-house-' . $sticky_line_id;
+					$street_input_id = 'som-sticky-street-' . $sticky_line_id;
+					$style_input_id  = 'som-sticky-style-' . $sticky_line_id;
+					$extra_aspects  = array();
+					$raw_aspects    = isset( $sticky_item->personalisation_json ) ? $sticky_item->personalisation_json : null;
+					$decoded_aspects = null;
+					if ( is_string( $raw_aspects ) && '' !== $raw_aspects ) {
+						$decoded_aspects = json_decode( $raw_aspects, true );
+					} elseif ( is_array( $raw_aspects ) ) {
+						$decoded_aspects = $raw_aspects;
+					}
+					if ( is_array( $decoded_aspects ) ) {
+						foreach ( $decoded_aspects as $aspect_key => $aspect_value ) {
+							$aspect_label = trim( (string) $aspect_key );
+							if ( '' === $aspect_label || in_array( strtolower( $aspect_label ), $som_aspect_aliases, true ) ) {
+								continue;
+							}
+							if ( is_array( $aspect_value ) || is_object( $aspect_value ) ) {
+								continue;
+							}
+							$aspect_text = trim( (string) $aspect_value );
+							if ( '' === $aspect_text ) {
+								continue;
+							}
+							$extra_aspects[] = array(
+								'label' => $aspect_label,
+								'value' => $aspect_text,
+							);
+						}
+					}
+					?>
+					<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-sticky-line" id="som-sticky-line-<?php echo esc_attr( (string) $sticky_line_id ); ?>">
+						<?php wp_nonce_field( 'som_save_line_fields', 'som_order_nonce' ); ?>
+						<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
+						<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $sticky_line_id ); ?>" />
+						<input type="hidden" name="som_save_line_fields" value="1" />
+						<div class="som-sticky-line-head">
+							<span class="som-sticky-field">
+								<span class="som-sticky-label"><?php echo esc_html__( 'Product', 'order-machine' ); ?></span>
+								<span class="som-sticky-value">
+									<?php echo esc_html( '' !== $sticky_product ? $sticky_product : __( 'Unmatched item', 'order-machine' ) ); ?>
+								</span>
+								<?php
+								$som_copy_button(
+									'product',
+									__( 'Copy product', 'order-machine' ),
+									array(
+										'text' => $sticky_product,
+									)
+								);
+								?>
+							</span>
+							<span class="som-sticky-field">
+								<span class="som-sticky-label"><?php echo esc_html__( 'Quantity', 'order-machine' ); ?></span>
+								<span class="som-sticky-value"><?php echo esc_html( (string) $sticky_qty ); ?></span>
+								<?php
+								$som_copy_button(
+									'quantity',
+									__( 'Copy quantity', 'order-machine' ),
+									array(
+										'text' => (string) $sticky_qty,
+									)
+								);
+								?>
+							</span>
+						</div>
+						<div class="som-sticky-line-inputs">
+							<span class="som-sticky-input">
+								<label for="<?php echo esc_attr( $house_input_id ); ?>"><?php echo esc_html__( 'House number', 'order-machine' ); ?></label>
+								<input type="text" class="regular-text" id="<?php echo esc_attr( $house_input_id ); ?>" name="som_line[house_number]" value="<?php echo esc_attr( $sticky_house ); ?>" maxlength="64" />
+								<?php
+								$som_copy_button(
+									'house_number',
+									__( 'Copy house number', 'order-machine' ),
+									array(
+										'from' => $house_input_id,
+									)
+								);
+								?>
+							</span>
+							<span class="som-sticky-input">
+								<label for="<?php echo esc_attr( $street_input_id ); ?>"><?php echo esc_html__( 'Street name', 'order-machine' ); ?></label>
+								<input type="text" class="regular-text" id="<?php echo esc_attr( $street_input_id ); ?>" name="som_line[street_name]" value="<?php echo esc_attr( $sticky_street ); ?>" maxlength="191" />
+								<?php
+								$som_copy_button(
+									'street_name',
+									__( 'Copy street name', 'order-machine' ),
+									array(
+										'from' => $street_input_id,
+									)
+								);
+								?>
+							</span>
+							<span class="som-sticky-input">
+								<label for="<?php echo esc_attr( $style_input_id ); ?>"><?php echo esc_html__( 'Design', 'order-machine' ); ?></label>
+								<input type="text" class="regular-text" id="<?php echo esc_attr( $style_input_id ); ?>" name="som_line[style]" value="<?php echo esc_attr( $sticky_style ); ?>" maxlength="191" />
+								<?php
+								$som_copy_button(
+									'design',
+									__( 'Copy design', 'order-machine' ),
+									array(
+										'from' => $style_input_id,
+									)
+								);
+								?>
+							</span>
+							<?php submit_button( __( 'Save line', 'order-machine' ), 'secondary', 'submit', false ); ?>
+						</div>
+						<p class="som-sticky-line-actions">
+							<?php
+							$som_copy_button(
+								'line',
+								__( 'Copy line', 'order-machine' ),
+								array(
+									'label'  => __( 'Copy line', 'order-machine' ),
+									'inputs' => $house_input_id . ' ' . $street_input_id . ' ' . $style_input_id,
+								)
+							);
+							?>
+						</p>
+						<?php if ( $extra_aspects ) : ?>
+							<div class="som-sticky-chips">
+								<?php foreach ( $extra_aspects as $extra_aspect ) : ?>
+									<span class="som-sticky-chip">
+										<span class="som-sticky-label"><?php echo esc_html( $extra_aspect['label'] ); ?></span>
+										<span class="som-sticky-value"><?php echo esc_html( $extra_aspect['value'] ); ?></span>
+										<?php
+										$som_copy_button(
+											'aspect',
+											sprintf(
+												/* translators: %s: personalisation aspect name */
+												__( 'Copy %s', 'order-machine' ),
+												$extra_aspect['label']
+											),
+											array(
+												'text' => $extra_aspect['value'],
+											)
+										);
+										?>
+									</span>
+								<?php endforeach; ?>
+							</div>
+						<?php endif; ?>
+					</form>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</div>
+	</header>
+	<hr class="wp-header-end" />
 
 	<?php if ( ! empty( $order->has_unmatched ) ) : ?>
 		<div class="notice notice-warning inline som-unmatched-notice">
@@ -349,10 +711,6 @@ if ( ! empty( $order->raw_payload ) ) {
 	</section>
 
 	<?php
-	$trays_required     = SOM_Trays::order_requires_trays( $order );
-	$trays_held_numbers = SOM_Trays::held_numbers_for_order( (int) $order->id );
-	$trays_need_assign  = $trays_required && empty( $trays_held_numbers )
-		&& empty( $order->is_complete ) && empty( $order->is_cancelled );
 	$held_trays        = SOM_Trays::held_for_order( (int) $order->id );
 	$free_trays        = SOM_Trays::free_tray_numbers();
 	$tray_max          = SOM_Trays::get_max();
@@ -542,46 +900,6 @@ if ( ! empty( $order->raw_payload ) ) {
 					<?php if ( '' !== $line_person ) : ?>
 						<p class="som-personalisation-snippet"><?php echo esc_html( $line_person ); ?></p>
 					<?php endif; ?>
-
-					<?php
-					$line_house  = isset( $make_item->house_number ) ? (string) $make_item->house_number : '';
-					$line_street = isset( $make_item->street_name ) ? (string) $make_item->street_name : '';
-					$line_style  = isset( $make_item->style ) ? (string) $make_item->style : '';
-					?>
-					<details class="som-line-fields-panel" <?php echo ( '' === $line_house && '' === $line_street && '' === $line_style ) ? '' : 'open'; ?>>
-						<summary><?php echo esc_html__( 'Line fields (house / street / style)', 'order-machine' ); ?></summary>
-						<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-line-fields-form">
-							<?php wp_nonce_field( 'som_save_line_fields', 'som_order_nonce' ); ?>
-							<input type="hidden" name="som_order_id" value="<?php echo esc_attr( (string) (int) $order->id ); ?>" />
-							<input type="hidden" name="som_order_item_id" value="<?php echo esc_attr( (string) $line_id ); ?>" />
-							<input type="hidden" name="som_save_line_fields" value="1" />
-							<p>
-								<label>
-									<?php echo esc_html__( 'House number', 'order-machine' ); ?>
-									<input type="text" class="regular-text" name="som_line[house_number]" value="<?php echo esc_attr( $line_house ); ?>" maxlength="64" />
-								</label>
-							</p>
-							<p>
-								<label>
-									<?php echo esc_html__( 'Street name', 'order-machine' ); ?>
-									<input type="text" class="regular-text" name="som_line[street_name]" value="<?php echo esc_attr( $line_street ); ?>" maxlength="191" />
-								</label>
-							</p>
-							<p>
-								<label>
-									<?php echo esc_html__( 'Style / design', 'order-machine' ); ?>
-									<input type="text" class="regular-text" name="som_line[style]" value="<?php echo esc_attr( $line_style ); ?>" maxlength="191" />
-								</label>
-							</p>
-							<p>
-								<label>
-									<?php echo esc_html__( 'Personalisation summary', 'order-machine' ); ?>
-									<textarea class="large-text" rows="2" name="som_line[personalisation_text]"><?php echo esc_textarea( $line_person ); ?></textarea>
-								</label>
-							</p>
-							<?php submit_button( __( 'Save line fields', 'order-machine' ), 'secondary', 'submit', false ); ?>
-						</form>
-					</details>
 
 					<?php if ( ! $show_make_controls ) : ?>
 						<?php /* Customer-order internal lines, or no item progress — badge above is enough. */ ?>
