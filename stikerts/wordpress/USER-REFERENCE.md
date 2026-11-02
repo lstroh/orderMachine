@@ -609,7 +609,7 @@ On **order detail**, each step shows Planned · Actual (or live Elapsed while in
 
 - REST under `som/v1` supports automation (orders, purchasing, batches, etc.) with API key or admin auth.
 - Channel credentials are **never** exposed via REST or MCP.
-- MCP Abilities are **read-only** and only register when the MCP toggle is on.
+- MCP Abilities are **read-only** and only register when the MCP toggle is on. The list, including workflows, budgets, boards, channels, and analytics, is in MCP.md.
 - Day-to-day admin UI stays on form POST / admin-ajax; REST is parallel for automation / AI tools.
 
 This reference is not a full API manual — use developer docs and MCP.md when wiring integrations.

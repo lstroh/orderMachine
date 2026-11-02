@@ -8,6 +8,8 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+- Read-only MCP abilities for workflows, budgets, shipping packages, boards, trays, channels, fees, analytics, and the material stock log. Order, product, and listing reads include the extra fields those screens already store, and `get-orders` honours `per_page`. Credentials and step scripts stay off every payload.
+
 ## [0.35.0] - 2026-10-23
 
 Package 14: catalog CSV for materials, workflows, and products, tray and pack workflow rules, and output per run.

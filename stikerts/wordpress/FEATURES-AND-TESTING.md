@@ -499,7 +499,7 @@ No thank-you **batch** on the Pack path. Batch groups `thank_you_card` / `shippi
 | `/batches/{id}/release`, `…/mark-done`, `…/retry` | POST |
 | `/batch-groups`, `/batch-groups/{id}` | GET only |
 
-**Abilities (read-only, MCP-toggle gated):** existing order/product/material reads plus `get-suppliers`, `get-purchase-orders`, `get-purchase-order`, `get-workflow-material-goals`, `get-batches`, `get-batch`, `get-batch-groups`. Enriched: materials (WA, value, preferred supplier, alert), products (target price, recipe cost, fee-aware margin/profit, `platform_fees`, `fee_source`).
+**Abilities (read-only, MCP-toggle gated):** existing order/product/material reads plus `get-suppliers`, `get-purchase-orders`, `get-purchase-order`, `get-workflow-material-goals`, `get-batches`, `get-batch`, `get-batch-groups`. UP15-S1 adds `get-workflow-templates`, `get-workflow-template`, `get-budgets`, `get-budget`, `get-shipping-packages`, `get-shipping-package`, `get-make-board`, `get-pack-board`, `get-post-ship-board`, `get-trays`, `get-channels`, `get-channel-fee-estimates`, `get-recurring-platform-expenses`, `get-analytics`, `get-analytics-timing`, and `get-material-stock-log`. `get-orders` passes `per_page` (default 20, cap 100). Products also return the make template name, pack and post-ship template ids, weight, package ids, planned shipping, and step overrides. Listings also return `description` and `last_synced_at`. Order detail also returns pack and post-ship fields, the shipping package, tray numbers, notes, and per-item make progress. Credentials, step `script_config`, step `command_template`, and order `raw_payload` are never returned. Enriched earlier: materials (WA, value, preferred supplier, alert), products (target price, recipe cost, fee-aware margin/profit, `platform_fees`, `fee_source`).
 
 Admin UI stays on form POST / admin-ajax; REST is parallel for automation / MCP / future UI.
 
@@ -680,7 +680,7 @@ Use this so review time isn’t spent hunting missing screens:
 | Rewriting thank-you PDF layout | Already 4-up; PHP wires batch into existing CLI |
 | Write Abilities / admin migrate to REST | Read-only Abilities; admin stays form POST |
 | Bulk `sync_for_workflow` REST endpoint | Editor uses domain sync |
-| Budget / Board REST + Abilities | Admin UI + existing `advance-step` only (Package 2) |
+| Budget / Board REST + Abilities | Read-only budget and board Abilities are in UP15-S1. REST for those screens stays deferred. Admin UI and existing `advance-step` remain. |
 | Dedicated ink material type | Ops: recipe material or manual `fixed_amount` budget |
 | Stacked / collapsed board on mobile | Horizontal scroll only |
 | Completed orders on the Board | Active/incomplete only; use Orders list |
