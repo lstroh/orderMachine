@@ -258,6 +258,142 @@
 	margin-left: 4px;
 }
 
+.som-order-sticky {
+	position: sticky;
+	top: 32px;
+	z-index: 100;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	max-height: calc(100vh - 48px);
+	margin: 0 0 16px;
+	padding: 10px 14px 12px;
+	overflow: hidden;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+.som-order-sticky h1 {
+	margin: 0 0 6px;
+	padding: 0;
+	font-size: 20px;
+	line-height: 1.3;
+}
+
+.som-order-sticky-identity,
+.som-order-sticky-fields {
+	flex: 0 0 auto;
+}
+
+.som-order-sticky .som-order-meta {
+	margin: 4px 0 8px;
+}
+
+.som-order-sticky .som-marketplace-links {
+	margin: 0 0 8px;
+}
+
+.som-order-sticky-fields,
+.som-sticky-line-head,
+.som-sticky-line-inputs,
+.som-sticky-chips,
+.som-sticky-trays {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 12px;
+	align-items: center;
+}
+
+.som-order-sticky-fields {
+	margin-bottom: 8px;
+}
+
+.som-sticky-trays {
+	margin: 0 0 8px;
+	padding: 0;
+	list-style: none;
+}
+
+.som-sticky-tray,
+.som-sticky-field,
+.som-sticky-input,
+.som-sticky-chip {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+	max-width: 100%;
+	margin: 0;
+}
+
+.som-sticky-label {
+	color: #646970;
+	font-size: 11px;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+
+.som-sticky-value {
+	font-weight: 600;
+	word-break: break-word;
+}
+
+.som-sticky-field-minor .som-sticky-label,
+.som-sticky-field-minor .som-sticky-value {
+	font-size: 11px;
+	font-weight: 400;
+}
+
+.som-sticky-no-address {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.som-order-sticky-lines {
+	flex: 1 1 auto;
+	min-height: 0;
+	max-height: 18rem;
+	margin-top: 4px;
+	padding-top: 8px;
+	overflow: auto;
+	border-top: 1px solid #dcdcde;
+}
+
+.som-sticky-line {
+	margin: 0;
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.som-sticky-line:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
+}
+
+.som-sticky-line-inputs .regular-text {
+	width: 12em;
+	max-width: 100%;
+}
+
+.som-sticky-line-actions {
+	margin: 6px 0 0;
+}
+
+.som-sticky-chip {
+	padding: 2px 6px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	font-size: 12px;
+}
+
+@media screen and (max-width: 782px) {
+	.som-order-sticky {
+		top: 46px;
+		max-height: calc(100vh - 62px);
+	}
+}
+
 .som-order-highlight {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -1711,24 +1847,6 @@
 .som-confirm-step-form .button {
 	margin-right: 8px;
 	vertical-align: middle;
-}
-
-.som-line-fields-panel {
-	margin: 8px 0 12px;
-	padding: 8px 10px;
-	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	max-width: 42em;
-}
-
-.som-line-fields-panel > summary {
-	cursor: pointer;
-	font-weight: 600;
-}
-
-.som-line-fields-form p {
-	margin: 8px 0;
 }
 
 .som-copy-command-panel {

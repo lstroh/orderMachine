@@ -1076,18 +1076,49 @@
 		} );
 	}
 
-	function initCopyText() {
-		document.querySelectorAll( '[data-som-copy-text], [data-som-copy-from]' ).forEach( function ( btn ) {
-			btn.addEventListener( 'click', function () {
-				var text = '';
-				var fromId = btn.getAttribute( 'data-som-copy-from' );
-				if ( fromId ) {
-					var el = document.getElementById( fromId );
-					text = el ? String( el.textContent || '' ) : '';
-				} else {
-					text = btn.getAttribute( 'data-som-copy-text' ) || '';
+	function readCopyControlText( btn ) {
+		var inputIds = btn.getAttribute( 'data-som-copy-inputs' );
+		if ( inputIds ) {
+			var lines = [];
+			inputIds.split( /\s+/ ).forEach( function ( id ) {
+				if ( ! id ) {
+					return;
 				}
-				if ( ! text ) {
+				var field = document.getElementById( id );
+				if ( ! field ) {
+					return;
+				}
+				var value = ( field.tagName === 'INPUT' || field.tagName === 'TEXTAREA' || field.tagName === 'SELECT' )
+					? String( field.value || '' )
+					: String( field.textContent || '' );
+				value = value.trim();
+				if ( value ) {
+					lines.push( value );
+				}
+			} );
+			return lines.join( '\n' );
+		}
+
+		var fromId = btn.getAttribute( 'data-som-copy-from' );
+		if ( fromId ) {
+			var el = document.getElementById( fromId );
+			if ( ! el ) {
+				return '';
+			}
+			if ( el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' ) {
+				return String( el.value || '' );
+			}
+			return String( el.textContent || '' );
+		}
+
+		return btn.getAttribute( 'data-som-copy-text' ) || '';
+	}
+
+	function initCopyText() {
+		document.querySelectorAll( '[data-som-copy-text], [data-som-copy-from], [data-som-copy-inputs]' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var text = readCopyControlText( btn );
+				if ( ! String( text ).trim() ) {
 					return;
 				}
 				var done = function () {

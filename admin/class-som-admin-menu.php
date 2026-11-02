@@ -736,10 +736,9 @@ class SOM_Admin_Menu {
 				$order_id,
 				$order_item_id,
 				array(
-					'house_number'         => isset( $raw['house_number'] ) ? $raw['house_number'] : '',
-					'street_name'          => isset( $raw['street_name'] ) ? $raw['street_name'] : '',
-					'style'                => isset( $raw['style'] ) ? $raw['style'] : '',
-					'personalisation_text' => isset( $raw['personalisation_text'] ) ? $raw['personalisation_text'] : '',
+					'house_number' => isset( $raw['house_number'] ) ? $raw['house_number'] : '',
+					'street_name'  => isset( $raw['street_name'] ) ? $raw['street_name'] : '',
+					'style'        => isset( $raw['style'] ) ? $raw['style'] : '',
 				)
 			);
 			if ( is_wp_error( $result ) ) {
@@ -747,7 +746,7 @@ class SOM_Admin_Menu {
 			} else {
 				self::flash_notice( __( 'Line fields saved.', 'order-machine' ), 'success', 'som_order_saved' );
 			}
-			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-make-line-' . $order_item_id );
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) . '#som-sticky-line-' . $order_item_id );
 			exit;
 		}
 
