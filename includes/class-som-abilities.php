@@ -1854,6 +1854,10 @@ class SOM_Abilities {
 			),
 			'instructions'            => isset( $step->instructions ) && null !== $step->instructions ? (string) $step->instructions : '',
 			'tasks'                   => SOM_Step_Tasks::decode_list( isset( $step->task_list_json ) ? $step->task_list_json : null ),
+			'photo_required'          => ! empty( $step->photo_required ) ? 1 : 0,
+			'photo_label'             => isset( $step->photo_label ) && null !== $step->photo_label && '' !== (string) $step->photo_label
+				? (string) $step->photo_label
+				: null,
 		);
 	}
 

@@ -534,6 +534,7 @@ class SOM_REST_API {
 						'script_config'           => $row->script_config,
 						'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
 						'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
+						'photo_required'          => isset( $row->photo_required ) ? $row->photo_required : 0,
 					);
 					$can_advance = SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
 					break;

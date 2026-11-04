@@ -48,6 +48,8 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		: null;
 	$instructions = $step && ! empty( $step->instructions ) ? (string) $step->instructions : '';
 	$command_template = $step && ! empty( $step->command_template ) ? (string) $step->command_template : '';
+	$photo_required   = $step && ! empty( $step->photo_required ) ? 1 : 0;
+	$photo_label      = $step && isset( $step->photo_label ) && null !== $step->photo_label ? (string) $step->photo_label : '';
 	$task_rows = $step && ! empty( $step->task_list_json )
 		? SOM_Step_Tasks::decode_list( $step->task_list_json )
 		: array();
@@ -107,8 +109,19 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 				<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[requires_manual_confirm]" value="1" <?php checked( $manual ); ?> data-som-manual-confirm />
 				<?php echo esc_html__( 'Requires manual confirm', 'order-machine' ); ?>
 			</label>
+			<label class="som-step-gate">
+				<input type="checkbox" class="som-photo-required" name="<?php echo esc_attr( $prefix ); ?>[photo_required]" value="1" <?php checked( $photo_required ); ?> />
+				<?php echo esc_html__( 'Require photo', 'order-machine' ); ?>
+			</label>
+			<p class="som-step-photo-label" data-som-photo-label <?php echo $photo_required ? '' : 'hidden'; ?>>
+				<label>
+					<?php echo esc_html__( 'Photo label', 'order-machine' ); ?>
+					<input type="text" class="regular-text" name="<?php echo esc_attr( $prefix ); ?>[photo_label]" value="<?php echo esc_attr( $photo_label ); ?>" maxlength="<?php echo esc_attr( (string) SOM_Step_Photos::LABEL_MAX ); ?>" placeholder="<?php echo esc_attr__( 'What to photograph', 'order-machine' ); ?>" />
+				</label>
+				<span class="description"><?php echo esc_html__( 'Optional. Blank is allowed.', 'order-machine' ); ?></span>
+			</p>
 			<p class="som-zero-gate-warning notice notice-warning inline" data-som-zero-gate-warning hidden>
-				<?php echo esc_html__( 'This step will auto-complete when entered (no manual confirm, checklist, timer, copy command, or batch).', 'order-machine' ); ?>
+				<?php echo esc_html__( 'This step will auto-complete when entered (no manual confirm, checklist, timer, copy command, batch, or photo).', 'order-machine' ); ?>
 			</p>
 
 			<?php if ( $has_legacy_script ) : ?>
@@ -200,7 +213,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 				</label>
 				<p class="description"><?php echo esc_html__( 'If set, this step is batch-only: clear manual and timer gates. Shipping-label grouping is opt-in here. Script batch groups are disabled (soft-fail on release).', 'order-machine' ); ?></p>
 				<p class="som-batch-combo-warning notice notice-warning inline" data-som-batch-warning hidden>
-					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, confirmation, or copy-command gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
+					<?php echo esc_html__( 'Batch steps cannot also use manual, timer, confirmation, copy-command, or photo gates. Save will be rejected until the other gates are cleared.', 'order-machine' ); ?>
 				</p>
 			</div>
 		</div>
@@ -352,7 +365,7 @@ $som_render_step = static function ( $index, $step = null ) use ( $batch_groups 
 		</table>
 
 		<h2><?php echo esc_html__( 'Steps', 'order-machine' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, copy command, and/or timer — or assign a batch group (batch-only; cannot combine with other gates). Copy command and confirmation checklists cannot combine with timer or batch. Local / API / n8n script steps are removed — use Copy command. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block. Planned duration is a reporting target only (not a gate).', 'order-machine' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Steps run in order. Use manual confirm, confirmation checklist, copy command, timer, and/or Require photo — or assign a batch group (batch-only; cannot combine with other gates, including a photo). Copy command and confirmation checklists cannot combine with timer or batch. A photo may combine with those gates. Local / API / n8n script steps are removed — use Copy command. Steps with no gates auto-complete when entered (pass-through); Save warns but does not block. Planned duration is a reporting target only (not a gate).', 'order-machine' ); ?></p>
 
 		<?php
 		$planned_summary = SOM_Workflows::planned_total_summary( $steps );

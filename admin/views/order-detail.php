@@ -928,6 +928,8 @@ if ( ! empty( $order->raw_payload ) ) {
 									'command_template'        => isset( $row->command_template ) ? $row->command_template : null,
 									'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
 									'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
+									'photo_required'          => isset( $row->photo_required ) ? $row->photo_required : 0,
+									'photo_label'             => isset( $row->photo_label ) ? $row->photo_label : null,
 								);
 								$copy_rendered = null;
 								if ( SOM_Copy_Command::has_template( $step_obj ) ) {
@@ -1061,6 +1063,7 @@ if ( ! empty( $order->raw_payload ) ) {
 											</form>
 										</div>
 									<?php endif; ?>
+									<?php SOM_Step_Photos::render_panel( $order, $row, $is_current, $line_id ); ?>
 									<?php if ( $can_unblock ) : ?>
 										<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-unblock-step-form" onsubmit="return confirm('<?php echo esc_js( __( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ) ); ?>');">
 											<?php wp_nonce_field( 'som_unblock_step', 'som_order_nonce' ); ?>
@@ -1339,6 +1342,8 @@ if ( ! empty( $order->raw_payload ) ) {
 						'script_config'           => $row->script_config,
 						'batch_group_id'          => isset( $row->batch_group_id ) ? $row->batch_group_id : null,
 						'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
+						'photo_required'          => isset( $row->photo_required ) ? $row->photo_required : 0,
+						'photo_label'             => isset( $row->photo_label ) ? $row->photo_label : null,
 					);
 					$can_done    = $is_current && empty( $order->is_cancelled ) && SOM_Workflow_Engine::can_mark_done( $row, $step_obj );
 					$can_unblock = $is_current && empty( $order->is_cancelled ) && empty( $order->is_complete )
@@ -1639,6 +1644,7 @@ if ( ! empty( $order->raw_payload ) ) {
 									?>
 								</form>
 							<?php endif; ?>
+							<?php SOM_Step_Photos::render_panel( $order, $row, $is_current, 0 ); ?>
 							<?php if ( $can_unblock ) : ?>
 								<form method="post" action="<?php echo esc_url( SOM_Orders::detail_url( (int) $order->id ) ); ?>" class="som-unblock-step-form" onsubmit="return confirm('<?php echo esc_js( __( 'Allows Mark done without meeting this step’s gates. Does not complete the step.', 'order-machine' ) ); ?>');">
 									<?php wp_nonce_field( 'som_unblock_step', 'som_order_nonce' ); ?>
@@ -1830,6 +1836,8 @@ if ( ! empty( $order->raw_payload ) ) {
 						'confirmation_kind'       => isset( $row->confirmation_kind ) ? $row->confirmation_kind : null,
 						'workflow_template_id'    => isset( $row->workflow_template_id ) ? $row->workflow_template_id : null,
 						'template_kind'           => isset( $row->template_kind ) ? $row->template_kind : 'post_ship',
+						'photo_required'          => isset( $row->photo_required ) ? $row->photo_required : 0,
+						'photo_label'             => isset( $row->photo_label ) ? $row->photo_label : null,
 					);
 					$copy_rendered = null;
 					if ( SOM_Copy_Command::has_template( $step_obj ) ) {
@@ -2009,6 +2017,7 @@ if ( ! empty( $order->raw_payload ) ) {
 							</div>
 						<?php endif; ?>
 						<?php if ( $is_current && empty( $order->is_cancelled ) ) : ?>
+							<?php SOM_Step_Photos::render_panel( $order, $row, $is_current, 0 ); ?>
 							<?php if ( $can_unblock ) : ?>
 								<form method="post" action="" class="som-unblock-step-form">
 									<?php wp_nonce_field( 'som_unblock_step', 'som_order_nonce' ); ?>

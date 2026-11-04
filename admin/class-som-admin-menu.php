@@ -875,6 +875,27 @@ class SOM_Admin_Menu {
 			exit;
 		}
 
+		if ( isset( $_POST['som_step_photo'] ) || isset( $_POST['som_remove_step_photo'] ) ) {
+			check_admin_referer( 'som_step_photo', 'som_step_photo_nonce' );
+			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;
+			$order_item_id = isset( $_POST['som_order_item_id'] ) ? (int) $_POST['som_order_item_id'] : 0;
+			if ( isset( $_POST['som_remove_step_photo'] ) ) {
+				$photo_id = isset( $_POST['som_step_photo_id'] ) ? (int) $_POST['som_step_photo_id'] : 0;
+				$result   = SOM_Step_Photos::remove( $order_id, $order_item_id, $photo_id );
+				$saved    = __( 'Photo removed.', 'order-machine' );
+			} else {
+				$result = SOM_Step_Photos::add_from_upload( $order_id, $order_item_id );
+				$saved  = __( 'Photo added.', 'order-machine' );
+			}
+			if ( is_wp_error( $result ) ) {
+				self::flash_notice( $result->get_error_message(), 'error', 'som_order_error' );
+			} else {
+				self::flash_notice( $saved, 'success', 'som_order_saved' );
+			}
+			wp_safe_redirect( SOM_Orders::detail_url( $order_id ) );
+			exit;
+		}
+
 		if ( isset( $_POST['som_unblock_step'] ) ) {
 			check_admin_referer( 'som_unblock_step', 'som_order_nonce' );
 			$order_id      = isset( $_POST['som_order_id'] ) ? (int) $_POST['som_order_id'] : 0;

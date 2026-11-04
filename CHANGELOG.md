@@ -8,6 +8,10 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+### Added
+
+- A workflow step can require a photo, with an optional label. Mark done stays locked until that step has a JPEG or PNG, and Unblock step still bypasses the gate. Schema **1.27.0**
+
 ## [0.36.0] - 2026-11-02
 
 Package 15: read-only MCP abilities and a sticky order header.

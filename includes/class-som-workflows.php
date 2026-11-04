@@ -773,6 +773,8 @@ class SOM_Workflows {
 			'confirmation_kind'       => isset( $step->confirmation_kind ) ? $step->confirmation_kind : '',
 			'instructions'            => isset( $step->instructions ) && null !== $step->instructions ? (string) $step->instructions : '',
 			'tasks'                   => $tasks,
+			'photo_required'          => ! empty( $step->photo_required ) ? 1 : 0,
+			'photo_label'             => isset( $step->photo_label ) ? $step->photo_label : null,
 		);
 	}
 
@@ -804,6 +806,11 @@ class SOM_Workflows {
 				$batch = null;
 			}
 
+			$photo_label = isset( $step->photo_label ) ? sanitize_text_field( (string) $step->photo_label ) : '';
+			if ( '' === $photo_label ) {
+				$photo_label = null;
+			}
+
 			$inserted = $wpdb->insert(
 				$table,
 				array(
@@ -819,10 +826,12 @@ class SOM_Workflows {
 					'confirmation_kind'       => self::nullable_db_text( isset( $step->confirmation_kind ) ? $step->confirmation_kind : null ),
 					'instructions'            => self::nullable_db_text( isset( $step->instructions ) ? $step->instructions : null ),
 					'task_list_json'          => self::nullable_db_text( isset( $step->task_list_json ) ? $step->task_list_json : null ),
+					'photo_required'          => ! empty( $step->photo_required ) ? 1 : 0,
+					'photo_label'             => $photo_label,
 					'created_at'              => $now,
 					'updated_at'              => $now,
 				),
-				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -1051,6 +1060,40 @@ class SOM_Workflows {
 	}
 
 	/**
+	 * Require photo flag and optional label. A label over 191 characters fails.
+	 *
+	 * @param array<string, mixed> $row Form step row.
+	 * @return array{photo_required: int, photo_label: string|null}|WP_Error
+	 */
+	private static function sanitize_photo_fields( array $row ) {
+		$required = ! empty( $row['photo_required'] ) ? 1 : 0;
+		$label    = null;
+		if ( array_key_exists( 'photo_label', $row ) && null !== $row['photo_label'] ) {
+			$label = sanitize_text_field( (string) $row['photo_label'] );
+			if ( '' === $label ) {
+				$label = null;
+			}
+		}
+		if ( null !== $label && self::text_length( $label ) > SOM_Step_Photos::LABEL_MAX ) {
+			return new WP_Error(
+				'som_photo_label_length',
+				sprintf(
+					/* translators: %d: maximum characters */
+					__( 'Photo label must be %d characters or fewer.', 'order-machine' ),
+					SOM_Step_Photos::LABEL_MAX
+				)
+			);
+		}
+		if ( ! $required ) {
+			$label = null;
+		}
+		return array(
+			'photo_required' => $required,
+			'photo_label'    => $label,
+		);
+	}
+
+	/**
 	 * Normalise form step rows the same way save_steps() does. No writes.
 	 *
 	 * Blank names are skipped. Gate exclusivity matches save_steps(). Callers
@@ -1114,22 +1157,31 @@ class SOM_Workflows {
 
 			$manual = ! empty( $row['requires_manual_confirm'] ) ? 1 : 0;
 
+			$photo = self::sanitize_photo_fields( $row );
+			if ( is_wp_error( $photo ) ) {
+				return $photo;
+			}
+			$photo_required = (int) $photo['photo_required'];
+			$photo_label    = $photo['photo_label'];
+
 			$confirmation_kind = SOM_Step_Confirmations::sanitize_kind(
 				isset( $row['confirmation_kind'] ) ? $row['confirmation_kind'] : null
 			);
 
 			if ( $batch_group_id ) {
-				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || null !== $confirmation_kind || null !== $command_template;
+				$has_other = $manual || ( null !== $timer && (int) $timer > 0 ) || null !== $confirmation_kind || null !== $command_template || $photo_required;
 				if ( $has_other ) {
 					return new WP_Error(
 						'som_batch_only_step',
-						__( 'A batch step cannot also have manual, timer, confirmation, or copy-command gates.', 'order-machine' )
+						__( 'A batch step cannot also have manual, timer, confirmation, copy-command, or photo gates.', 'order-machine' )
 					);
 				}
 				$manual            = 0;
 				$timer             = null;
 				$confirmation_kind = null;
 				$command_template  = null;
+				$photo_required    = 0;
+				$photo_label       = null;
 			}
 
 			if ( null !== $confirmation_kind ) {
@@ -1155,6 +1207,11 @@ class SOM_Workflows {
 				}
 				$manual = 1;
 				$timer  = null;
+			}
+
+			// Photo is a gate. It may sit with manual, checklist, copy command, and timer.
+			if ( $photo_required ) {
+				$manual = 1;
 			}
 
 			$instructions = '';
@@ -1197,6 +1254,8 @@ class SOM_Workflows {
 				'confirmation_kind'       => $confirmation_kind,
 				'instructions'            => '' !== $instructions ? $instructions : null,
 				'task_list_json'          => $task_list_json,
+				'photo_required'          => $photo_required,
+				'photo_label'             => $photo_label,
 			);
 		}
 
@@ -1255,6 +1314,8 @@ class SOM_Workflows {
 				'confirmation_kind'       => $row['confirmation_kind'],
 				'instructions'            => $row['instructions'],
 				'task_list_json'          => $row['task_list_json'],
+				'photo_required'          => $row['photo_required'],
+				'photo_label'             => $row['photo_label'],
 				'updated_at'              => $now,
 			);
 
@@ -1266,7 +1327,7 @@ class SOM_Workflows {
 						'id'                   => $step_id,
 						'workflow_template_id' => $template_id,
 					),
-					array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ),
+					array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s' ),
 					array( '%d', '%d' )
 				);
 				if ( false === $updated ) {
@@ -1280,7 +1341,7 @@ class SOM_Workflows {
 			$inserted             = $wpdb->insert(
 				$table,
 				$fields,
-				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+				array( '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
 			);
 			if ( ! $inserted ) {
 				return new WP_Error( 'som_step_create', __( 'Could not create a workflow step.', 'order-machine' ) );
@@ -1688,6 +1749,9 @@ class SOM_Workflows {
 		}
 		if ( ! empty( $step->requires_manual_confirm ) ) {
 			$parts[] = __( 'manual', 'order-machine' );
+		}
+		if ( ! empty( $step->photo_required ) ) {
+			$parts[] = __( 'photo', 'order-machine' );
 		}
 		if ( ! empty( $step->timer_seconds ) ) {
 			$display = self::timer_for_display( (int) $step->timer_seconds );

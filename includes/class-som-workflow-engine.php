@@ -394,7 +394,7 @@ class SOM_Workflow_Engine {
 	 * Whether Mark done is allowed for the current progress + step definition.
 	 *
 	 * When manual_unblock_* is set on the progress row, timer / checklist / script /
-	 * batch / ship / package / hold / trays gates are treated as satisfied (UP8-S2).
+	 * batch / ship / package / hold / trays / photo gates are treated as satisfied (UP8-S2).
 	 *
 	 * @param object $progress Progress row.
 	 * @param object $step     Workflow step row.
@@ -413,6 +413,10 @@ class SOM_Workflow_Engine {
 
 		if ( self::has_manual_unblock( $progress ) ) {
 			return true;
+		}
+
+		if ( ! empty( $step->photo_required ) && ! SOM_Step_Photos::progress_has_photo( $progress ) ) {
+			return false;
 		}
 
 		$timer = isset( $step->timer_seconds ) ? (int) $step->timer_seconds : 0;
@@ -509,6 +513,12 @@ class SOM_Workflow_Engine {
 
 		if ( $order && ! SOM_Trays::trays_gate_ok( $order ) ) {
 			$gates[] = 'trays';
+		}
+
+		if ( $step && ! empty( $step->photo_required ) && $progress
+			&& empty( $progress->manual_unblock_at )
+			&& ! SOM_Step_Photos::progress_has_photo( $progress ) ) {
+			$gates[] = 'photo';
 		}
 
 		return array_values( array_unique( $gates ) );
@@ -722,7 +732,7 @@ class SOM_Workflow_Engine {
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
 					s.timer_seconds, s.planned_seconds, s.script_config, s.command_template, s.workflow_template_id, s.batch_group_id,
-					s.confirmation_kind, t.kind AS template_kind
+					s.confirmation_kind, s.photo_required, s.photo_label, t.kind AS template_kind
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
 				LEFT JOIN {$templates_t} t ON t.id = s.workflow_template_id
@@ -966,14 +976,15 @@ class SOM_Workflow_Engine {
 		$copy    = SOM_Copy_Command::has_template( $step );
 		// UP9-S2 O5: ignore legacy script_config — never waiting_script / dispatch.
 		$legacy_script = SOM_Script_Dispatch::has_script( $step );
+		$photo         = ! empty( $step->photo_required );
 
 		// Batch gate (batch-only in v1 — ignore other gates on the same step).
 		if ( ! empty( $step->batch_group_id ) ) {
 			return SOM_Batches::enqueue( $order_id, $step );
 		}
 
-		// Confirmation / copy-command / legacy script → manual Mark done (no dispatch).
-		if ( $confirm || $copy || $legacy_script ) {
+		// Confirmation / copy-command / photo / legacy script → manual Mark done (no dispatch).
+		if ( $confirm || $copy || $legacy_script || $photo ) {
 			$manual = true;
 		}
 
