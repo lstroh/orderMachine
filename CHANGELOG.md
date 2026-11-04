@@ -8,9 +8,19 @@ Installable builds and the three links per version: [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-04
+
+Package 16: a workflow step can require a photo before Mark done.
+
 ### Added
 
-- A workflow step can require a photo, with an optional label. Mark done stays locked until that step has a JPEG or PNG, and Unblock step still bypasses the gate. Schema **1.27.0**
+- A workflow step can require a photo, with an optional label. Mark done and board advance stay locked until that step has a JPEG or PNG (5 MB). Unblock step still bypasses the gate and does not complete the step. Make photos stay on that line; Pack and Post-ship photos stay on the order. Add and Remove show only while the step is current; a finished step keeps its thumbnails. A batch step cannot also require a photo. Clone and the workflow CSV copy the flag and the label. Read-only workflow abilities include both fields
+
+### Notes
+
+- Schema is **1.27.0** (`photo_required` and `photo_label` on workflow steps, plus `som_step_photos`)
+- Plugin SemVer remains on `0.x` for alpha; do not treat this as production-stable
+- Use the Release asset `orderMachine-0.37.0.zip`, not the repository source zipball
 
 ## [0.36.0] - 2026-11-02
 
