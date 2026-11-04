@@ -78,6 +78,6 @@ No dependency on another Package 16 sprint.
 
 ## 4. After the last sprint
 
-The package wp-env prompt runs every Package 16 smoke, records the pass in [`Update-16-Sprint-Progress.md`](Update-16-Sprint-Progress.md), and does not bump the version or tag a release. It does not rewrite the eleven stale smokes.
+This package is one sprint. The UP16-S1 chat runs `tests/sprint-up16-s1-smoke.php` with wp-env after the implementation, records the pass in [`Update-16-Sprint-Progress.md`](Update-16-Sprint-Progress.md), and does not bump the version or tag a release. It does not rewrite the eleven stale smokes. There is no separate wp-env chat.
 
 The eleven stale smokes stay as recorded in `stikerts/wordpress v13/Update-12-Sprint-Progress.md`: bugfix-001-002, shipments, sprint11, sprint-u1, sprint-u5, sprint-u6, sprint-u7, sprint-up6-s3, sprint-up8-s2, sprint-up10-s1, step-confirmations.

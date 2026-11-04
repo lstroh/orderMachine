@@ -39,7 +39,7 @@ The Local site **ordermachine** runs this plugin folder. There is no separate de
 
 - **0.36.0 cannot do this yet.** Workflow steps have manual confirm, checklist, copy command, timer, and batch. None of them ask for a picture. Shipment proof is a separate JPEG, PNG, or PDF on the shipment row, stored in the normal uploads month folder.
 - After a sprint branch is checked out in this folder, reload the Local site’s wp-admin. Start the site in Local first. New photos appear under that site’s `wp-content/uploads/order-machine/step-photos/`.
-- Implementation chats still do not run `npx @wordpress/env`. Automated smokes wait for the package’s final wp-env prompt.
+- This package is one sprint. The UP16-S1 chat implements the feature and then runs its wp-env smoke. That run records the pass and does not bump the version or tag a release.
 
 ## What's in this update
 

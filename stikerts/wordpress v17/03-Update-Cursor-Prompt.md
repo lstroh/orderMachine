@@ -19,8 +19,8 @@
 - Read `.cursor/rules/order-machine-architecture.mdc`, [`01-Update-Overview.md`](01-Update-Overview.md), [`Update-16-Sprint-Plan.md`](Update-16-Sprint-Plan.md), and [`02-Update-Step-Photos.md`](02-Update-Step-Photos.md).
 - One sprint per chat. Branch from latest `origin/main`. Do not continue a previous sprint branch. The checkout may still be on `release-0.36.0`; do not continue that branch.
 - Do not start the next sprint.
-- Do not run `npx @wordpress/env`.
-- The Local site **ordermachine** uses this plugin folder. After the code is saved here, the operator can reload that site’s wp-admin and try the screen. Implementation still opens a PR and does not merge. Automated smokes wait for the package wp-env prompt.
+- This package is one sprint. After the implementation, run the UP16-S1 wp-env smoke in the same chat, record the pass, and do not bump the version or tag a release.
+- The Local site **ordermachine** uses this plugin folder. After the code is saved here, the operator can reload that site’s wp-admin and try the screen. Implementation still opens a PR and does not merge.
 
 ## Sprints
 
@@ -28,7 +28,7 @@
 |---|---|
 | UP16-S1 | Required photos on a workflow step, blocking Mark done, bypassed by Unblock |
 
-The operator is still adding items. Do not start a sprint until they ask.
+The operator started UP16-S1 on 2026-11-04. This package has no later sprint.
 
 ## Kickoff snippet — UP16-S1 (copy into the implementation chat)
 
@@ -69,7 +69,7 @@ Locked behaviour:
 Out of scope:
 - Named photo slots, a photo-only skip, a board uploader, a per-product photo flag, shipment-proof changes, hiding Media library attachments.
 - Budget and board REST, Pack Copy UI, Unblock on boards, the Trays overview page.
-- Do not run npx @wordpress/env. Do not rewrite the eleven stale smokes.
+- Do not rewrite the eleven stale smokes. Do not bump Version or SOM_VERSION. Do not tag a release.
 
 Tests:
 - Write tests/sprint-up16-s1-smoke.php in the style of tests/sprint-up15-s2-smoke.php (ABSPATH guard, run only via wp eval-file).
@@ -80,6 +80,14 @@ Tests:
 - Assert the order-detail markup has a file input on a current photo step, and a done photo step has the thumbnail markup and no file input.
 - Assert clone and a workflow CSV row keep photo_required and photo_label, and map_workflow_step includes both.
 - php -l on changed PHP. node --check on changed JavaScript.
+
+wp-env:
+- This package has one sprint, so run the smoke in this same chat after the smoke file is written.
+- From the plugin root, run npx @wordpress/env start if the environment is not already up, then:
+  npx @wordpress/env run cli wp eval-file wp-content/plugins/orderMachine/tests/sprint-up16-s1-smoke.php
+- If it fails, fix the code and run it again until it passes.
+- Record the pass in stikerts/wordpress v17/Update-16-Sprint-Progress.md, in the style of the Package 15 "wp-env pass" section (stikerts/wordpress v16/Update-15-Sprint-Progress.md). Include the date, plugin 0.36.0, schema 1.27.0, the command, and PASS. Leave the eleven stale smokes unrun and unmarked.
+- Do not bump Version or SOM_VERSION. Do not tag a release.
 
 Docs:
 - CHANGELOG.md Unreleased line only.
