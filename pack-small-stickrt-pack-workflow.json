@@ -1,0 +1,96 @@
+{
+    "exported_at":  "2026-11-04T08:55:10Z",
+    "source":  "Order Machine MCP on ordermachine1910.local",
+    "workflow":  {
+                     "id":  5,
+                     "name":  "Small sticker pack",
+                     "description":  null,
+                     "kind":  "pack",
+                     "uses_trays":  0,
+                     "output_per_run":  1,
+                     "is_active":  1,
+                     "step_count":  5,
+                     "product_count":  0,
+                     "products":  [
+
+                                  ],
+                     "steps":  [
+                                   {
+                                       "id":  30,
+                                       "step_order":  1,
+                                       "name":  "Choose the packaging",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1 pack → C6 board-backed envelope.\r\n2–3 packs → AKAR box.\r\n4 or more packs → split into parcels of up to 3: e.g. 4 = box of 3 + envelope; 5 = box of 3 + box of 2; 6 = 2 boxes of 3. Each parcel is bought and labelled separately, and the buyer gets a message (\"your order comes in two parcels\").\r\nDifferent Small designs in one order (e.g. D22 + D25): same rules. Each pack has its own sticker sheet and its own wrap from make_order.py.\r\nTwo orders from the same buyer to the same address: one parcel per order. (Combining would leave the second order with no label or posting record of its own.)\r\nMedium and Large orders: not covered yet (no envelopes sourced). Mixing sizes is decided when they launch.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  31,
+                                       "step_order":  2,
+                                       "name":  "Pack",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**First, check it\u0027s the right order**\r\n- Only this order\u0027s items on the bench.\r\n- The wrap\u0027s name and address match the job sheet (copy-paper proof) and the eBay order.\r\n\r\n**Envelope (1 pack)**\r\n1. Instructions card at the back, thank-you side facing out.\r\n2. Wrapped pack in front, personalised side facing out (the card stays outside the wrap).\r\n3. Fold the flap down **without** peeling the strip, and slide the envelope through the 5mm slot gauge. Too tight → take the pack out, re-fold the wrap so the flaps lie flat, try again.\r\n4. Peel the strip and seal the flap.\r\n5. Centre the 40mm seal sticker across the flap edge (half on the flap, half on the envelope).\r\n6. One 7cm strip of Sellotape Zero Plastic over the sticker, running across the flap edge (about 1.5cm past the sticker each side).\r\n\r\n**AKAR box (2–3 packs)**\r\n1. Stack the wrapped packs flat, personalised side up, edges lined up. In a mixed order, the first line item on top. No filler.\r\n2. One instructions card on top, thank-you side up.\r\n3. Push the tuck-in flap in.\r\n4. Centre the seal sticker across the tuck edge, with a 7cm strip of tape over it.\r\n5. A 5cm strip at each end of the tuck edge, so the corners can\u0027t catch in machines. About 17cm in all (test SW2: confirm on the first box).",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  32,
+                                       "step_order":  3,
+                                       "name":  "Packing checks",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**Envelope (Letter: 5mm, 100g)**\r\n- The sealed envelope slides through the 5mm slot gauge, long edge first, without pushing or bending.\r\n- Still won\u0027t pass once sealed → send it as a **Large Letter** (£1.55) and note it in the log.\r\n- Weigh the first 10 envelopes, then spot-check (about 35g).\r\n\r\n**AKAR box (Large Letter: 25mm, 100g)**\r\n- Weigh every box (3 wrapped packs ≈ 81g). Over 98g → take a pack out and split the order.\r\n\r\n**Parcel ID mark**\r\n- Pencil, small, bottom-left corner of the back: last 4 digits of the eBay order number + buyer\u0027s surname initial, e.g. 4417 S (a resend adds R).\r\n\r\n**Slot gauge**\r\n- A 5mm × 17cm slot cut in stiff card (about 20 × 6cm). Make a new one if it gets worn or bent.\r\n- Once only (tests SW3 and SW4): check it against the Post Office gauge with a packed envelope, and log one thickness reading (ruler on a stack of 5 envelopes ÷ 5).",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  33,
+                                       "step_order":  4,
+                                       "name":  "Label",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Seller Hub → Orders → the order → Postage → **Get postage label** (on the computer).\r\n2. Service: Royal Mail **2nd Class Letter** (envelope) or **2nd Class Large Letter** (box).\r\n3. Package:\r\n   - Envelope: Letter, 16.2 × 11.4 × 0.5cm, 40g (from the listing; check it\u0027s filled in).\r\n   - Box: change to **Large Letter, 16 × 13 × 2.3cm**, and enter the weight from the scale.\r\n4. Printing: choose the **QR code** option.\r\n5. Before paying: the Ship from / Return to box shows the **virtual address**.\r\n6. Payment: eBay takes available eBay funds first, then the payment method saved for selling costs (PayPal can\u0027t pay for Royal Mail labels since 7 Sep 2026).\r\n7. At the locker, open the QR code from the eBay label email or the eBay app (Postage labels).\r\n8. Unused label: void it within 14 days (Postage labels → Actions → Void label) to get a refund.\r\n\r\n**First order only (test SW5):** 2nd Class Letter must be offered at £0.91 or less. If only Large Letter is offered, don\u0027t buy it on eBay: buy the label as a Letter in Click \u0026 Drop, then mark the order dispatched by hand (no tracking number). If the price isn\u0027t £0.91, note it for the cost sheet.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  34,
+                                       "step_order":  5,
+                                       "name":  "Posting",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**Daily rhythm**\r\n1. Morning: one batch of every order paid up to that morning, packed and checked.\r\n2. Buy the labels.\r\n3. By **4:45pm** (last collection), at the Royal Mail locker, one parcel at a time:\r\n   - scan the QR code and print the label;\r\n   - stick it on the parcel with the matching ID mark;\r\n   - check the label\u0027s name and postcode match the wrap, then drop it off.\r\n   Stack the parcels in the same order as the QR codes.\r\n4. Save the locker\u0027s drop-off email under the order number: it\u0027s the proof of posting (check SW7 on the first drop).\r\n5. Tick the job sheet.\r\n\r\n**Timing**\r\n- Aim: an order paid on day 1 is posted on day 2. The postage policy allows 2 working days, so day 3 is the latest.\r\n- No Sunday posting.\r\n- An order paid on the morning of posting day joins that day\u0027s batch only if it\u0027s in before you start.\r\n- Missed the 4:45pm collection: the parcel counts as posted the next day.\r\n- Orders on hold (blank or unclear personalisation) don\u0027t count until the buyer replies.\r\n\r\n**No locker email?** Post at a postbox and use the Royal Mail app\u0027s proof of posting, or get a free Certificate of Posting at a Post Office counter.",
+                                       "tasks":  [
+
+                                                 ]
+                                   }
+                               ]
+                 },
+    "products_assigned":  [
+
+                          ],
+    "material_goals":  [
+
+                       ]
+}

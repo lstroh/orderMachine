@@ -1,0 +1,68 @@
+{
+    "exported_at":  "2026-11-04T09:10:13Z",
+    "source":  "Order Machine MCP on ordermachine1910.local",
+    "workflow":  {
+                     "id":  6,
+                     "name":  "After posting",
+                     "description":  "Runs once per order, after the parcel is posted. Source: claude/Shipping-Workflow.md (Stages 6, 6b, 7 and 9). Keep the two in step.\r\n\r\n## Problems (use when a buyer reports one)\r\n\r\nUntracked 2nd Class has no eBay seller protection for item-not-received claims (it needs tracking). Proof of posting protects your dispatch record, not the claim, so put things right quickly: a reprint costs about £2.58. Answer every message within 24 hours.\r\n\r\n**Not received**\r\n- Before the estimated date: reply kindly — posted on [date] by Royal Mail 2nd Class; please allow until [estimated date + 3 working days].\r\n- After that: free reprint (next morning\u0027s batch) or a refund, buyer\u0027s choice. One resend per buyer; a second claim gets a refund. Log: Resent, INR.\r\n\r\n**Damaged, faulty or our mistake** (creased, wet, wrong text or design, print fault, peeling or fading)\r\n- Ask for one photo, then offer a free reprint **or** a full refund — buyer\u0027s choice.\r\n- Don\u0027t ask for it back. If the buyer opens a return anyway, refund without a return (or pay the return label). Never charge return postage for these.\r\n- Faulty after use: eBay\u0027s minimum is 30 days; be generous after that.\r\n- Use the photo to fix the cause; for our mistakes, find the stage that missed it on the job sheet.\r\n- Log: Damage + type / Our error + stage / Durability.\r\n\r\n**Buyer\u0027s typo** (printed as typed)\r\n- Goodwill, once per buyer: the buyer places a new order with the corrected text; send a partial refund on it of everything except postage (£4.09 back on £5.00). Never take payment outside eBay. Log: Goodwill reprint, buyer typo.\r\n\r\n**Change of mind**\r\n- Not accepted (personalised item). Decline the return request, citing the exemption.\r\n\r\n**Neutral or negative feedback**\r\n- Reply publicly, calmly and briefly, and fix the problem. Once it\u0027s fixed, you may ask the buyer once to revise it, within 30 days of the feedback.\r\n\r\n**Resend**\r\n- Same order line in make_order.py; new proof only if the text changes; parcel mark ends in R; new label (eBay if it allows a second label on the order, otherwise Click \u0026 Drop); log it.\r\n\r\n## Weekly check (Mondays, not per order)\r\n\r\n**eBay**\r\n- Seller Hub → Performance: defect rate, cases closed without seller resolution, late dispatches. Act on anything rising before the monthly evaluation on the 20th.\r\n- Payments: check payouts (new sellers\u0027 funds may be held).\r\n- Listings: top each design and family back up to 3 while sheets allow.\r\n- Follow-ups: send any that came due this week.\r\n\r\n**Stock — reorder or reprint when**\r\n- Vinyl and laminate: about 15 sheets left\r\n- C6 envelopes: 20 left (£7 for 50)\r\n- AKAR boxes: 10 left (£10 for 50)\r\n- Sellotape Zero Plastic: when you open the last roll\r\n- Seal stickers: fewer than 6 → print 1 sheet\r\n- Peel markers: fewer than 12 sets → print 1 sheet\r\n- A6 instructions cards: last card used → print 1 sheet\r\n- 250gsm white card: 5 sheets left\r\n- Wrap paper (120gsm): 30 sheets left\r\n- SmithPackaging label sheets: fewer than 20",
+                     "kind":  "post_ship",
+                     "uses_trays":  0,
+                     "output_per_run":  1,
+                     "is_active":  1,
+                     "step_count":  3,
+                     "product_count":  0,
+                     "products":  [
+
+                                  ],
+                     "steps":  [
+                                   {
+                                       "id":  35,
+                                       "step_order":  1,
+                                       "name":  "Dispatch check and order log",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Seller Hub → Orders: check the order shows **Dispatched**. If not, mark it dispatched (test SW6 decides whether eBay labels do this automatically). Click \u0026 Drop labels: always mark by hand.\r\n2. Buyer messages: none at dispatch (eBay tells the buyer). Message only for a hold, a delay, a split parcel, or a Large Letter swap that changes the delivery estimate.\r\n3. WordPress order log — add:\r\n   - Posted (date)\r\n   - Parcel: envelope / AKAR box / split (2 parcels)\r\n   - Packs: 1 / 2 / 3\r\n   - Service: 2nd Class Letter / Large Letter\r\n   - Postage paid, e.g. £0.91\r\n   - Label from: eBay / Click \u0026 Drop\r\n   - Box weight (box orders only)\r\n   - Proof: locker email / Certificate of Posting / app postbox proof\r\n   - Parcel mark, e.g. 4417 S\r\n   - Dispatched on eBay ✓\r\n   - Follow-up due: posting date + 7 days\r\n4. Keep the proof of posting for at least 3 months, and label receipts with the accounts (HMRC: at least 5 years after the 31 January deadline for that tax year).",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  39,
+                                       "step_order":  2,
+                                       "name":  "Check feedback left for the buyer",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- Check that feedback has been left for the buyer (Orders → the order). If not, leave it now: sellers can only leave positive feedback.\r\n- One-off set-up, if not done yet: **Selling preferences → All listings and orders → Automate feedback → Edit**, and choose **after the buyer has paid**. eBay then leaves it for every paid order.\r\n- Why it matters: eBay\u0027s own automatic positive feedback for sellers needs tracked, on-time delivery, so untracked 2nd Class orders only get feedback if the buyer leaves it.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  40,
+                                       "step_order":  3,
+                                       "name":  "Send one follow-up message, about 7 days after posting",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  "package_arrived",
+                                       "instructions":  "About 7 days after posting, once the delivery window has passed. Once per order, through eBay messages.\r\n\r\nSkip the message if the buyer has already left feedback, or a problem is already open (see Problems in this workflow\u0027s description).\r\n\r\n\u003e Hi [buyer\u0027s first name], your stickers were posted on [posting date] by Royal Mail 2nd Class – I hope they arrived safely. If anything isn\u0027t right, just message me and I\u0027ll sort it out. If you have a moment, feedback really helps a small new seller. Thanks, [your first name], Doorstep Studio\r\n\r\nNever ask for \"positive\" or \"5-star\" feedback, and never offer anything in return (discount, freebie, refund).\r\n\r\n**Confirming \"package arrived\":** untracked post can\u0027t show delivery. Confirm this step once the message is sent (or skipped) and the buyer hasn\u0027t reported a problem by day 7. If they report one later, go to Problems.\r\n\r\nLog: follow-up sent (date), and later the buyer\u0027s feedback (+ / neutral / − / none).",
+                                       "tasks":  [
+
+                                                 ]
+                                   }
+                               ]
+                 },
+    "products_assigned":  [
+
+                          ],
+    "material_goals":  [
+
+                       ]
+}

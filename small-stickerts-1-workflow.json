@@ -1,0 +1,300 @@
+{
+    "exported_at":  "2026-11-04T08:28:34Z",
+    "source":  "Order Machine MCP on ordermachine1910.local",
+    "workflow":  {
+                     "id":  4,
+                     "name":  "SMall stickerts 1",
+                     "description":  null,
+                     "kind":  "make",
+                     "uses_trays":  1,
+                     "output_per_run":  1,
+                     "is_active":  1,
+                     "step_count":  15,
+                     "product_count":  1,
+                     "products":  [
+                                      {
+                                          "id":  3,
+                                          "name":  "Bin Sticker Set — 100x140mm 4-pack (sample)"
+                                      }
+                                  ],
+                     "steps":  [
+                                   {
+                                       "id":  15,
+                                       "step_order":  1,
+                                       "name":  "Order intake",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. **Where the text comes from:** the eBay order\u0027s **Personalisation** field. Also read any buyer message on that order.\r\n2. **Blank or unclear** (no house number, a number-only design with a street typed in, nonsense, or all lower case on D25): message the buyer and **don\u0027t print**. If there\u0027s no reply by the end of the next working day, send a second message and keep holding the order. Log it as \"awaiting buyer\". The 1-working-day dispatch slips for these orders. **Never print from the delivery address**: buyers may be ordering for a new home.\r\n3. **Spelling:** print exactly what was typed. Don\u0027t compare it with the delivery address. Only query an obvious slip (a doubled word, the number typed twice) or characters the fonts can\u0027t print (emoji, non-Latin script).\r\n4. **Number-only designs (D05, D19, D20):** if a street was typed, print the number only and say so in a message (no need to wait for a reply).\r\n5. **Street too long for the design:** message the buyer, suggesting an abbreviation (\"Rd\", \"Ave\") or a roomier design. Street limits on the Small size (* = computed, not print-tested):\r\n\r\n| D-number | Name on eBay | Style key | Street limit |\r\n|---|---|---|---|\r\n| D24 | Modern Minimal | `p09a_borderless` | none found* |\r\n| D02 | Classic Scrolls | `p25_landscape_flourish` | 32 |\r\n| D03 | Classic Frame | `p25b_landscape_flourish` | 30 |\r\n| D04 | House Outline | `p27_landscape_house` | about 25* |\r\n| D05 | House Outline – Number Only | `p47_house` | number only |\r\n| D01 | Cottage \u0026 Flowers | `house_banner` | none found* |\r\n| D22 | Arrow Wreath | `p28_arrow_wreath` | 31 |\r\n| D18 | Flower Wreath | `p06_wreath` | 12 |\r\n| D19 | Flower Wreath – Number Only | `p06_wreath_numbers` | number only |\r\n| D21 | Heart Vine Wreath | `p15_heart_wreath` | 29 |\r\n| D23 | Olive Branch Wreath | `p31_olive_wreath` | 24 |\r\n| D20 | Laurel Wreath – Number Only | `p30_laurel_numbers` | number only |\r\n| D25 | Paw Prints | `p21_paw_trail` | 22 |\r\n\r\nMost designs print the street in capitals. **D25 prints it exactly as typed.**\r\n\r\n6. **Enter the order in `make_order.py`.** **Copy and paste** the order number, house number and street, never retype them. One order = 4 identical entries, with `\"wrap\": False` on 3 of them:\r\n\r\n```python\r\n{\"order_number\": \"12-34567-89012\", \"house_number\": \"36\", \"street_name\": \"Grove Street\",\r\n \"style\": \"p25_landscape_flourish\", \"accent\": \"black\",\r\n \"buyer_name\": \"Priya\", \"paper\": \"white\"},\r\n```\r\n\r\n- `order_number`: the eBay order number, on **all 4 entries**. The script stops without it and uses it as the folder name (letters, digits, spaces, hyphens and underscores only; eBay\u0027s 12-34567-89012 format is fine).\r\n- `style`: from the D-number (SKU), using the table above.\r\n- `street_name`: `\"\"` for number-only designs.\r\n- `accent`: always `\"black\"`. Write it in; never rely on the script\u0027s default (D01 defaults to navy, D21 to berry).\r\n- `buyer_name`: the buyer\u0027s first name, on the first entry (the one that makes the wrap).\r\n- A multi-pack order (2–3 packs per box; larger orders are split, see the Shipping Workflow) is one block of 4 entries per pack, one sheet each, all with the same `order_number`.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  16,
+                                       "step_order":  2,
+                                       "name":  "Artwork and proof",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Run `python make_order.py`. The files go to `G:\\My Drive\\orders\\`, in a folder named after the eBay order number. **Any line starting with `WARNING` is a hard stop**: a design\u0027s artwork file is missing and a plain stand-in was printed instead.\r\n2. **On screen, `sheet_N.pdf`:**\r\n   - the text matches the order exactly;\r\n   - the design is the D-number ordered;\r\n   - all 4 slots are filled with the same order;\r\n   - no text touches or crosses the border;\r\n   - the page is landscape A4.\r\n3. **On screen, `wrap_….pdf`:**\r\n   - the address fits on one line and the preview matches the sticker;\r\n   - it says \"Thank you, [first name]!\";\r\n   - the real QR code is printed, not a dashed placeholder box.\r\n4. **Check the `wrap_…_cricut.png` is in the folder.** If it\u0027s missing, `CRICUT` has been switched off in `make_order.py`; set it back to `True` and run again.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  17,
+                                       "step_order":  3,
+                                       "name":  "Copy-paper proof print",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. **One proof per order** (a multi-pack with identical sheets needs one proof):\r\n   - Print the sheet on copy paper: Plain Paper, Standard, 100% / Actual size, **rotated 180° exactly as the vinyl will be** (see the Printing step), so the margin check tests the same paper edge.\r\n   - Measure one sticker\u0027s grey outline: **140 × 100mm**. If it\u0027s smaller, the print was scaled; fix that first.\r\n   - Check every corner tick printed, **especially on the right-hand stickers** (the right margin is only 3mm). If any are cut off, stop: the layout needs a fix.\r\n   - Read the text on paper against the order once more.\r\n2. **The proof is the job sheet.** Write the eBay order number on it, tick off each step, and use it at the Final check step and at packing (Shipping Workflow Stage 3).",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  18,
+                                       "step_order":  4,
+                                       "name":  "Printing the sticker sheet",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. **Material:** the **vinyl sheet only** from the Cricut Printable Waterproof Sticker Set (White), the one with the grid and Cricut logo on its back. Not the laminate.\r\n2. **Load it face down**, one sheet at a time, never on top of copy paper.\r\n3. **Rotate the page 180° before printing**, every time, and the proof the same way. Without it, the ink came out weak in one area of the sheet; with it, the ink was good there (tested Nov 2026)..\r\n4. **Epson ET-3950 settings:**\r\n   - Paper type: **Matte** *(test: Premium Glossy and Photo Quality Ink Jet)*.\r\n   - Quality: **High**. Drop a level only if it smudges.\r\n   - Paper size: A4.\r\n   - Scale: 100% / Actual size. Not borderless, no \"Fit to page\".\r\n5. **Log the result on the job sheet** for the first 5 rotated sheets: paper type, and OK or what went wrong (weak ink, clipped ticks, skewed feed, jam, smudge, banding). After 5 good sheets, log failures only.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  19,
+                                       "step_order":  5,
+                                       "name":  "Dry",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  3600,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Drying, 60 minutes before laminating:\r\n- 10 minutes flat and untouched;\r\n- then 50 minutes on the numbered drying tray;\r\n- face up, one sheet per tray, nothing stacked on top, no touching the print;\r\n- write the tray number on the job sheet.\r\n- Batching: one batch a day, in the morning. Every order paid up to that morning is in one make_order.py run. Print the sheets back to back, so each dries while the next prints, and laminate in print order, oldest tray first. Print one sheet on its own only for an urgent reprint or a design never printed on vinyl before.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  20,
+                                       "step_order":  6,
+                                       "name":  "Laminating",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. **Clean** the rollers and the work surface. Lift any dust or hairs off the print with the soft anti-static brush, never a finger. Use a lint-free microfibre cloth for the surfaces.\r\n2. **Tack one edge.** Peel back only the narrow strip of laminate liner above the QR-code sticker. Line that strip up with the top edge of the printed sheet (both are A4, so line up the edges, not the artwork) and smooth it down.\r\n3. **Feed** the tacked edge into the rollers first. Turn the handle slowly and evenly, peeling the rest of the liner away just ahead of the rollers. Pressure: as already set.\r\n4. **Check against the light** for bubbles, dust or creases inside any of the 4 sticker areas. Anything in the margin outside the outlines doesn\u0027t matter.\r\n5. **Bad sheet:** laminate can\u0027t be lifted off the vinyl. A defect inside a sticker area means scrap and reprint (the Final check step says what counts). Log it as waste with the reason. Keep the scrapped sheet as test-cut stock for the Cutting step.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  21,
+                                       "step_order":  7,
+                                       "name":  "Cutting",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**No front cut.** The Cricut makes the back cut only; the guillotine cuts every edge.\r\n\r\n1. **Mark the top first.** With the sheet face up, pencil a small arrow on the backing at the stickers\u0027 top edge, pointing up. The print is rotated 180°, so the grid and Cricut logo on the backing don\u0027t show which way the stickers face.\r\n2. **Back-cut file:** `claude/back_cut_small.svg`. It holds 2 straight lines, each 282mm long and 100mm apart, so it reads **28.2 × 10.0cm** in Design Space. On the face-down sheet they sit 20mm and 120mm down from the top edge and 2–284mm from the left edge. That puts each slit 15mm below the top of its row of stickers and runs it right across both stickers.\r\n3. **Mat:** 12×24. Flip the sheet **left to right**, so the pencil arrow stays at the top and the laminate faces the mat. Put the sheet\u0027s **top-left corner on the mat\u0027s 0,0 grid corner**. Flipped, the stickers sit 3–283mm from the left edge, inside the 292mm cut width. Unflipped they\u0027d run past it.\r\n4. **Material setting:** your custom setting, pressure **50** *(test: 60)*. Custom settings are made on the computer, not Android.\r\n5. **Test cut** before the first sheet of each batch, and after opening a new vinyl pack. Cut one line on a scrapped laminated sheet:\r\n   - **Pass:** bend at the line and the backing parts cleanly. On the front, the laminate is unmarked and there\u0027s no line through the vinyl.\r\n   - **Backing not through:** raise the pressure one step.\r\n   - **Vinyl marked or cut:** lower the pressure. A sticker cut through on the front is scrap.\r\n6. **After unloading:** check the laminate isn\u0027t sticky or marked from the mat.\r\n7. **Trim on the guillotine**, cutting on the grey outline and lining up on the corner ticks. The stickers touch, so each inner cut is a shared edge.\r\n   1. Margins first: the 14mm left, 3mm right, and 5mm top and bottom.\r\n   2. Across the middle, giving 2 strips.\r\n   3. Down the middle of each strip, giving 4 stickers.\r\n   4. Check each is 140 × 100mm (±1mm) and the slit runs right across, about 15mm below its top edge.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  22,
+                                       "step_order":  8,
+                                       "name":  "Peel markers",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "From batch stock (see `claude/Internal-Products-Workflow.md`), oldest sheet first. Place them by eye on the **back** of each sticker, measuring from the side and the top. The markers are centred, so left and right give the same numbers.\r\n\r\n| Marker | From the side | From the top |\r\n|---|---|---|\r\n| \"PEEL THIS FIRST\" pill (34 × 9mm) | left edge **5.3cm** in | top edge **0.3cm** below the sticker\u0027s top edge, centred in the 15mm strip |\r\n| Arrow (12 × 14mm), pointing up | left edge **6.4cm** in | top edge **0.3cm below the slit** |\r\n\r\n- Measure from the actual slit, not the sticker\u0027s edge. The slit can be about ±1mm off 15mm, which still leaves the pill at least 2mm clear.\r\n- **Neither marker may cross the slit**, or the strip won\u0027t come away.\r\n- Log wasted marker sets on the job sheet. Reprint the marker sheet when fewer than 12 sets are left.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  23,
+                                       "step_order":  9,
+                                       "name":  "Wrap - print",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. In Design Space, upload `wrap_…_cricut.png` from the order\u0027s folder, choose **Complex**, and save it as a **Print Then Cut image**.\r\n2. Size lock on, **W = 180mm**; H should read **232mm**. If it doesn\u0027t, re-upload. If Design Space says it\u0027s too large, use Change Page Size, never Auto-Resize.\r\n3. Print with the system dialog on:\r\n   - plain 120gsm white paper, paper type **Plain Paper / Bright White** (not Matte: that\u0027s for coated paper and spreads on uncoated paper, blurring the QR code);\r\n   - quality **High**, A4, 100%.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  24,
+                                       "step_order":  10,
+                                       "name":  "wrap - dry",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  600,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "Dry **10 minutes**, flat on a tray, printed side up. Don\u0027t stack fresh wraps or touch the print. Load the mat only when the timer ends.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  25,
+                                       "step_order":  11,
+                                       "name":  "Wrap – cut",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "12×12 Light Grip mat, Design Space setting **Plain Paper**. Check that the slot is cut right through and the outline lifts off without tearing.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  26,
+                                       "step_order":  12,
+                                       "name":  "Wrap – fold",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "Fold in the README\u0027s order:\r\n\r\n1. Stack the 4 stickers face down behind the front panel, centred under the address and preview.\r\n2. Fold both side flaps in, then the lower flap up, then the upper flap down.\r\n3. Push the tongue into the slot.\r\n\r\nCrease at the fold edges only, with a thumb. Never press flat across the back flaps (flat flaps also keep the envelope under 5mm).",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  27,
+                                       "step_order":  13,
+                                       "name":  "Wrap – check",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "QR check (visual, every wrap): the code is on the lower flap, about 2mm from its fold. No fold or crease crosses the black square, and the flap lies flat. No scan is needed per order: the scan test on a plain-paper wrap passed (Oct 2026). If that test wrap was printed from the PDF, scan the first Print Then Cut wrap once.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  28,
+                                       "step_order":  14,
+                                       "name":  "Final check",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "Against the job sheet and the eBay order:\r\n\r\n- **Order:** number, street and design (D-number) match exactly; 4 stickers; the right first name and address on the wrap.\r\n- **Print:** solid black, sharp text, no smudges, streaks or banding.\r\n- **Laminate:** no bubbles, dust or creases inside a sticker; no edge lifting.\r\n- **Cut:** each sticker is 140 × 100mm (±1mm), with straight edges. The slit runs right across about 15mm down, the backing parts when bent, and the front is unmarked.\r\n- **Markers:** the pill is in the strip, clear of the slit; the arrow is below it, pointing up.\r\n- **Wrap:** the preview matches, the QR code is uncreased, the tongue holds.\r\n\r\n**Acceptable:** a single dust speck under 1mm, away from any text. **Anything else that fails is a reject.**\r\n\r\n**Reprints and waste:**\r\n\r\n- Reprint the **full sheet of 4**, the same day, as the first sheet of the next run. Use the same order line; no new proof unless the text changes. Resends after a problem in the post follow `claude/Shipping-Workflow.md` Stage 7.\r\n- Write the reject reason on the job sheet: print, laminate, back cut, trim or markers.\r\n- Scrapped laminated sheets become test-cut stock; a scrapped wrap is packing scrap.\r\n- **Vinyl stock:** each Cricut set has 20 vinyl and 20 laminate sheets. Reorder when **fewer than 10** are left.\r\n- **Planning allowance:** 1 sheet in 10 scrapped, until real data replaces it.\r\n\r\nThe finished, wrapped pack and its job sheet now go to the packing bench (`claude/Shipping-Workflow.md`, Stage 1).",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  29,
+                                       "step_order":  15,
+                                       "name":  "Time, cost and records",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- **Records:** log each order in your own log (WordPress). Suggested fields: order number, D-number, date, tray, rejects and reason. The posting fields are in `claude/Shipping-Workflow.md` Stage 6.\r\n- **Time:** not being measured for now. Business Plan §10\u0027s 45–70 minutes per 20 stickers and the Recurring Overhead tab\u0027s 1 hour/week stay as estimates.",
+                                       "tasks":  [
+
+                                                 ]
+                                   }
+                               ]
+                 },
+    "product":  {
+                    "id":  3,
+                    "name":  "Bin Sticker Set — 100x140mm 4-pack (sample)",
+                    "sku":  "",
+                    "is_active":  1,
+                    "workflow_template_id":  4,
+                    "workflow_template_name":  "SMall stickerts 1",
+                    "pack_workflow_template_id":  null,
+                    "post_ship_workflow_template_id":  null,
+                    "weight_grams":  null,
+                    "package_id":  null,
+                    "package_id_multi":  null,
+                    "planned_shipping_gbp":  null,
+                    "step_instruction_overrides":  [
+
+                                                   ],
+                    "step_task_overrides":  [
+
+                                            ],
+                    "target_selling_price":  5,
+                    "material_cost":  1.9650000000000001,
+                    "platform_fees":  1.1100000000000001,
+                    "fee_source":  "estimate",
+                    "profit":  1.925,
+                    "margin_percent":  38.5,
+                    "recipe":  [
+                                   {
+                                       "material_id":  3,
+                                       "material_name":  "blade",
+                                       "quantity_per_unit":  2,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  2,
+                                       "material_name":  "Ink",
+                                       "quantity_per_unit":  3,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  4,
+                                       "material_name":  "Mat lightgrid 12x12",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  5,
+                                       "material_name":  "Mat lightgrid 12x24",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  8,
+                                       "material_name":  "Peel markers",
+                                       "quantity_per_unit":  4,
+                                       "unit":  "each"
+                                   },
+                                   {
+                                       "material_id":  7,
+                                       "material_name":  "plain paper",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "A4"
+                                   }
+                               ]
+                },
+    "material_goals":  [
+
+                       ]
+}

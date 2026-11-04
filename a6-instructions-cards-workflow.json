@@ -1,0 +1,164 @@
+{
+    "exported_at":  "2026-11-04T08:32:01Z",
+    "source":  "Order Machine MCP on ordermachine1910.local",
+    "workflow":  {
+                     "id":  3,
+                     "name":  "A6 Instructions cards",
+                     "description":  "Print and cut one A4 sheet of two-sided **A6 instructions cards** (105 × 148.5mm): **4 cards a sheet**, **one per Small order** (a split order gets one per parcel). 250gsm white card, Epson ET-3950, cut on the guillotine (no Cricut).\r\n\r\n**Master file:** `instructions_card_A6_print.pdf` (10 Oct 2026). Page 1 = thank-you side with the dashed cut lines; page 2 = instructions side, laid out for a long-edge flip. QR code → `https://youtu.be/iQp-sMKErJk` (two-phone scan test passed). Re-render with `instructions_card.py` only when the wording, pictures or video link change. Don\u0027t edit the PDF in Affinity (fonts not embedded, `claude/Font-Policy.md`).\r\n\r\n**First print only (then delete this list):**\r\n- [ ] Check the first sheet on these settings against the Quality check step (Plain Paper / Bright White, High, 15 + 10 minutes drying, manual long-edge flip).\r\n- [ ] Learn which way round the printer takes the sheet for side 2, and note it in step 3.\r\n- [ ] If it smears or the rollers scuff it, try the printer\u0027s \"Thick paper\" option (not confirmed on the ET-3950).\r\n\r\nFull reference: `claude/Internal-Products-Workflow.md` §3.",
+                     "kind":  "make",
+                     "uses_trays":  1,
+                     "output_per_run":  4,
+                     "is_active":  1,
+                     "step_count":  7,
+                     "product_count":  1,
+                     "products":  [
+                                      {
+                                          "id":  4,
+                                          "name":  "A6 instructions cards"
+                                      }
+                                  ],
+                     "steps":  [
+                                   {
+                                       "id":  9,
+                                       "step_order":  1,
+                                       "name":  "Print side 1 (thank-you side)",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Open `instructions_card_A6_print.pdf`.\r\n2. Load **one sheet of 250gsm white card** in the **front tray**, nothing else in the tray, printable side down.\r\n3. Print **page 1 only** (thank-you side with the dashed cut lines):\r\n   - Epson paper type: **Plain Paper / Bright White**\r\n   - Quality: **High**\r\n   - Paper size: **A4**\r\n   - Scale: **100% / Actual size**; not borderless, no Fit to page\r\n   - 2-sided printing: **Off** (automatic 2-sided is plain paper only)",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  10,
+                                       "step_order":  2,
+                                       "name":  "Dry side 1",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  900,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- **15 minutes** on the drying tray (note the tray number).\r\n- Flat, face up; don\u0027t stack anything on it. The confetti side carries the most ink and goes through the rollers again.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  13,
+                                       "step_order":  3,
+                                       "name":  "Print side 2 (instructions side)",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Turn the sheet over on its **long edge**, so side 1 faces up in the tray and its top stays at the same end.\r\n2. Load it on its own in the front tray.\r\n3. Print **page 2 only**, with the same settings as step 1 (Plain Paper / Bright White, High, A4, 100%, 2-sided Off).\r\n4. Check the first card straight away: both sides the same way up when you turn it over on its long edge. If not, stop and fix the flip before printing another sheet.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  14,
+                                       "step_order":  4,
+                                       "name":  "Dry side 2",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  600,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- **10 minutes** flat, face up on the tray before cutting.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  11,
+                                       "step_order":  5,
+                                       "name":  "Cutting",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- **Thank-you side face up** (the dashed lines are only on that side).\r\n- Line the blade up on the **dashed line itself**, not the guillotine\u0027s scale.\r\n- Clamp, then one slow, steady cut (250gsm card drags or tears if pushed fast).\r\n1. Cut **across the middle** line → 2 halves.\r\n2. Stack the halves with edges and lines matched; cut **down the middle** line → **4 cards**.\r\n- Each card **105 × 148.5mm (±1mm)**.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  12,
+                                       "step_order":  6,
+                                       "name":  "Quality check",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**Good card:**\r\n- Size within ±1mm, straight edges, no more than a hairline of dashed line left.\r\n- Thank-you side: clean confetti colours, no banding, smudge or roller marks.\r\n- Instructions side: sharp text, all six pictures clean, QR code unsmudged.\r\n- Flat, no curl or crease.\r\n\r\n**On one card per sheet:**\r\n- QR code\u0027s black square measures **19mm** (smaller = the print was scaled).\r\n- **Scan it with a phone**: it opens the how-to video.\r\n- **Alignment:** turn it over on its long edge. Both sides the same way up, and at least **3mm** of white on every edge of the instructions side.\r\n\r\n**Bin a single card** with a smudge, damaged QR code, crease or rough cut.\r\n\r\n**Scrap the whole sheet** if side 2 is the wrong way up, a margin is under 3mm, or the QR code measures wrong or won\u0027t scan. Fix the cause (flip direction, 100% scale) before the next sheet.\r\n\r\n**Log** good cards, bad cards and the reason.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  44,
+                                       "step_order":  7,
+                                       "name":  "Stock and storage",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- Store the cut cards **flat** in a small box or envelope by the packing bench, **thank-you side up**, away from damp and sun.\r\n- **Print the next sheet when the last card is used** (about 30 minutes with drying; fits inside the morning batch\u0027s vinyl drying).\r\n- **Reorder** 250gsm white card when **5 sheets** are left. Keep unused card flat in its pack.\r\n- **Bin** any old cards with the dashed \"QR code goes here\" box, if any turn up.",
+                                       "tasks":  [
+
+                                                 ]
+                                   }
+                               ]
+                 },
+    "product":  {
+                    "id":  4,
+                    "name":  "A6 instructions cards",
+                    "sku":  "",
+                    "is_active":  1,
+                    "workflow_template_id":  3,
+                    "workflow_template_name":  "A6 Instructions cards",
+                    "pack_workflow_template_id":  null,
+                    "post_ship_workflow_template_id":  null,
+                    "weight_grams":  null,
+                    "package_id":  null,
+                    "package_id_multi":  null,
+                    "planned_shipping_gbp":  null,
+                    "step_instruction_overrides":  [
+
+                                                   ],
+                    "step_task_overrides":  [
+
+                                            ],
+                    "target_selling_price":  null,
+                    "material_cost":  0.44,
+                    "platform_fees":  null,
+                    "fee_source":  "none",
+                    "profit":  null,
+                    "margin_percent":  null,
+                    "recipe":  [
+                                   {
+                                       "material_id":  6,
+                                       "material_name":  "white card",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "A4"
+                                   },
+                                   {
+                                       "material_id":  2,
+                                       "material_name":  "Ink",
+                                       "quantity_per_unit":  2,
+                                       "unit":  "one"
+                                   }
+                               ]
+                },
+    "material_goals":  [
+
+                       ]
+}

@@ -1,0 +1,148 @@
+{
+    "exported_at":  "2026-11-04T08:31:59Z",
+    "source":  "Order Machine MCP on ordermachine1910.local",
+    "workflow":  {
+                     "id":  1,
+                     "name":  "Peel markers",
+                     "description":  "Print and cut one A4 sheet of peel markers (\"PEEL THIS FIRST\" pill + arrow): **35 sets a sheet**, one set per sticker (4 per Small pack, 2 per Medium, 1 per Large). SmithPackaging label sheet, Epson ET-3950, Cricut Print Then Cut.\r\n\r\n**First print only (then delete this list):**\r\n- [ ] Check sizes in Design Space with the lock on: pill **3.4 × 0.9cm**, arrow **1.2 × 1.4cm**. Note the project name and grid.\r\n- [ ] Confirm the cut setting on a real label sheet: Sticker Paper, Kiss Cut, pressure Less (only tested on copy paper so far).\r\n- [ ] Confirm the sheet gives 35 good sets.\r\n- [ ] Decide whether stock counts in sets or sheets (output per run 35 or 1).\r\n\r\nFull reference: `claude/Internal-Products-Workflow.md` §1.",
+                     "kind":  "make",
+                     "uses_trays":  1,
+                     "output_per_run":  1,
+                     "is_active":  1,
+                     "step_count":  5,
+                     "product_count":  1,
+                     "products":  [
+                                      {
+                                          "id":  1,
+                                          "name":  "Peel markers"
+                                      }
+                                  ],
+                     "steps":  [
+                                   {
+                                       "id":  1,
+                                       "step_order":  1,
+                                       "name":  "Artwork and layout - print",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "1. Open the saved peel marker project in Design Space.\r\n2. Load **one SmithPackaging label sheet** in the printer, nothing else in the tray.\r\n3. **Make → Send to printer**, in the same session as the cut (so the sensor marks print at the right size).\r\n4. Print settings:\r\n   - Use System Dialog: **On**\r\n   - Epson paper type: **Plain Paper / Bright White**\r\n   - Quality: **High**\r\n   - Scale: **100%**; no fit-to-page, no borderless, no centring\r\n   - Bleed: **On**",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  2,
+                                       "step_order":  2,
+                                       "name":  "Drying",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  600,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- **10 minutes** on the drying tray (note the tray number).\r\n- Flat, face up; don\u0027t stack fresh sheets.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  3,
+                                       "step_order":  3,
+                                       "name":  "Cutting",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**Settings**\r\n- **Print Then Cut**, size lock on.\r\n- Mat: **12 × 12 Light Grip**. Sheet landscape, printed arrow at top left.\r\n- Material: **Sticker Paper**, **Kiss Cut**, pressure **Less**. Markers stay on the backing; peel one at a time when packing.\r\n\r\n**If a cut misses**\r\n- **Sensor can\u0027t read the marks:** check the light isn\u0027t shining straight on the mat and the sheet is flat; retry; then unload and reload.\r\n- **Cut offset from the print:** stop, run Print Then Cut calibration (Menu → Calibration), reprint.\r\n- **Cut through the backing:** lower the pressure.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  4,
+                                       "step_order":  4,
+                                       "name":  "Quality check",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "**Good sheet:**\r\n- Every pill and arrow cut through the label face; backing uncut (nothing drops out when lifted).\r\n- Cut follows the magenta edge, no white rim.\r\n- \"PEEL THIS FIRST\" sharp, no smudge or banding.\r\n- Each marker lifts cleanly and sticks flat.\r\n\r\n**Bin a single marker** with a white rim, torn edge, smudge or lifted corners.\r\n\r\n**Scrap the whole sheet** if more than **5 sets** are bad, or the cut is offset across the sheet. Recalibrate before the next print.\r\n\r\n**Log** the number of bad sets for this sheet.",
+                                       "tasks":  [
+
+                                                 ]
+                                   },
+                                   {
+                                       "id":  42,
+                                       "step_order":  5,
+                                       "name":  "Stock and storage",
+                                       "requires_manual_confirm":  1,
+                                       "timer_seconds":  null,
+                                       "planned_seconds":  null,
+                                       "batch_group_id":  null,
+                                       "confirmation_kind":  null,
+                                       "instructions":  "- Store the cut sheets **flat** in the labelled folder, print date written on, away from sun and damp. Use the oldest first.\r\n- **Reprint** when fewer than **12 sets** are left.\r\n- **Reorder** SmithPackaging label sheets when fewer than **20** are left (shared with the seal sticker).",
+                                       "tasks":  [
+
+                                                 ]
+                                   }
+                               ]
+                 },
+    "product":  {
+                    "id":  1,
+                    "name":  "Peel markers",
+                    "sku":  "",
+                    "is_active":  1,
+                    "workflow_template_id":  1,
+                    "workflow_template_name":  "Peel markers",
+                    "pack_workflow_template_id":  null,
+                    "post_ship_workflow_template_id":  null,
+                    "weight_grams":  null,
+                    "package_id":  null,
+                    "package_id_multi":  null,
+                    "planned_shipping_gbp":  null,
+                    "step_instruction_overrides":  [
+
+                                                   ],
+                    "step_task_overrides":  [
+
+                                            ],
+                    "target_selling_price":  null,
+                    "material_cost":  0.29249999999999998,
+                    "platform_fees":  null,
+                    "fee_source":  "none",
+                    "profit":  null,
+                    "margin_percent":  null,
+                    "recipe":  [
+                                   {
+                                       "material_id":  3,
+                                       "material_name":  "blade",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  2,
+                                       "material_name":  "Ink",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  4,
+                                       "material_name":  "Mat lightgrid 12x12",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "one"
+                                   },
+                                   {
+                                       "material_id":  1,
+                                       "material_name":  "self-adhesive label sheets",
+                                       "quantity_per_unit":  1,
+                                       "unit":  "A4"
+                                   }
+                               ]
+                },
+    "material_goals":  [
+
+                       ]
+}
