@@ -216,12 +216,14 @@
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
 			var batchSelect = card.querySelector( '.som-batch-group-select' );
 			var commandField = card.querySelector( '.som-command-template' );
+			var photo = card.querySelector( '.som-photo-required' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
 			var hasBatch = batchSelect && batchSelect.value && batchSelect.value !== '0';
 			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
-			return !!( hasManual || hasTimer || hasConfirm || hasBatch || hasCopy );
+			var hasPhoto = photo && photo.checked;
+			return !!( hasManual || hasTimer || hasConfirm || hasBatch || hasCopy || hasPhoto );
 		}
 
 		function stepDisplayName( card ) {
@@ -374,6 +376,7 @@
 						syncBatchWarning( card );
 						syncConfirmWarning( card );
 						syncCopyWarning( card );
+						syncPhotoLabel( card );
 						syncZeroGateWarning( card );
 						syncPlannedTotal();
 						return;
@@ -391,6 +394,7 @@
 			var plannedUnitBind = card.querySelector( '[data-som-planned-unit]' );
 			var confirmBind = card.querySelector( '.som-confirmation-kind' );
 			var commandBind = card.querySelector( '.som-command-template' );
+			var photoBind = card.querySelector( '.som-photo-required' );
 			var nameBind = card.querySelector( '.som-step-name' );
 			if ( batchSelectBind ) {
 				batchSelectBind.addEventListener( 'change', function () {
@@ -428,6 +432,13 @@
 					syncZeroGateWarning( card );
 				} );
 			}
+			if ( photoBind ) {
+				photoBind.addEventListener( 'change', function () {
+					syncPhotoLabel( card );
+					syncBatchWarning( card );
+					syncZeroGateWarning( card );
+				} );
+			}
 			if ( commandBind ) {
 				commandBind.addEventListener( 'input', function () {
 					if ( String( commandBind.value || '' ).trim() !== '' ) {
@@ -458,7 +469,23 @@
 			syncBatchWarning( card );
 			syncConfirmWarning( card );
 			syncCopyWarning( card );
+			syncPhotoLabel( card );
 			syncZeroGateWarning( card );
+		}
+
+		function syncPhotoLabel( card ) {
+			var box = card.querySelector( '.som-photo-required' );
+			var label = card.querySelector( '[data-som-photo-label]' );
+			if ( ! box || ! label ) {
+				return;
+			}
+			label.hidden = ! box.checked;
+			if ( box.checked ) {
+				var manual = card.querySelector( 'input[name*="[requires_manual_confirm]"]' );
+				if ( manual ) {
+					manual.checked = true;
+				}
+			}
 		}
 
 		function syncBatchWarning( card ) {
@@ -476,11 +503,13 @@
 			var timer = card.querySelector( 'input[name*="[timer_value]"]' );
 			var confirmSelect = card.querySelector( '.som-confirmation-kind' );
 			var commandField = card.querySelector( '.som-command-template' );
+			var photo = card.querySelector( '.som-photo-required' );
 			var hasManual = manual && manual.checked;
 			var hasTimer = timer && String( timer.value ).trim() !== '';
 			var hasConfirm = confirmSelect && confirmSelect.value !== '';
 			var hasCopy = commandField && String( commandField.value || '' ).trim() !== '';
-			warning.hidden = ! ( hasManual || hasTimer || hasConfirm || hasCopy );
+			var hasPhoto = photo && photo.checked;
+			warning.hidden = ! ( hasManual || hasTimer || hasConfirm || hasCopy || hasPhoto );
 		}
 
 		function syncConfirmWarning( card ) {

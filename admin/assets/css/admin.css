@@ -1177,6 +1177,29 @@
 	text-decoration: underline;
 }
 
+.som-step-photos {
+	margin: 8px 0 12px;
+}
+
+.som-step-photo-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	list-style: none;
+	margin: 8px 0;
+	padding: 0;
+}
+
+.som-step-photo-thumb {
+	display: block;
+	max-width: 120px;
+	height: auto;
+}
+
+.som-step-photo-form input[type="file"] {
+	margin: 0 8px 8px 0;
+}
+
 .som-step-gates {
 	display: flex;
 	flex-direction: column;

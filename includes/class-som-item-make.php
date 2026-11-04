@@ -391,7 +391,7 @@ class SOM_Item_Make {
 			$wpdb->prepare(
 				"SELECT p.*, s.name AS step_name, s.step_order, s.requires_manual_confirm,
 					s.timer_seconds, s.planned_seconds, s.script_config, s.command_template, s.workflow_template_id, s.batch_group_id,
-					s.confirmation_kind
+					s.confirmation_kind, s.photo_required, s.photo_label
 				FROM {$progress_t} p
 				INNER JOIN {$steps_t} s ON s.id = p.workflow_step_id
 				WHERE p.order_item_id = %d
@@ -899,6 +899,7 @@ class SOM_Item_Make {
 		$copy    = SOM_Copy_Command::has_template( $step );
 		// UP9-S2 O5: ignore legacy script_config — never waiting_script / dispatch.
 		$legacy_script = SOM_Script_Dispatch::has_script( $step );
+		$photo         = ! empty( $step->photo_required );
 		$table         = SOM_DB::table( 'order_item_step_progress' );
 
 		// Batch on make is disallowed at save time; if present, treat as error state.
@@ -917,7 +918,7 @@ class SOM_Item_Make {
 			return new WP_Error( 'som_make_batch', __( 'Batch groups are not allowed on make steps.', 'order-machine' ) );
 		}
 
-		if ( $confirm || $copy || $legacy_script ) {
+		if ( $confirm || $copy || $legacy_script || $photo ) {
 			$manual = true;
 		}
 

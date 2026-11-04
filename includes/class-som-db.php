@@ -17,7 +17,7 @@ class SOM_DB {
 	 *
 	 * Bump when columns/indexes change so activation can migrate.
 	 */
-	const DB_VERSION = '1.26.0';
+	const DB_VERSION = '1.27.0';
 
 	/**
 	 * Create or update all plugin tables via dbDelta.
@@ -201,6 +201,8 @@ class SOM_DB {
 			confirmation_kind varchar(40) NULL,
 			instructions text NULL,
 			task_list_json text NULL,
+			photo_required tinyint(1) NOT NULL DEFAULT 0,
+			photo_label varchar(191) NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -358,6 +360,19 @@ class SOM_DB {
 			KEY order_id (order_id),
 			KEY workflow_step_id (workflow_step_id),
 			KEY status (status)
+		) {$charset_collate};";
+
+		$sql[] = "CREATE TABLE {$p}som_step_photos (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			order_step_progress_id bigint(20) unsigned NULL,
+			order_item_step_progress_id bigint(20) unsigned NULL,
+			attachment_id bigint(20) unsigned NOT NULL,
+			uploaded_by bigint(20) unsigned NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY order_step_progress_id (order_step_progress_id),
+			KEY order_item_step_progress_id (order_item_step_progress_id),
+			KEY attachment_id (attachment_id)
 		) {$charset_collate};";
 
 		$sql[] = "CREATE TABLE {$p}som_purchase_orders (
@@ -594,6 +609,7 @@ class SOM_DB {
 		self::upgrade_workflow_template_kind_post_ship();
 		self::upgrade_post_ship_columns();
 		self::upgrade_product_pack_workflow_column();
+		self::upgrade_step_photo_columns();
 		self::backfill_material_total_value();
 
 		update_option( 'som_db_version', self::DB_VERSION );
@@ -1122,6 +1138,7 @@ class SOM_DB {
 		self::upgrade_workflow_template_kind_post_ship();
 		self::upgrade_post_ship_columns();
 		self::upgrade_product_pack_workflow_column();
+		self::upgrade_step_photo_columns();
 	}
 
 	/**
@@ -1236,6 +1253,38 @@ class SOM_DB {
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->query( "ALTER TABLE {$table} ADD COLUMN task_checks_json text NULL AFTER confirmation_state" );
 			}
+		}
+	}
+
+	/**
+	 * Add Require photo columns on workflow steps (UP16-S1).
+	 *
+	 * dbDelta also sees these columns on the CREATE statement. This ALTER
+	 * covers an existing table when dbDelta does not add them.
+	 *
+	 * @return void
+	 */
+	private static function upgrade_step_photo_columns() {
+		global $wpdb;
+
+		$steps = self::table( 'workflow_steps' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $steps ) ) !== $steps ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$has_required = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'photo_required'" );
+		if ( ! $has_required ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN photo_required tinyint(1) NOT NULL DEFAULT 0 AFTER task_list_json" );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$has_label = $wpdb->get_row( "SHOW COLUMNS FROM {$steps} LIKE 'photo_label'" );
+		if ( ! $has_label ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "ALTER TABLE {$steps} ADD COLUMN photo_label varchar(191) NULL AFTER photo_required" );
 		}
 	}
 

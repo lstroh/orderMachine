@@ -49,6 +49,8 @@ class SOM_Workflow_Import {
 		'tasks',
 		'command_template',
 		'batch_group_key',
+		'photo_required',
+		'photo_label',
 	);
 
 	/**
@@ -255,7 +257,7 @@ class SOM_Workflow_Import {
 				s.step_order, s.name AS step_name, s.requires_manual_confirm,
 				s.timer_seconds, s.planned_seconds, s.confirmation_kind,
 				s.instructions, s.task_list_json, s.command_template,
-				g.group_key AS batch_group_key
+				g.group_key AS batch_group_key, s.photo_required, s.photo_label
 			FROM {$templates} t
 			INNER JOIN {$steps} s ON s.workflow_template_id = t.id
 			LEFT JOIN {$groups} g ON g.id = s.batch_group_id
@@ -285,6 +287,8 @@ class SOM_Workflow_Import {
 				self::export_tasks( isset( $row->task_list_json ) ? $row->task_list_json : null ),
 				self::export_text( isset( $row->command_template ) ? $row->command_template : null ),
 				self::export_text( isset( $row->batch_group_key ) ? $row->batch_group_key : null ),
+				(string) (int) ( isset( $row->photo_required ) ? $row->photo_required : 0 ),
+				self::export_text( isset( $row->photo_label ) ? $row->photo_label : null ),
 			);
 		}
 		return $out;
@@ -641,6 +645,11 @@ class SOM_Workflow_Import {
 			return $batch;
 		}
 
+		$photo = SOM_Catalog_Import::parse_bool( SOM_Catalog_Import::cell( $record, $index, 'photo_required' ) );
+		if ( is_wp_error( $photo ) ) {
+			return new WP_Error( 'bad_photo_required', __( 'Require photo must be yes or no.', 'order-machine' ) );
+		}
+
 		return array(
 			'line'                    => (int) $line,
 			'step_order'              => (int) $step_order,
@@ -653,6 +662,8 @@ class SOM_Workflow_Import {
 			'tasks'                   => $tasks,
 			'command_template'        => SOM_Catalog_Import::cell( $record, $index, 'command_template' ),
 			'batch_group_id'          => (int) $batch,
+			'photo_required'          => null === $photo ? 0 : (int) (bool) $photo,
+			'photo_label'             => SOM_Catalog_Import::cell( $record, $index, 'photo_label' ),
 		);
 	}
 

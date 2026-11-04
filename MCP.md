@@ -34,7 +34,7 @@ Abilities (WP naming):
 - `order-machine/get-analytics-timing`
 - `order-machine/get-material-stock-log`
 
-All of these are read-only. Credentials (`channels.credentials`), step `script_config`, and step `command_template` are never exposed.
+All of these are read-only. Credentials (`channels.credentials`), step `script_config`, and step `command_template` are never exposed. Workflow steps include `photo_required` and `photo_label`. Photo files are not in the ability payload.
 
 When the MCP toggle is **off**, Abilities are **not registered** at all.
 

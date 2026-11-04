@@ -56,6 +56,7 @@ require_once SOM_PLUGIN_DIR . 'includes/class-som-trays.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-orders.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-notes.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-shipments.php';
+require_once SOM_PLUGIN_DIR . 'includes/class-som-step-photos.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-sync.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-order-import.php';
 require_once SOM_PLUGIN_DIR . 'includes/class-som-catalog-import.php';
