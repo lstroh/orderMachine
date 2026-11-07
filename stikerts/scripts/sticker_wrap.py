@@ -235,6 +235,14 @@ def _qr(c, x, y, size, url):
     c.restoreState()
 
 
+def _thank_you(order):
+    """'Thank you, Ada!' when a buyer name is set, otherwise 'Thank you!'."""
+    name = str(order.get("buyer_name") or "").strip()
+    if name:
+        return f"Thank you, {name}!"
+    return "Thank you!"
+
+
 def _lower_flap(c, ox, oy, order, theme):
     """Back lower flap: QR code on the left (as read on the back), thank-you,
     care line and the video prompt beside it. Without a link, the original
@@ -247,7 +255,7 @@ def _lower_flap(c, ox, oy, order, theme):
     if not url:
         care = wrap_text(care_text, "Helvetica", 7.5, 110 * mm)
         _back_text(c, ox, oy, CX, LOWER_CY,
-                   [("Helvetica-Bold", "text", f"Thank you, {order['buyer_name']}!")] +
+                   [("Helvetica-Bold", "text", _thank_you(order))] +
                    [("Helvetica", "muted", "")] +
                    [("Helvetica", "muted", l) for l in care] +
                    [("Helvetica", "muted", ""), ("Helvetica", "muted", footer)],
@@ -270,7 +278,7 @@ def _lower_flap(c, ox, oy, order, theme):
         if gap < 0:
             raise AssertionError(f"wrap QR quiet zone overlaps the {name} by {-gap / mm:.2f}mm")
 
-    lines = [("Helvetica-Bold", 8.5, "text", f"Thank you, {order['buyer_name']}!"),
+    lines = [("Helvetica-Bold", 8.5, "text", _thank_you(order)),
              None]
     lines += [("Helvetica", 7.5, "muted", l) for l in wrap_text(care_text, "Helvetica", 7.5, tw)]
     lines += [None,

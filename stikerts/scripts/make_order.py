@@ -53,9 +53,18 @@ BRAND = {"brand_name": "Doorstep Studio", "handle": "doorstepstudiouk",
 # listed 4 times with "wrap": False on 3 of them (one wrap per customer).
 # Add "video_url": None to an entry to leave the QR code off its wrap.
 ORDERS = [
-    {"order_number": "sample", "house_number": "36", "street_name": "Grove Street",
-     "style": "p25_landscape_flourish", "accent": "navy",
-     "buyer_name": "Priya", "paper": "white"},
+    {"order_number": "test0711", "house_number": "30",
+     "street_name": "oak street", "style": "p09a_borderless",
+     "accent": "black", "paper": "white", "quantity": 4},
+    {"order_number": "test0711", "house_number": "30",
+     "street_name": "oak street", "style": "p09a_borderless",
+     "accent": "black", "wrap": False},
+    {"order_number": "test0711", "house_number": "30",
+     "street_name": "oak street", "style": "p09a_borderless",
+     "accent": "black", "wrap": False},
+    {"order_number": "test0711", "house_number": "30",
+     "street_name": "oak street", "style": "p09a_borderless",
+     "accent": "black", "wrap": False},
 ]
 
 # MEDIUM (TO BE TESTED): one entry per sticker, 2 per sheet. A 2-pack of the

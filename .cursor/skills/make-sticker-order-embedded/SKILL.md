@@ -4,8 +4,9 @@ description: >-
   Build a Doorstep Studio bin-sticker order with the embedded-font scripts in
   stikerts/scripts: write ORDERS, ORDERS_MEDIUM, or ORDERS_LARGE in make_order.py
   and run it so sticker sheets and one personal wrap or sleeve per pack are
-  produced, with Arial, Times New Roman, and Courier New embedded. Use when the
-  user asks to make a sticker order, fill ORDERS, run make_order.py, or produce
+  produced, with Arial, Times New Roman, and Courier New embedded. After the
+  run, report every warning and issue the script printed. Use when the user
+  asks to make a sticker order, fill ORDERS, run make_order.py, or produce
   Affinity-safe PDFs. This is the only order skill for current work.
 disable-model-invocation: true
 ---
@@ -49,7 +50,7 @@ These are the 13 designs on the eBay listing (Oct 2026). Animal-family styles ar
 | `house_number` | yes | e.g. `"36"` |
 | `street_name` | yes | e.g. `"Grove Street"` |
 | eBay design name | yes | A name from the table above. Write the mapped `style` key, not the eBay name. Large covers do not draw the design. |
-| `buyer_name` | yes | First name. Wrap, sleeve, and cover: "Thank you, {name}!" |
+| `buyer_name` | small: no. Medium and large: yes | First name. When set, the wrap, sleeve, or cover prints "Thank you, {name}!". On a small wrap, leave it out and the line is "Thank you!". A blank name is the same as leaving it out. Do not invent one. |
 | `accent` | fixed | Always `"black"`. Do not ask. `p25_landscape_flourish` and `p25b_landscape_flourish` are already black and ignore this key. |
 | `paper` | no | `"white"` (default) or `"kraft"`. Ink colours on the wrap, sleeve, or cover only. |
 | `care_line` | no | Wrap, sleeve, or cover only. Default is already in the script. |
@@ -131,3 +132,20 @@ Output for each order number is `G:\My Drive\orders\<order_number>\`. Google Dri
 - `large_cover_<house>_<street>.pdf` — one large cover per entry
 
 Re-running the same order number overwrites files with the same names in that folder. Tell the user the folder path and the files written.
+
+## Report the run
+
+Read the full stdout and stderr. Do not treat a zero exit code as a clean run. The sticker scripts keep going when master art is missing and print `WARNING:` on stdout while they draw a substitute. `embedded_fonts` prints a note when it skips a font file. A failed run raises `SystemExit` or a traceback on stderr and may have written nothing.
+
+Lead with problems. Quote each warning or issue in the reply. One line in the script output is one item. Do not drop duplicates: the same warning once per sticker means that many stickers used the fallback.
+
+Treat these as issues:
+
+- Any line containing `WARNING:`. Say which style, which asset path, and that the PDF used the fallback art named in that line.
+- Any line starting with `embedded_fonts:`. Say which font was skipped and why (missing file, embed refusal, or width mismatch).
+- A non-zero exit, `SystemExit`, `Traceback`, `Error`, or `Exception`. Quote the message. Do not list files as finished for a run that exited with an error.
+- Any other stdout or stderr line that is not one of: `order:`, `sticker sheet:`, `wrap:`, `cricut image:`, `medium sticker sheet:`, `medium sleeve:`, `large cover sheet:`.
+
+Then list the folder and the files the script said it wrote. If a pack should have produced a sheet or a wrap and that line is absent, say which one is missing.
+
+If stdout and stderr contain only the path lines above and the exit code is 0, say there were no warnings.
