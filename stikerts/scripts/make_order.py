@@ -43,7 +43,7 @@ _ORDER_NUMBER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,80}$")
 
 # True = also save a Cricut Print Then Cut PNG for each SMALL wrap
 # (the Medium sleeve and Large cover need no cutting)
-CRICUT = False
+CRICUT = True
 
 # handle matches the instructions card footer and the YouTube channel
 BRAND = {"brand_name": "Doorstep Studio", "handle": "doorstepstudiouk",

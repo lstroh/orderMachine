@@ -55,7 +55,7 @@ These are the 13 designs on the eBay listing (Oct 2026). Animal-family styles ar
 | `paper` | no | `"white"` (default) or `"kraft"`. Ink colours on the wrap, sleeve, or cover only. |
 | `care_line` | no | Wrap, sleeve, or cover only. Default is already in the script. |
 | `quantity` | no | Printed as "Your set of …". Small default **4**. Medium default **2**. Set it on the wrap entry. |
-| Cricut | fixed | Leave `CRICUT = False` unless the user asks for a Print Then Cut PNG of a **small** wrap. Medium sleeves and large covers are not cut. |
+| Cricut | fixed | Set `CRICUT = True` on every run. Do not ask. Each small wrap then also writes `wrap_<house>_<street>_cricut.png`. Medium sleeves and large covers are not cut, so they still have no PNG. |
 
 `BRAND` at the top of `make_order.py` (`brand_name`, `handle`, `logo_style`) applies to every wrap, sleeve, and cover. Leave it unless the user asks to change it. `logo_style` `"both"` is the chosen design. `handle` is `doorstepstudiouk`.
 
@@ -108,7 +108,7 @@ ORDERS_LARGE = [
 ]
 ```
 
-Leave `CRICUT = False`. Packs are filled 4 stickers per small sheet and 2 stickers per medium sheet, in list order.
+Set `CRICUT = True` before running, including when the order is medium or large only. Packs are filled 4 stickers per small sheet and 2 stickers per medium sheet, in list order.
 
 Two wraps, sleeves, or covers with the same house number and street share one filename and the second overwrites the first. Say so before running. If several designs share one address, the user must know only the last wrap for that address will remain.
 
@@ -126,7 +126,7 @@ Output for each order number is `G:\My Drive\orders\<order_number>\`. Google Dri
 
 - `sheet_1.pdf`, `sheet_2.pdf`, … — small stickers, landscape A4, up to 4 per page
 - `wrap_<house>_<street>.pdf` — one small wrap per pack
-- `wrap_<house>_<street>_cricut.png` — only if `CRICUT` is True
+- `wrap_<house>_<street>_cricut.png` — one Print Then Cut image per small wrap. `CRICUT` is True, so this file is expected whenever a small wrap is written. Medium and large still do not write one.
 - `medium_sheet_1.pdf`, … — medium stickers, portrait A4, up to 2 per page
 - `medium_wrap_<house>_<street>.pdf` — one medium sleeve per pack
 - `large_cover_<house>_<street>.pdf` — one large cover per entry
@@ -146,6 +146,6 @@ Treat these as issues:
 - A non-zero exit, `SystemExit`, `Traceback`, `Error`, or `Exception`. Quote the message. Do not list files as finished for a run that exited with an error.
 - Any other stdout or stderr line that is not one of: `order:`, `sticker sheet:`, `wrap:`, `cricut image:`, `medium sticker sheet:`, `medium sleeve:`, `large cover sheet:`.
 
-Then list the folder and the files the script said it wrote. If a pack should have produced a sheet or a wrap and that line is absent, say which one is missing.
+Then list the folder and the files the script said it wrote. If a pack should have produced a sheet or a wrap and that line is absent, say which one is missing. A small wrap must also have a `cricut image:` line. If that line is absent, say the Print Then Cut PNG was not written.
 
 If stdout and stderr contain only the path lines above and the exit code is 0, say there were no warnings.
