@@ -1,5 +1,5 @@
 {
-    "exported_at":  "2026-11-04T09:10:13Z",
+    "exported_at":  "2026-11-05T05:23:01Z",
     "source":  "Order Machine MCP on ordermachine1910.local",
     "workflow":  {
                      "id":  6,
@@ -24,10 +24,27 @@
                                        "planned_seconds":  null,
                                        "batch_group_id":  null,
                                        "confirmation_kind":  null,
-                                       "instructions":  "1. Seller Hub → Orders: check the order shows **Dispatched**. If not, mark it dispatched (test SW6 decides whether eBay labels do this automatically). Click \u0026 Drop labels: always mark by hand.\r\n2. Buyer messages: none at dispatch (eBay tells the buyer). Message only for a hold, a delay, a split parcel, or a Large Letter swap that changes the delivery estimate.\r\n3. WordPress order log — add:\r\n   - Posted (date)\r\n   - Parcel: envelope / AKAR box / split (2 parcels)\r\n   - Packs: 1 / 2 / 3\r\n   - Service: 2nd Class Letter / Large Letter\r\n   - Postage paid, e.g. £0.91\r\n   - Label from: eBay / Click \u0026 Drop\r\n   - Box weight (box orders only)\r\n   - Proof: locker email / Certificate of Posting / app postbox proof\r\n   - Parcel mark, e.g. 4417 S\r\n   - Dispatched on eBay ✓\r\n   - Follow-up due: posting date + 7 days\r\n4. Keep the proof of posting for at least 3 months, and label receipts with the accounts (HMRC: at least 5 years after the 31 January deadline for that tax year).",
+                                       "instructions":  "1. Seller Hub → Orders: check the order shows **Dispatched**. If not, mark it dispatched (test SW6 decides whether eBay labels do this automatically). Click \u0026 Drop labels: always mark by hand.\r\n2. Buyer messages: none at dispatch (eBay tells the buyer). Message only for a hold, a delay, a split parcel, or a Large Letter swap that changes the delivery estimate.\r\n3. **Image (required) — proof of posting:** a screenshot of the Royal Mail locker\u0027s drop-off email for this parcel (date and time readable). Keep the email itself too.\r\n4. WordPress order log — add:\r\n   - Posted (date)\r\n   - Parcel: envelope / AKAR box / split (2 parcels)\r\n   - Packs: 1 / 2 / 3\r\n   - Service: 2nd Class Letter / Large Letter\r\n   - Postage paid, e.g. £0.91\r\n   - Label from: eBay / Click \u0026 Drop\r\n   - Box weight (box orders only)\r\n   - Proof: locker email / Certificate of Posting / app postbox proof\r\n   - Parcel mark, e.g. 4417 S\r\n   - Dispatched on eBay ✓\r\n   - Follow-up due: posting date + 7 days\r\n   - Photos: 1 contents · 2 sealed · 3 labelled · proof-of-posting screenshot\r\n5. Keep the proof of posting for at least 3 months, and label receipts with the accounts (HMRC: at least 5 years after the 31 January deadline for that tax year).",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_1245bfd1",
+                                                         "label":  "Order shows Dispatched on eBay (else marked by hand)"
+                                                     },
+                                                     {
+                                                         "id":  "t2_4f28ce94",
+                                                         "label":  "Buyer messaged only if needed (hold, delay, split, Large Letter swap)"
+                                                     },
+                                                     {
+                                                         "id":  "t3_0f3f7980",
+                                                         "label":  "WordPress log filled in"
+                                                     },
+                                                     {
+                                                         "id":  "t4_48bf4370",
+                                                         "label":  "Follow-up date noted (posting date + 7 days)"
+                                                     }
+                                                 ],
+                                       "photo_required":  1,
+                                       "photo_label":  "Screenshot of the locker drop-off email, date and time readable"
                                    },
                                    {
                                        "id":  39,
@@ -40,8 +57,17 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- Check that feedback has been left for the buyer (Orders → the order). If not, leave it now: sellers can only leave positive feedback.\r\n- One-off set-up, if not done yet: **Selling preferences → All listings and orders → Automate feedback → Edit**, and choose **after the buyer has paid**. eBay then leaves it for every paid order.\r\n- Why it matters: eBay\u0027s own automatic positive feedback for sellers needs tracked, on-time delivery, so untracked 2nd Class orders only get feedback if the buyer leaves it.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_69756ad8",
+                                                         "label":  "Automate feedback is switched on (one-off)"
+                                                     },
+                                                     {
+                                                         "id":  "t2_211f50f1",
+                                                         "label":  "Feedback left for the buyer (or left now)"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  40,
@@ -54,8 +80,33 @@
                                        "confirmation_kind":  "package_arrived",
                                        "instructions":  "About 7 days after posting, once the delivery window has passed. Once per order, through eBay messages.\r\n\r\nSkip the message if the buyer has already left feedback, or a problem is already open (see Problems in this workflow\u0027s description).\r\n\r\n\u003e Hi [buyer\u0027s first name], your stickers were posted on [posting date] by Royal Mail 2nd Class – I hope they arrived safely. If anything isn\u0027t right, just message me and I\u0027ll sort it out. If you have a moment, feedback really helps a small new seller. Thanks, [your first name], Doorstep Studio\r\n\r\nNever ask for \"positive\" or \"5-star\" feedback, and never offer anything in return (discount, freebie, refund).\r\n\r\n**Confirming \"package arrived\":** untracked post can\u0027t show delivery. Confirm this step once the message is sent (or skipped) and the buyer hasn\u0027t reported a problem by day 7. If they report one later, go to Problems.\r\n\r\nLog: follow-up sent (date), and later the buyer\u0027s feedback (+ / neutral / − / none).",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_318aca62",
+                                                         "label":  "7 days have passed since posting"
+                                                     },
+                                                     {
+                                                         "id":  "t2_995bac14",
+                                                         "label":  "Buyer hasn\u0027t left feedback and no problem is open (else skip the message)"
+                                                     },
+                                                     {
+                                                         "id":  "t3_227b20e5",
+                                                         "label":  "Follow-up sent through eBay messages"
+                                                     },
+                                                     {
+                                                         "id":  "t4_10c52eb9",
+                                                         "label":  "No \"positive\" or \"5-star\" wording, no incentive offered"
+                                                     },
+                                                     {
+                                                         "id":  "t5_9677e84a",
+                                                         "label":  "No problem reported by day 7"
+                                                     },
+                                                     {
+                                                         "id":  "t6_ac7d2a75",
+                                                         "label":  "Follow-up date and buyer\u0027s feedback logged"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    }
                                ]
                  },

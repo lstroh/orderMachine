@@ -1,5 +1,5 @@
 {
-    "exported_at":  "2026-11-04T08:32:01Z",
+    "exported_at":  "2026-11-05T05:36:34Z",
     "source":  "Order Machine MCP on ordermachine1910.local",
     "workflow":  {
                      "id":  3,
@@ -29,8 +29,49 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "1. Open `instructions_card_A6_print.pdf`.\r\n2. Load **one sheet of 250gsm white card** in the **front tray**, nothing else in the tray, printable side down.\r\n3. Print **page 1 only** (thank-you side with the dashed cut lines):\r\n   - Epson paper type: **Plain Paper / Bright White**\r\n   - Quality: **High**\r\n   - Paper size: **A4**\r\n   - Scale: **100% / Actual size**; not borderless, no Fit to page\r\n   - 2-sided printing: **Off** (automatic 2-sided is plain paper only)",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_0b87a75a",
+                                                         "label":  "Open instructions_card_A6_print.pdf"
+                                                     },
+                                                     {
+                                                         "id":  "t2_b2389257",
+                                                         "label":  "Load one sheet of 250gsm white card in the front tray, printable side down"
+                                                     },
+                                                     {
+                                                         "id":  "t3_ff565e61",
+                                                         "label":  "Nothing else in the tray"
+                                                     },
+                                                     {
+                                                         "id":  "t4_35fff94a",
+                                                         "label":  "Select page 1 only"
+                                                     },
+                                                     {
+                                                         "id":  "t5_1d89c022",
+                                                         "label":  "Paper type Plain Paper / Bright White"
+                                                     },
+                                                     {
+                                                         "id":  "t6_7534bd9c",
+                                                         "label":  "Quality High"
+                                                     },
+                                                     {
+                                                         "id":  "t7_638e7484",
+                                                         "label":  "Paper size A4"
+                                                     },
+                                                     {
+                                                         "id":  "t8_0d44d79a",
+                                                         "label":  "Scale 100% / Actual size, not borderless"
+                                                     },
+                                                     {
+                                                         "id":  "t9_f089652e",
+                                                         "label":  "2-sided printing off"
+                                                     },
+                                                     {
+                                                         "id":  "t10_636e818b",
+                                                         "label":  "Print"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  10,
@@ -43,8 +84,25 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- **15 minutes** on the drying tray (note the tray number).\r\n- Flat, face up; don\u0027t stack anything on it. The confetti side carries the most ink and goes through the rollers again.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_f3ccc064",
+                                                         "label":  "Put the sheet flat, face up on a tray"
+                                                     },
+                                                     {
+                                                         "id":  "t2_1ce3b729",
+                                                         "label":  "Note the tray number"
+                                                     },
+                                                     {
+                                                         "id":  "t3_517debba",
+                                                         "label":  "Nothing stacked on top"
+                                                     },
+                                                     {
+                                                         "id":  "t4_d474f1c1",
+                                                         "label":  "Wait 15 minutes"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  13,
@@ -57,8 +115,33 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "1. Turn the sheet over on its **long edge**, so side 1 faces up in the tray and its top stays at the same end.\r\n2. Load it on its own in the front tray.\r\n3. Print **page 2 only**, with the same settings as step 1 (Plain Paper / Bright White, High, A4, 100%, 2-sided Off).\r\n4. Check the first card straight away: both sides the same way up when you turn it over on its long edge. If not, stop and fix the flip before printing another sheet.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_08494d0c",
+                                                         "label":  "Turn the sheet over on its long edge"
+                                                     },
+                                                     {
+                                                         "id":  "t2_ea23128b",
+                                                         "label":  "Load it on its own in the front tray, side 1 facing up"
+                                                     },
+                                                     {
+                                                         "id":  "t3_26694789",
+                                                         "label":  "Select page 2 only"
+                                                     },
+                                                     {
+                                                         "id":  "t4_d59f479c",
+                                                         "label":  "Same settings as side 1"
+                                                     },
+                                                     {
+                                                         "id":  "t5_39aa7003",
+                                                         "label":  "Print"
+                                                     },
+                                                     {
+                                                         "id":  "t6_b2cdf4a1",
+                                                         "label":  "Check both sides are the same way up"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  14,
@@ -71,8 +154,17 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- **10 minutes** flat, face up on the tray before cutting.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_bbebcb52",
+                                                         "label":  "Put the sheet flat, face up on the tray"
+                                                     },
+                                                     {
+                                                         "id":  "t2_aee38ecd",
+                                                         "label":  "Wait 10 minutes"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  11,
@@ -85,8 +177,33 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- **Thank-you side face up** (the dashed lines are only on that side).\r\n- Line the blade up on the **dashed line itself**, not the guillotine\u0027s scale.\r\n- Clamp, then one slow, steady cut (250gsm card drags or tears if pushed fast).\r\n1. Cut **across the middle** line → 2 halves.\r\n2. Stack the halves with edges and lines matched; cut **down the middle** line → **4 cards**.\r\n- Each card **105 × 148.5mm (±1mm)**.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_92debb8e",
+                                                         "label":  "Thank-you side face up on the guillotine"
+                                                     },
+                                                     {
+                                                         "id":  "t2_97c73e0f",
+                                                         "label":  "Line the blade up on the dashed line"
+                                                     },
+                                                     {
+                                                         "id":  "t3_1fcac537",
+                                                         "label":  "Clamp and cut across the middle"
+                                                     },
+                                                     {
+                                                         "id":  "t4_4e1e3f48",
+                                                         "label":  "Stack the two halves, edges and lines matched"
+                                                     },
+                                                     {
+                                                         "id":  "t5_7f8a1693",
+                                                         "label":  "Clamp and cut down the middle"
+                                                     },
+                                                     {
+                                                         "id":  "t6_9215ff5e",
+                                                         "label":  "Check each card is 105 x 148.5mm"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  12,
@@ -99,8 +216,57 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "**Good card:**\r\n- Size within ±1mm, straight edges, no more than a hairline of dashed line left.\r\n- Thank-you side: clean confetti colours, no banding, smudge or roller marks.\r\n- Instructions side: sharp text, all six pictures clean, QR code unsmudged.\r\n- Flat, no curl or crease.\r\n\r\n**On one card per sheet:**\r\n- QR code\u0027s black square measures **19mm** (smaller = the print was scaled).\r\n- **Scan it with a phone**: it opens the how-to video.\r\n- **Alignment:** turn it over on its long edge. Both sides the same way up, and at least **3mm** of white on every edge of the instructions side.\r\n\r\n**Bin a single card** with a smudge, damaged QR code, crease or rough cut.\r\n\r\n**Scrap the whole sheet** if side 2 is the wrong way up, a margin is under 3mm, or the QR code measures wrong or won\u0027t scan. Fix the cause (flip direction, 100% scale) before the next sheet.\r\n\r\n**Log** good cards, bad cards and the reason.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_9d06db0d",
+                                                         "label":  "Size within 1mm, straight edges"
+                                                     },
+                                                     {
+                                                         "id":  "t2_bc604102",
+                                                         "label":  "Thank-you side clean, no banding, smudge or roller marks"
+                                                     },
+                                                     {
+                                                         "id":  "t3_70be9037",
+                                                         "label":  "Instructions side sharp, all six pictures clean"
+                                                     },
+                                                     {
+                                                         "id":  "t4_1bb20ff1",
+                                                         "label":  "QR code unsmudged"
+                                                     },
+                                                     {
+                                                         "id":  "t5_83d87a26",
+                                                         "label":  "Measure the QR code on one card: 19mm"
+                                                     },
+                                                     {
+                                                         "id":  "t6_3c2318d8",
+                                                         "label":  "Scan the QR code with a phone: video opens"
+                                                     },
+                                                     {
+                                                         "id":  "t7_368629d0",
+                                                         "label":  "Both sides the same way up"
+                                                     },
+                                                     {
+                                                         "id":  "t8_fa9bbb88",
+                                                         "label":  "At least 3mm white on every edge of the instructions side"
+                                                     },
+                                                     {
+                                                         "id":  "t9_2ff80db6",
+                                                         "label":  "Cards flat, no curl or crease"
+                                                     },
+                                                     {
+                                                         "id":  "t10_2ea720e3",
+                                                         "label":  "Bin any bad single cards"
+                                                     },
+                                                     {
+                                                         "id":  "t11_942a15bf",
+                                                         "label":  "Scrap the sheet if the flip, margin or QR code failed"
+                                                     },
+                                                     {
+                                                         "id":  "t12_96ef92b0",
+                                                         "label":  "Log good cards, bad cards and the reason"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  44,
@@ -113,8 +279,21 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- Store the cut cards **flat** in a small box or envelope by the packing bench, **thank-you side up**, away from damp and sun.\r\n- **Print the next sheet when the last card is used** (about 30 minutes with drying; fits inside the morning batch\u0027s vinyl drying).\r\n- **Reorder** 250gsm white card when **5 sheets** are left. Keep unused card flat in its pack.\r\n- **Bin** any old cards with the dashed \"QR code goes here\" box, if any turn up.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_99403edf",
+                                                         "label":  "Store the cards flat in the box by the packing bench, thank-you side up"
+                                                     },
+                                                     {
+                                                         "id":  "t2_ab2e4c4c",
+                                                         "label":  "Bin any old placeholder cards (dashed QR box)"
+                                                     },
+                                                     {
+                                                         "id":  "t3_f3866f45",
+                                                         "label":  "Count white card sheets left (reorder at 5)"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    }
                                ]
                  },

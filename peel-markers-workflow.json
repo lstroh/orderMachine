@@ -1,5 +1,5 @@
 {
-    "exported_at":  "2026-11-04T08:31:59Z",
+    "exported_at":  "2026-11-05T05:36:32Z",
     "source":  "Order Machine MCP on ordermachine1910.local",
     "workflow":  {
                      "id":  1,
@@ -29,8 +29,45 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "1. Open the saved peel marker project in Design Space.\r\n2. Load **one SmithPackaging label sheet** in the printer, nothing else in the tray.\r\n3. **Make → Send to printer**, in the same session as the cut (so the sensor marks print at the right size).\r\n4. Print settings:\r\n   - Use System Dialog: **On**\r\n   - Epson paper type: **Plain Paper / Bright White**\r\n   - Quality: **High**\r\n   - Scale: **100%**; no fit-to-page, no borderless, no centring\r\n   - Bleed: **On**",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_c8fdb63e",
+                                                         "label":  "Open the saved peel marker project in Design Space"
+                                                     },
+                                                     {
+                                                         "id":  "t2_e7abac67",
+                                                         "label":  "Load one SmithPackaging label sheet, nothing else in the tray"
+                                                     },
+                                                     {
+                                                         "id":  "t3_82a5b0eb",
+                                                         "label":  "Make \u003e Send to printer (same session as the cut)"
+                                                     },
+                                                     {
+                                                         "id":  "t4_53820153",
+                                                         "label":  "Use System Dialog on"
+                                                     },
+                                                     {
+                                                         "id":  "t5_0f029ee7",
+                                                         "label":  "Paper type Plain Paper / Bright White"
+                                                     },
+                                                     {
+                                                         "id":  "t6_1d67c7a2",
+                                                         "label":  "Quality High"
+                                                     },
+                                                     {
+                                                         "id":  "t7_5ca740f4",
+                                                         "label":  "Scale 100%, no fit-to-page, no borderless, no centring"
+                                                     },
+                                                     {
+                                                         "id":  "t8_b63a3b55",
+                                                         "label":  "Bleed on"
+                                                     },
+                                                     {
+                                                         "id":  "t9_81ce2b3a",
+                                                         "label":  "Print"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  2,
@@ -43,8 +80,25 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- **10 minutes** on the drying tray (note the tray number).\r\n- Flat, face up; don\u0027t stack fresh sheets.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_0ed90187",
+                                                         "label":  "Put the sheet flat, face up on a tray"
+                                                     },
+                                                     {
+                                                         "id":  "t2_3ddfda0a",
+                                                         "label":  "Note the tray number"
+                                                     },
+                                                     {
+                                                         "id":  "t3_42514233",
+                                                         "label":  "Nothing stacked on top"
+                                                     },
+                                                     {
+                                                         "id":  "t4_f8652aa0",
+                                                         "label":  "Wait 10 minutes"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  3,
@@ -57,8 +111,33 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "**Settings**\r\n- **Print Then Cut**, size lock on.\r\n- Mat: **12 × 12 Light Grip**. Sheet landscape, printed arrow at top left.\r\n- Material: **Sticker Paper**, **Kiss Cut**, pressure **Less**. Markers stay on the backing; peel one at a time when packing.\r\n\r\n**If a cut misses**\r\n- **Sensor can\u0027t read the marks:** check the light isn\u0027t shining straight on the mat and the sheet is flat; retry; then unload and reload.\r\n- **Cut offset from the print:** stop, run Print Then Cut calibration (Menu → Calibration), reprint.\r\n- **Cut through the backing:** lower the pressure.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_72042339",
+                                                         "label":  "Mat 12 x 12 Light Grip"
+                                                     },
+                                                     {
+                                                         "id":  "t2_1b2ebc01",
+                                                         "label":  "Sheet landscape, printed arrow at top left"
+                                                     },
+                                                     {
+                                                         "id":  "t3_c822d725",
+                                                         "label":  "Print Then Cut, size lock on"
+                                                     },
+                                                     {
+                                                         "id":  "t4_e827e8bf",
+                                                         "label":  "Material Sticker Paper, Kiss Cut, pressure Less"
+                                                     },
+                                                     {
+                                                         "id":  "t5_d71013fd",
+                                                         "label":  "Load the mat and cut"
+                                                     },
+                                                     {
+                                                         "id":  "t6_1da87fa6",
+                                                         "label":  "Unload and check the cut before removing the sheet from the mat"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  4,
@@ -71,8 +150,45 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "**Good sheet:**\r\n- Every pill and arrow cut through the label face; backing uncut (nothing drops out when lifted).\r\n- Cut follows the magenta edge, no white rim.\r\n- \"PEEL THIS FIRST\" sharp, no smudge or banding.\r\n- Each marker lifts cleanly and sticks flat.\r\n\r\n**Bin a single marker** with a white rim, torn edge, smudge or lifted corners.\r\n\r\n**Scrap the whole sheet** if more than **5 sets** are bad, or the cut is offset across the sheet. Recalibrate before the next print.\r\n\r\n**Log** the number of bad sets for this sheet.",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_d6be259d",
+                                                         "label":  "All pills and arrows cut through the label face"
+                                                     },
+                                                     {
+                                                         "id":  "t2_73e23d48",
+                                                         "label":  "Backing uncut, nothing drops out when lifted"
+                                                     },
+                                                     {
+                                                         "id":  "t3_456f228e",
+                                                         "label":  "Cut follows the magenta edge, no white rim"
+                                                     },
+                                                     {
+                                                         "id":  "t4_d4571dad",
+                                                         "label":  "PEEL THIS FIRST text sharp, no smudge or banding"
+                                                     },
+                                                     {
+                                                         "id":  "t5_2e0e280f",
+                                                         "label":  "Markers lift cleanly and stick flat"
+                                                     },
+                                                     {
+                                                         "id":  "t6_69bb8006",
+                                                         "label":  "Bin any bad single markers"
+                                                     },
+                                                     {
+                                                         "id":  "t7_06dbe582",
+                                                         "label":  "Count bad sets (scrap the sheet if more than 5)"
+                                                     },
+                                                     {
+                                                         "id":  "t8_db33be4a",
+                                                         "label":  "Recalibrate if the cut was offset"
+                                                     },
+                                                     {
+                                                         "id":  "t9_cb0843cd",
+                                                         "label":  "Log the number of bad sets"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    },
                                    {
                                        "id":  42,
@@ -85,8 +201,25 @@
                                        "confirmation_kind":  null,
                                        "instructions":  "- Store the cut sheets **flat** in the labelled folder, print date written on, away from sun and damp. Use the oldest first.\r\n- **Reprint** when fewer than **12 sets** are left.\r\n- **Reorder** SmithPackaging label sheets when fewer than **20** are left (shared with the seal sticker).",
                                        "tasks":  [
-
-                                                 ]
+                                                     {
+                                                         "id":  "t1_702c4d08",
+                                                         "label":  "Write the print date on the sheet"
+                                                     },
+                                                     {
+                                                         "id":  "t2_3ff597f8",
+                                                         "label":  "Store flat in the labelled folder, oldest at the front"
+                                                     },
+                                                     {
+                                                         "id":  "t3_84c04def",
+                                                         "label":  "Count sets left (reprint below 12)"
+                                                     },
+                                                     {
+                                                         "id":  "t4_bd154eb6",
+                                                         "label":  "Count label sheets left (reorder below 20)"
+                                                     }
+                                                 ],
+                                       "photo_required":  0,
+                                       "photo_label":  null
                                    }
                                ]
                  },
